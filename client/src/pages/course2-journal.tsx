@@ -81,7 +81,8 @@ function calculateStreak(journals: Journal[]): { currentStreak: number; longestS
   return { currentStreak, longestStreak, completedDays };
 }
 
-// Get reward milestones
+// Get reward milestones - rewards unlock based on longest streak (permanent achievement)
+// Days remaining is calculated based on current streak (what user needs to keep going)
 function getRewardMilestones(currentStreak: number, longestStreak: number) {
   const milestones = [
     { days: 7, title: "Week Warrior", description: "7 days of consistent journaling!", icon: Star, unlocked: false },
@@ -90,8 +91,10 @@ function getRewardMilestones(currentStreak: number, longestStreak: number) {
   
   return milestones.map(m => ({
     ...m,
+    // Unlocked if ever achieved (longestStreak)
     unlocked: longestStreak >= m.days,
-    current: currentStreak >= m.days,
+    // Days remaining based on current streak (so user sees progress)
+    daysRemaining: Math.max(0, m.days - currentStreak),
   }));
 }
 
@@ -135,10 +138,29 @@ export default function Course2JournalPage() {
   const rewards = useMemo(() => 
     getRewardMilestones(currentStreak, longestStreak), [currentStreak, longestStreak]);
 
-  // Days that have at least one entry
-  const daysWithMorning = journals.filter(j => j.session === "morning").map(j => new Date(j.date));
-  const daysWithEvening = journals.filter(j => j.session === "evening").map(j => new Date(j.date));
-  const daysFullyComplete = Array.from(completedDays).map(d => parseISO(d));
+  // Days for calendar modifiers - derive from dayStatus to avoid duplicates
+  const daysWithMorningOnly = useMemo(() => {
+    const dates: Date[] = [];
+    dayStatus.forEach((status, dateStr) => {
+      if (status.morning && !status.evening) {
+        dates.push(parseISO(dateStr));
+      }
+    });
+    return dates;
+  }, [dayStatus]);
+  
+  const daysWithEveningOnly = useMemo(() => {
+    const dates: Date[] = [];
+    dayStatus.forEach((status, dateStr) => {
+      if (status.evening && !status.morning) {
+        dates.push(parseISO(dateStr));
+      }
+    });
+    return dates;
+  }, [dayStatus]);
+  
+  const daysFullyComplete = useMemo(() => 
+    Array.from(completedDays).map(d => parseISO(d)), [completedDays]);
 
   const selectedDateJournals = journals.filter(j => 
     isSameDay(new Date(j.date), selectedDate)
@@ -229,12 +251,8 @@ export default function Course2JournalPage() {
                   className="rounded-md"
                   modifiers={{
                     fullyComplete: daysFullyComplete,
-                    hasMorningOnly: daysWithMorning.filter(d => 
-                      !daysFullyComplete.some(fd => isSameDay(fd, d))
-                    ),
-                    hasEveningOnly: daysWithEvening.filter(d => 
-                      !daysFullyComplete.some(fd => isSameDay(fd, d))
-                    ),
+                    hasMorningOnly: daysWithMorningOnly,
+                    hasEveningOnly: daysWithEveningOnly,
                   }}
                   modifiersClassNames={{
                     fullyComplete: "bg-primary/20 font-bold text-primary",
@@ -359,7 +377,7 @@ export default function Course2JournalPage() {
                         </div>
                         {!reward.unlocked && (
                           <div className="text-right">
-                            <p className="text-sm font-medium">{reward.days - longestStreak} days</p>
+                            <p className="text-sm font-medium">{reward.daysRemaining} days</p>
                             <p className="text-xs text-muted-foreground">to unlock</p>
                           </div>
                         )}
