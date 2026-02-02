@@ -3,14 +3,75 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
+import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
+import LandingPage from "@/pages/landing";
+import CheckoutPage from "@/pages/checkout";
+import CheckoutSuccessPage from "@/pages/checkout-success";
+import CheckoutCancelPage from "@/pages/checkout-cancel";
+import DashboardPage from "@/pages/dashboard";
+import Course1GPTPage from "@/pages/course1-gpt";
+import Course2JournalPage from "@/pages/course2-journal";
+import JournalEntryPage from "@/pages/journal-entry";
+import { Loader2 } from "lucide-react";
+
+function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    window.location.href = "/api/login";
+    return null;
+  }
+
+  return <Component />;
+}
+
+function HomePage() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <DashboardPage />;
+  }
+
+  return <LandingPage />;
+}
 
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
+      <Route path="/" component={HomePage} />
+      <Route path="/checkout/:courseType" component={CheckoutPage} />
+      <Route path="/checkout/success" component={CheckoutSuccessPage} />
+      <Route path="/checkout/cancel" component={CheckoutCancelPage} />
+      <Route path="/dashboard">
+        {() => <AuthenticatedRoute component={DashboardPage} />}
+      </Route>
+      <Route path="/course1">
+        {() => <AuthenticatedRoute component={Course1GPTPage} />}
+      </Route>
+      <Route path="/course2">
+        {() => <AuthenticatedRoute component={Course2JournalPage} />}
+      </Route>
+      <Route path="/journal/:date/:session">
+        {() => <AuthenticatedRoute component={JournalEntryPage} />}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -19,10 +80,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ThemeProvider defaultTheme="light" storageKey="inner-journey-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
