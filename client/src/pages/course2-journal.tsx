@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,91 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   BookOpen, ArrowLeft, Sun, Moon, Lock, Download, 
-  Loader2, Check, ChevronLeft, ChevronRight 
+  Loader2, Check, ChevronLeft, ChevronRight, Flame, Trophy, Star, Gift
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, subDays, differenceInDays, parseISO } from "date-fns";
 import type { Journal, Purchase } from "@shared/schema";
+
+// Helper to calculate streak information
+function calculateStreak(journals: Journal[]): { currentStreak: number; longestStreak: number; completedDays: Set<string> } {
+  // Group journals by date and check for both morning AND evening completion
+  const dayCompletion = new Map<string, { morning: boolean; evening: boolean }>();
+  
+  journals.forEach(j => {
+    const dateStr = j.date;
+    if (!dayCompletion.has(dateStr)) {
+      dayCompletion.set(dateStr, { morning: false, evening: false });
+    }
+    const day = dayCompletion.get(dateStr)!;
+    if (j.session === "morning") day.morning = true;
+    if (j.session === "evening") day.evening = true;
+  });
+
+  // Get all fully completed days (both sessions)
+  const completedDays = new Set<string>();
+  dayCompletion.forEach((completion, dateStr) => {
+    if (completion.morning && completion.evening) {
+      completedDays.add(dateStr);
+    }
+  });
+
+  // Calculate current streak (consecutive days ending today or yesterday)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let currentStreak = 0;
+  let checkDate = today;
+  
+  // Check if today is complete, if not start from yesterday
+  const todayStr = format(today, "yyyy-MM-dd");
+  if (!completedDays.has(todayStr)) {
+    checkDate = subDays(today, 1);
+  }
+  
+  while (true) {
+    const dateStr = format(checkDate, "yyyy-MM-dd");
+    if (completedDays.has(dateStr)) {
+      currentStreak++;
+      checkDate = subDays(checkDate, 1);
+    } else {
+      break;
+    }
+  }
+
+  // Calculate longest streak
+  const sortedDates = Array.from(completedDays).sort();
+  let longestStreak = 0;
+  let tempStreak = 0;
+  let prevDate: Date | null = null;
+
+  sortedDates.forEach(dateStr => {
+    const date = parseISO(dateStr);
+    if (prevDate && differenceInDays(date, prevDate) === 1) {
+      tempStreak++;
+    } else {
+      tempStreak = 1;
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+    prevDate = date;
+  });
+
+  return { currentStreak, longestStreak, completedDays };
+}
+
+// Get reward milestones
+function getRewardMilestones(currentStreak: number, longestStreak: number) {
+  const milestones = [
+    { days: 7, title: "Week Warrior", description: "7 days of consistent journaling!", icon: Star, unlocked: false },
+    { days: 30, title: "Monthly Master", description: "30 days of transformation!", icon: Trophy, unlocked: false },
+  ];
+  
+  return milestones.map(m => ({
+    ...m,
+    unlocked: longestStreak >= m.days,
+    current: currentStreak >= m.days,
+  }));
+}
 
 export default function Course2JournalPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -33,7 +113,33 @@ export default function Course2JournalPage() {
     enabled: !!user && hasAccess,
   });
 
-  const journalDates = journals.map(j => new Date(j.date));
+  // Calculate day completion status for calendar
+  const dayStatus = useMemo(() => {
+    const status = new Map<string, { morning: boolean; evening: boolean }>();
+    journals.forEach(j => {
+      const dateStr = j.date;
+      if (!status.has(dateStr)) {
+        status.set(dateStr, { morning: false, evening: false });
+      }
+      const day = status.get(dateStr)!;
+      if (j.session === "morning") day.morning = true;
+      if (j.session === "evening") day.evening = true;
+    });
+    return status;
+  }, [journals]);
+
+  // Calculate streak and rewards
+  const { currentStreak, longestStreak, completedDays } = useMemo(() => 
+    calculateStreak(journals), [journals]);
+  
+  const rewards = useMemo(() => 
+    getRewardMilestones(currentStreak, longestStreak), [currentStreak, longestStreak]);
+
+  // Days that have at least one entry
+  const daysWithMorning = journals.filter(j => j.session === "morning").map(j => new Date(j.date));
+  const daysWithEvening = journals.filter(j => j.session === "evening").map(j => new Date(j.date));
+  const daysFullyComplete = Array.from(completedDays).map(d => parseISO(d));
+
   const selectedDateJournals = journals.filter(j => 
     isSameDay(new Date(j.date), selectedDate)
   );
@@ -122,16 +228,145 @@ export default function Course2JournalPage() {
                   onMonthChange={setCurrentMonth}
                   className="rounded-md"
                   modifiers={{
-                    hasEntry: journalDates,
+                    fullyComplete: daysFullyComplete,
+                    hasMorningOnly: daysWithMorning.filter(d => 
+                      !daysFullyComplete.some(fd => isSameDay(fd, d))
+                    ),
+                    hasEveningOnly: daysWithEvening.filter(d => 
+                      !daysFullyComplete.some(fd => isSameDay(fd, d))
+                    ),
                   }}
-                  modifiersStyles={{
-                    hasEntry: {
-                      fontWeight: "bold",
-                      backgroundColor: "hsl(var(--primary) / 0.15)",
+                  modifiersClassNames={{
+                    fullyComplete: "bg-primary/20 font-bold text-primary",
+                    hasMorningOnly: "bg-amber-500/15 font-medium",
+                    hasEveningOnly: "bg-indigo-500/15 font-medium",
+                  }}
+                  components={{
+                    DayContent: ({ date }) => {
+                      const dateStr = format(date, "yyyy-MM-dd");
+                      const status = dayStatus.get(dateStr);
+                      const hasMorning = status?.morning || false;
+                      const hasEvening = status?.evening || false;
+                      const isComplete = hasMorning && hasEvening;
+                      
+                      return (
+                        <div className="relative flex flex-col items-center">
+                          <span>{date.getDate()}</span>
+                          {(hasMorning || hasEvening) && (
+                            <div className="flex gap-0.5 mt-0.5">
+                              {hasMorning && (
+                                <div className={`w-1.5 h-1.5 rounded-full ${isComplete ? 'bg-primary' : 'bg-amber-500'}`} />
+                              )}
+                              {hasEvening && (
+                                <div className={`w-1.5 h-1.5 rounded-full ${isComplete ? 'bg-primary' : 'bg-indigo-500'}`} />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
                     },
                   }}
                   data-testid="calendar"
                 />
+                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>Morning</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span>Evening</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span>Complete</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-4">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  <CardTitle className="font-serif text-lg">Your Streak</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-3xl font-bold text-primary">{currentStreak}</p>
+                      <p className="text-sm text-muted-foreground">Current streak</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-semibold">{longestStreak}</p>
+                      <p className="text-sm text-muted-foreground">Best streak</p>
+                    </div>
+                  </div>
+                  
+                  {currentStreak > 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      <span className="text-sm font-medium">
+                        Keep it up! {currentStreak} day{currentStreak > 1 ? 's' : ''} and counting!
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-4">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Gift className="h-5 w-5 text-purple-500" />
+                  <CardTitle className="font-serif text-lg">Rewards</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {rewards.map((reward, idx) => {
+                    const Icon = reward.icon;
+                    return (
+                      <div 
+                        key={idx}
+                        className={`flex items-center gap-3 p-3 rounded-md border transition-colors ${
+                          reward.unlocked 
+                            ? 'bg-primary/10 border-primary/30' 
+                            : 'bg-muted/30 border-border opacity-60'
+                        }`}
+                        data-testid={`reward-${reward.days}`}
+                      >
+                        <div className={`p-2 rounded-full ${
+                          reward.unlocked ? 'bg-primary/20' : 'bg-muted'
+                        }`}>
+                          <Icon className={`h-5 w-5 ${
+                            reward.unlocked ? 'text-primary' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{reward.title}</p>
+                            {reward.unlocked && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Check className="h-3 w-3 mr-1" />
+                                Unlocked
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{reward.description}</p>
+                        </div>
+                        {!reward.unlocked && (
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{reward.days - longestStreak} days</p>
+                            <p className="text-xs text-muted-foreground">to unlock</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
 
@@ -150,6 +385,10 @@ export default function Course2JournalPage() {
                     <span className="font-medium">
                       {new Set(journals.map(j => j.date)).size}
                     </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Complete Days</span>
+                    <span className="font-medium">{completedDays.size}</span>
                   </div>
                 </div>
               </CardContent>
