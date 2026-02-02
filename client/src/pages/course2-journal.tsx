@@ -271,12 +271,12 @@ export default function Course2JournalPage() {
                         <div className="relative flex flex-col items-center">
                           <span>{date.getDate()}</span>
                           {(hasMorning || hasEvening) && (
-                            <div className="flex gap-0.5 mt-0.5">
+                            <div className="flex gap-1 mt-0.5">
                               {hasMorning && (
-                                <div className={`w-1.5 h-1.5 rounded-full ${isComplete ? 'bg-primary' : 'bg-amber-500'}`} />
+                                <Check className={`w-3 h-3 ${isComplete ? 'text-primary' : 'text-amber-500'}`} />
                               )}
                               {hasEvening && (
-                                <div className={`w-1.5 h-1.5 rounded-full ${isComplete ? 'bg-primary' : 'bg-indigo-500'}`} />
+                                <Check className={`w-3 h-3 ${isComplete ? 'text-primary' : 'text-indigo-500'}`} />
                               )}
                             </div>
                           )}
@@ -288,16 +288,17 @@ export default function Course2JournalPage() {
                 />
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
+                    <Check className="w-3 h-3 text-amber-500" />
                     <span>Morning</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <Check className="w-3 h-3 text-indigo-500" />
                     <span>Evening</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span>Complete</span>
+                    <Check className="w-3 h-3 text-primary" />
+                    <Check className="w-3 h-3 text-primary" />
+                    <span>Both</span>
                   </div>
                 </div>
               </CardContent>
@@ -449,7 +450,7 @@ export default function Course2JournalPage() {
                     onClick={() => setLocation(`/journal/${format(selectedDate, "yyyy-MM-dd")}/morning`)}
                     data-testid="button-morning-journal"
                   >
-                    {hasMorningEntry ? "View Entry" : "Start Session"}
+                    {hasMorningEntry ? "Edit Entry" : "Start Session"}
                   </Button>
                 </CardContent>
               </Card>
@@ -479,7 +480,7 @@ export default function Course2JournalPage() {
                     onClick={() => setLocation(`/journal/${format(selectedDate, "yyyy-MM-dd")}/evening`)}
                     data-testid="button-evening-journal"
                   >
-                    {hasEveningEntry ? "View Entry" : "Start Session"}
+                    {hasEveningEntry ? "Edit Entry" : "Start Session"}
                   </Button>
                 </CardContent>
               </Card>
