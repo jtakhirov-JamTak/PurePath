@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Compass, Sparkles, BookOpen, Package, Lock, ArrowRight, LogOut } from "lucide-react";
+import { Compass, Sparkles, BookOpen, Package, Lock, ArrowRight, LogOut, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Purchase } from "@shared/schema";
 
@@ -56,6 +56,14 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLocation("/billing")}
+              data-testid="button-billing"
+            >
+              <CreditCard className="h-4 w-4" />
+            </Button>
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.profileImageUrl || undefined} />

@@ -11,6 +11,7 @@ export const purchases = pgTable("purchases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   courseType: varchar("course_type", { length: 50 }).notNull(), // 'course1', 'course2', 'bundle'
+  stripeSessionId: varchar("stripe_session_id").unique(), // Unique constraint for idempotency
   stripePaymentId: varchar("stripe_payment_id"),
   amount: integer("amount").notNull(), // in cents
   status: varchar("status", { length: 20 }).notNull().default("completed"), // 'pending', 'completed', 'refunded'

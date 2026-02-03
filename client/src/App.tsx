@@ -11,6 +11,7 @@ import CheckoutPage from "@/pages/checkout";
 import CheckoutSuccessPage from "@/pages/checkout-success";
 import CheckoutCancelPage from "@/pages/checkout-cancel";
 import DashboardPage from "@/pages/dashboard";
+import BillingPage from "@/pages/billing";
 import Course1GPTPage from "@/pages/course1-gpt";
 import Course2JournalPage from "@/pages/course2-journal";
 import JournalEntryPage from "@/pages/journal-entry";
@@ -62,6 +63,9 @@ function Router() {
       <Route path="/checkout/cancel" component={CheckoutCancelPage} />
       <Route path="/dashboard">
         {() => <AuthenticatedRoute component={DashboardPage} />}
+      </Route>
+      <Route path="/billing">
+        {() => <AuthenticatedRoute component={BillingPage} />}
       </Route>
       <Route path="/course1">
         {() => <AuthenticatedRoute component={Course1GPTPage} />}

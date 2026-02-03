@@ -112,13 +112,20 @@ export async function registerRoutes(
         const { userId, courseType } = session.metadata || {};
 
         if (userId && courseType) {
-          await storage.createPurchase({
+          const { created } = await storage.createPurchaseIfNotExists({
             userId,
             courseType,
+            stripeSessionId: session.id,
             stripePaymentId: session.payment_intent as string,
             amount: session.amount_total || 0,
             status: "completed",
           });
+          
+          if (created) {
+            console.log(`Purchase created for user ${userId}, course ${courseType}`);
+          } else {
+            console.log(`Duplicate webhook ignored for session ${session.id}`);
+          }
         }
       }
 
@@ -309,6 +316,49 @@ export async function registerRoutes(
       } else {
         res.status(500).json({ error: "Failed to send message" });
       }
+    }
+  });
+
+  app.post("/api/billing/refresh", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const stripe = await getUncachableStripeClient();
+
+      const purchases = await storage.getPurchasesByUser(userId);
+      
+      if (purchases.length === 0) {
+        return res.json({ 
+          updated: false, 
+          message: "No purchases found. If you just completed a payment, please wait a moment and try again." 
+        });
+      }
+
+      let updated = false;
+      
+      for (const purchase of purchases) {
+        if (purchase.stripeSessionId) {
+          try {
+            const session = await stripe.checkout.sessions.retrieve(purchase.stripeSessionId);
+            
+            if (session.payment_status === "paid" && purchase.status !== "completed") {
+              await storage.updatePurchaseStatus(purchase.id, "completed");
+              updated = true;
+            }
+          } catch (stripeError) {
+            console.log(`Could not retrieve session ${purchase.stripeSessionId}:`, stripeError);
+          }
+        }
+      }
+
+      res.json({ 
+        updated, 
+        message: updated 
+          ? "Your access has been refreshed successfully." 
+          : "Your access is already up to date."
+      });
+    } catch (error) {
+      console.error("Billing refresh error:", error);
+      res.status(500).json({ error: "Failed to refresh access" });
     }
   });
 

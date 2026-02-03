@@ -4,7 +4,10 @@ import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   getPurchasesByUser(userId: string): Promise<Purchase[]>;
+  getPurchaseBySessionId(stripeSessionId: string): Promise<Purchase | undefined>;
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
+  createPurchaseIfNotExists(purchase: InsertPurchase): Promise<{ purchase: Purchase; created: boolean }>;
+  updatePurchaseStatus(purchaseId: number, status: string): Promise<void>;
   hasCourseAccess(userId: string, courseType: string): Promise<boolean>;
   
   getJournalsByUser(userId: string): Promise<Journal[]>;
@@ -20,9 +23,29 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(purchases).where(eq(purchases.userId, userId)).orderBy(desc(purchases.createdAt));
   }
 
+  async getPurchaseBySessionId(stripeSessionId: string): Promise<Purchase | undefined> {
+    const [purchase] = await db.select().from(purchases).where(eq(purchases.stripeSessionId, stripeSessionId));
+    return purchase;
+  }
+
   async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
     const [newPurchase] = await db.insert(purchases).values(purchase).returning();
     return newPurchase;
+  }
+
+  async createPurchaseIfNotExists(purchase: InsertPurchase): Promise<{ purchase: Purchase; created: boolean }> {
+    if (purchase.stripeSessionId) {
+      const existing = await this.getPurchaseBySessionId(purchase.stripeSessionId);
+      if (existing) {
+        return { purchase: existing, created: false };
+      }
+    }
+    const newPurchase = await this.createPurchase(purchase);
+    return { purchase: newPurchase, created: true };
+  }
+
+  async updatePurchaseStatus(purchaseId: number, status: string): Promise<void> {
+    await db.update(purchases).set({ status }).where(eq(purchases.id, purchaseId));
   }
 
   async hasCourseAccess(userId: string, courseType: string): Promise<boolean> {
