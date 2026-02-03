@@ -4,7 +4,15 @@
 
 Inner Journey is a self-discovery and personal growth course platform that sells digital courses with integrated AI-powered features. The application offers two main courses: an AI chat-based self-discovery guide (Course 1) and a daily journaling system (Course 2), available individually or as a bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 2, 2026)
+## Recent Changes (Feb 3, 2026)
+
+- Payment reliability improvements:
+  - Idempotent webhook processing with unique constraint on stripe_session_id
+  - New /billing page showing purchase history and access status
+  - "Refresh Access" button for users experiencing payment unlock issues
+  - Server-side entitlement re-checking via /api/billing/refresh endpoint
+
+## Previous Changes (Feb 2, 2026)
 
 - Complete platform implementation with landing page, checkout flow, dashboard
 - Course 1: GPT-powered self-discovery chat with streaming responses (gpt-5.2)
