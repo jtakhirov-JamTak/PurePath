@@ -102,14 +102,14 @@ export default function EisenhowerPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))} data-testid="button-prev-week">
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="text-center">
-            <p className="font-medium">Week of {format(currentWeek, "MMM d, yyyy")}</p>
+            <p className="font-medium" data-testid="text-current-week">Week of {format(currentWeek, "MMM d, yyyy")}</p>
           </div>
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
+          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))} data-testid="button-next-week">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -131,7 +131,7 @@ export default function EisenhowerPage() {
                 <div>
                   <Label>Role</Label>
                   <Select value={newEntry.role} onValueChange={(v) => setNewEntry({ ...newEntry, role: v as typeof ROLES[number] })}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-role">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -147,12 +147,13 @@ export default function EisenhowerPage() {
                     value={newEntry.task} 
                     onChange={(e) => setNewEntry({ ...newEntry, task: e.target.value })}
                     placeholder="What needs to be done?"
+                    data-testid="input-task"
                   />
                 </div>
                 <div>
                   <Label>Quadrant</Label>
                   <Select value={newEntry.quadrant} onValueChange={(v) => setNewEntry({ ...newEntry, quadrant: v })}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-quadrant">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -169,6 +170,7 @@ export default function EisenhowerPage() {
                       type="date" 
                       value={newEntry.deadline} 
                       onChange={(e) => setNewEntry({ ...newEntry, deadline: e.target.value })}
+                      data-testid="input-deadline"
                     />
                   </div>
                   <div>
@@ -177,6 +179,7 @@ export default function EisenhowerPage() {
                       placeholder="e.g., 60m, 2h"
                       value={newEntry.timeEstimate} 
                       onChange={(e) => setNewEntry({ ...newEntry, timeEstimate: e.target.value })}
+                      data-testid="input-time-estimate"
                     />
                   </div>
                 </div>
@@ -186,6 +189,7 @@ export default function EisenhowerPage() {
                     placeholder="e.g., Tue 9:00-10:30"
                     value={newEntry.scheduledTime} 
                     onChange={(e) => setNewEntry({ ...newEntry, scheduledTime: e.target.value })}
+                    data-testid="input-scheduled-time"
                   />
                 </div>
               </div>
@@ -193,6 +197,7 @@ export default function EisenhowerPage() {
                 <Button 
                   onClick={() => createMutation.mutate(newEntry)} 
                   disabled={!newEntry.task || createMutation.isPending}
+                  data-testid="button-submit-entry"
                 >
                   Add Entry
                 </Button>
@@ -223,6 +228,7 @@ export default function EisenhowerPage() {
                         <Checkbox 
                           checked={entry.completed || false}
                           onCheckedChange={(checked) => toggleMutation.mutate({ id: entry.id, completed: !!checked })}
+                          data-testid={`checkbox-entry-${entry.id}`}
                         />
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm ${entry.completed ? "line-through opacity-60" : ""}`}>{entry.task}</p>
@@ -237,6 +243,7 @@ export default function EisenhowerPage() {
                           size="icon" 
                           className="h-8 w-8 shrink-0"
                           onClick={() => deleteMutation.mutate(entry.id)}
+                          data-testid={`button-delete-entry-${entry.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

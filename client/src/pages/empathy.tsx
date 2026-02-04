@@ -114,6 +114,7 @@ export default function EmpathyPage() {
                         type="date" 
                         value={newExercise.date} 
                         onChange={(e) => setNewExercise({ ...newExercise, date: e.target.value })}
+                        data-testid="input-date"
                       />
                     </div>
                     <div>
@@ -122,6 +123,7 @@ export default function EmpathyPage() {
                         placeholder="Person involved"
                         value={newExercise.who} 
                         onChange={(e) => setNewExercise({ ...newExercise, who: e.target.value })}
+                        data-testid="input-who"
                       />
                     </div>
                   </div>
@@ -132,6 +134,7 @@ export default function EmpathyPage() {
                       placeholder="What was the situation?"
                       value={newExercise.context} 
                       onChange={(e) => setNewExercise({ ...newExercise, context: e.target.value })}
+                      data-testid="input-context"
                     />
                   </div>
 
@@ -142,6 +145,7 @@ export default function EmpathyPage() {
                         placeholder="How did they seem to feel?"
                         value={newExercise.theirEmotionalState} 
                         onChange={(e) => setNewExercise({ ...newExercise, theirEmotionalState: e.target.value })}
+                        data-testid="input-their-emotional-state"
                       />
                     </div>
                     <div>
@@ -150,6 +154,7 @@ export default function EmpathyPage() {
                         placeholder="How was I feeling and why?"
                         value={newExercise.myEmotionalState} 
                         onChange={(e) => setNewExercise({ ...newExercise, myEmotionalState: e.target.value })}
+                        data-testid="input-my-emotional-state"
                       />
                     </div>
                   </div>
@@ -160,6 +165,7 @@ export default function EmpathyPage() {
                       placeholder="Just the facts, no interpretation"
                       value={newExercise.factsObserved} 
                       onChange={(e) => setNewExercise({ ...newExercise, factsObserved: e.target.value })}
+                      data-testid="input-facts-observed"
                     />
                   </div>
 
@@ -169,6 +175,7 @@ export default function EmpathyPage() {
                       placeholder='"I came across as ___ because I ___"'
                       value={newExercise.howICameAcross} 
                       onChange={(e) => setNewExercise({ ...newExercise, howICameAcross: e.target.value })}
+                      data-testid="input-how-i-came-across"
                     />
                   </div>
 
@@ -178,6 +185,7 @@ export default function EmpathyPage() {
                       placeholder='"I think they felt ___ because I observed ___"'
                       value={newExercise.howTheyLikelyFelt} 
                       onChange={(e) => setNewExercise({ ...newExercise, howTheyLikelyFelt: e.target.value })}
+                      data-testid="input-how-they-likely-felt"
                     />
                   </div>
 
@@ -187,6 +195,7 @@ export default function EmpathyPage() {
                       placeholder='"I think ___ matters most to them"'
                       value={newExercise.whatMattersToThem} 
                       onChange={(e) => setNewExercise({ ...newExercise, whatMattersToThem: e.target.value })}
+                      data-testid="input-what-matters-to-them"
                     />
                   </div>
 
@@ -196,6 +205,7 @@ export default function EmpathyPage() {
                       placeholder='"I think they need ___ because I of ___"'
                       value={newExercise.whatTheyNeed} 
                       onChange={(e) => setNewExercise({ ...newExercise, whatTheyNeed: e.target.value })}
+                      data-testid="input-what-they-need"
                     />
                   </div>
 
@@ -205,6 +215,7 @@ export default function EmpathyPage() {
                       placeholder="Action or Conversation"
                       value={newExercise.nextAction} 
                       onChange={(e) => setNewExercise({ ...newExercise, nextAction: e.target.value })}
+                      data-testid="input-next-action"
                     />
                   </div>
                 </div>
@@ -213,6 +224,7 @@ export default function EmpathyPage() {
                 <Button 
                   onClick={() => createMutation.mutate(newExercise)} 
                   disabled={!newExercise.who || createMutation.isPending}
+                  data-testid="button-save-reflection"
                 >
                   Save Reflection
                 </Button>
@@ -232,9 +244,9 @@ export default function EmpathyPage() {
             </Card>
           ) : (
             exercises.map(exercise => (
-              <Card key={exercise.id}>
+              <Card key={exercise.id} data-testid={`card-exercise-${exercise.id}`}>
                 <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <CardTitle className="font-serif text-lg">{exercise.who}</CardTitle>
                       <CardDescription className="flex items-center gap-1">
@@ -246,6 +258,7 @@ export default function EmpathyPage() {
                       variant="ghost" 
                       size="icon"
                       onClick={() => deleteMutation.mutate(exercise.id)}
+                      data-testid={`button-delete-exercise-${exercise.id}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

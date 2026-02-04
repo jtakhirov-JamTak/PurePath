@@ -6,6 +6,16 @@ Inner Journey is a self-discovery and personal growth course platform that sells
 
 ## Recent Changes (Feb 4, 2026)
 
+- Added Self-Development Tools module with 5 new free tools:
+  - **Meditation** (/meditation): Integrative meditation instructions with embedded YouTube black noise audio
+  - **Emotional Processing** (/emotional-processing): 4-step containment process (Feel → Label → Regulate → Move)
+  - **Eisenhower Matrix** (/eisenhower): Weekly priority planning organized by roles (health/wealth/relationships) and quadrants (Q1-Q4)
+  - **Empathy Module** (/empathy): Structured reflection form with 11 fields for analyzing interpersonal interactions
+  - **Habits & Tasks** (/habits): Track up to 6 weekly habits and 3 daily tasks per day
+  - All tools accessible from dashboard "Self-Development Tools" section
+  - CSV export functionality for Eisenhower and Empathy data
+  - Database tables: eisenhower_entries, empathy_exercises, habits, tasks
+
 - UI modernization and improved navigation:
   - Created shared AppHeader component with clickable logo (navigates to home/dashboard)
   - Added user dropdown menu with Dashboard, Billing, and Sign Out options

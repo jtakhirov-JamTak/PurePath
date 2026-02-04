@@ -126,9 +126,9 @@ export default function HabitsPage() {
           </TabsList>
 
           <TabsContent value="habits" className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground" data-testid="text-habit-count">
                   {activeHabits.length}/6 habits set
                 </p>
               </div>
@@ -151,12 +151,13 @@ export default function HabitsPage() {
                         placeholder="e.g., Morning meditation"
                         value={newHabit.name} 
                         onChange={(e) => setNewHabit({ ...newHabit, name: e.target.value })}
+                        data-testid="input-habit-name"
                       />
                     </div>
                     <div>
                       <Label>Cadence</Label>
                       <Select value={newHabit.cadence} onValueChange={(v) => setNewHabit({ ...newHabit, cadence: v })}>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="select-cadence">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -172,6 +173,7 @@ export default function HabitsPage() {
                         type="time"
                         value={newHabit.time} 
                         onChange={(e) => setNewHabit({ ...newHabit, time: e.target.value })}
+                        data-testid="input-habit-time"
                       />
                     </div>
                   </div>
@@ -179,6 +181,7 @@ export default function HabitsPage() {
                     <Button 
                       onClick={() => createHabitMutation.mutate(newHabit)} 
                       disabled={!newHabit.name || createHabitMutation.isPending}
+                      data-testid="button-submit-habit"
                     >
                       Add Habit
                     </Button>
@@ -198,15 +201,15 @@ export default function HabitsPage() {
             ) : (
               <div className="space-y-3">
                 {activeHabits.map(habit => (
-                  <Card key={habit.id}>
+                  <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
                     <CardContent className="py-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
                             <Clock className="h-5 w-5 text-cyan-500" />
                           </div>
                           <div>
-                            <p className="font-medium">{habit.name}</p>
+                            <p className="font-medium" data-testid={`text-habit-name-${habit.id}`}>{habit.name}</p>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Badge variant="outline" className="text-xs">
                                 {CADENCE_OPTIONS.find(o => o.value === habit.cadence)?.label || habit.cadence}
@@ -219,6 +222,7 @@ export default function HabitsPage() {
                           variant="ghost" 
                           size="icon"
                           onClick={() => deleteHabitMutation.mutate(habit.id)}
+                          data-testid={`button-delete-habit-${habit.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -253,6 +257,7 @@ export default function HabitsPage() {
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="w-auto"
+                  data-testid="input-task-date-selector"
                 />
               </div>
               <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
@@ -274,6 +279,7 @@ export default function HabitsPage() {
                         placeholder="What needs to be done?"
                         value={newTask.title} 
                         onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                        data-testid="input-task-title"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -283,6 +289,7 @@ export default function HabitsPage() {
                           type="date"
                           value={newTask.date} 
                           onChange={(e) => setNewTask({ ...newTask, date: e.target.value })}
+                          data-testid="input-task-date"
                         />
                       </div>
                       <div>
@@ -291,6 +298,7 @@ export default function HabitsPage() {
                           type="time"
                           value={newTask.time} 
                           onChange={(e) => setNewTask({ ...newTask, time: e.target.value })}
+                          data-testid="input-task-time"
                         />
                       </div>
                     </div>
@@ -299,6 +307,7 @@ export default function HabitsPage() {
                     <Button 
                       onClick={() => createTaskMutation.mutate(newTask)} 
                       disabled={!newTask.title || createTaskMutation.isPending}
+                      data-testid="button-submit-task"
                     >
                       Add Task
                     </Button>
@@ -324,19 +333,22 @@ export default function HabitsPage() {
                       <div 
                         key={task.id} 
                         className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                        data-testid={`card-task-${task.id}`}
                       >
                         <Checkbox 
                           checked={task.completed || false}
                           onCheckedChange={(checked) => toggleTaskMutation.mutate({ id: task.id, completed: !!checked })}
+                          data-testid={`checkbox-task-${task.id}`}
                         />
                         <div className="flex-1">
-                          <p className={`${task.completed ? "line-through opacity-60" : ""}`}>{task.title}</p>
+                          <p className={`${task.completed ? "line-through opacity-60" : ""}`} data-testid={`text-task-title-${task.id}`}>{task.title}</p>
                           <span className="text-xs text-muted-foreground">{task.time}</span>
                         </div>
                         <Button 
                           variant="ghost" 
                           size="icon"
                           onClick={() => deleteTaskMutation.mutate(task.id)}
+                          data-testid={`button-delete-task-${task.id}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

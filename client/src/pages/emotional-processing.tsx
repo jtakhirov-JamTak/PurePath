@@ -60,7 +60,7 @@ export default function EmotionalProcessingPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted/50 border-l-4 border-amber-500">
+              <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
                 <p className="text-lg font-medium italic">
                   "I feel ___ right now because ____, and it's okay to feel that way."
                 </p>
@@ -106,7 +106,7 @@ export default function EmotionalProcessingPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted/50 border-l-4 border-emerald-500">
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
                 <p className="text-lg font-medium italic">
                   "Given that, the next small thing is ___."
                 </p>
