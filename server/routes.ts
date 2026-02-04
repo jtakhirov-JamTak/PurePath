@@ -56,13 +56,14 @@ export async function registerRoutes(
 
       const course = COURSES[courseType];
       const stripe = await getUncachableStripeClient();
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        mode: "payment",
-        customer_email: userEmail,
-        line_items: [
-          {
+      
+      // Use stable Price ID from env vars if available (production-ready)
+      // Otherwise fallback to inline price_data (development)
+      const stripePriceId = process.env[course.stripePriceEnvVar];
+      
+      const lineItems = stripePriceId
+        ? [{ price: stripePriceId, quantity: 1 }]
+        : [{
             price_data: {
               currency: "usd",
               product_data: {
@@ -72,8 +73,13 @@ export async function registerRoutes(
               unit_amount: course.price,
             },
             quantity: 1,
-          },
-        ],
+          }];
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        mode: "payment",
+        customer_email: userEmail,
+        line_items: lineItems,
         metadata: {
           userId,
           courseType,

@@ -77,7 +77,7 @@ Tracks course purchases and access entitlements.
 |--------|------|-------------|-------------|
 | id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
 | user_id | VARCHAR | NOT NULL, FK → users | Purchaser |
-| course_type | VARCHAR | NOT NULL | 'course1', 'course2', or 'bundle' |
+| course_type | VARCHAR | NOT NULL, CHECK | 'course1', 'course2', or 'bundle' (constrained) |
 | amount | INTEGER | NOT NULL | Price in cents |
 | stripe_session_id | VARCHAR | UNIQUE | Stripe Checkout session ID |
 | status | VARCHAR | DEFAULT 'completed' | Payment status |
@@ -85,6 +85,7 @@ Tracks course purchases and access entitlements.
 
 **Notes:**
 - `stripe_session_id` UNIQUE constraint enables idempotent webhook processing
+- `course_type` CHECK constraint enforces valid values ('course1', 'course2', 'bundle')
 - Bundle purchase grants access to both courses
 - Amount stored in cents to avoid floating-point issues
 
@@ -97,15 +98,21 @@ Stores daily journal entries for Course 2.
 | id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
 | user_id | VARCHAR | NOT NULL, FK → users | Entry author |
 | date | DATE | NOT NULL | Entry date |
-| morning_entry | TEXT | | Morning reflection |
-| evening_entry | TEXT | | Evening reflection |
-| mood | VARCHAR | | Mood indicator |
+| session | VARCHAR | NOT NULL | 'morning' or 'evening' |
+| gratitude | TEXT | | What I'm grateful for |
+| intentions | TEXT | | Daily intentions |
+| reflections | TEXT | | Reflections on the day |
+| highlights | TEXT | | Day's highlights |
+| challenges | TEXT | | Challenges faced |
+| tomorrow_goals | TEXT | | Goals for tomorrow |
 | created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
-| updated_at | TIMESTAMP | | Last edit time |
+| updated_at | TIMESTAMP | DEFAULT NOW() | Last edit time |
 
 **Notes:**
-- One entry per user per date (upsert pattern)
-- Mood is optional, free-form or from predefined list
+- UNIQUE INDEX on (user_id, date, session) enforces one entry per user per date per session
+- This constraint enables safe upsert operations
+- Morning entries typically use: gratitude, intentions
+- Evening entries typically use: highlights, reflections, challenges, tomorrow_goals
 
 ### chat_messages
 

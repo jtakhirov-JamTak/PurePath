@@ -49,32 +49,33 @@ const handleCheckout = async () => {
 **Server:**
 ```typescript
 app.post('/api/checkout', isAuthenticated, async (req, res) => {
-  const { product } = req.body;
+  const { courseType } = req.body;
   const userId = req.user.id;
   
-  // Product configuration
-  const products = {
-    course1: { name: 'Self-Discovery GPT', price: 4900 },
-    course2: { name: 'Transformation Journal', price: 3900 },
-    bundle: { name: 'Complete Bundle', price: 6900 },
-  };
+  const course = COURSES[courseType];
   
-  const selected = products[product];
+  // Use stable Price ID from env vars if available (production-ready)
+  // Otherwise fallback to inline price_data (development)
+  const stripePriceId = process.env[course.stripePriceEnvVar];
+  
+  const lineItems = stripePriceId
+    ? [{ price: stripePriceId, quantity: 1 }]
+    : [{
+        price_data: {
+          currency: 'usd',
+          product_data: { name: course.name },
+          unit_amount: course.price,
+        },
+        quantity: 1,
+      }];
   
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     payment_method_types: ['card'],
-    line_items: [{
-      price_data: {
-        currency: 'usd',
-        product_data: { name: selected.name },
-        unit_amount: selected.price,
-      },
-      quantity: 1,
-    }],
+    line_items: lineItems,
     metadata: {
       userId,
-      product,
+      courseType,
     },
     success_url: `${process.env.APP_URL}/dashboard?success=true`,
     cancel_url: `${process.env.APP_URL}/checkout?canceled=true`,
@@ -83,6 +84,14 @@ app.post('/api/checkout', isAuthenticated, async (req, res) => {
   res.json({ url: session.url });
 });
 ```
+
+**Production Setup:**
+For production, define Stripe Price IDs in environment variables:
+- `STRIPE_PRICE_COURSE1` - Price ID for Course 1 ($49)
+- `STRIPE_PRICE_COURSE2` - Price ID for Course 2 ($39)
+- `STRIPE_PRICE_BUNDLE` - Price ID for Bundle ($69)
+
+This reduces mistakes and makes price changes manageable through Stripe Dashboard.
 
 ### 3. User Completes Payment
 

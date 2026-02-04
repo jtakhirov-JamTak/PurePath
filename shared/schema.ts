@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, serial, date } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -16,7 +16,10 @@ export const purchases = pgTable("purchases", {
   amount: integer("amount").notNull(), // in cents
   status: varchar("status", { length: 20 }).notNull().default("completed"), // 'pending', 'completed', 'refunded'
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // Constraint: course_type must be one of the valid values
+  check("course_type_check", sql`${table.courseType} IN ('course1', 'course2', 'bundle')`),
+]);
 
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({
   id: true,
@@ -40,7 +43,10 @@ export const journals = pgTable("journals", {
   tomorrowGoals: text("tomorrow_goals"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  // One entry per user per date per session (enables upsert pattern)
+  uniqueIndex("journals_user_date_session_idx").on(table.userId, table.date, table.session),
+]);
 
 export const insertJournalSchema = createInsertSchema(journals).omit({
   id: true,
@@ -69,12 +75,15 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 // Course definitions (static, not in DB)
+// For production: Set STRIPE_PRICE_COURSE1, STRIPE_PRICE_COURSE2, STRIPE_PRICE_BUNDLE env vars
+// with stable Stripe Price IDs from your dashboard. If not set, inline price_data will be used.
 export const COURSES = {
   course1: {
     id: "course1",
     name: "Self-Discovery GPT",
     description: "AI-powered self-discovery companion for deep personal insights",
     price: 4900, // $49
+    stripePriceEnvVar: "STRIPE_PRICE_COURSE1",
     features: [
       "Unlimited conversations with your personal AI guide",
       "Tailored self-discovery prompts",
@@ -87,6 +96,7 @@ export const COURSES = {
     name: "Transformation Journal",
     description: "Structured journaling for lasting personal growth",
     price: 3900, // $39
+    stripePriceEnvVar: "STRIPE_PRICE_COURSE2",
     features: [
       "Morning & evening journaling sessions",
       "Interactive calendar tracking",
@@ -99,6 +109,7 @@ export const COURSES = {
     name: "Complete Transformation Bundle",
     description: "The ultimate self-transformation experience",
     price: 6900, // $69 (save $19)
+    stripePriceEnvVar: "STRIPE_PRICE_BUNDLE",
     features: [
       "Everything in Self-Discovery GPT",
       "Everything in Transformation Journal",
