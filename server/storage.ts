@@ -1,6 +1,15 @@
 import { db } from "./db";
-import { purchases, journals, chatMessages, type Purchase, type InsertPurchase, type Journal, type InsertJournal, type ChatMessage, type InsertChatMessage } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { 
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, tasks,
+  type Purchase, type InsertPurchase, 
+  type Journal, type InsertJournal, 
+  type ChatMessage, type InsertChatMessage,
+  type EisenhowerEntry, type InsertEisenhowerEntry,
+  type EmpathyExercise, type InsertEmpathyExercise,
+  type Habit, type InsertHabit,
+  type Task, type InsertTask
+} from "@shared/schema";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   getPurchasesByUser(userId: string): Promise<Purchase[]>;
@@ -16,6 +25,32 @@ export interface IStorage {
   
   getChatMessagesByUser(userId: string): Promise<ChatMessage[]>;
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  
+  // Eisenhower Matrix
+  getEisenhowerEntriesByUser(userId: string): Promise<EisenhowerEntry[]>;
+  getEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<EisenhowerEntry[]>;
+  createEisenhowerEntry(entry: InsertEisenhowerEntry): Promise<EisenhowerEntry>;
+  updateEisenhowerEntry(id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
+  deleteEisenhowerEntry(id: number): Promise<void>;
+  
+  // Empathy Exercises
+  getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]>;
+  createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise>;
+  updateEmpathyExercise(id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise>;
+  deleteEmpathyExercise(id: number): Promise<void>;
+  
+  // Habits
+  getHabitsByUser(userId: string): Promise<Habit[]>;
+  createHabit(habit: InsertHabit): Promise<Habit>;
+  updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit>;
+  deleteHabit(id: number): Promise<void>;
+  
+  // Tasks
+  getTasksByUser(userId: string): Promise<Task[]>;
+  getTasksForDate(userId: string, date: string): Promise<Task[]>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
+  deleteTask(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -95,6 +130,100 @@ export class DatabaseStorage implements IStorage {
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
     const [newMessage] = await db.insert(chatMessages).values(message).returning();
     return newMessage;
+  }
+
+  // Eisenhower Matrix
+  async getEisenhowerEntriesByUser(userId: string): Promise<EisenhowerEntry[]> {
+    return db.select().from(eisenhowerEntries).where(eq(eisenhowerEntries.userId, userId)).orderBy(desc(eisenhowerEntries.createdAt));
+  }
+
+  async getEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<EisenhowerEntry[]> {
+    return db.select().from(eisenhowerEntries)
+      .where(and(
+        eq(eisenhowerEntries.userId, userId),
+        eq(eisenhowerEntries.weekStart, weekStart)
+      ))
+      .orderBy(eisenhowerEntries.quadrant, eisenhowerEntries.role);
+  }
+
+  async createEisenhowerEntry(entry: InsertEisenhowerEntry): Promise<EisenhowerEntry> {
+    const [newEntry] = await db.insert(eisenhowerEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateEisenhowerEntry(id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry> {
+    const [updated] = await db.update(eisenhowerEntries).set(entry).where(eq(eisenhowerEntries.id, id)).returning();
+    return updated;
+  }
+
+  async deleteEisenhowerEntry(id: number): Promise<void> {
+    await db.delete(eisenhowerEntries).where(eq(eisenhowerEntries.id, id));
+  }
+
+  // Empathy Exercises
+  async getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]> {
+    return db.select().from(empathyExercises).where(eq(empathyExercises.userId, userId)).orderBy(desc(empathyExercises.createdAt));
+  }
+
+  async createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise> {
+    const [newExercise] = await db.insert(empathyExercises).values(exercise).returning();
+    return newExercise;
+  }
+
+  async updateEmpathyExercise(id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise> {
+    const [updated] = await db.update(empathyExercises).set(exercise).where(eq(empathyExercises.id, id)).returning();
+    return updated;
+  }
+
+  async deleteEmpathyExercise(id: number): Promise<void> {
+    await db.delete(empathyExercises).where(eq(empathyExercises.id, id));
+  }
+
+  // Habits
+  async getHabitsByUser(userId: string): Promise<Habit[]> {
+    return db.select().from(habits).where(eq(habits.userId, userId)).orderBy(habits.time);
+  }
+
+  async createHabit(habit: InsertHabit): Promise<Habit> {
+    const [newHabit] = await db.insert(habits).values(habit).returning();
+    return newHabit;
+  }
+
+  async updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit> {
+    const [updated] = await db.update(habits).set(habit).where(eq(habits.id, id)).returning();
+    return updated;
+  }
+
+  async deleteHabit(id: number): Promise<void> {
+    await db.delete(habits).where(eq(habits.id, id));
+  }
+
+  // Tasks
+  async getTasksByUser(userId: string): Promise<Task[]> {
+    return db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.date), tasks.time);
+  }
+
+  async getTasksForDate(userId: string, date: string): Promise<Task[]> {
+    return db.select().from(tasks)
+      .where(and(
+        eq(tasks.userId, userId),
+        eq(tasks.date, date)
+      ))
+      .orderBy(tasks.time);
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db.insert(tasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
+    const [updated] = await db.update(tasks).set(task).where(eq(tasks.id, id)).returning();
+    return updated;
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
   }
 }
 

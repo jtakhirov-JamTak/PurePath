@@ -368,5 +368,266 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== EISENHOWER MATRIX ====================
+  
+  app.get("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entries = await storage.getEisenhowerEntriesByUser(userId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching eisenhower entries:", error);
+      res.status(500).json({ error: "Failed to fetch entries" });
+    }
+  });
+
+  app.get("/api/eisenhower/week/:weekStart", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { weekStart } = req.params;
+      const entries = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching weekly entries:", error);
+      res.status(500).json({ error: "Failed to fetch entries" });
+    }
+  });
+
+  app.post("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entry = await storage.createEisenhowerEntry({ userId, ...req.body });
+      res.json(entry);
+    } catch (error) {
+      console.error("Error creating entry:", error);
+      res.status(500).json({ error: "Failed to create entry" });
+    }
+  });
+
+  app.patch("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const entry = await storage.updateEisenhowerEntry(parseInt(id), req.body);
+      res.json(entry);
+    } catch (error) {
+      console.error("Error updating entry:", error);
+      res.status(500).json({ error: "Failed to update entry" });
+    }
+  });
+
+  app.delete("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteEisenhowerEntry(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      res.status(500).json({ error: "Failed to delete entry" });
+    }
+  });
+
+  app.get("/api/eisenhower/export", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const entries = await storage.getEisenhowerEntriesByUser(userId);
+      
+      let csv = "Week Start,Role,Task,Quadrant,Deadline,Time Estimate,Decision,Scheduled Time,Completed\n";
+      entries.forEach(e => {
+        csv += `${e.weekStart},${e.role},"${e.task}",${e.quadrant},${e.deadline || ""},${e.timeEstimate || ""},${e.decision || ""},${e.scheduledTime || ""},${e.completed}\n`;
+      });
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=eisenhower-matrix.csv");
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting eisenhower:", error);
+      res.status(500).json({ error: "Failed to export" });
+    }
+  });
+
+  // ==================== EMPATHY EXERCISES ====================
+  
+  app.get("/api/empathy", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exercises = await storage.getEmpathyExercisesByUser(userId);
+      res.json(exercises);
+    } catch (error) {
+      console.error("Error fetching empathy exercises:", error);
+      res.status(500).json({ error: "Failed to fetch exercises" });
+    }
+  });
+
+  app.post("/api/empathy", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exercise = await storage.createEmpathyExercise({ userId, ...req.body });
+      res.json(exercise);
+    } catch (error) {
+      console.error("Error creating exercise:", error);
+      res.status(500).json({ error: "Failed to create exercise" });
+    }
+  });
+
+  app.patch("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const exercise = await storage.updateEmpathyExercise(parseInt(id), req.body);
+      res.json(exercise);
+    } catch (error) {
+      console.error("Error updating exercise:", error);
+      res.status(500).json({ error: "Failed to update exercise" });
+    }
+  });
+
+  app.delete("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteEmpathyExercise(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting exercise:", error);
+      res.status(500).json({ error: "Failed to delete exercise" });
+    }
+  });
+
+  app.get("/api/empathy/export", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const exercises = await storage.getEmpathyExercisesByUser(userId);
+      
+      let csv = "Date,Who,Context,Their Emotional State,My Emotional State,Facts Observed,How I Came Across,How They Likely Felt,What Matters to Them,What They Need,Next Action\n";
+      exercises.forEach(e => {
+        csv += `${e.date},"${e.who}","${e.context || ""}","${e.theirEmotionalState || ""}","${e.myEmotionalState || ""}","${e.factsObserved || ""}","${e.howICameAcross || ""}","${e.howTheyLikelyFelt || ""}","${e.whatMattersToThem || ""}","${e.whatTheyNeed || ""}","${e.nextAction || ""}"\n`;
+      });
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=empathy-exercises.csv");
+      res.send(csv);
+    } catch (error) {
+      console.error("Error exporting empathy:", error);
+      res.status(500).json({ error: "Failed to export" });
+    }
+  });
+
+  // ==================== HABITS ====================
+  
+  app.get("/api/habits", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const habits = await storage.getHabitsByUser(userId);
+      res.json(habits);
+    } catch (error) {
+      console.error("Error fetching habits:", error);
+      res.status(500).json({ error: "Failed to fetch habits" });
+    }
+  });
+
+  app.post("/api/habits", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Check habit limit (6 max)
+      const existing = await storage.getHabitsByUser(userId);
+      if (existing.filter(h => h.active).length >= 6) {
+        return res.status(400).json({ error: "Maximum 6 active habits allowed" });
+      }
+
+      const habit = await storage.createHabit({ userId, ...req.body });
+      res.json(habit);
+    } catch (error) {
+      console.error("Error creating habit:", error);
+      res.status(500).json({ error: "Failed to create habit" });
+    }
+  });
+
+  app.patch("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const habit = await storage.updateHabit(parseInt(id), req.body);
+      res.json(habit);
+    } catch (error) {
+      console.error("Error updating habit:", error);
+      res.status(500).json({ error: "Failed to update habit" });
+    }
+  });
+
+  app.delete("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteHabit(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting habit:", error);
+      res.status(500).json({ error: "Failed to delete habit" });
+    }
+  });
+
+  // ==================== TASKS ====================
+  
+  app.get("/api/tasks", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tasks = await storage.getTasksByUser(userId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
+  });
+
+  app.get("/api/tasks/date/:date", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.params;
+      const tasks = await storage.getTasksForDate(userId, date);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks for date:", error);
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
+  });
+
+  app.post("/api/tasks", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.body;
+      
+      // Check task limit for that day (3 max)
+      const existingTasks = await storage.getTasksForDate(userId, date);
+      if (existingTasks.length >= 3) {
+        return res.status(400).json({ error: "Maximum 3 tasks per day allowed" });
+      }
+
+      const task = await storage.createTask({ userId, ...req.body });
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const task = await storage.updateTask(parseInt(id), req.body);
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteTask(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
   return httpServer;
 }
