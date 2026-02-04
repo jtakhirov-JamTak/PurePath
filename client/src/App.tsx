@@ -15,6 +15,11 @@ import BillingPage from "@/pages/billing";
 import Course1GPTPage from "@/pages/course1-gpt";
 import Course2JournalPage from "@/pages/course2-journal";
 import JournalEntryPage from "@/pages/journal-entry";
+import MeditationPage from "@/pages/meditation";
+import EmotionalProcessingPage from "@/pages/emotional-processing";
+import EisenhowerPage from "@/pages/eisenhower";
+import EmpathyPage from "@/pages/empathy";
+import HabitsPage from "@/pages/habits";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -75,6 +80,21 @@ function Router() {
       </Route>
       <Route path="/journal/:date/:session">
         {() => <AuthenticatedRoute component={JournalEntryPage} />}
+      </Route>
+      <Route path="/meditation">
+        {() => <AuthenticatedRoute component={MeditationPage} />}
+      </Route>
+      <Route path="/emotional-processing">
+        {() => <AuthenticatedRoute component={EmotionalProcessingPage} />}
+      </Route>
+      <Route path="/eisenhower">
+        {() => <AuthenticatedRoute component={EisenhowerPage} />}
+      </Route>
+      <Route path="/empathy">
+        {() => <AuthenticatedRoute component={EmpathyPage} />}
+      </Route>
+      <Route path="/habits">
+        {() => <AuthenticatedRoute component={HabitsPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

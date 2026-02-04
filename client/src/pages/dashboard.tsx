@@ -5,7 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { AppHeader } from "@/components/app-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle } from "lucide-react";
+import { 
+  Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle,
+  Brain, Heart, Grid3X3, Users, Calendar, CheckSquare
+} from "lucide-react";
 import { useLocation } from "wouter";
 import type { Purchase } from "@shared/schema";
 
@@ -169,6 +172,61 @@ export default function DashboardPage() {
             </CardHeader>
           </Card>
         )}
+
+        <div className="mt-12">
+          <h2 className="font-serif text-2xl font-bold mb-6">Self-Development Tools</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/meditation")} data-testid="card-meditation">
+              <CardHeader className="pb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 flex items-center justify-center mb-3">
+                  <Brain className="h-6 w-6 text-indigo-500" />
+                </div>
+                <CardTitle className="font-serif text-lg">Meditation</CardTitle>
+                <CardDescription>Integrative meditation for subconscious processing</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/emotional-processing")} data-testid="card-emotional">
+              <CardHeader className="pb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-rose-500/20 to-rose-500/5 flex items-center justify-center mb-3">
+                  <Heart className="h-6 w-6 text-rose-500" />
+                </div>
+                <CardTitle className="font-serif text-lg">Emotional Processing</CardTitle>
+                <CardDescription>Feel, name, regulate, and move forward</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/eisenhower")} data-testid="card-eisenhower">
+              <CardHeader className="pb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center mb-3">
+                  <Grid3X3 className="h-6 w-6 text-amber-500" />
+                </div>
+                <CardTitle className="font-serif text-lg">Eisenhower Matrix</CardTitle>
+                <CardDescription>Weekly priority planning for health, wealth, relationships</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/empathy")} data-testid="card-empathy">
+              <CardHeader className="pb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center mb-3">
+                  <Users className="h-6 w-6 text-emerald-500" />
+                </div>
+                <CardTitle className="font-serif text-lg">Empathy Module</CardTitle>
+                <CardDescription>Reflect on interactions and build understanding</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/habits")} data-testid="card-habits">
+              <CardHeader className="pb-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center mb-3">
+                  <CheckSquare className="h-6 w-6 text-cyan-500" />
+                </div>
+                <CardTitle className="font-serif text-lg">Habits & Tasks</CardTitle>
+                <CardDescription>Track daily habits and tasks with calendar sync</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
       </main>
     </div>
   );
