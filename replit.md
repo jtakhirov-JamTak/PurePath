@@ -6,6 +6,15 @@ Inner Journey is a self-discovery and personal growth course platform that sells
 
 ## Recent Changes (Feb 4, 2026)
 
+- UI modernization and improved navigation:
+  - Created shared AppHeader component with clickable logo (navigates to home/dashboard)
+  - Added user dropdown menu with Dashboard, Billing, and Sign Out options
+  - Sticky header with backdrop blur for better visibility while scrolling
+  - Updated dashboard with larger titles, gradient icons, improved course card badges
+  - Green "Owned" badge for purchased courses vs price badge for locked courses
+  - Larger, more accessible action buttons throughout
+  - Applied consistent header to course pages (course1-gpt, course2-journal)
+
 - Modal-based paywall UX implementation:
   - Created LockedCourseModal component showing purchase options when users access locked courses
   - Modal offers individual course purchase or bundle option with savings highlight
