@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppHeader } from "@/components/app-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LockedCourseModal } from "@/components/locked-course-modal";
 import { 
-  BookOpen, ArrowLeft, Sun, Moon, Download, 
+  Sun, Moon, Download, 
   Loader2, Check, Flame, Trophy, Star, Gift
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -208,26 +208,14 @@ export default function Course2JournalPage() {
         open={showLockedModal && !hasAccess} 
         onClose={handleCloseModal}
       />
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")} data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-6 w-6 text-primary" />
-              <span className="font-serif text-lg font-medium">Transformation Journal</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadAll} data-testid="button-download-all">
-              <Download className="h-4 w-4 mr-2" />
-              Export All
-            </Button>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <AppHeader 
+        rightContent={
+          <Button variant="outline" size="sm" onClick={handleDownloadAll} data-testid="button-download-all">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        }
+      />
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-[350px_1fr] gap-8">

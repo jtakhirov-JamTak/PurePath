@@ -3,15 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppHeader } from "@/components/app-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Compass, Sparkles, BookOpen, Package, Lock, ArrowRight, LogOut, CreditCard } from "lucide-react";
+import { Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Purchase } from "@shared/schema";
 
 export default function DashboardPage() {
-  const { user, logout, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
@@ -36,144 +35,110 @@ export default function DashboardPage() {
     );
   }
 
-  const getInitials = () => {
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`;
-    }
-    if (user?.email) {
-      return user.email[0].toUpperCase();
-    }
-    return "U";
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Compass className="h-7 w-7 text-primary" />
-            <span className="font-serif text-xl font-semibold">Inner Journey</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setLocation("/billing")}
-              data-testid="button-billing"
-            >
-              <CreditCard className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.profileImageUrl || undefined} />
-                <AvatarFallback>{getInitials()}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium hidden sm:inline">
-                {user?.firstName || user?.email?.split("@")[0]}
-              </span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => logout()} data-testid="button-logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="font-serif text-3xl font-bold mb-2">
+      <main className="container mx-auto px-4 py-10">
+        <div className="mb-10">
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-3">
             Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-lg text-muted-foreground">
             Continue your journey of self-discovery and transformation
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="hover-elevate" data-testid="card-course1">
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="h-6 w-6 text-primary" />
+        <div className="grid md:grid-cols-2 gap-8">
+          <Card className="hover-elevate group relative overflow-visible" data-testid="card-course1">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
+                  <Sparkles className="h-7 w-7 text-primary" />
                 </div>
                 {hasCourse1 ? (
-                  <Badge variant="secondary">Purchased</Badge>
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Owned
+                  </Badge>
                 ) : (
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="text-muted-foreground">
                     <Lock className="h-3 w-3 mr-1" />
-                    Locked
+                    $49
                   </Badge>
                 )}
               </div>
-              <CardTitle className="font-serif">Self-Discovery GPT</CardTitle>
-              <CardDescription>
+              <CardTitle className="font-serif text-xl mb-2">Self-Discovery GPT</CardTitle>
+              <CardDescription className="text-base leading-relaxed">
                 Your AI-powered companion for deep personal insights and guided self-discovery conversations.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {hasCourse1 ? (
                 <Button 
-                  className="w-full" 
+                  className="w-full h-12 text-base" 
                   onClick={() => setLocation("/course1")}
                   data-testid="button-access-course1"
                 >
                   Start Conversation
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               ) : (
                 <Button 
                   variant="outline" 
-                  className="w-full"
-                  onClick={() => setLocation("/checkout/course1")}
+                  className="w-full h-12 text-base"
+                  onClick={() => setLocation("/course1")}
                   data-testid="button-unlock-course1"
                 >
-                  Unlock for $49
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  Unlock Course
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               )}
             </CardContent>
           </Card>
 
-          <Card className="hover-elevate" data-testid="card-course2">
-            <CardHeader>
-              <div className="flex items-center justify-between mb-2">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-primary" />
+          <Card className="hover-elevate group relative overflow-visible" data-testid="card-course2">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-sm">
+                  <BookOpen className="h-7 w-7 text-primary" />
                 </div>
                 {hasCourse2 ? (
-                  <Badge variant="secondary">Purchased</Badge>
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Owned
+                  </Badge>
                 ) : (
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="text-muted-foreground">
                     <Lock className="h-3 w-3 mr-1" />
-                    Locked
+                    $39
                   </Badge>
                 )}
               </div>
-              <CardTitle className="font-serif">Transformation Journal</CardTitle>
-              <CardDescription>
+              <CardTitle className="font-serif text-xl mb-2">Transformation Journal</CardTitle>
+              <CardDescription className="text-base leading-relaxed">
                 Structured morning and evening journaling with guided templates for lasting personal growth.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {hasCourse2 ? (
                 <Button 
-                  className="w-full" 
+                  className="w-full h-12 text-base" 
                   onClick={() => setLocation("/course2")}
                   data-testid="button-access-course2"
                 >
                   Open Journal
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               ) : (
                 <Button 
                   variant="outline" 
-                  className="w-full"
-                  onClick={() => setLocation("/checkout/course2")}
+                  className="w-full h-12 text-base"
+                  onClick={() => setLocation("/course2")}
                   data-testid="button-unlock-course2"
                 >
-                  Unlock for $39
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  Unlock Course
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               )}
             </CardContent>
@@ -181,27 +146,27 @@ export default function DashboardPage() {
         </div>
 
         {!hasCourse1 && !hasCourse2 && (
-          <Card className="mt-8 border-primary/50" data-testid="card-bundle-promo">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Package className="h-6 w-6 text-primary" />
+          <Card className="mt-10 border-primary/30 bg-gradient-to-r from-primary/5 to-transparent" data-testid="card-bundle-promo">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shadow-sm">
+                  <Package className="h-7 w-7 text-primary" />
                 </div>
-                <div>
-                  <CardTitle className="font-serif">Complete Transformation Bundle</CardTitle>
-                  <CardDescription>Get both courses and save $19</CardDescription>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-xl mb-1">Complete Transformation Bundle</CardTitle>
+                  <CardDescription className="text-base">Get both courses and save $19</CardDescription>
                 </div>
+                <Button 
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={() => setLocation("/checkout/bundle")}
+                  data-testid="button-buy-bundle"
+                >
+                  Get Bundle for $69
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={() => setLocation("/checkout/bundle")}
-                data-testid="button-buy-bundle"
-              >
-                Get the Bundle for $69
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardContent>
           </Card>
         )}
       </main>

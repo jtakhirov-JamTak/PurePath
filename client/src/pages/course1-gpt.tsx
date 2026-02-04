@@ -2,14 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppHeader } from "@/components/app-header";
 import { LockedCourseModal } from "@/components/locked-course-modal";
-import { Send, Loader2, ArrowLeft, Sparkles } from "lucide-react";
+import { Send, Loader2, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { ChatMessage, Purchase } from "@shared/schema";
@@ -135,20 +134,7 @@ export default function Course1GPTPage() {
         open={showLockedModal && !hasAccess} 
         onClose={handleCloseModal}
       />
-      <header className="border-b shrink-0">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")} data-testid="button-back">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              <span className="font-serif text-lg font-medium">Self-Discovery GPT</span>
-            </div>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
+      <AppHeader />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
