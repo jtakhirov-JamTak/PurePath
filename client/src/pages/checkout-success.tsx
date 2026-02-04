@@ -1,17 +1,40 @@
-import { useEffect } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, ArrowRight, Compass } from "lucide-react";
+import { CheckCircle, ArrowRight, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function CheckoutSuccessPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [redirecting, setRedirecting] = useState(false);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["/api/purchases"] });
-  }, [queryClient]);
+    
+    const storedReturnUrl = localStorage.getItem("returnUrl");
+    if (storedReturnUrl) {
+      setReturnUrl(storedReturnUrl);
+      localStorage.removeItem("returnUrl");
+      setRedirecting(true);
+      
+      const timer = setTimeout(() => {
+        setLocation(storedReturnUrl);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [queryClient, setLocation]);
+
+  const handleContinue = () => {
+    if (returnUrl) {
+      setLocation(returnUrl);
+    } else {
+      setLocation("/dashboard");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -31,13 +54,21 @@ export default function CheckoutSuccessPage() {
           <p className="text-muted-foreground">
             You now have full access to your course. We're excited to be part of your self-discovery journey.
           </p>
+          
+          {redirecting && returnUrl ? (
+            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Redirecting to your course...</span>
+            </div>
+          ) : null}
+          
           <Button 
             className="w-full" 
             size="lg"
-            onClick={() => setLocation("/dashboard")}
+            onClick={handleContinue}
             data-testid="button-go-dashboard"
           >
-            Go to Dashboard
+            {returnUrl ? "Continue to Course" : "Go to Dashboard"}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>

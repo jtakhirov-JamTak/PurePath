@@ -8,7 +8,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Compass, Send, Loader2, ArrowLeft, Sparkles, Lock } from "lucide-react";
+import { LockedCourseModal } from "@/components/locked-course-modal";
+import { Send, Loader2, ArrowLeft, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { ChatMessage, Purchase } from "@shared/schema";
@@ -18,6 +19,7 @@ export default function Course1GPTPage() {
   const [, setLocation] = useLocation();
   const [input, setInput] = useState("");
   const [streamingMessage, setStreamingMessage] = useState("");
+  const [showLockedModal, setShowLockedModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -27,6 +29,17 @@ export default function Course1GPTPage() {
   });
 
   const hasAccess = purchases?.some(p => p.courseType === "course1" || p.courseType === "bundle");
+
+  useEffect(() => {
+    if (!purchasesLoading && !authLoading) {
+      setShowLockedModal(!hasAccess);
+    }
+  }, [hasAccess, purchasesLoading, authLoading]);
+
+  const handleCloseModal = () => {
+    setShowLockedModal(false);
+    setLocation("/dashboard");
+  };
 
   const { data: messages = [], isLoading: messagesLoading } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/messages"],
@@ -108,28 +121,6 @@ export default function Course1GPTPage() {
     );
   }
 
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md p-8 text-center">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="font-serif text-2xl font-bold mb-2">Access Required</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to purchase the Self-Discovery GPT course to access this feature.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => setLocation("/dashboard")} data-testid="button-back-dashboard">
-              Go to Dashboard
-            </Button>
-            <Button onClick={() => setLocation("/checkout/course1")} data-testid="button-purchase-course1">
-              Purchase Course
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`;
@@ -139,6 +130,11 @@ export default function Course1GPTPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <LockedCourseModal 
+        courseType="course1" 
+        open={showLockedModal && !hasAccess} 
+        onClose={handleCloseModal}
+      />
       <header className="border-b shrink-0">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -6,6 +6,13 @@ Inner Journey is a self-discovery and personal growth course platform that sells
 
 ## Recent Changes (Feb 4, 2026)
 
+- Modal-based paywall UX implementation:
+  - Created LockedCourseModal component showing purchase options when users access locked courses
+  - Modal offers individual course purchase or bundle option with savings highlight
+  - Return URL stored in localStorage before checkout, auto-redirect back after successful payment
+  - Fixed route ordering in App.tsx to ensure /checkout/success matches before /checkout/:courseType
+  - Updated course pages to use modal overlay instead of full-page locked state
+
 - Production-readiness improvements based on code review:
   - Added CHECK constraint on purchases.course_type (enforces 'course1', 'course2', 'bundle')
   - Added UNIQUE INDEX on journals (user_id, date, session) for safe upserts

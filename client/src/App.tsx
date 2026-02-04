@@ -58,9 +58,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
-      <Route path="/checkout/:courseType" component={CheckoutPage} />
       <Route path="/checkout/success" component={CheckoutSuccessPage} />
       <Route path="/checkout/cancel" component={CheckoutCancelPage} />
+      <Route path="/checkout/:courseType" component={CheckoutPage} />
       <Route path="/dashboard">
         {() => <AuthenticatedRoute component={DashboardPage} />}
       </Route>

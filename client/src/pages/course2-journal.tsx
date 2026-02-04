@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LockedCourseModal } from "@/components/locked-course-modal";
 import { 
-  BookOpen, ArrowLeft, Sun, Moon, Lock, Download, 
-  Loader2, Check, ChevronLeft, ChevronRight, Flame, Trophy, Star, Gift
+  BookOpen, ArrowLeft, Sun, Moon, Download, 
+  Loader2, Check, Flame, Trophy, Star, Gift
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, subDays, differenceInDays, parseISO } from "date-fns";
+import { format, isSameDay, subDays, differenceInDays, parseISO } from "date-fns";
 import type { Journal, Purchase } from "@shared/schema";
 
 // Helper to calculate streak information
@@ -103,6 +104,7 @@ export default function Course2JournalPage() {
   const [, setLocation] = useLocation();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [showLockedModal, setShowLockedModal] = useState(false);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -110,6 +112,17 @@ export default function Course2JournalPage() {
   });
 
   const hasAccess = purchases?.some(p => p.courseType === "course2" || p.courseType === "bundle");
+
+  useEffect(() => {
+    if (!purchasesLoading && !authLoading) {
+      setShowLockedModal(!hasAccess);
+    }
+  }, [hasAccess, purchasesLoading, authLoading]);
+
+  const handleCloseModal = () => {
+    setShowLockedModal(false);
+    setLocation("/dashboard");
+  };
 
   const { data: journals = [], isLoading: journalsLoading } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -177,28 +190,6 @@ export default function Course2JournalPage() {
     );
   }
 
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md p-8 text-center">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="font-serif text-2xl font-bold mb-2">Access Required</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to purchase the Transformation Journal course to access this feature.
-          </p>
-          <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => setLocation("/dashboard")} data-testid="button-back-dashboard">
-              Go to Dashboard
-            </Button>
-            <Button onClick={() => setLocation("/checkout/course2")} data-testid="button-purchase-course2">
-              Purchase Course
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   const handleDownloadAll = async () => {
     const response = await fetch("/api/journals/export", { credentials: "include" });
     const blob = await response.blob();
@@ -212,6 +203,11 @@ export default function Course2JournalPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <LockedCourseModal 
+        courseType="course2" 
+        open={showLockedModal && !hasAccess} 
+        onClose={handleCloseModal}
+      />
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
