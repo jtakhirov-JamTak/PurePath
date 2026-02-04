@@ -1,0 +1,38 @@
+1) Fix one entitlement inconsistency: status checks
+In your Payment Flow, requireEntitlement checks p.status === 'completed' (good). 
+PAYMENT-FLOW
+In Routes.md, the requireEntitlement sample checks courseType === entitlement || bundle but does not check status. That’s a common source of bugs when refunds/cancellations enter the picture. 
+ROUTES
+Recommendation: make every entitlement check use the same logic:
+•	allow only completed (or paid) purchases
+•	optionally revoke on refunds later
+Even if you don’t implement refunds now, keeping the rule consistent prevents the Agent from copying the “wrong” version into production.
+________________________________________
+2) Add database constraints for the behaviors you describe
+You say “One entry per user per date (upsert pattern)” for journals. Great. But the schema doesn’t show a unique constraint enforcing it. 
+DATA-MODEL
+Recommendation: add:
+•	UNIQUE(user_id, date) on journals
+•	a course_type constraint (or enum) on purchases.course_type to avoid typos like "course" vs "course1"
+This is one of the best ways to prevent subtle bugs an Agent might introduce.
+________________________________________
+3) Clarify whether checkout requires login (right now it’s ambiguous)
+Routes.md lists /checkout as a public route. 
+ROUTES
+But Payment Flow’s /api/checkout endpoint requires isAuthenticated. 
+PAYMENT-FLOW
+That can absolutely be your intended design (I usually recommend it), but the docs should say explicitly:
+Recommendation: add:
+•	user must log in before paying
+4) Stripe product/pricing config: prefer stable IDs over inline price_data
+Your Payment Flow constructs Stripe price_data inline in the checkout session creation. This works, but it makes price changes harder and can create product sprawl in Stripe. 
+PAYMENT-FLOW
+Recommendation (even if still one-time purchases):
+•	define Stripe Price IDs (e.g., PRICE_COURSE1, PRICE_COURSE2, PRICE_BUNDLE)
+•	keep them in env/config
+•	checkout uses line_items: [{ price: PRICE_ID, quantity: 1 }]
+This reduces mistakes and makes your docs more “production ready.”
+5) Export system: decide your “history” storage strategy now
+EXPORTS
+You already outline options (generate-on-demand, temp storage, object storage). I’d add one line that makes it unambiguous:
+v1: generate on demand, no storage. v2: store export metadata in export_history for 24h
