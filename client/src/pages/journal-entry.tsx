@@ -37,14 +37,17 @@ export default function JournalEntryPage() {
   const session = params.session as "morning" | "evening";
   const isMorning = session === "morning";
 
-  const [formData, setFormData] = useState({
+  const emptyFormData = {
     gratitude: "",
     intentions: "",
     reflections: "",
     highlights: "",
     challenges: "",
     tomorrowGoals: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyFormData);
+  const [isEditing, setIsEditing] = useState(false);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -60,6 +63,8 @@ export default function JournalEntryPage() {
 
   useEffect(() => {
     if (existingJournal) {
+      // Only populate if editing existing entry
+      setIsEditing(true);
       setFormData({
         gratitude: existingJournal.gratitude || "",
         intentions: existingJournal.intentions || "",
@@ -68,6 +73,10 @@ export default function JournalEntryPage() {
         challenges: existingJournal.challenges || "",
         tomorrowGoals: existingJournal.tomorrowGoals || "",
       });
+    } else {
+      // New entry - start fresh
+      setIsEditing(false);
+      setFormData(emptyFormData);
     }
   }, [existingJournal]);
 
@@ -137,7 +146,9 @@ export default function JournalEntryPage() {
               ) : (
                 <Moon className="h-6 w-6 text-indigo-500" />
               )}
-              <span className="font-serif text-lg font-medium capitalize">{session} Journal</span>
+              <span className="font-serif text-lg font-medium capitalize">
+                {isEditing ? "Edit" : "New"} {session} Journal
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">

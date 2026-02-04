@@ -4,21 +4,24 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { AppHeader } from "@/components/app-header";
-import { Skeleton } from "@/components/ui/skeleton";
 import { LockedCourseModal } from "@/components/locked-course-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
-  Sun, Moon, Download, 
-  Loader2, Check, Flame, Trophy, Star, Gift
+  Sun, Moon, Download, ChevronLeft, ChevronRight,
+  Loader2, Check, Flame, Trophy, Star, Gift, Calendar as CalendarIcon, Plus, Edit, Eye
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, isSameDay, subDays, differenceInDays, parseISO } from "date-fns";
+import { 
+  format, isSameDay, subDays, differenceInDays, parseISO, 
+  startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, 
+  isSameMonth, addMonths, subMonths 
+} from "date-fns";
 import type { Journal, Purchase } from "@shared/schema";
 
 // Helper to calculate streak information
 function calculateStreak(journals: Journal[]): { currentStreak: number; longestStreak: number; completedDays: Set<string> } {
-  // Group journals by date and check for both morning AND evening completion
   const dayCompletion = new Map<string, { morning: boolean; evening: boolean }>();
   
   journals.forEach(j => {
@@ -31,7 +34,6 @@ function calculateStreak(journals: Journal[]): { currentStreak: number; longestS
     if (j.session === "evening") day.evening = true;
   });
 
-  // Get all fully completed days (both sessions)
   const completedDays = new Set<string>();
   dayCompletion.forEach((completion, dateStr) => {
     if (completion.morning && completion.evening) {
@@ -39,14 +41,12 @@ function calculateStreak(journals: Journal[]): { currentStreak: number; longestS
     }
   });
 
-  // Calculate current streak (consecutive days ending today or yesterday)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   let currentStreak = 0;
   let checkDate = today;
   
-  // Check if today is complete, if not start from yesterday
   const todayStr = format(today, "yyyy-MM-dd");
   if (!completedDays.has(todayStr)) {
     checkDate = subDays(today, 1);
@@ -62,7 +62,6 @@ function calculateStreak(journals: Journal[]): { currentStreak: number; longestS
     }
   }
 
-  // Calculate longest streak
   const sortedDates = Array.from(completedDays).sort();
   let longestStreak = 0;
   let tempStreak = 0;
@@ -82,8 +81,6 @@ function calculateStreak(journals: Journal[]): { currentStreak: number; longestS
   return { currentStreak, longestStreak, completedDays };
 }
 
-// Get reward milestones - rewards unlock based on longest streak (permanent achievement)
-// Days remaining is calculated based on current streak (what user needs to keep going)
 function getRewardMilestones(currentStreak: number, longestStreak: number) {
   const milestones = [
     { days: 7, title: "Week Warrior", description: "7 days of consistent journaling!", icon: Star, unlocked: false },
@@ -92,9 +89,7 @@ function getRewardMilestones(currentStreak: number, longestStreak: number) {
   
   return milestones.map(m => ({
     ...m,
-    // Unlocked if ever achieved (longestStreak)
     unlocked: longestStreak >= m.days,
-    // Days remaining based on current streak (so user sees progress)
     daysRemaining: Math.max(0, m.days - currentStreak),
   }));
 }
@@ -102,9 +97,10 @@ function getRewardMilestones(currentStreak: number, longestStreak: number) {
 export default function Course2JournalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [showLockedModal, setShowLockedModal] = useState(false);
+  const [viewEntryDialogOpen, setViewEntryDialogOpen] = useState(false);
+  const [selectedViewDate, setSelectedViewDate] = useState<Date | null>(null);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -144,45 +140,41 @@ export default function Course2JournalPage() {
     return status;
   }, [journals]);
 
-  // Calculate streak and rewards
   const { currentStreak, longestStreak, completedDays } = useMemo(() => 
     calculateStreak(journals), [journals]);
   
   const rewards = useMemo(() => 
     getRewardMilestones(currentStreak, longestStreak), [currentStreak, longestStreak]);
 
-  // Days for calendar modifiers - derive from dayStatus to avoid duplicates
-  const daysWithMorningOnly = useMemo(() => {
-    const dates: Date[] = [];
-    dayStatus.forEach((status, dateStr) => {
-      if (status.morning && !status.evening) {
-        dates.push(parseISO(dateStr));
-      }
-    });
-    return dates;
-  }, [dayStatus]);
-  
-  const daysWithEveningOnly = useMemo(() => {
-    const dates: Date[] = [];
-    dayStatus.forEach((status, dateStr) => {
-      if (status.evening && !status.morning) {
-        dates.push(parseISO(dateStr));
-      }
-    });
-    return dates;
-  }, [dayStatus]);
-  
-  const daysFullyComplete = useMemo(() => 
-    Array.from(completedDays).map(d => parseISO(d)), [completedDays]);
+  // Generate calendar grid
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const calEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    
+    const days: Date[] = [];
+    let day = calStart;
+    while (day <= calEnd) {
+      days.push(day);
+      day = addDays(day, 1);
+    }
+    return days;
+  }, [currentMonth]);
 
-  const selectedDateJournals = journals.filter(j => 
-    isSameDay(new Date(j.date), selectedDate)
-  );
+  // Get entries for selected view date
+  const selectedDateJournals = useMemo(() => {
+    if (!selectedViewDate) return [];
+    return journals.filter(j => isSameDay(parseISO(j.date), selectedViewDate));
+  }, [journals, selectedViewDate]);
 
-  const hasMorningEntry = selectedDateJournals.some(j => j.session === "morning");
-  const hasEveningEntry = selectedDateJournals.some(j => j.session === "evening");
+  const handleDayClick = (date: Date) => {
+    // Allow clicking any date in current month to view/add entries
+    setSelectedViewDate(date);
+    setViewEntryDialogOpen(true);
+  };
 
-  if (authLoading || purchasesLoading) {
+  if (authLoading || purchasesLoading || journalsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -201,6 +193,12 @@ export default function Course2JournalPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
+  const todayStatus = dayStatus.get(todayStr);
+  const hasTodayMorning = todayStatus?.morning || false;
+  const hasTodayEvening = todayStatus?.evening || false;
+
   return (
     <div className="min-h-screen bg-background">
       <LockedCourseModal 
@@ -218,77 +216,204 @@ export default function Course2JournalPage() {
       />
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-[350px_1fr] gap-8">
-          <div>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="font-serif text-lg">Calendar</CardTitle>
-                <CardDescription>Select a date to view or add journal entries</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  className="rounded-md"
-                  modifiers={{
-                    fullyComplete: daysFullyComplete,
-                    hasMorningOnly: daysWithMorningOnly,
-                    hasEveningOnly: daysWithEveningOnly,
-                  }}
-                  modifiersClassNames={{
-                    fullyComplete: "bg-primary/20 font-bold text-primary",
-                    hasMorningOnly: "bg-amber-500/15 font-medium",
-                    hasEveningOnly: "bg-indigo-500/15 font-medium",
-                  }}
-                  components={{
-                    DayContent: ({ date }) => {
-                      const dateStr = format(date, "yyyy-MM-dd");
-                      const status = dayStatus.get(dateStr);
-                      const hasMorning = status?.morning || false;
-                      const hasEvening = status?.evening || false;
-                      const isComplete = hasMorning && hasEvening;
-                      
-                      return (
-                        <div className="relative flex flex-col items-center">
-                          <span>{date.getDate()}</span>
-                          {(hasMorning || hasEvening) && (
-                            <div className="flex gap-1 mt-0.5">
-                              {hasMorning && (
-                                <Check className={`w-3 h-3 ${isComplete ? 'text-primary' : 'text-amber-500'}`} />
-                              )}
-                              {hasEvening && (
-                                <Check className={`w-3 h-3 ${isComplete ? 'text-primary' : 'text-indigo-500'}`} />
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    },
-                  }}
-                  data-testid="calendar"
-                />
-                <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-amber-500" />
-                    <span>Morning</span>
+        <div className="mb-8">
+          <h1 className="font-serif text-3xl font-bold mb-2">Transformation Journal</h1>
+          <p className="text-muted-foreground">Track your daily reflections and build a journaling habit</p>
+        </div>
+
+        {/* Today's Actions - Quick Access */}
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <Card className="hover-elevate" data-testid="card-morning-session">
+            <CardContent className="py-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <Sun className="h-6 w-6 text-amber-500" />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-indigo-500" />
-                    <span>Evening</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Check className="w-3 h-3 text-primary" />
-                    <Check className="w-3 h-3 text-primary" />
-                    <span>Both</span>
+                  <div>
+                    <h3 className="font-medium">Morning Session</h3>
+                    <p className="text-sm text-muted-foreground">Set intentions & gratitude</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2">
+                  {hasTodayMorning && (
+                    <Badge variant="secondary" className="shrink-0">
+                      <Check className="h-3 w-3 mr-1" />
+                      Done
+                    </Badge>
+                  )}
+                  <Button 
+                    variant={hasTodayMorning ? "outline" : "default"}
+                    onClick={() => setLocation(`/journal/${todayStr}/morning`)}
+                    data-testid="button-morning-journal"
+                  >
+                    {hasTodayMorning ? (
+                      <>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card className="mt-4">
+          <Card className="hover-elevate" data-testid="card-evening-session">
+            <CardContent className="py-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    <Moon className="h-6 w-6 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium">Evening Session</h3>
+                    <p className="text-sm text-muted-foreground">Reflect on your day</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasTodayEvening && (
+                    <Badge variant="secondary" className="shrink-0">
+                      <Check className="h-3 w-3 mr-1" />
+                      Done
+                    </Badge>
+                  )}
+                  <Button 
+                    variant={hasTodayEvening ? "outline" : "default"}
+                    onClick={() => setLocation(`/journal/${todayStr}/evening`)}
+                    data-testid="button-evening-journal"
+                  >
+                    {hasTodayEvening ? (
+                      <>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+          {/* Large Calendar */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5 text-primary" />
+                  <CardTitle className="font-serif text-xl">Journal Calendar</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                    data-testid="button-prev-month"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="min-w-[140px] text-center font-medium">
+                    {format(currentMonth, "MMMM yyyy")}
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                    data-testid="button-next-month"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <CardDescription>Click on a date to view or add journal entries</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Calendar Header */}
+              <div className="grid grid-cols-7 mb-2">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+                  <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid">
+                {calendarDays.map((date, idx) => {
+                  const dateStr = format(date, "yyyy-MM-dd");
+                  const status = dayStatus.get(dateStr);
+                  const hasMorning = status?.morning || false;
+                  const hasEvening = status?.evening || false;
+                  const isComplete = hasMorning && hasEvening;
+                  const hasAnyEntry = hasMorning || hasEvening;
+                  const isCurrentMonth = isSameMonth(date, currentMonth);
+                  const isToday = isSameDay(date, new Date());
+                  
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleDayClick(date)}
+                      disabled={!isCurrentMonth}
+                      className={`
+                        relative aspect-square p-1 rounded-lg text-sm transition-colors
+                        flex flex-col items-center justify-center gap-0.5
+                        ${!isCurrentMonth ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
+                        ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                        ${isComplete ? 'bg-primary/15' : hasMorning ? 'bg-amber-500/10' : hasEvening ? 'bg-indigo-500/10' : ''}
+                      `}
+                      data-testid={`calendar-day-${dateStr}`}
+                    >
+                      <span className={`font-medium ${isToday ? 'text-primary' : ''}`}>
+                        {date.getDate()}
+                      </span>
+                      {hasAnyEntry && isCurrentMonth && (
+                        <div className="flex gap-0.5">
+                          {hasMorning && (
+                            <div className={`w-2 h-2 rounded-full ${isComplete ? 'bg-primary' : 'bg-amber-500'}`} />
+                          )}
+                          {hasEvening && (
+                            <div className={`w-2 h-2 rounded-full ${isComplete ? 'bg-primary' : 'bg-indigo-500'}`} />
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* Legend */}
+              <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-amber-500" />
+                  <span>Morning</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-indigo-500" />
+                  <span>Evening</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                  <span>Both Complete</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sidebar - Stats & Rewards */}
+          <div className="space-y-4">
+            <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
@@ -320,7 +445,7 @@ export default function Course2JournalPage() {
               </CardContent>
             </Card>
 
-            <Card className="mt-4">
+            <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <Gift className="h-5 w-5 text-purple-500" />
@@ -344,13 +469,13 @@ export default function Course2JournalPage() {
                         <div className={`p-2 rounded-full ${
                           reward.unlocked ? 'bg-primary/20' : 'bg-muted'
                         }`}>
-                          <Icon className={`h-5 w-5 ${
+                          <Icon className={`h-4 w-4 ${
                             reward.unlocked ? 'text-primary' : 'text-muted-foreground'
                           }`} />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{reward.title}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-sm">{reward.title}</p>
                             {reward.unlocked && (
                               <Badge variant="secondary" className="text-xs">
                                 <Check className="h-3 w-3 mr-1" />
@@ -358,12 +483,12 @@ export default function Course2JournalPage() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{reward.description}</p>
+                          <p className="text-xs text-muted-foreground">{reward.description}</p>
                         </div>
                         {!reward.unlocked && (
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{reward.daysRemaining} days</p>
-                            <p className="text-xs text-muted-foreground">to unlock</p>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-medium">{reward.daysRemaining}</p>
+                            <p className="text-xs text-muted-foreground">days</p>
                           </div>
                         )}
                       </div>
@@ -373,7 +498,7 @@ export default function Course2JournalPage() {
               </CardContent>
             </Card>
 
-            <Card className="mt-4">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-serif text-lg">Quick Stats</CardTitle>
               </CardHeader>
@@ -397,113 +522,146 @@ export default function Course2JournalPage() {
               </CardContent>
             </Card>
           </div>
-
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="font-serif text-2xl font-bold">
-                {format(selectedDate, "EEEE, MMMM d, yyyy")}
-              </h2>
-              {isSameDay(selectedDate, new Date()) && (
-                <Badge>Today</Badge>
-              )}
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="hover-elevate" data-testid="card-morning-session">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sun className="h-5 w-5 text-amber-500" />
-                      <CardTitle className="font-serif text-lg">Morning Session</CardTitle>
-                    </div>
-                    {hasMorningEntry && (
-                      <Badge variant="secondary">
-                        <Check className="h-3 w-3 mr-1" />
-                        Complete
-                      </Badge>
-                    )}
-                  </div>
-                  <CardDescription>
-                    Set your intentions and gratitude for the day ahead
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full"
-                    variant={hasMorningEntry ? "outline" : "default"}
-                    onClick={() => setLocation(`/journal/${format(selectedDate, "yyyy-MM-dd")}/morning`)}
-                    data-testid="button-morning-journal"
-                  >
-                    {hasMorningEntry ? "Edit Entry" : "Start Session"}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="hover-elevate" data-testid="card-evening-session">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Moon className="h-5 w-5 text-indigo-500" />
-                      <CardTitle className="font-serif text-lg">Evening Session</CardTitle>
-                    </div>
-                    {hasEveningEntry && (
-                      <Badge variant="secondary">
-                        <Check className="h-3 w-3 mr-1" />
-                        Complete
-                      </Badge>
-                    )}
-                  </div>
-                  <CardDescription>
-                    Reflect on your day and prepare for tomorrow
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    className="w-full"
-                    variant={hasEveningEntry ? "outline" : "default"}
-                    onClick={() => setLocation(`/journal/${format(selectedDate, "yyyy-MM-dd")}/evening`)}
-                    data-testid="button-evening-journal"
-                  >
-                    {hasEveningEntry ? "Edit Entry" : "Start Session"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {selectedDateJournals.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-serif text-lg">Today's Entries</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedDateJournals.map((journal) => (
-                    <div 
-                      key={journal.id} 
-                      className="p-4 rounded-md bg-muted/50 cursor-pointer hover-elevate"
-                      onClick={() => setLocation(`/journal/${format(selectedDate, "yyyy-MM-dd")}/${journal.session}`)}
-                      data-testid={`entry-${journal.session}`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        {journal.session === "morning" ? (
-                          <Sun className="h-4 w-4 text-amber-500" />
-                        ) : (
-                          <Moon className="h-4 w-4 text-indigo-500" />
-                        )}
-                        <span className="font-medium capitalize">{journal.session} Session</span>
-                      </div>
-                      {journal.gratitude && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {journal.gratitude}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </div>
         </div>
       </main>
+
+      {/* View Entry Dialog */}
+      <Dialog open={viewEntryDialogOpen} onOpenChange={setViewEntryDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-serif">
+              {selectedViewDate ? format(selectedViewDate, "EEEE, MMMM d, yyyy") : ""}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDateJournals.length > 0 
+                ? "View or edit your journal entries for this day"
+                : "Start a new journal entry for this day"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-2">
+            {selectedViewDate && (() => {
+              const dateStr = format(selectedViewDate, "yyyy-MM-dd");
+              const morningEntry = selectedDateJournals.find(j => j.session === "morning");
+              const eveningEntry = selectedDateJournals.find(j => j.session === "evening");
+              
+              return (
+                <>
+                  {/* Morning Entry */}
+                  <div className="p-4 rounded-lg border">
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Sun className="h-5 w-5 text-amber-500" />
+                        <span className="font-medium">Morning Session</span>
+                      </div>
+                      {morningEntry ? (
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setViewEntryDialogOpen(false);
+                            setLocation(`/journal/${dateStr}/morning`);
+                          }}
+                          data-testid="button-edit-morning"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            setViewEntryDialogOpen(false);
+                            setLocation(`/journal/${dateStr}/morning`);
+                          }}
+                          data-testid="button-new-morning"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Entry
+                        </Button>
+                      )}
+                    </div>
+                    {morningEntry && (
+                      <div className="space-y-2 text-sm">
+                        {morningEntry.gratitude && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Gratitude</p>
+                            <p className="line-clamp-2">{morningEntry.gratitude}</p>
+                          </div>
+                        )}
+                        {morningEntry.intentions && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Intentions</p>
+                            <p className="line-clamp-2">{morningEntry.intentions}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!morningEntry && (
+                      <p className="text-sm text-muted-foreground">No entry yet</p>
+                    )}
+                  </div>
+
+                  {/* Evening Entry */}
+                  <div className="p-4 rounded-lg border">
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        <Moon className="h-5 w-5 text-indigo-500" />
+                        <span className="font-medium">Evening Session</span>
+                      </div>
+                      {eveningEntry ? (
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setViewEntryDialogOpen(false);
+                            setLocation(`/journal/${dateStr}/evening`);
+                          }}
+                          data-testid="button-edit-evening"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            setViewEntryDialogOpen(false);
+                            setLocation(`/journal/${dateStr}/evening`);
+                          }}
+                          data-testid="button-new-evening"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Entry
+                        </Button>
+                      )}
+                    </div>
+                    {eveningEntry && (
+                      <div className="space-y-2 text-sm">
+                        {eveningEntry.highlights && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Highlights</p>
+                            <p className="line-clamp-2">{eveningEntry.highlights}</p>
+                          </div>
+                        )}
+                        {eveningEntry.reflections && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Reflections</p>
+                            <p className="line-clamp-2">{eveningEntry.reflections}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!eveningEntry && (
+                      <p className="text-sm text-muted-foreground">No entry yet</p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
