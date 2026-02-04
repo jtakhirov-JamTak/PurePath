@@ -13,7 +13,7 @@ This document maps all routes, their access requirements, and the middleware pat
 | Route | Purpose | Notes |
 |-------|---------|-------|
 | `/` | Landing page | Hero, features, pricing, testimonials |
-| `/checkout` | Purchase flow | Redirects to Stripe Checkout |
+| `/checkout` | Purchase flow UI | **Note:** Page is public, but `/api/checkout` requires auth. User must log in before paying. |
 | `/api/webhooks/stripe` | Stripe webhook | Raw body parsing, signature verification |
 
 ### Authenticated Routes (Login Required)
@@ -68,8 +68,10 @@ function requireEntitlement(entitlement: 'course1' | 'course2') {
     const userId = req.user.id;
     const purchases = await storage.getPurchasesByUser(userId);
     
+    // IMPORTANT: Always check status === 'completed' to support future refunds
     const hasAccess = purchases.some(p => 
-      p.courseType === entitlement || p.courseType === 'bundle'
+      p.status === 'completed' &&
+      (p.courseType === entitlement || p.courseType === 'bundle')
     );
     
     if (!hasAccess) {

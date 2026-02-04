@@ -443,19 +443,27 @@ app.get('/api/exports/history',
 
 ---
 
+## Storage Strategy
+
+**v1 (Current):** Generate on demand, no storage. Exports are created fresh each time, keeping architecture simple with zero cleanup.
+
+**v2 (Planned):** Store export metadata in `export_history` table; optionally store files in temp storage for 24h re-downloads.
+
+---
+
 ## File Storage Options
 
-### Option 1: Generate on Demand (Current)
+### Option 1: Generate on Demand (v1 - Current)
 - No storage needed
 - Regenerate each time
 - Simple, no cleanup needed
 
-### Option 2: Temporary Storage
+### Option 2: Temporary Storage (v2 - Planned)
 - Store in `/tmp` with TTL
 - Enable re-downloads for 24 hours
 - Cleanup via cron job
 
-### Option 3: Object Storage
+### Option 3: Object Storage (Future)
 - Store in Replit Object Storage
 - Permanent export history
 - Higher storage costs
