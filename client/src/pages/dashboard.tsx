@@ -383,19 +383,6 @@ export default function DashboardPage() {
               </CardHeader>
             </Card>
 
-            <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/habits")} data-testid="card-habits">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-md bg-cyan-500/10 flex items-center justify-center shrink-0">
-                    <CheckSquare className="h-6 w-6 text-cyan-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-base">Habits & Tasks</CardTitle>
-                  </div>
-                </div>
-                <CardDescription className="text-sm">Track weekly habits and daily tasks</CardDescription>
-              </CardHeader>
-            </Card>
           </div>
         </div>
       </main>
