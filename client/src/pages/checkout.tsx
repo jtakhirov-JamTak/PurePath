@@ -5,15 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { COURSES, type CourseType } from "@shared/schema";
-import { ArrowLeft, Check, Loader2, Lock, Sparkles, BookOpen, Package, Compass } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Lock, Layers, Zap, Package, Compass } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const courseIcons: Record<CourseType, React.ReactNode> = {
-  course1: <Sparkles className="h-8 w-8" />,
-  course2: <BookOpen className="h-8 w-8" />,
-  bundle: <Package className="h-8 w-8" />,
+  phase12: <Layers className="h-8 w-8" />,
+  phase3: <Zap className="h-8 w-8" />,
+  allinone: <Package className="h-8 w-8" />,
 };
 
 export default function CheckoutPage() {
@@ -121,7 +121,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="bg-muted/50 rounded-md p-4 mb-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <span className="font-medium">Total</span>
                 <span className="text-2xl font-bold">${(course.price / 100).toFixed(2)}</span>
               </div>
@@ -154,7 +154,7 @@ export default function CheckoutPage() {
                 </>
               )}
             </Button>
-            <p className="text-xs text-muted-foreground text-center flex items-center gap-1">
+            <p className="text-xs text-muted-foreground text-center flex items-center gap-1 flex-wrap">
               <Lock className="h-3 w-3" />
               Secured by Stripe. Your payment information is protected.
             </p>

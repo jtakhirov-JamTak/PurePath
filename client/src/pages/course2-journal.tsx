@@ -107,7 +107,10 @@ export default function Course2JournalPage() {
     enabled: !!user,
   });
 
-  const hasAccess = purchases?.some(p => p.courseType === "course2" || p.courseType === "bundle");
+  const hasAccess = purchases?.some(p => 
+    p.courseType === "phase12" || p.courseType === "allinone" || 
+    p.courseType === "course2" || p.courseType === "bundle"
+  );
 
   useEffect(() => {
     if (!purchasesLoading && !authLoading) {
@@ -202,7 +205,7 @@ export default function Course2JournalPage() {
   return (
     <div className="min-h-screen bg-background">
       <LockedCourseModal 
-        courseType="course2" 
+        courseType="phase12" 
         open={showLockedModal && !hasAccess} 
         onClose={handleCloseModal}
       />

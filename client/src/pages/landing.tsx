@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { COURSES, type CourseType } from "@shared/schema";
-import { Sparkles, BookOpen, Package, Check, ArrowRight, Compass, Heart, Star } from "lucide-react";
+import { Sparkles, BookOpen, Package, Check, ArrowRight, Compass, Heart, Star, Layers, Brain, Zap } from "lucide-react";
 import { useLocation } from "wouter";
 
 const courseIcons: Record<CourseType, React.ReactNode> = {
-  course1: <Sparkles className="h-6 w-6" />,
-  course2: <BookOpen className="h-6 w-6" />,
-  bundle: <Package className="h-6 w-6" />,
+  phase12: <Layers className="h-6 w-6" />,
+  phase3: <Zap className="h-6 w-6" />,
+  allinone: <Package className="h-6 w-6" />,
 };
 
 export default function LandingPage() {
@@ -50,8 +50,8 @@ export default function LandingPage() {
               <span className="text-primary">Meant to Be</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              Embark on a guided journey of self-discovery and personal transformation. 
-              Our AI-powered courses help you unlock your true potential through deep reflection and meaningful growth.
+              A 3-phase journey of self-discovery, structure, and transformation. 
+              Combining AI-powered guidance with proven personal growth tools.
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" asChild data-testid="button-hero-start">
@@ -61,55 +61,106 @@ export default function LandingPage() {
                 </a>
               </Button>
               <Button size="lg" variant="outline" asChild data-testid="button-hero-learn">
-                <a href="#features">Learn More</a>
+                <a href="#phases">Learn More</a>
               </Button>
             </div>
           </div>
         </section>
 
-        <section id="features" className="py-20 px-4 bg-card/50">
+        <section id="phases" className="py-20 px-4 bg-card/50">
           <div className="container mx-auto max-w-6xl">
             <div className="text-center mb-16">
               <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
-                Transform Every Aspect of Your Life
+                Your 3-Phase Transformation
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Our comprehensive approach combines cutting-edge AI technology with proven self-reflection techniques.
+                Each phase builds on the last, taking you from self-awareness through structured growth to lasting transformation.
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-8">
-              <Card className="hover-elevate">
+              <Card className="hover-elevate overflow-visible">
                 <CardHeader>
+                  <Badge variant="secondary" className="w-fit mb-2">Phase 1</Badge>
                   <div className="h-12 w-12 rounded-md bg-primary/10 flex items-center justify-center mb-4">
                     <Heart className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="font-serif">Deep Self-Awareness</CardTitle>
+                  <CardTitle className="font-serif">Self-Reflection</CardTitle>
                   <CardDescription>
-                    Uncover patterns, beliefs, and behaviors that shape your life through guided introspection.
+                    Explore who you are and who you want to become through video lessons and AI-guided conversations.
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Lesson 1: Who Am I?
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Lesson 2: Who Do I Want To Be?
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Video lessons + AI self-discovery guide
+                    </li>
+                  </ul>
+                </CardContent>
               </Card>
-              <Card className="hover-elevate">
+              <Card className="hover-elevate overflow-visible">
                 <CardHeader>
+                  <Badge variant="secondary" className="w-fit mb-2">Phase 2</Badge>
                   <div className="h-12 w-12 rounded-md bg-primary/10 flex items-center justify-center mb-4">
                     <Sparkles className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="font-serif">AI-Powered Guidance</CardTitle>
+                  <CardTitle className="font-serif">Structure</CardTitle>
                   <CardDescription>
-                    Your personal AI companion asks the right questions and offers insights tailored to your journey.
+                    Build the daily systems and habits that turn self-knowledge into lasting change.
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Lesson 3: How To Get There
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Journaling, Meditation & Eisenhower Matrix
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Weekly habits & daily task management
+                    </li>
+                  </ul>
+                </CardContent>
               </Card>
-              <Card className="hover-elevate">
+              <Card className="hover-elevate overflow-visible">
                 <CardHeader>
+                  <Badge variant="secondary" className="w-fit mb-2">Phase 3</Badge>
                   <div className="h-12 w-12 rounded-md bg-primary/10 flex items-center justify-center mb-4">
                     <Star className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="font-serif">Lasting Transformation</CardTitle>
+                  <CardTitle className="font-serif">Transformation</CardTitle>
                   <CardDescription>
-                    Build sustainable habits and mindsets that create meaningful, long-term change in your life.
+                    Understand your patterns and transform them with AI-powered analysis and insights.
                   </CardDescription>
                 </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Lesson: You Are Your Patterns
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      AI pattern analysis agent
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      Personalized transformation report
+                    </li>
+                  </ul>
+                </CardContent>
               </Card>
             </div>
           </div>
@@ -128,14 +179,14 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-3 gap-8">
               {(Object.keys(COURSES) as CourseType[]).map((key) => {
                 const course = COURSES[key];
-                const isBundle = key === "bundle";
+                const isAllinone = key === "allinone";
                 return (
                   <Card 
                     key={key} 
-                    className={`relative hover-elevate ${isBundle ? "border-primary" : ""}`}
+                    className={`relative hover-elevate overflow-visible ${isAllinone ? "border-primary" : ""}`}
                     data-testid={`card-course-${key}`}
                   >
-                    {isBundle && (
+                    {isAllinone && (
                       <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
                         Best Value
                       </Badge>
@@ -164,7 +215,7 @@ export default function LandingPage() {
                     <CardFooter>
                       <Button 
                         className="w-full" 
-                        variant={isBundle ? "default" : "outline"}
+                        variant={isAllinone ? "default" : "outline"}
                         onClick={() => handleGetStarted(key)}
                         data-testid={`button-buy-${key}`}
                       >
@@ -185,7 +236,7 @@ export default function LandingPage() {
               Ready to Begin Your Transformation?
             </h2>
             <p className="text-lg text-muted-foreground mb-8">
-              Join thousands of others who have discovered their true potential. 
+              Join others who have discovered their true potential. 
               Your journey to self-discovery starts with a single step.
             </p>
             <Button size="lg" asChild data-testid="button-cta-start">
@@ -205,7 +256,7 @@ export default function LandingPage() {
             <span className="font-serif font-medium">Inner Journey</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            © 2025 Inner Journey. All rights reserved.
+            © 2026 Inner Journey. All rights reserved.
           </p>
         </div>
       </footer>

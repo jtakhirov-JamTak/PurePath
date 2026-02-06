@@ -12,9 +12,11 @@ import CheckoutSuccessPage from "@/pages/checkout-success";
 import CheckoutCancelPage from "@/pages/checkout-cancel";
 import DashboardPage from "@/pages/dashboard";
 import BillingPage from "@/pages/billing";
+import CoursePage from "@/pages/course";
 import Course1GPTPage from "@/pages/course1-gpt";
 import Course2JournalPage from "@/pages/course2-journal";
 import JournalEntryPage from "@/pages/journal-entry";
+import Phase3Page from "@/pages/phase3";
 import MeditationPage from "@/pages/meditation";
 import EmotionalProcessingPage from "@/pages/emotional-processing";
 import EisenhowerPage from "@/pages/eisenhower";
@@ -72,6 +74,9 @@ function Router() {
       <Route path="/billing">
         {() => <AuthenticatedRoute component={BillingPage} />}
       </Route>
+      <Route path="/course">
+        {() => <AuthenticatedRoute component={CoursePage} />}
+      </Route>
       <Route path="/course1">
         {() => <AuthenticatedRoute component={Course1GPTPage} />}
       </Route>
@@ -80,6 +85,9 @@ function Router() {
       </Route>
       <Route path="/journal/:date/:session">
         {() => <AuthenticatedRoute component={JournalEntryPage} />}
+      </Route>
+      <Route path="/phase3">
+        {() => <AuthenticatedRoute component={Phase3Page} />}
       </Route>
       <Route path="/meditation">
         {() => <AuthenticatedRoute component={MeditationPage} />}

@@ -10,15 +10,14 @@ export * from "./models/auth";
 export const purchases = pgTable("purchases", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  courseType: varchar("course_type", { length: 50 }).notNull(), // 'course1', 'course2', 'bundle'
-  stripeSessionId: varchar("stripe_session_id").unique(), // Unique constraint for idempotency
+  courseType: varchar("course_type", { length: 50 }).notNull(), // 'phase12', 'phase3', 'allinone' (legacy: 'course1', 'course2', 'bundle')
+  stripeSessionId: varchar("stripe_session_id").unique(),
   stripePaymentId: varchar("stripe_payment_id"),
   amount: integer("amount").notNull(), // in cents
-  status: varchar("status", { length: 20 }).notNull().default("completed"), // 'pending', 'completed', 'refunded'
+  status: varchar("status", { length: 20 }).notNull().default("completed"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
-  // Constraint: course_type must be one of the valid values
-  check("course_type_check", sql`${table.courseType} IN ('course1', 'course2', 'bundle')`),
+  check("course_type_check", sql`${table.courseType} IN ('phase12', 'phase3', 'allinone', 'course1', 'course2', 'bundle')`),
 ]);
 
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({
@@ -75,46 +74,50 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 
 // Course definitions (static, not in DB)
-// For production: Set STRIPE_PRICE_COURSE1, STRIPE_PRICE_COURSE2, STRIPE_PRICE_BUNDLE env vars
-// with stable Stripe Price IDs from your dashboard. If not set, inline price_data will be used.
+// Phase 1+2 = Self-Reflection + Structure, Phase 3 = Transformation, All-in-one = Everything
 export const COURSES = {
-  course1: {
-    id: "course1",
-    name: "Self-Discovery GPT",
-    description: "AI-powered self-discovery companion for deep personal insights",
-    price: 4900, // $49
-    stripePriceEnvVar: "STRIPE_PRICE_COURSE1",
+  phase12: {
+    id: "phase12",
+    name: "Self-Reflection & Structure",
+    description: "Phase 1 & 2: Discover who you are, who you want to be, and build the structure to get there",
+    price: 39900, // $399
+    stripePriceEnvVar: "STRIPE_PRICE_PHASE12",
     features: [
-      "Unlimited conversations with your personal AI guide",
-      "Tailored self-discovery prompts",
-      "Progress tracking and insights",
-      "24/7 access to transformative guidance",
+      "Phase 1: Video lessons + AI-guided self-discovery",
+      "Lesson 1: Who Am I? - Deep self-reflection",
+      "Lesson 2: Who Do I Want To Be? - Vision building",
+      "Phase 2: Structure & daily tools",
+      "Lesson 3: How To Get There - Implementation guide",
+      "Journaling, Meditation, Eisenhower Matrix & more",
+      "Weekly habits & daily task management",
     ],
   },
-  course2: {
-    id: "course2",
-    name: "Transformation Journal",
-    description: "Structured journaling for lasting personal growth",
-    price: 3900, // $39
-    stripePriceEnvVar: "STRIPE_PRICE_COURSE2",
+  phase3: {
+    id: "phase3",
+    name: "Transformation",
+    description: "Phase 3: Understand your patterns and transform them with AI-powered analysis",
+    price: 29900, // $299
+    stripePriceEnvVar: "STRIPE_PRICE_PHASE3",
     features: [
-      "Morning & evening journaling sessions",
-      "Interactive calendar tracking",
-      "Guided templates for self-reflection",
-      "Export and download your journals",
+      "Lesson: You Are Your Patterns - Video lesson",
+      "AI-powered pattern analysis agent",
+      "Upload your self-discovery documents",
+      "Receive personalized transformation insights",
+      "Downloadable transformation report",
     ],
   },
-  bundle: {
-    id: "bundle",
-    name: "Complete Transformation Bundle",
-    description: "The ultimate self-transformation experience",
-    price: 6900, // $69 (save $19)
-    stripePriceEnvVar: "STRIPE_PRICE_BUNDLE",
+  allinone: {
+    id: "allinone",
+    name: "Complete Inner Journey",
+    description: "All 3 phases: the complete self-discovery and transformation experience",
+    price: 49900, // $499 (save $199)
+    stripePriceEnvVar: "STRIPE_PRICE_ALLINONE",
     features: [
-      "Everything in Self-Discovery GPT",
-      "Everything in Transformation Journal",
-      "Save $19 with the bundle",
-      "Exclusive bonus content",
+      "Everything in Phase 1 & 2",
+      "Everything in Phase 3",
+      "Save $199 with the complete package",
+      "Full lifetime access to all content",
+      "All future updates included",
     ],
   },
 } as const;
@@ -198,6 +201,8 @@ export const tasks = pgTable("tasks", {
   title: varchar("title", { length: 200 }).notNull(),
   date: date("date").notNull(),
   time: varchar("time", { length: 20 }).notNull(), // '09:00', '14:30', etc.
+  quadrant: varchar("quadrant", { length: 10 }), // 'q1', 'q2', 'q3', 'q4' - Eisenhower quadrant
+  scheduledTime: varchar("scheduled_time", { length: 50 }), // required when quadrant is 'q2'
   completed: boolean("completed").default(false),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

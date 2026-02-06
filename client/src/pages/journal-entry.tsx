@@ -54,7 +54,10 @@ export default function JournalEntryPage() {
     enabled: !!user,
   });
 
-  const hasAccess = purchases?.some(p => p.courseType === "course2" || p.courseType === "bundle");
+  const hasAccess = purchases?.some(p => 
+    p.courseType === "phase12" || p.courseType === "allinone" || 
+    p.courseType === "course2" || p.courseType === "bundle"
+  );
 
   const { data: existingJournal, isLoading: journalLoading } = useQuery<Journal | null>({
     queryKey: ["/api/journals", date, session],
@@ -122,7 +125,7 @@ export default function JournalEntryPage() {
           <p className="text-muted-foreground mb-6">
             You need to purchase the Transformation Journal course to access this feature.
           </p>
-          <Button onClick={() => setLocation("/checkout/course2")} data-testid="button-purchase">
+          <Button onClick={() => setLocation("/checkout/phase12")} data-testid="button-purchase">
             Purchase Course
           </Button>
         </Card>

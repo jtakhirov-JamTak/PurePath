@@ -85,10 +85,22 @@ export class DatabaseStorage implements IStorage {
 
   async hasCourseAccess(userId: string, courseType: string): Promise<boolean> {
     const userPurchases = await this.getPurchasesByUser(userId);
-    return userPurchases.some(p => 
-      p.status === "completed" && 
-      (p.courseType === courseType || p.courseType === "bundle")
-    );
+    return userPurchases.some(p => {
+      if (p.status !== "completed") return false;
+      // "allinone" and legacy "bundle" grant access to everything
+      if (p.courseType === "allinone" || p.courseType === "bundle") return true;
+      // Map new phase types to old course types for backward compatibility
+      if (courseType === "course1" || courseType === "phase12") {
+        return p.courseType === "phase12" || p.courseType === "course1";
+      }
+      if (courseType === "course2") {
+        return p.courseType === "phase12" || p.courseType === "course2";
+      }
+      if (courseType === "phase3") {
+        return p.courseType === "phase3";
+      }
+      return p.courseType === courseType;
+    });
   }
 
   async getJournalsByUser(userId: string): Promise<Journal[]> {

@@ -74,10 +74,15 @@ export default function BillingPage() {
   };
 
   const getCourseName = (courseType: string) => {
-    if (courseType === "course1") return COURSES.course1.name;
-    if (courseType === "course2") return COURSES.course2.name;
-    if (courseType === "bundle") return COURSES.bundle.name;
-    return courseType;
+    const courseMap: Record<string, string> = {
+      phase12: COURSES.phase12.name,
+      phase3: COURSES.phase3.name,
+      allinone: COURSES.allinone.name,
+      course1: "Self-Discovery GPT (Legacy)",
+      course2: "Transformation Journal (Legacy)",
+      bundle: "Complete Bundle (Legacy)",
+    };
+    return courseMap[courseType] || courseType;
   };
 
   const formatAmount = (cents: number) => {

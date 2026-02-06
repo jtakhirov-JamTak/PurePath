@@ -27,7 +27,10 @@ export default function Course1GPTPage() {
     enabled: !!user,
   });
 
-  const hasAccess = purchases?.some(p => p.courseType === "course1" || p.courseType === "bundle");
+  const hasAccess = purchases?.some(p => 
+    p.courseType === "phase12" || p.courseType === "allinone" || 
+    p.courseType === "course1" || p.courseType === "bundle"
+  );
 
   useEffect(() => {
     if (!purchasesLoading && !authLoading) {
@@ -130,7 +133,7 @@ export default function Course1GPTPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <LockedCourseModal 
-        courseType="course1" 
+        courseType="phase12" 
         open={showLockedModal && !hasAccess} 
         onClose={handleCloseModal}
       />

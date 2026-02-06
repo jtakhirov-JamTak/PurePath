@@ -23,6 +23,13 @@ const CADENCE_OPTIONS = [
   { value: "tue,thu", label: "Tue, Thu" },
 ];
 
+const QUADRANT_OPTIONS = [
+  { value: "q1", label: "Q1: Urgent & Important", color: "text-red-500", bg: "bg-red-500/10" },
+  { value: "q2", label: "Q2: Not Urgent & Important", color: "text-amber-500", bg: "bg-amber-500/10" },
+  { value: "q3", label: "Q3: Urgent & Not Important", color: "text-blue-500", bg: "bg-blue-500/10" },
+  { value: "q4", label: "Q4: Not Urgent & Not Important", color: "text-muted-foreground", bg: "bg-muted" },
+];
+
 export default function HabitsPage() {
   const queryClient = useQueryClient();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
@@ -39,6 +46,8 @@ export default function HabitsPage() {
     title: "",
     date: format(new Date(), "yyyy-MM-dd"),
     time: "09:00",
+    quadrant: "" as string,
+    scheduledTime: "",
   });
 
   const { data: habits = [] } = useQuery<Habit[]>({
@@ -74,12 +83,19 @@ export default function HabitsPage() {
 
   const createTaskMutation = useMutation({
     mutationFn: async (task: typeof newTask) => {
-      return apiRequest("POST", "/api/tasks", task);
+      const payload: any = {
+        title: task.title,
+        date: task.date,
+        time: task.time,
+      };
+      if (task.quadrant) payload.quadrant = task.quadrant;
+      if (task.scheduledTime) payload.scheduledTime = task.scheduledTime;
+      return apiRequest("POST", "/api/tasks", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setTaskDialogOpen(false);
-      setNewTask({ title: "", date: format(new Date(), "yyyy-MM-dd"), time: "09:00" });
+      setNewTask({ title: "", date: format(new Date(), "yyyy-MM-dd"), time: "09:00", quadrant: "", scheduledTime: "" });
     },
   });
 
@@ -104,6 +120,23 @@ export default function HabitsPage() {
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const canSubmitTask = () => {
+    if (!newTask.title) return false;
+    if (newTask.quadrant === "q2" && !newTask.scheduledTime) return false;
+    return true;
+  };
+
+  const getQuadrantBadge = (quadrant: string | null) => {
+    if (!quadrant) return null;
+    const q = QUADRANT_OPTIONS.find(o => o.value === quadrant);
+    if (!q) return null;
+    return (
+      <Badge variant="outline" className={`text-xs ${q.color}`}>
+        {q.value.toUpperCase()}
+      </Badge>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -115,14 +148,14 @@ export default function HabitsPage() {
           </div>
           <div>
             <h1 className="font-serif text-3xl font-bold">Habits & Tasks</h1>
-            <p className="text-muted-foreground">Track your daily habits and tasks</p>
+            <p className="text-muted-foreground">Track your weekly habits and daily tasks</p>
           </div>
         </div>
 
         <Tabs defaultValue="habits" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="habits">Weekly Habits</TabsTrigger>
-            <TabsTrigger value="tasks">Daily Tasks</TabsTrigger>
+            <TabsTrigger value="habits" data-testid="tab-habits">Weekly Habits</TabsTrigger>
+            <TabsTrigger value="tasks" data-testid="tab-tasks">Daily Tasks</TabsTrigger>
           </TabsList>
 
           <TabsContent value="habits" className="space-y-6">
@@ -270,7 +303,7 @@ export default function HabitsPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Add Daily Task</DialogTitle>
-                    <DialogDescription>Add a task for a specific day (max 3 per day)</DialogDescription>
+                    <DialogDescription>Add a task for a specific day (max 3 per day). Label with an Eisenhower quadrant.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -282,6 +315,37 @@ export default function HabitsPage() {
                         data-testid="input-task-title"
                       />
                     </div>
+                    <div>
+                      <Label>Quadrant</Label>
+                      <Select 
+                        value={newTask.quadrant || "none"} 
+                        onValueChange={(v) => setNewTask({ ...newTask, quadrant: v === "none" ? "" : v, scheduledTime: v !== "q2" ? "" : newTask.scheduledTime })}
+                      >
+                        <SelectTrigger data-testid="select-quadrant">
+                          <SelectValue placeholder="Select quadrant" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No quadrant</SelectItem>
+                          {QUADRANT_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {newTask.quadrant === "q2" && (
+                      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                        <p className="text-sm text-amber-600 dark:text-amber-400 mb-2 font-medium">
+                          Q2 tasks must be scheduled
+                        </p>
+                        <Label>Scheduled Time</Label>
+                        <Input 
+                          placeholder="e.g., Tuesday 2pm, Tomorrow morning"
+                          value={newTask.scheduledTime} 
+                          onChange={(e) => setNewTask({ ...newTask, scheduledTime: e.target.value })}
+                          data-testid="input-scheduled-time"
+                        />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Date</Label>
@@ -306,7 +370,7 @@ export default function HabitsPage() {
                   <DialogFooter>
                     <Button 
                       onClick={() => createTaskMutation.mutate(newTask)} 
-                      disabled={!newTask.title || createTaskMutation.isPending}
+                      disabled={!canSubmitTask() || createTaskMutation.isPending}
                       data-testid="button-submit-task"
                     >
                       Add Task
@@ -320,7 +384,7 @@ export default function HabitsPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="font-serif text-lg flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
-                  Tasks for {format(new Date(selectedDate), "MMM d, yyyy")}
+                  Tasks for {format(new Date(selectedDate + "T12:00:00"), "MMM d, yyyy")}
                 </CardTitle>
                 <CardDescription>{todaysTasks.length}/3 tasks</CardDescription>
               </CardHeader>
@@ -340,9 +404,17 @@ export default function HabitsPage() {
                           onCheckedChange={(checked) => toggleTaskMutation.mutate({ id: task.id, completed: !!checked })}
                           data-testid={`checkbox-task-${task.id}`}
                         />
-                        <div className="flex-1">
-                          <p className={`${task.completed ? "line-through opacity-60" : ""}`} data-testid={`text-task-title-${task.id}`}>{task.title}</p>
-                          <span className="text-xs text-muted-foreground">{task.time}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className={`${task.completed ? "line-through opacity-60" : ""}`} data-testid={`text-task-title-${task.id}`}>{task.title}</p>
+                            {getQuadrantBadge(task.quadrant)}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span>{task.time}</span>
+                            {task.scheduledTime && (
+                              <span className="text-amber-500">Scheduled: {task.scheduledTime}</span>
+                            )}
+                          </div>
                         </div>
                         <Button 
                           variant="ghost" 
@@ -358,6 +430,17 @@ export default function HabitsPage() {
                 )}
               </CardContent>
             </Card>
+
+            <div className="grid grid-cols-2 gap-3">
+              {QUADRANT_OPTIONS.map(q => (
+                <Card key={q.value} className={`${q.bg} border-0`}>
+                  <CardContent className="py-3 px-4">
+                    <p className={`text-sm font-medium ${q.color}`}>{q.value.toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">{q.label.replace(`${q.value.toUpperCase()}: `, "")}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
       </main>

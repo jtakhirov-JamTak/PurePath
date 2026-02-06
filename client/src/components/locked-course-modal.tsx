@@ -8,16 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Lock, Sparkles, BookOpen, Package } from "lucide-react";
+import { Lock, Layers, Zap, Package } from "lucide-react";
 
 const courseIcons: Record<CourseType, React.ReactNode> = {
-  course1: <Sparkles className="h-8 w-8" />,
-  course2: <BookOpen className="h-8 w-8" />,
-  bundle: <Package className="h-8 w-8" />,
+  phase12: <Layers className="h-8 w-8" />,
+  phase3: <Zap className="h-8 w-8" />,
+  allinone: <Package className="h-8 w-8" />,
 };
 
 interface LockedCourseModalProps {
-  courseType: "course1" | "course2";
+  courseType: "phase12" | "phase3";
   open: boolean;
   onClose: () => void;
 }
@@ -25,7 +25,7 @@ interface LockedCourseModalProps {
 export function LockedCourseModal({ courseType, open, onClose }: LockedCourseModalProps) {
   const [, setLocation] = useLocation();
   const course = COURSES[courseType];
-  const bundle = COURSES.bundle;
+  const allinone = COURSES.allinone;
 
   const handlePurchase = (purchaseType: CourseType) => {
     localStorage.setItem("returnUrl", window.location.pathname);
@@ -57,7 +57,7 @@ export function LockedCourseModal({ courseType, open, onClose }: LockedCourseMod
             data-testid="button-purchase-course"
           >
             <div className="h-5 w-5 mr-2">{courseIcons[courseType]}</div>
-            Purchase Now - ${(course.price / 100).toFixed(0)}
+            Purchase {course.name} - ${(course.price / 100).toFixed(0)}
           </Button>
 
           <div className="relative">
@@ -65,7 +65,7 @@ export function LockedCourseModal({ courseType, open, onClose }: LockedCourseMod
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or save $19</span>
+              <span className="bg-background px-2 text-muted-foreground">or save $199</span>
             </div>
           </div>
 
@@ -73,15 +73,15 @@ export function LockedCourseModal({ courseType, open, onClose }: LockedCourseMod
             variant="outline" 
             className="w-full" 
             size="lg"
-            onClick={() => handlePurchase("bundle")}
-            data-testid="button-purchase-bundle"
+            onClick={() => handlePurchase("allinone")}
+            data-testid="button-purchase-allinone"
           >
             <Package className="h-5 w-5 mr-2" />
-            Get the Bundle - ${(bundle.price / 100).toFixed(0)}
+            Get Everything - ${(allinone.price / 100).toFixed(0)}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center mt-2">
-            Bundle includes both courses with lifetime access
+            Complete package includes all 3 phases with lifetime access
           </p>
         </div>
 

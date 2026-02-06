@@ -2,65 +2,66 @@
 
 ## Overview
 
-Inner Journey is a self-discovery and personal growth course platform that sells digital courses with integrated AI-powered features. The application offers two main courses: an AI chat-based self-discovery guide (Course 1) and a daily journaling system (Course 2), available individually or as a bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
+Inner Journey is a 3-phase self-discovery and personal growth course platform with AI-powered features. The platform offers Phase 1+2 (Self-Reflection & Structure) and Phase 3 (Transformation), available individually or as an all-in-one bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 4, 2026)
+## Recent Changes (Feb 6, 2026)
 
-- Added Self-Development Tools module with 5 new free tools:
-  - **Meditation** (/meditation): Integrative meditation instructions with embedded YouTube black noise audio
-  - **Emotional Processing** (/emotional-processing): 4-step containment process (Feel → Label → Regulate → Move)
-  - **Eisenhower Matrix** (/eisenhower): Weekly priority planning organized by roles (health/wealth/relationships) and quadrants (Q1-Q4)
-  - **Empathy Module** (/empathy): Structured reflection form with 11 fields for analyzing interpersonal interactions
+- Restructured entire course system from 2-course model to 3-phase model:
+  - **Phase 1+2** (Self-Reflection & Structure): $399 - Includes GPT chat, journaling, and all tools
+  - **Phase 3** (Transformation): $299 - AI pattern analysis agent with document upload
+  - **All-in-One Bundle**: $499 (saves $199) - Everything included
+  - Legacy purchase types (course1, course2, bundle) maintained for backward compatibility
+
+- New pages and routes:
+  - **Course Curriculum** (/course): Collapsible phase sections with lesson overview and video placeholders
+  - **Phase 3 Transformation** (/phase3): Document upload, AI pattern analysis, downloadable reports
+  - Both pages use streaming GPT-5.2 responses for AI features
+
+- Tasks page enhanced with Eisenhower quadrant labels:
+  - Q1-Q4 quadrant selection for each task
+  - Q2 tasks require a scheduled time input
+  - Visual quadrant badges displayed on task cards
+  - Quadrant legend at bottom of tasks view
+
+- Updated all access checks across application:
+  - phase12 or allinone grants access to GPT chat, journal, and tools
+  - phase3 or allinone grants access to transformation agent
+  - Legacy course1/course2/bundle types still work
+
+- Updated landing page, dashboard, checkout, billing, and locked course modal for new pricing
+
+## Previous Changes (Feb 4, 2026)
+
+- Added Self-Development Tools module with 5 free tools:
+  - **Meditation** (/meditation): Integrative meditation with embedded YouTube black noise audio
+  - **Emotional Processing** (/emotional-processing): 4-step containment process
+  - **Eisenhower Matrix** (/eisenhower): Weekly priority planning by roles and quadrants
+  - **Empathy Module** (/empathy): Structured reflection form for interpersonal interactions
   - **Habits & Tasks** (/habits): Track up to 6 weekly habits and 3 daily tasks per day
-  - All tools accessible from dashboard "Self-Development Tools" section
-  - CSV export functionality for Eisenhower and Empathy data
-  - Database tables: eisenhower_entries, empathy_exercises, habits, tasks
 
-- UI modernization and improved navigation:
-  - Created shared AppHeader component with clickable logo (navigates to home/dashboard)
-  - Added user dropdown menu with Dashboard, Billing, and Sign Out options
-  - Sticky header with backdrop blur for better visibility while scrolling
-  - Updated dashboard with larger titles, gradient icons, improved course card badges
-  - Green "Owned" badge for purchased courses vs price badge for locked courses
-  - Larger, more accessible action buttons throughout
-  - Applied consistent header to course pages (course1-gpt, course2-journal)
+- UI modernization: AppHeader component, user dropdown, sticky header, gradient icons
+- Modal-based paywall UX with LockedCourseModal component
+- Production-readiness improvements: CHECK constraints, UNIQUE indexes, stable Stripe Price IDs
 
-- Modal-based paywall UX implementation:
-  - Created LockedCourseModal component showing purchase options when users access locked courses
-  - Modal offers individual course purchase or bundle option with savings highlight
-  - Return URL stored in localStorage before checkout, auto-redirect back after successful payment
-  - Fixed route ordering in App.tsx to ensure /checkout/success matches before /checkout/:courseType
-  - Updated course pages to use modal overlay instead of full-page locked state
+## Course Structure
 
-- Production-readiness improvements based on code review:
-  - Added CHECK constraint on purchases.course_type (enforces 'course1', 'course2', 'bundle')
-  - Added UNIQUE INDEX on journals (user_id, date, session) for safe upserts
-  - Refactored Stripe checkout to support stable Price IDs from env vars (STRIPE_PRICE_COURSE1, etc.)
-  - Updated documentation for consistency (ROUTES.md, DATA-MODEL.md, EXPORTS.md, PAYMENT-FLOW.md)
-  - Removed unused chat integration files for cleaner codebase
+### Phase 1: Self-Reflection
+- Lesson 1: "Who Am I?" - Video placeholder + Self-Discovery GPT chat
+- Lesson 2: "Who Do I Want To Be?" - Video placeholder + Self-Discovery GPT chat (same GPT as Lesson 1)
 
-## Previous Changes (Feb 3, 2026)
+### Phase 2: Structure
+- Lesson 3: "How To Get There" - Video placeholder
+- Tools: Journaling, Meditation, Emotional Integration, Eisenhower Matrix, Weekly Habits & Daily Tasks
 
-- Payment reliability improvements:
-  - Idempotent webhook processing with unique constraint on stripe_session_id
-  - New /billing page showing purchase history and access status
-  - "Refresh Access" button for users experiencing payment unlock issues
-  - Server-side entitlement re-checking via /api/billing/refresh endpoint
-
-## Previous Changes (Feb 2, 2026)
-
-- Complete platform implementation with landing page, checkout flow, dashboard
-- Course 1: GPT-powered self-discovery chat with streaming responses (gpt-5.2)
-- Course 2: Calendar-based journaling with morning/evening sessions and export
-- Stripe payment integration with checkout sessions
-- Calming teal/lavender theme with Plus Jakarta Sans typography
-- Payment-gated access enforced server-side
+### Phase 3: Transformation
+- Lesson: "You Are Your Patterns" - Video placeholder
+- Transformation Agent: Upload docs (.txt, .md, .doc, .docx, max 100KB) for AI pattern analysis and downloadable report
 
 ## Course Pricing
 
-- Course 1 (Self-Discovery GPT): $49
-- Course 2 (Transformation Journal): $39
-- Complete Bundle: $69 (saves $19)
+- Phase 1+2 (Self-Reflection & Structure): $399
+- Phase 3 (Transformation): $299
+- All-in-One Bundle: $499 (saves $199)
 
 ## User Preferences
 
@@ -80,18 +81,32 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express.js with TypeScript running on Node.js
 - **API Design**: RESTful endpoints under `/api/` prefix with JSON payloads
 - **Authentication**: Replit Auth via OpenID Connect with Passport.js, session-based with PostgreSQL session store
-- **AI Integration**: OpenAI API (via Replit AI Integrations) for chat-based self-discovery features
+- **AI Integration**: OpenAI API (via Replit AI Integrations) for chat and pattern analysis features
 - **Build Process**: esbuild for server bundling, Vite for client bundling
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
-- **Schema Location**: `shared/schema.ts` for shared types, `shared/models/` for domain-specific models
+- **Schema Location**: `shared/schema.ts` for shared types
 - **Tables**: 
   - `users` and `sessions` (Replit Auth)
-  - `purchases` (course access tracking)
+  - `purchases` (course access tracking - supports phase12, phase3, allinone, and legacy types)
   - `journals` (daily journaling entries)
   - `chatMessages` (AI chat history)
-  - `conversations` and `messages` (general chat storage)
+  - `eisenhower_entries` (weekly priority planning)
+  - `empathy_exercises` (interpersonal reflection)
+  - `habits` (weekly habit tracking)
+  - `tasks` (daily tasks with quadrant labels)
+
+### Key Routes
+- `/` - Landing page (unauthenticated) or Dashboard (authenticated)
+- `/course` - Course curriculum with all 3 phases
+- `/course1` - Self-Discovery GPT chat
+- `/course2` - Transformation Journal (calendar + entries)
+- `/phase3` - Phase 3 Transformation Agent (doc upload + AI analysis)
+- `/checkout/:courseType` - Stripe checkout (phase12, phase3, allinone)
+- `/billing` - Purchase history and access status
+- `/meditation`, `/emotional-processing`, `/eisenhower`, `/empathy`, `/habits` - Free tools
+- `/journal/:date/:session` - Individual journal entries
 
 ### Authentication Flow
 - Replit Auth handles user identity via OIDC
@@ -103,13 +118,13 @@ Preferred communication style: Simple, everyday language.
 - **Shared Types**: TypeScript types and Zod schemas shared between client and server via `shared/` directory
 - **Storage Interface Pattern**: Database operations abstracted behind interface (e.g., `IStorage`, `IAuthStorage`)
 - **Protected Routes**: Client-side `AuthenticatedRoute` component redirects unauthenticated users
-- **Streaming Responses**: AI chat uses streaming for real-time message delivery
+- **Streaming Responses**: AI chat and Phase 3 analysis use streaming for real-time message delivery
 
 ## External Dependencies
 
 ### Third-Party Services
 - **Stripe**: Payment processing for course purchases (via Replit Connectors)
-- **OpenAI**: AI chat completions for self-discovery guide (via Replit AI Integrations)
+- **OpenAI**: AI chat completions and pattern analysis (via Replit AI Integrations, model: gpt-5.2)
 - **Replit Auth**: User authentication and identity management
 
 ### Database
