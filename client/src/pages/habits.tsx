@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Habit, HabitCompletion } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
@@ -94,6 +94,7 @@ function getCategoryStyle(category: string | null) {
 export default function HabitsPage() {
   const qc = useQueryClient();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [trackerDate, setTrackerDate] = useState(new Date());
 
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
@@ -162,6 +163,49 @@ export default function HabitsPage() {
       resetForm();
     },
   });
+
+  const updateHabitMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof newHabit }) => {
+      const cadence = selectedDays.sort((a, b) => {
+        const order = DAYS.map(d => d.code);
+        return order.indexOf(a) - order.indexOf(b);
+      }).join(",");
+      const recurring = data.recurringType === "indefinite" ? "indefinite" : data.recurringCount;
+      const time = data.startTime || "09:00";
+      return apiRequest("PATCH", `/api/habits/${id}`, {
+        name: data.name,
+        category: data.category,
+        cadence,
+        recurring,
+        duration: parseInt(data.duration) || null,
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
+        time,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/habits"] });
+      setHabitDialogOpen(false);
+      setEditingHabit(null);
+      resetForm();
+    },
+  });
+
+  const openEdit = (habit: Habit) => {
+    const isCount = habit.recurring && habit.recurring !== "indefinite";
+    setNewHabit({
+      name: habit.name,
+      category: habit.category || "health",
+      recurringType: isCount ? "count" : "indefinite",
+      recurringCount: isCount ? habit.recurring! : "4",
+      duration: habit.duration?.toString() || "15",
+      startTime: habit.startTime || "",
+      endTime: habit.endTime || "",
+    });
+    setSelectedDays(habit.cadence.split(","));
+    setEditingHabit(habit);
+    setHabitDialogOpen(true);
+  };
 
   const deleteHabitMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -281,7 +325,10 @@ export default function HabitsPage() {
             <p className="text-sm text-muted-foreground" data-testid="text-habit-count">
               {activeHabits.length}/5 habits
             </p>
-            <Dialog open={habitDialogOpen} onOpenChange={setHabitDialogOpen}>
+            <Dialog open={habitDialogOpen} onOpenChange={(open) => {
+              setHabitDialogOpen(open);
+              if (!open) { setEditingHabit(null); resetForm(); }
+            }}>
               <DialogTrigger asChild>
                 <Button disabled={activeHabits.length >= 5} data-testid="button-add-habit">
                   <Plus className="h-4 w-4 mr-2" />
@@ -290,8 +337,10 @@ export default function HabitsPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add Habit</DialogTitle>
-                  <DialogDescription>Create a recurring habit. We recommend starting with 3.</DialogDescription>
+                  <DialogTitle>{editingHabit ? "Edit Habit" : "Add Habit"}</DialogTitle>
+                  <DialogDescription>
+                    {editingHabit ? "Update your habit details." : "Create a recurring habit. We recommend starting with 3."}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-5">
                   <div>
@@ -428,11 +477,17 @@ export default function HabitsPage() {
                 </div>
                 <DialogFooter>
                   <Button
-                    onClick={() => createHabitMutation.mutate(newHabit)}
-                    disabled={!canSubmit || createHabitMutation.isPending}
+                    onClick={() => {
+                      if (editingHabit) {
+                        updateHabitMutation.mutate({ id: editingHabit.id, data: newHabit });
+                      } else {
+                        createHabitMutation.mutate(newHabit);
+                      }
+                    }}
+                    disabled={!canSubmit || createHabitMutation.isPending || updateHabitMutation.isPending}
                     data-testid="button-submit-habit"
                   >
-                    Add Habit
+                    {editingHabit ? "Save Changes" : "Add Habit"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -496,14 +551,24 @@ export default function HabitsPage() {
                             </div>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteHabitMutation.mutate(habit.id)}
-                          data-testid={`button-delete-habit-${habit.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(habit)}
+                            data-testid={`button-edit-habit-${habit.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteHabitMutation.mutate(habit.id)}
+                            data-testid={`button-delete-habit-${habit.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
