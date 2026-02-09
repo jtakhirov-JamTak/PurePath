@@ -563,6 +563,47 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== HABIT COMPLETIONS ====================
+
+  app.get("/api/habit-completions/:date", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date } = req.params;
+      const completions = await storage.getHabitCompletionsForDate(userId, date);
+      res.json(completions);
+    } catch (error) {
+      console.error("Error fetching habit completions:", error);
+      res.status(500).json({ error: "Failed to fetch habit completions" });
+    }
+  });
+
+  app.post("/api/habit-completions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { habitId, date } = req.body;
+      const completion = await storage.createHabitCompletion({ userId, habitId, date });
+      res.json(completion);
+    } catch (error: any) {
+      if (error?.code === "23505") {
+        return res.status(409).json({ error: "Already completed" });
+      }
+      console.error("Error creating habit completion:", error);
+      res.status(500).json({ error: "Failed to create habit completion" });
+    }
+  });
+
+  app.delete("/api/habit-completions/:habitId/:date", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { habitId, date } = req.params;
+      await storage.deleteHabitCompletion(userId, parseInt(habitId), date);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting habit completion:", error);
+      res.status(500).json({ error: "Failed to delete habit completion" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {
