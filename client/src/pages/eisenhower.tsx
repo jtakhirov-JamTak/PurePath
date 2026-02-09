@@ -23,6 +23,40 @@ const QUADRANTS = [
   { id: "q4", name: "Q4 - Not Urgent, Not Important", description: "Eliminate", color: "bg-gray-500/20 text-gray-700 dark:text-gray-400" },
 ];
 
+function generateTimeSlots() {
+  const slots: string[] = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hh = h.toString().padStart(2, "0");
+      const mm = m.toString().padStart(2, "0");
+      slots.push(`${hh}:${mm}`);
+    }
+  }
+  return slots;
+}
+
+const TIME_SLOTS = generateTimeSlots();
+
+function formatTimeLabel(time: string) {
+  const [hStr, mStr] = time.split(":");
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${mStr} ${suffix}`;
+}
+
+function calcDuration(startTime: string, endTime: string): string {
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) return "";
+  const hours = Math.floor(mins / 60);
+  const remaining = mins % 60;
+  if (hours === 0) return `${remaining}m`;
+  if (remaining === 0) return `${hours}h`;
+  return `${hours}h ${remaining}m`;
+}
+
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -32,9 +66,9 @@ export default function EisenhowerPage() {
     task: "",
     quadrant: "q2",
     deadline: "",
-    timeEstimate: "",
+    startTime: "",
+    endTime: "",
     decision: "",
-    scheduledTime: "",
   });
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
@@ -43,14 +77,31 @@ export default function EisenhowerPage() {
     queryKey: ["/api/eisenhower/week", weekStart],
   });
 
+  const duration = newEntry.startTime && newEntry.endTime ? calcDuration(newEntry.startTime, newEntry.endTime) : "";
+
   const createMutation = useMutation({
     mutationFn: async (entry: typeof newEntry) => {
-      return apiRequest("POST", "/api/eisenhower", { ...entry, weekStart });
+      const scheduledTime = entry.startTime && entry.endTime
+        ? `${formatTimeLabel(entry.startTime)} - ${formatTimeLabel(entry.endTime)}`
+        : "";
+      const timeEstimate = entry.startTime && entry.endTime
+        ? calcDuration(entry.startTime, entry.endTime)
+        : "";
+      return apiRequest("POST", "/api/eisenhower", {
+        role: entry.role,
+        task: entry.task,
+        quadrant: entry.quadrant,
+        deadline: entry.deadline || null,
+        decision: entry.decision || null,
+        timeEstimate: timeEstimate || null,
+        scheduledTime: scheduledTime || null,
+        weekStart,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       setDialogOpen(false);
-      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", timeEstimate: "", decision: "", scheduledTime: "" });
+      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "" });
     },
   });
 
@@ -163,35 +214,48 @@ export default function EisenhowerPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Deadline</Label>
-                    <Input 
-                      type="date" 
-                      value={newEntry.deadline} 
-                      onChange={(e) => setNewEntry({ ...newEntry, deadline: e.target.value })}
-                      data-testid="input-deadline"
-                    />
-                  </div>
-                  <div>
-                    <Label>Time Estimate</Label>
-                    <Input 
-                      placeholder="e.g., 60m, 2h"
-                      value={newEntry.timeEstimate} 
-                      onChange={(e) => setNewEntry({ ...newEntry, timeEstimate: e.target.value })}
-                      data-testid="input-time-estimate"
-                    />
-                  </div>
-                </div>
                 <div>
-                  <Label>Scheduled Time</Label>
+                  <Label>Date</Label>
                   <Input 
-                    placeholder="e.g., Tue 9:00-10:30"
-                    value={newEntry.scheduledTime} 
-                    onChange={(e) => setNewEntry({ ...newEntry, scheduledTime: e.target.value })}
-                    data-testid="input-scheduled-time"
+                    type="date" 
+                    value={newEntry.deadline} 
+                    onChange={(e) => setNewEntry({ ...newEntry, deadline: e.target.value })}
+                    data-testid="input-deadline"
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Start Time</Label>
+                    <Select value={newEntry.startTime} onValueChange={(v) => setNewEntry({ ...newEntry, startTime: v })}>
+                      <SelectTrigger data-testid="select-start-time">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {TIME_SLOTS.map(t => (
+                          <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>End Time</Label>
+                    <Select value={newEntry.endTime} onValueChange={(v) => setNewEntry({ ...newEntry, endTime: v })}>
+                      <SelectTrigger data-testid="select-end-time">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {TIME_SLOTS.filter(t => !newEntry.startTime || t > newEntry.startTime).map(t => (
+                          <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {duration && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-duration">
+                    Duration: {duration}
+                  </p>
+                )}
               </div>
               <DialogFooter>
                 <Button 
