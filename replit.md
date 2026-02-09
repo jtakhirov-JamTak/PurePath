@@ -9,9 +9,11 @@ Inner Journey is a 3-phase self-discovery and personal growth course platform wi
 - Separated Habits and Tasks into two distinct pages:
   - **Habits** (/habits): Up to 5 recurring habits (recommend starting with 3)
     - Day-of-week cadence picker (toggle individual days)
-    - Recurring: indefinite or set count
+    - Recurring: "No End Date" or "Weeks" with count
     - Duration in minutes
     - Optional start/end time (15-min intervals, for calendar integration)
+    - **Categories**: health, wealth, relationships, career, mindfulness, learning — each with a distinct color
+    - **Daily Tracker**: Check off habits each day, shows only habits scheduled for the current day, with progress bar and date navigation
   - **Daily Tasks** (/tasks): Standalone page with up to 3 tasks per day, Eisenhower quadrant labels
   - Dashboard and Course page updated with separate Habits and Tasks cards
 - Eisenhower Matrix: replaced free-text time fields with 15-min interval start/end time selectors, auto-calculated duration
@@ -107,7 +109,8 @@ Preferred communication style: Simple, everyday language.
   - `chatMessages` (AI chat history)
   - `eisenhower_entries` (weekly priority planning)
   - `empathy_exercises` (interpersonal reflection)
-  - `habits` (recurring habits with day-of-week cadence, duration, optional start/end time)
+  - `habits` (recurring habits with day-of-week cadence, duration, optional start/end time, category)
+  - `habit_completions` (daily habit check-offs, unique per user/habit/date)
   - `tasks` (daily tasks with quadrant labels)
 
 ### Key Routes

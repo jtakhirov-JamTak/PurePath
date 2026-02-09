@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Repeat, Plus, Trash2, Clock, Timer, Calendar } from "lucide-react";
+import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Habit } from "@shared/schema";
+import type { Habit, HabitCompletion } from "@shared/schema";
+import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
 const DAYS = [
   { code: "mon", label: "Mon" },
@@ -21,6 +22,10 @@ const DAYS = [
   { code: "sat", label: "Sat" },
   { code: "sun", label: "Sun" },
 ];
+
+const DAY_CODE_MAP: Record<number, string> = {
+  0: "sun", 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri", 6: "sat",
+};
 
 function generateTimeSlots() {
   const slots: string[] = [];
@@ -52,15 +57,51 @@ function formatCadence(cadence: string): string {
   return codes.map(c => DAYS.find(d => d.code === c)?.label || c).join(", ");
 }
 
+function formatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDisplayDate(d: Date): string {
+  const today = new Date();
+  const todayStr = formatDate(today);
+  const dateStr = formatDate(d);
+  if (dateStr === todayStr) return "Today";
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dateStr === formatDate(yesterday)) return "Yesterday";
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === formatDate(tomorrow)) return "Tomorrow";
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  health: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-500" },
+  wealth: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", border: "border-amber-500/30", dot: "bg-amber-500" },
+  relationships: { bg: "bg-rose-500/10", text: "text-rose-600 dark:text-rose-400", border: "border-rose-500/30", dot: "bg-rose-500" },
+  career: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  mindfulness: { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", border: "border-violet-500/30", dot: "bg-violet-500" },
+  learning: { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-500" },
+};
+
+function getCategoryStyle(category: string | null) {
+  return CATEGORY_STYLES[category || "health"] || CATEGORY_STYLES.health;
+}
+
 export default function HabitsPage() {
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [trackerDate, setTrackerDate] = useState(new Date());
 
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
   const [newHabit, setNewHabit] = useState({
     name: "",
+    category: "health" as string,
     recurringType: "indefinite" as "indefinite" | "count",
-    recurringCount: "30",
+    recurringCount: "4",
     duration: "15",
     startTime: "",
     endTime: "",
@@ -70,7 +111,20 @@ export default function HabitsPage() {
     queryKey: ["/api/habits"],
   });
 
+  const dateStr = formatDate(trackerDate);
+  const { data: completions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions", dateStr],
+  });
+
   const activeHabits = habits.filter(h => h.active);
+
+  const todayDayCode = DAY_CODE_MAP[trackerDate.getDay()];
+  const todaysHabits = activeHabits.filter(h => {
+    const codes = h.cadence.split(",");
+    return codes.includes(todayDayCode);
+  });
+
+  const completedHabitIds = new Set(completions.map(c => c.habitId));
 
   const toggleDay = (code: string) => {
     setSelectedDays(prev =>
@@ -79,7 +133,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", recurringType: "indefinite", recurringCount: "30", duration: "15", startTime: "", endTime: "" });
+    setNewHabit({ name: "", category: "health", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -93,6 +147,7 @@ export default function HabitsPage() {
       const time = data.startTime || "09:00";
       return apiRequest("POST", "/api/habits", {
         name: data.name,
+        category: data.category,
         cadence,
         recurring,
         duration: parseInt(data.duration) || null,
@@ -102,7 +157,7 @@ export default function HabitsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       resetForm();
     },
@@ -113,11 +168,31 @@ export default function HabitsPage() {
       return apiRequest("DELETE", `/api/habits/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      qc.invalidateQueries({ queryKey: ["/api/habits"] });
     },
   });
 
+  const toggleCompletionMutation = useMutation({
+    mutationFn: async ({ habitId, completed }: { habitId: number; completed: boolean }) => {
+      if (completed) {
+        return apiRequest("DELETE", `/api/habit-completions/${habitId}/${dateStr}`);
+      } else {
+        return apiRequest("POST", "/api/habit-completions", { habitId, date: dateStr });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/habit-completions", dateStr] });
+    },
+  });
+
+  const navigateDate = (offset: number) => {
+    const d = new Date(trackerDate);
+    d.setDate(d.getDate() + offset);
+    setTrackerDate(d);
+  };
+
   const canSubmit = newHabit.name.trim() !== "" && selectedDays.length > 0 && parseInt(newHabit.duration) > 0;
+  const completedCount = todaysHabits.filter(h => completedHabitIds.has(h.id)).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -133,6 +208,73 @@ export default function HabitsPage() {
             <p className="text-muted-foreground">Build up to 5 recurring habits — we recommend starting with 3</p>
           </div>
         </div>
+
+        {todaysHabits.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h2 className="text-lg font-semibold" data-testid="text-tracker-title">Daily Tracker</h2>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} data-testid="button-prev-day">
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium min-w-[100px] text-center" data-testid="text-tracker-date">
+                  {formatDisplayDate(trackerDate)}
+                </span>
+                <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} data-testid="button-next-day">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground" data-testid="text-completion-count">
+                    {completedCount}/{todaysHabits.length} completed
+                  </p>
+                  {todaysHabits.length > 0 && (
+                    <div className="h-2 flex-1 max-w-[200px] bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${(completedCount / todaysHabits.length) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {todaysHabits.map(habit => {
+                    const isCompleted = completedHabitIds.has(habit.id);
+                    const style = getCategoryStyle(habit.category);
+                    return (
+                      <button
+                        key={habit.id}
+                        type="button"
+                        onClick={() => toggleCompletionMutation.mutate({ habitId: habit.id, completed: isCompleted })}
+                        className={`w-full flex items-center gap-3 p-3 rounded-md border transition-colors ${
+                          isCompleted ? "border-primary/30 bg-primary/5" : "border-border hover-elevate"
+                        }`}
+                        data-testid={`tracker-habit-${habit.id}`}
+                      >
+                        <div className={`h-6 w-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          isCompleted ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {isCompleted && <Check className="h-4 w-4 text-primary-foreground" />}
+                        </div>
+                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${style.dot}`} />
+                        <span className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                          {habit.name}
+                        </span>
+                        <Badge variant="outline" className={`ml-auto text-xs ${style.text} ${style.border}`}>
+                          {HABIT_CATEGORIES[(habit.category as HabitCategory) || "health"]?.label || "Health"}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
@@ -160,6 +302,31 @@ export default function HabitsPage() {
                       onChange={(e) => setNewHabit({ ...newHabit, name: e.target.value })}
                       data-testid="input-habit-name"
                     />
+                  </div>
+
+                  <div>
+                    <Label>Category</Label>
+                    <Select
+                      value={newHabit.category}
+                      onValueChange={(v) => setNewHabit({ ...newHabit, category: v })}
+                    >
+                      <SelectTrigger data-testid="select-category">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(HABIT_CATEGORIES).map(([key, cat]) => {
+                          const style = getCategoryStyle(key);
+                          return (
+                            <SelectItem key={key} value={key}>
+                              <span className="flex items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                                {cat.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
@@ -282,58 +449,66 @@ export default function HabitsPage() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {activeHabits.map(habit => (
-                <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
-                  <CardContent className="py-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 shrink-0 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                          <Repeat className="h-5 w-5 text-cyan-500" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate" data-testid={`text-habit-name-${habit.id}`}>{habit.name}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                            <Badge variant="outline" className="text-xs">
-                              {formatCadence(habit.cadence)}
-                            </Badge>
-                            {habit.duration && (
-                              <span className="flex items-center gap-1 text-xs">
-                                <Timer className="h-3 w-3" />
-                                {habit.duration}m
-                              </span>
-                            )}
-                            {habit.recurring && habit.recurring !== "indefinite" ? (
-                              <span className="text-xs">{habit.recurring} weeks</span>
-                            ) : (
-                              <span className="text-xs">No End Date</span>
-                            )}
-                            {habit.startTime && habit.endTime && (
-                              <span className="flex items-center gap-1 text-xs">
-                                <Calendar className="h-3 w-3" />
-                                {formatTimeLabel(habit.startTime)} - {formatTimeLabel(habit.endTime)}
-                              </span>
-                            )}
-                            {habit.startTime && !habit.endTime && (
-                              <span className="flex items-center gap-1 text-xs">
-                                <Clock className="h-3 w-3" />
-                                {formatTimeLabel(habit.startTime)}
-                              </span>
-                            )}
+              {activeHabits.map(habit => {
+                const style = getCategoryStyle(habit.category);
+                return (
+                  <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-10 w-10 shrink-0 rounded-lg ${style.bg} flex items-center justify-center`}>
+                            <div className={`h-3 w-3 rounded-full ${style.dot}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium truncate" data-testid={`text-habit-name-${habit.id}`}>{habit.name}</p>
+                              <Badge variant="outline" className={`text-xs ${style.text} ${style.border}`} data-testid={`badge-category-${habit.id}`}>
+                                {HABIT_CATEGORIES[(habit.category as HabitCategory) || "health"]?.label || "Health"}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                {formatCadence(habit.cadence)}
+                              </Badge>
+                              {habit.duration && (
+                                <span className="flex items-center gap-1 text-xs">
+                                  <Timer className="h-3 w-3" />
+                                  {habit.duration}m
+                                </span>
+                              )}
+                              {habit.recurring && habit.recurring !== "indefinite" ? (
+                                <span className="text-xs">{habit.recurring} weeks</span>
+                              ) : (
+                                <span className="text-xs">No End Date</span>
+                              )}
+                              {habit.startTime && habit.endTime && (
+                                <span className="flex items-center gap-1 text-xs">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatTimeLabel(habit.startTime)} - {formatTimeLabel(habit.endTime)}
+                                </span>
+                              )}
+                              {habit.startTime && !habit.endTime && (
+                                <span className="flex items-center gap-1 text-xs">
+                                  <Clock className="h-3 w-3" />
+                                  {formatTimeLabel(habit.startTime)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteHabitMutation.mutate(habit.id)}
+                          data-testid={`button-delete-habit-${habit.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteHabitMutation.mutate(habit.id)}
-                        data-testid={`button-delete-habit-${habit.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

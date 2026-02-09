@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, registerAuthRoutes } from "./replit_integrations/auth";
 import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClient";
-import { COURSES, type CourseType } from "@shared/schema";
+import { COURSES, type CourseType, HABIT_CATEGORIES } from "@shared/schema";
 import OpenAI from "openai";
 import { format } from "date-fns";
 
@@ -533,7 +533,9 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Maximum 5 active habits allowed" });
       }
 
-      const habit = await storage.createHabit({ userId, ...req.body });
+      const { category, ...rest } = req.body;
+      const validCategory = category && category in HABIT_CATEGORIES ? category : "health";
+      const habit = await storage.createHabit({ userId, category: validCategory, ...rest });
       res.json(habit);
     } catch (error) {
       console.error("Error creating habit:", error);
@@ -581,6 +583,13 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const { habitId, date } = req.body;
+      if (!habitId || !date) {
+        return res.status(400).json({ error: "habitId and date are required" });
+      }
+      const userHabits = await storage.getHabitsByUser(userId);
+      if (!userHabits.some(h => h.id === habitId)) {
+        return res.status(403).json({ error: "Habit not found" });
+      }
       const completion = await storage.createHabitCompletion({ userId, habitId, date });
       res.json(completion);
     } catch (error: any) {
