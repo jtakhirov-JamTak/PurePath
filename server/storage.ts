@@ -1,12 +1,13 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, tasks,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
+  type HabitCompletion, type InsertHabitCompletion,
   type Task, type InsertTask
 } from "@shared/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
@@ -44,6 +45,11 @@ export interface IStorage {
   createHabit(habit: InsertHabit): Promise<Habit>;
   updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit>;
   deleteHabit(id: number): Promise<void>;
+
+  // Habit Completions
+  getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]>;
+  createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion>;
+  deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void>;
   
   // Tasks
   getTasksByUser(userId: string): Promise<Task[]>;
@@ -208,6 +214,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteHabit(id: number): Promise<void> {
     await db.delete(habits).where(eq(habits.id, id));
+  }
+
+  // Habit Completions
+  async getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]> {
+    return db.select().from(habitCompletions)
+      .where(and(
+        eq(habitCompletions.userId, userId),
+        eq(habitCompletions.date, date)
+      ));
+  }
+
+  async createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion> {
+    const [newCompletion] = await db.insert(habitCompletions).values(completion).returning();
+    return newCompletion;
+  }
+
+  async deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void> {
+    await db.delete(habitCompletions).where(
+      and(
+        eq(habitCompletions.userId, userId),
+        eq(habitCompletions.habitId, habitId),
+        eq(habitCompletions.date, date)
+      )
+    );
   }
 
   // Tasks
