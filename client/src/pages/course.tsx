@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Video, MessageSquare, BookOpen, Brain, Heart, Grid3X3, 
   CheckSquare, ArrowRight, Lock, Play, Loader2, ChevronDown,
-  Sparkles, Zap, Calendar
+  Sparkles, Zap, Calendar, Repeat, ListTodo
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -298,11 +298,24 @@ export default function CoursePage() {
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-md bg-cyan-500/10 flex items-center justify-center">
-                            <CheckSquare className="h-5 w-5 text-cyan-500" />
+                            <Repeat className="h-5 w-5 text-cyan-500" />
                           </div>
                           <div>
-                            <p className="font-medium text-sm">Weekly Habits & Daily Tasks</p>
-                            <p className="text-xs text-muted-foreground">Track habits & manage tasks</p>
+                            <p className="font-medium text-sm">Habits</p>
+                            <p className="text-xs text-muted-foreground">Build recurring habits</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                    <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/tasks")} data-testid="card-tool-tasks">
+                      <CardHeader className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center">
+                            <ListTodo className="h-5 w-5 text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Daily Tasks</p>
+                            <p className="text-xs text-muted-foreground">Track daily tasks with quadrants</p>
                           </div>
                         </div>
                       </CardHeader>

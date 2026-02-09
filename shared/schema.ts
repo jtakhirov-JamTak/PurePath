@@ -179,8 +179,12 @@ export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
-  cadence: varchar("cadence", { length: 50 }).notNull(), // 'daily', 'weekdays', 'weekends', 'mon,wed,fri', etc.
-  time: varchar("time", { length: 20 }).notNull(), // '09:00', '14:30', etc.
+  cadence: varchar("cadence", { length: 50 }).notNull(), // comma-separated day codes: 'mon,tue,wed,thu,fri,sat,sun'
+  recurring: varchar("recurring", { length: 20 }).default("indefinite"), // number string or 'indefinite'
+  duration: integer("duration"), // duration in minutes
+  startTime: varchar("start_time", { length: 10 }), // optional, e.g. '09:00'
+  endTime: varchar("end_time", { length: 10 }), // optional, e.g. '09:30'
+  time: varchar("time", { length: 20 }).notNull(), // kept for backward compat
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

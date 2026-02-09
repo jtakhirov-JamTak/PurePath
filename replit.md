@@ -4,7 +4,19 @@
 
 Inner Journey is a 3-phase self-discovery and personal growth course platform with AI-powered features. The platform offers Phase 1+2 (Self-Reflection & Structure) and Phase 3 (Transformation), available individually or as an all-in-one bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 6, 2026)
+## Recent Changes (Feb 9, 2026)
+
+- Separated Habits and Tasks into two distinct pages:
+  - **Habits** (/habits): Up to 5 recurring habits (recommend starting with 3)
+    - Day-of-week cadence picker (toggle individual days)
+    - Recurring: indefinite or set count
+    - Duration in minutes
+    - Optional start/end time (15-min intervals, for calendar integration)
+  - **Daily Tasks** (/tasks): Standalone page with up to 3 tasks per day, Eisenhower quadrant labels
+  - Dashboard and Course page updated with separate Habits and Tasks cards
+- Eisenhower Matrix: replaced free-text time fields with 15-min interval start/end time selectors, auto-calculated duration
+
+## Previous Changes (Feb 6, 2026)
 
 - Restructured entire course system from 2-course model to 3-phase model:
   - **Phase 1+2** (Self-Reflection & Structure): $399 - Includes GPT chat, journaling, and all tools
@@ -37,7 +49,8 @@ Inner Journey is a 3-phase self-discovery and personal growth course platform wi
   - **Emotional Processing** (/emotional-processing): 4-step containment process
   - **Eisenhower Matrix** (/eisenhower): Weekly priority planning by roles and quadrants
   - **Empathy Module** (/empathy): Structured reflection form for interpersonal interactions
-  - **Habits & Tasks** (/habits): Track up to 6 weekly habits and 3 daily tasks per day
+  - **Habits** (/habits): Up to 5 recurring habits with day-of-week cadence, duration, optional time
+  - **Daily Tasks** (/tasks): Up to 3 daily tasks with Eisenhower quadrant labels
 
 - UI modernization: AppHeader component, user dropdown, sticky header, gradient icons
 - Modal-based paywall UX with LockedCourseModal component
@@ -51,7 +64,7 @@ Inner Journey is a 3-phase self-discovery and personal growth course platform wi
 
 ### Phase 2: Structure
 - Lesson 3: "How To Get There" - Video placeholder
-- Tools: Journaling, Meditation, Emotional Integration, Eisenhower Matrix, Weekly Habits & Daily Tasks
+- Tools: Journaling, Meditation, Emotional Integration, Eisenhower Matrix, Habits, Daily Tasks
 
 ### Phase 3: Transformation
 - Lesson: "You Are Your Patterns" - Video placeholder
@@ -94,7 +107,7 @@ Preferred communication style: Simple, everyday language.
   - `chatMessages` (AI chat history)
   - `eisenhower_entries` (weekly priority planning)
   - `empathy_exercises` (interpersonal reflection)
-  - `habits` (weekly habit tracking)
+  - `habits` (recurring habits with day-of-week cadence, duration, optional start/end time)
   - `tasks` (daily tasks with quadrant labels)
 
 ### Key Routes
@@ -105,7 +118,7 @@ Preferred communication style: Simple, everyday language.
 - `/phase3` - Phase 3 Transformation Agent (doc upload + AI analysis)
 - `/checkout/:courseType` - Stripe checkout (phase12, phase3, allinone)
 - `/billing` - Purchase history and access status
-- `/meditation`, `/emotional-processing`, `/eisenhower`, `/empathy`, `/habits` - Free tools
+- `/meditation`, `/emotional-processing`, `/eisenhower`, `/empathy`, `/habits`, `/tasks` - Free tools
 - `/journal/:date/:session` - Individual journal entries
 
 ### Authentication Flow

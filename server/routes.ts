@@ -527,10 +527,10 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       
-      // Check habit limit (6 max)
+      // Check habit limit (5 max)
       const existing = await storage.getHabitsByUser(userId);
-      if (existing.filter(h => h.active).length >= 6) {
-        return res.status(400).json({ error: "Maximum 6 active habits allowed" });
+      if (existing.filter(h => h.active).length >= 5) {
+        return res.status(400).json({ error: "Maximum 5 active habits allowed" });
       }
 
       const habit = await storage.createHabit({ userId, ...req.body });

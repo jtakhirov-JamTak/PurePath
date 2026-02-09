@@ -22,6 +22,7 @@ import EmotionalProcessingPage from "@/pages/emotional-processing";
 import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
+import TasksPage from "@/pages/tasks";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -103,6 +104,9 @@ function Router() {
       </Route>
       <Route path="/habits">
         {() => <AuthenticatedRoute component={HabitsPage} />}
+      </Route>
+      <Route path="/tasks">
+        {() => <AuthenticatedRoute component={TasksPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

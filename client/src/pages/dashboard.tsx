@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle,
   Brain, Heart, Grid3X3, Users, CheckSquare, Layers, Zap,
-  Video, MessageSquare, Calendar, Compass
+  Video, MessageSquare, Calendar, Compass, Repeat, ListTodo
 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { Purchase } from "@shared/schema";
@@ -229,18 +229,36 @@ export default function DashboardPage() {
             <Card 
               className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
               onClick={() => hasPhase12 && setLocation("/habits")}
-              data-testid="card-habits-tasks"
+              data-testid="card-habits"
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-md bg-cyan-500/10 flex items-center justify-center shrink-0">
-                    <CheckSquare className="h-5 w-5 text-cyan-500" />
+                    <Repeat className="h-5 w-5 text-cyan-500" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-base">Habits & Tasks</CardTitle>
+                    <CardTitle className="font-serif text-base">Habits</CardTitle>
                   </div>
                 </div>
-                <CardDescription className="text-sm">Weekly habits & daily tasks with quadrants</CardDescription>
+                <CardDescription className="text-sm">Build recurring habits with flexible scheduling</CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
+              onClick={() => hasPhase12 && setLocation("/tasks")}
+              data-testid="card-tasks"
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <ListTodo className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-base">Daily Tasks</CardTitle>
+                  </div>
+                </div>
+                <CardDescription className="text-sm">Track up to 3 daily tasks with quadrant labels</CardDescription>
               </CardHeader>
             </Card>
           </div>
