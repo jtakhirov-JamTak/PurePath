@@ -194,23 +194,20 @@ export default function HabitsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="indefinite">Indefinitely</SelectItem>
-                          <SelectItem value="count">Set count</SelectItem>
+                          <SelectItem value="indefinite">No End Date</SelectItem>
+                          <SelectItem value="count">Weeks</SelectItem>
                         </SelectContent>
                       </Select>
                       {newHabit.recurringType === "count" && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min="1"
-                            max="365"
-                            value={newHabit.recurringCount}
-                            onChange={(e) => setNewHabit({ ...newHabit, recurringCount: e.target.value })}
-                            className="w-20"
-                            data-testid="input-recurring-count"
-                          />
-                          <span className="text-sm text-muted-foreground">times</span>
-                        </div>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="52"
+                          value={newHabit.recurringCount}
+                          onChange={(e) => setNewHabit({ ...newHabit, recurringCount: e.target.value })}
+                          className="w-20"
+                          data-testid="input-recurring-count"
+                        />
                       )}
                     </div>
                   </div>
@@ -305,8 +302,10 @@ export default function HabitsPage() {
                                 {habit.duration}m
                               </span>
                             )}
-                            {habit.recurring && habit.recurring !== "indefinite" && (
-                              <span className="text-xs">{habit.recurring}x</span>
+                            {habit.recurring && habit.recurring !== "indefinite" ? (
+                              <span className="text-xs">{habit.recurring} weeks</span>
+                            ) : (
+                              <span className="text-xs">No End Date</span>
                             )}
                             {habit.startTime && habit.endTime && (
                               <span className="flex items-center gap-1 text-xs">
