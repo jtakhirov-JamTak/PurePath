@@ -174,17 +174,30 @@ export const insertEmpathyExerciseSchema = createInsertSchema(empathyExercises).
 export type EmpathyExercise = typeof empathyExercises.$inferSelect;
 export type InsertEmpathyExercise = z.infer<typeof insertEmpathyExerciseSchema>;
 
+// Habit categories with colors
+export const HABIT_CATEGORIES = {
+  health: { label: "Health", color: "emerald" },
+  wealth: { label: "Wealth", color: "amber" },
+  relationships: { label: "Relationships", color: "rose" },
+  career: { label: "Career", color: "blue" },
+  mindfulness: { label: "Mindfulness", color: "violet" },
+  learning: { label: "Learning", color: "cyan" },
+} as const;
+
+export type HabitCategory = keyof typeof HABIT_CATEGORIES;
+
 // Daily habits - weekly recurring habits
 export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
-  cadence: varchar("cadence", { length: 50 }).notNull(), // comma-separated day codes: 'mon,tue,wed,thu,fri,sat,sun'
-  recurring: varchar("recurring", { length: 20 }).default("indefinite"), // number string or 'indefinite'
-  duration: integer("duration"), // duration in minutes
-  startTime: varchar("start_time", { length: 10 }), // optional, e.g. '09:00'
-  endTime: varchar("end_time", { length: 10 }), // optional, e.g. '09:30'
-  time: varchar("time", { length: 20 }).notNull(), // kept for backward compat
+  category: varchar("category", { length: 30 }).default("health"),
+  cadence: varchar("cadence", { length: 50 }).notNull(),
+  recurring: varchar("recurring", { length: 20 }).default("indefinite"),
+  duration: integer("duration"),
+  startTime: varchar("start_time", { length: 10 }),
+  endTime: varchar("end_time", { length: 10 }),
+  time: varchar("time", { length: 20 }).notNull(),
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -197,6 +210,25 @@ export const insertHabitSchema = createInsertSchema(habits).omit({
 
 export type Habit = typeof habits.$inferSelect;
 export type InsertHabit = z.infer<typeof insertHabitSchema>;
+
+// Habit completions - daily check-offs
+export const habitCompletions = pgTable("habit_completions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  habitId: integer("habit_id").notNull(),
+  date: date("date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("habit_completions_user_habit_date_idx").on(table.userId, table.habitId, table.date),
+]);
+
+export const insertHabitCompletionSchema = createInsertSchema(habitCompletions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type HabitCompletion = typeof habitCompletions.$inferSelect;
+export type InsertHabitCompletion = z.infer<typeof insertHabitCompletionSchema>;
 
 // Daily tasks - specific tasks for specific dates
 export const tasks = pgTable("tasks", {
