@@ -10,7 +10,7 @@ import {
   type HabitCompletion, type InsertHabitCompletion,
   type Task, type InsertTask
 } from "@shared/schema";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
 export interface IStorage {
   getPurchasesByUser(userId: string): Promise<Purchase[]>;
@@ -48,6 +48,7 @@ export interface IStorage {
 
   // Habit Completions
   getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]>;
+  getHabitCompletionsForRange(userId: string, startDate: string, endDate: string): Promise<HabitCompletion[]>;
   createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion>;
   deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void>;
   
@@ -222,6 +223,15 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(habitCompletions.userId, userId),
         eq(habitCompletions.date, date)
+      ));
+  }
+
+  async getHabitCompletionsForRange(userId: string, startDate: string, endDate: string): Promise<HabitCompletion[]> {
+    return db.select().from(habitCompletions)
+      .where(and(
+        eq(habitCompletions.userId, userId),
+        sql`${habitCompletions.date} >= ${startDate}`,
+        sql`${habitCompletions.date} <= ${endDate}`
       ));
   }
 

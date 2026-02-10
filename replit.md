@@ -4,7 +4,24 @@
 
 Inner Journey is a 3-phase self-discovery and personal growth course platform with AI-powered features. The platform offers Phase 1+2 (Self-Reflection & Structure) and Phase 3 (Transformation), available individually or as an all-in-one bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 9, 2026)
+## Recent Changes (Feb 10, 2026)
+
+- **Journal Calendar** redesigned:
+  - Default view is now **week** (7-day view), with zoom out/in button to toggle to **month** view
+  - Habits automatically appear on calendar days they're scheduled for, shown as colored dots
+  - Journaling (morning + evening) shown as baseline required items every day
+  - Eisenhower Q2 scheduled items with deadlines appear on their scheduled date
+  - Day detail dialog shows all requirements: journal sessions, habits, Q2 items with completion status
+  - Progress counter (completed/total) shown on each day in week view
+- **Dashboard side panel** ("Today's Progress"):
+  - Sticky right sidebar showing today's required items grouped by Journals, Habits, Q2 items
+  - Status badges: "Done" (green), "Behind" (red, based on time of day), "To Do" (neutral)
+  - Progress bar with completed/total count
+- **Eisenhower Matrix** "Role" renamed to "Category" matching the 6 habit categories with color-coded badges
+- **Habit editing** - pencil icon on each habit card opens pre-filled dialog for updates
+- New API: `/api/habit-completions/range/:startDate/:endDate` for fetching completions across a date range
+
+## Previous Changes (Feb 9, 2026)
 
 - Separated Habits and Tasks into two distinct pages:
   - **Habits** (/habits): Up to 5 recurring habits (recommend starting with 3)

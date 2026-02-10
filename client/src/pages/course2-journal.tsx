@@ -10,17 +10,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Sun, Moon, Download, ChevronLeft, ChevronRight,
-  Loader2, Check, Flame, Trophy, Star, Gift, Calendar as CalendarIcon, Plus, Edit, Eye
+  Loader2, Check, Flame, Trophy, Star, Gift, Calendar as CalendarIcon, Plus, Edit, Eye,
+  ZoomIn, ZoomOut, Repeat, Grid3X3
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { 
   format, isSameDay, subDays, differenceInDays, parseISO, 
   startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, 
-  isSameMonth, addMonths, subMonths 
+  isSameMonth, addMonths, subMonths, addWeeks, subWeeks, isWithinInterval
 } from "date-fns";
-import type { Journal, Purchase } from "@shared/schema";
+import type { Journal, Purchase, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
-// Helper to calculate streak information
+const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+const CATEGORY_STYLES: Record<string, { dot: string; text: string }> = {
+  health: { dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+  wealth: { dot: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" },
+  relationships: { dot: "bg-rose-500", text: "text-rose-600 dark:text-rose-400" },
+  career: { dot: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" },
+  mindfulness: { dot: "bg-violet-500", text: "text-violet-600 dark:text-violet-400" },
+  learning: { dot: "bg-cyan-500", text: "text-cyan-600 dark:text-cyan-400" },
+};
+
+function getHabitsForDate(habits: Habit[], date: Date): Habit[] {
+  const dayCode = DAY_CODES[date.getDay()];
+  return habits.filter(h => h.cadence.split(",").includes(dayCode));
+}
+
 function calculateStreak(journals: Journal[]): { currentStreak: number; longestStreak: number; completedDays: Set<string> } {
   const dayCompletion = new Map<string, { morning: boolean; evening: boolean }>();
   
@@ -97,6 +114,8 @@ function getRewardMilestones(currentStreak: number, longestStreak: number) {
 export default function Course2JournalPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [showLockedModal, setShowLockedModal] = useState(false);
   const [viewEntryDialogOpen, setViewEntryDialogOpen] = useState(false);
@@ -128,7 +147,36 @@ export default function Course2JournalPage() {
     enabled: !!user && hasAccess,
   });
 
-  // Calculate day completion status for calendar
+  const { data: habits = [] } = useQuery<Habit[]>({
+    queryKey: ["/api/habits"],
+    enabled: !!user,
+  });
+
+  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
+    queryKey: ["/api/eisenhower"],
+    enabled: !!user,
+  });
+
+  const calendarRange = useMemo(() => {
+    if (viewMode === "week") {
+      return { start: currentWeek, end: addDays(currentWeek, 6) };
+    }
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    return {
+      start: startOfWeek(monthStart, { weekStartsOn: 0 }),
+      end: endOfWeek(monthEnd, { weekStartsOn: 0 }),
+    };
+  }, [viewMode, currentWeek, currentMonth]);
+
+  const rangeStartStr = format(calendarRange.start, "yyyy-MM-dd");
+  const rangeEndStr = format(calendarRange.end, "yyyy-MM-dd");
+
+  const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range", rangeStartStr, rangeEndStr],
+    enabled: !!user,
+  });
+
   const dayStatus = useMemo(() => {
     const status = new Map<string, { morning: boolean; evening: boolean }>();
     journals.forEach(j => {
@@ -143,14 +191,41 @@ export default function Course2JournalPage() {
     return status;
   }, [journals]);
 
+  const completionsByDate = useMemo(() => {
+    const map = new Map<string, Set<number>>();
+    habitCompletions.forEach(hc => {
+      if (!map.has(hc.date)) map.set(hc.date, new Set());
+      map.get(hc.date)!.add(hc.habitId);
+    });
+    return map;
+  }, [habitCompletions]);
+
+  const q2ByDate = useMemo(() => {
+    const map = new Map<string, EisenhowerEntry[]>();
+    eisenhowerEntries
+      .filter(e => e.quadrant === "q2" && e.deadline)
+      .forEach(e => {
+        const d = e.deadline!;
+        if (!map.has(d)) map.set(d, []);
+        map.get(d)!.push(e);
+      });
+    return map;
+  }, [eisenhowerEntries]);
+
   const { currentStreak, longestStreak, completedDays } = useMemo(() => 
     calculateStreak(journals), [journals]);
   
   const rewards = useMemo(() => 
     getRewardMilestones(currentStreak, longestStreak), [currentStreak, longestStreak]);
 
-  // Generate calendar grid
   const calendarDays = useMemo(() => {
+    if (viewMode === "week") {
+      const days: Date[] = [];
+      for (let i = 0; i < 7; i++) {
+        days.push(addDays(currentWeek, i));
+      }
+      return days;
+    }
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
     const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -163,16 +238,14 @@ export default function Course2JournalPage() {
       day = addDays(day, 1);
     }
     return days;
-  }, [currentMonth]);
+  }, [viewMode, currentWeek, currentMonth]);
 
-  // Get entries for selected view date
   const selectedDateJournals = useMemo(() => {
     if (!selectedViewDate) return [];
     return journals.filter(j => isSameDay(parseISO(j.date), selectedViewDate));
   }, [journals, selectedViewDate]);
 
   const handleDayClick = (date: Date) => {
-    // Allow clicking any date in current month to view/add entries
     setSelectedViewDate(date);
     setViewEntryDialogOpen(true);
   };
@@ -202,6 +275,164 @@ export default function Course2JournalPage() {
   const hasTodayMorning = todayStatus?.morning || false;
   const hasTodayEvening = todayStatus?.evening || false;
 
+  const navTitle = viewMode === "week"
+    ? `${format(currentWeek, "MMM d")} - ${format(addDays(currentWeek, 6), "MMM d, yyyy")}`
+    : format(currentMonth, "MMMM yyyy");
+
+  const handlePrev = () => {
+    if (viewMode === "week") setCurrentWeek(subWeeks(currentWeek, 1));
+    else setCurrentMonth(subMonths(currentMonth, 1));
+  };
+  const handleNext = () => {
+    if (viewMode === "week") setCurrentWeek(addWeeks(currentWeek, 1));
+    else setCurrentMonth(addMonths(currentMonth, 1));
+  };
+
+  function getDayRequirements(date: Date) {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const journalStatus = dayStatus.get(dateStr);
+    const habitsForDay = getHabitsForDate(habits, date);
+    const completedIds = completionsByDate.get(dateStr) || new Set();
+    const q2Items = q2ByDate.get(dateStr) || [];
+
+    const totalRequired = 2 + habitsForDay.length + q2Items.length;
+    let completedCount = 0;
+    if (journalStatus?.morning) completedCount++;
+    if (journalStatus?.evening) completedCount++;
+    habitsForDay.forEach(h => { if (completedIds.has(h.id)) completedCount++; });
+    q2Items.forEach(e => { if (e.completed) completedCount++; });
+
+    return { dateStr, journalStatus, habitsForDay, completedIds, q2Items, totalRequired, completedCount };
+  }
+
+  function renderSelectedDayDetails() {
+    if (!selectedViewDate) return null;
+    const reqs = getDayRequirements(selectedViewDate);
+    const dateStr = reqs.dateStr;
+    const morningEntry = selectedDateJournals.find(j => j.session === "morning");
+    const eveningEntry = selectedDateJournals.find(j => j.session === "evening");
+
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between gap-4 text-sm">
+          <span className="text-muted-foreground">Daily Progress</span>
+          <Badge variant={reqs.completedCount >= reqs.totalRequired ? "default" : "outline"}>
+            {reqs.completedCount}/{reqs.totalRequired}
+          </Badge>
+        </div>
+
+        <div className="p-4 rounded-lg border">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2">
+              <Sun className="h-5 w-5 text-amber-500" />
+              <span className="font-medium">Morning Journal</span>
+            </div>
+            {morningEntry ? (
+              <Button 
+                size="sm" variant="outline"
+                onClick={() => { setViewEntryDialogOpen(false); setLocation(`/journal/${dateStr}/morning`); }}
+                data-testid="button-edit-morning"
+              >
+                <Edit className="h-4 w-4 mr-2" />Edit
+              </Button>
+            ) : (
+              <Button 
+                size="sm"
+                onClick={() => { setViewEntryDialogOpen(false); setLocation(`/journal/${dateStr}/morning`); }}
+                data-testid="button-new-morning"
+              >
+                <Plus className="h-4 w-4 mr-2" />New Entry
+              </Button>
+            )}
+          </div>
+          {morningEntry && (
+            <div className="space-y-2 text-sm">
+              {morningEntry.gratitude && <div><p className="text-xs text-muted-foreground mb-1">Gratitude</p><p className="line-clamp-2">{morningEntry.gratitude}</p></div>}
+              {morningEntry.intentions && <div><p className="text-xs text-muted-foreground mb-1">Intentions</p><p className="line-clamp-2">{morningEntry.intentions}</p></div>}
+            </div>
+          )}
+          {!morningEntry && <p className="text-sm text-muted-foreground">Required - No entry yet</p>}
+        </div>
+
+        <div className="p-4 rounded-lg border">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-center gap-2">
+              <Moon className="h-5 w-5 text-indigo-500" />
+              <span className="font-medium">Evening Journal</span>
+            </div>
+            {eveningEntry ? (
+              <Button 
+                size="sm" variant="outline"
+                onClick={() => { setViewEntryDialogOpen(false); setLocation(`/journal/${dateStr}/evening`); }}
+                data-testid="button-edit-evening"
+              >
+                <Edit className="h-4 w-4 mr-2" />Edit
+              </Button>
+            ) : (
+              <Button 
+                size="sm"
+                onClick={() => { setViewEntryDialogOpen(false); setLocation(`/journal/${dateStr}/evening`); }}
+                data-testid="button-new-evening"
+              >
+                <Plus className="h-4 w-4 mr-2" />New Entry
+              </Button>
+            )}
+          </div>
+          {eveningEntry && (
+            <div className="space-y-2 text-sm">
+              {eveningEntry.highlights && <div><p className="text-xs text-muted-foreground mb-1">Highlights</p><p className="line-clamp-2">{eveningEntry.highlights}</p></div>}
+              {eveningEntry.reflections && <div><p className="text-xs text-muted-foreground mb-1">Reflections</p><p className="line-clamp-2">{eveningEntry.reflections}</p></div>}
+            </div>
+          )}
+          {!eveningEntry && <p className="text-sm text-muted-foreground">Required - No entry yet</p>}
+        </div>
+
+        {reqs.habitsForDay.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Repeat className="h-4 w-4 text-primary" />
+              Habits
+            </p>
+            {reqs.habitsForDay.map(habit => {
+              const done = reqs.completedIds.has(habit.id);
+              const catStyle = CATEGORY_STYLES[habit.category || "health"];
+              return (
+                <div key={habit.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                  <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${done ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                    {done && <Check className="h-3 w-3 text-primary-foreground" />}
+                  </div>
+                  <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catStyle?.dot || "bg-muted"}`} />
+                  <span className={`text-sm flex-1 ${done ? "line-through text-muted-foreground" : ""}`}>{habit.name}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {HABIT_CATEGORIES[(habit.category as HabitCategory) || "health"]?.label || "Health"}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {reqs.q2Items.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium flex items-center gap-2">
+              <Grid3X3 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              Q2 Scheduled Items
+            </p>
+            {reqs.q2Items.map(entry => (
+              <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${entry.completed ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
+                  {entry.completed && <Check className="h-3 w-3 text-primary-foreground" />}
+                </div>
+                <span className={`text-sm flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>{entry.task}</span>
+                {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <LockedCourseModal 
@@ -221,10 +452,9 @@ export default function Course2JournalPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="font-serif text-3xl font-bold mb-2">Transformation Journal</h1>
-          <p className="text-muted-foreground">Track your daily reflections and build a journaling habit</p>
+          <p className="text-muted-foreground">Track your daily reflections, habits, and scheduled items</p>
         </div>
 
-        {/* Today's Actions - Quick Access */}
         <div className="grid md:grid-cols-2 gap-4 mb-8">
           <Card className="hover-elevate" data-testid="card-morning-session">
             <CardContent className="py-5">
@@ -251,15 +481,9 @@ export default function Course2JournalPage() {
                     data-testid="button-morning-journal"
                   >
                     {hasTodayMorning ? (
-                      <>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </>
+                      <><Edit className="h-4 w-4 mr-2" />Edit</>
                     ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Start
-                      </>
+                      <><Plus className="h-4 w-4 mr-2" />Start</>
                     )}
                   </Button>
                 </div>
@@ -292,15 +516,9 @@ export default function Course2JournalPage() {
                     data-testid="button-evening-journal"
                   >
                     {hasTodayEvening ? (
-                      <>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </>
+                      <><Edit className="h-4 w-4 mr-2" />Edit</>
                     ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Start
-                      </>
+                      <><Plus className="h-4 w-4 mr-2" />Start</>
                     )}
                   </Button>
                 </div>
@@ -310,40 +528,46 @@ export default function Course2JournalPage() {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-8">
-          {/* Large Calendar */}
           <Card>
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="h-5 w-5 text-primary" />
                   <CardTitle className="font-serif text-xl">Journal Calendar</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                    data-testid="button-prev-month"
+                    variant="outline" size="icon"
+                    onClick={handlePrev}
+                    data-testid="button-prev-period"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <span className="min-w-[140px] text-center font-medium">
-                    {format(currentMonth, "MMMM yyyy")}
+                  <span className="min-w-[160px] text-center font-medium text-sm">
+                    {navTitle}
                   </span>
                   <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                    data-testid="button-next-month"
+                    variant="outline" size="icon"
+                    onClick={handleNext}
+                    data-testid="button-next-period"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant="outline" size="icon"
+                    onClick={() => setViewMode(viewMode === "week" ? "month" : "week")}
+                    data-testid="button-toggle-view"
+                    title={viewMode === "week" ? "Zoom out to month" : "Zoom in to week"}
+                  >
+                    {viewMode === "week" ? <ZoomOut className="h-4 w-4" /> : <ZoomIn className="h-4 w-4" />}
+                  </Button>
                 </div>
               </div>
-              <CardDescription>Click on a date to view or add journal entries</CardDescription>
+              <CardDescription>
+                {viewMode === "week" ? "Week view" : "Month view"} — Click a day to see details. Zoom {viewMode === "week" ? "out for month" : "in for week"}.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Calendar Header */}
               <div className="grid grid-cols-7 mb-2">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
                   <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
@@ -352,43 +576,87 @@ export default function Course2JournalPage() {
                 ))}
               </div>
               
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1" data-testid="calendar-grid">
+              <div className={`grid grid-cols-7 gap-1`} data-testid="calendar-grid">
                 {calendarDays.map((date, idx) => {
                   const dateStr = format(date, "yyyy-MM-dd");
-                  const status = dayStatus.get(dateStr);
-                  const hasMorning = status?.morning || false;
-                  const hasEvening = status?.evening || false;
-                  const isComplete = hasMorning && hasEvening;
-                  const hasAnyEntry = hasMorning || hasEvening;
-                  const isCurrentMonth = isSameMonth(date, currentMonth);
+                  const reqs = getDayRequirements(date);
+                  const isCurrentMonth = viewMode === "month" ? isSameMonth(date, currentMonth) : true;
                   const isToday = isSameDay(date, new Date());
+                  const allDone = reqs.totalRequired > 0 && reqs.completedCount >= reqs.totalRequired;
+                  const hasPartial = reqs.completedCount > 0 && !allDone;
                   
                   return (
                     <button
                       key={idx}
                       onClick={() => handleDayClick(date)}
-                      disabled={!isCurrentMonth}
+                      disabled={viewMode === "month" && !isCurrentMonth}
                       className={`
-                        relative aspect-square p-1 rounded-lg text-sm transition-colors
-                        flex flex-col items-center justify-center gap-0.5
-                        ${!isCurrentMonth ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
+                        relative p-1 rounded-lg text-sm transition-colors
+                        flex flex-col items-center justify-start gap-0.5
+                        ${viewMode === "week" ? "min-h-[120px] py-2" : "aspect-square"}
+                        ${!isCurrentMonth && viewMode === "month" ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
                         ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-                        ${isComplete ? 'bg-primary/15' : hasMorning ? 'bg-amber-500/10' : hasEvening ? 'bg-indigo-500/10' : ''}
+                        ${allDone ? 'bg-primary/15' : hasPartial ? 'bg-amber-500/10' : ''}
                       `}
                       data-testid={`calendar-day-${dateStr}`}
                     >
                       <span className={`font-medium ${isToday ? 'text-primary' : ''}`}>
-                        {date.getDate()}
+                        {viewMode === "week" ? format(date, "d") : date.getDate()}
                       </span>
-                      {hasAnyEntry && isCurrentMonth && (
-                        <div className="flex gap-0.5">
-                          {hasMorning && (
-                            <div className={`w-2 h-2 rounded-full ${isComplete ? 'bg-primary' : 'bg-amber-500'}`} />
+                      {viewMode === "week" && (
+                        <span className="text-xs text-muted-foreground">{format(date, "EEE")}</span>
+                      )}
+                      {isCurrentMonth && (
+                        <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                          <div className="flex gap-0.5">
+                            {reqs.journalStatus?.morning && (
+                              <div className={`w-2 h-2 rounded-full ${allDone ? "bg-primary" : "bg-amber-500"}`} />
+                            )}
+                            {reqs.journalStatus?.evening && (
+                              <div className={`w-2 h-2 rounded-full ${allDone ? "bg-primary" : "bg-indigo-500"}`} />
+                            )}
+                          </div>
+                          {viewMode === "week" && reqs.habitsForDay.length > 0 && (
+                            <div className="flex gap-0.5 flex-wrap justify-center max-w-full">
+                              {reqs.habitsForDay.map(h => {
+                                const done = reqs.completedIds.has(h.id);
+                                const catStyle = CATEGORY_STYLES[h.category || "health"];
+                                return (
+                                  <div 
+                                    key={h.id} 
+                                    className={`w-2 h-2 rounded-full ${done ? catStyle?.dot : "bg-muted-foreground/20"}`} 
+                                    title={h.name}
+                                  />
+                                );
+                              })}
+                            </div>
                           )}
-                          {hasEvening && (
-                            <div className={`w-2 h-2 rounded-full ${isComplete ? 'bg-primary' : 'bg-indigo-500'}`} />
+                          {viewMode === "week" && reqs.q2Items.length > 0 && (
+                            <div className="flex gap-0.5">
+                              {reqs.q2Items.map(e => (
+                                <div 
+                                  key={e.id} 
+                                  className={`w-2 h-2 rounded-sm ${e.completed ? "bg-green-500" : "bg-green-500/30"}`} 
+                                  title={e.task}
+                                />
+                              ))}
+                            </div>
                           )}
+                          {viewMode === "month" && (reqs.habitsForDay.length > 0 || reqs.q2Items.length > 0) && (
+                            <div className="flex gap-0.5">
+                              {reqs.habitsForDay.length > 0 && (
+                                <div className={`w-2 h-2 rounded-full ${reqs.habitsForDay.every(h => reqs.completedIds.has(h.id)) ? "bg-cyan-500" : "bg-cyan-500/30"}`} />
+                              )}
+                              {reqs.q2Items.length > 0 && (
+                                <div className={`w-2 h-2 rounded-sm ${reqs.q2Items.every(e => e.completed) ? "bg-green-500" : "bg-green-500/30"}`} />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {viewMode === "week" && reqs.totalRequired > 0 && isCurrentMonth && (
+                        <div className="mt-auto text-xs text-muted-foreground">
+                          {reqs.completedCount}/{reqs.totalRequired}
                         </div>
                       )}
                     </button>
@@ -396,7 +664,6 @@ export default function Course2JournalPage() {
                 })}
               </div>
               
-              {/* Legend */}
               <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-amber-500" />
@@ -408,13 +675,20 @@ export default function Course2JournalPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span>Both Complete</span>
+                  <span>All Done</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                  <span>Habits</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-green-500" />
+                  <span>Q2 Items</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Sidebar - Stats & Rewards */}
           <div className="space-y-4">
             <Card>
               <CardHeader className="pb-2">
@@ -528,7 +802,6 @@ export default function Course2JournalPage() {
         </div>
       </main>
 
-      {/* View Entry Dialog */}
       <Dialog open={viewEntryDialogOpen} onOpenChange={setViewEntryDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -536,133 +809,10 @@ export default function Course2JournalPage() {
               {selectedViewDate ? format(selectedViewDate, "EEEE, MMMM d, yyyy") : ""}
             </DialogTitle>
             <DialogDescription>
-              {selectedDateJournals.length > 0 
-                ? "View or edit your journal entries for this day"
-                : "Start a new journal entry for this day"}
+              Daily requirements: journaling, scheduled habits, and Q2 items
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 pt-2">
-            {selectedViewDate && (() => {
-              const dateStr = format(selectedViewDate, "yyyy-MM-dd");
-              const morningEntry = selectedDateJournals.find(j => j.session === "morning");
-              const eveningEntry = selectedDateJournals.find(j => j.session === "evening");
-              
-              return (
-                <>
-                  {/* Morning Entry */}
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <div className="flex items-center gap-2">
-                        <Sun className="h-5 w-5 text-amber-500" />
-                        <span className="font-medium">Morning Session</span>
-                      </div>
-                      {morningEntry ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setViewEntryDialogOpen(false);
-                            setLocation(`/journal/${dateStr}/morning`);
-                          }}
-                          data-testid="button-edit-morning"
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      ) : (
-                        <Button 
-                          size="sm"
-                          onClick={() => {
-                            setViewEntryDialogOpen(false);
-                            setLocation(`/journal/${dateStr}/morning`);
-                          }}
-                          data-testid="button-new-morning"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          New Entry
-                        </Button>
-                      )}
-                    </div>
-                    {morningEntry && (
-                      <div className="space-y-2 text-sm">
-                        {morningEntry.gratitude && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Gratitude</p>
-                            <p className="line-clamp-2">{morningEntry.gratitude}</p>
-                          </div>
-                        )}
-                        {morningEntry.intentions && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Intentions</p>
-                            <p className="line-clamp-2">{morningEntry.intentions}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!morningEntry && (
-                      <p className="text-sm text-muted-foreground">No entry yet</p>
-                    )}
-                  </div>
-
-                  {/* Evening Entry */}
-                  <div className="p-4 rounded-lg border">
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <div className="flex items-center gap-2">
-                        <Moon className="h-5 w-5 text-indigo-500" />
-                        <span className="font-medium">Evening Session</span>
-                      </div>
-                      {eveningEntry ? (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setViewEntryDialogOpen(false);
-                            setLocation(`/journal/${dateStr}/evening`);
-                          }}
-                          data-testid="button-edit-evening"
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                      ) : (
-                        <Button 
-                          size="sm"
-                          onClick={() => {
-                            setViewEntryDialogOpen(false);
-                            setLocation(`/journal/${dateStr}/evening`);
-                          }}
-                          data-testid="button-new-evening"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          New Entry
-                        </Button>
-                      )}
-                    </div>
-                    {eveningEntry && (
-                      <div className="space-y-2 text-sm">
-                        {eveningEntry.highlights && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Highlights</p>
-                            <p className="line-clamp-2">{eveningEntry.highlights}</p>
-                          </div>
-                        )}
-                        {eveningEntry.reflections && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Reflections</p>
-                            <p className="line-clamp-2">{eveningEntry.reflections}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {!eveningEntry && (
-                      <p className="text-sm text-muted-foreground">No entry yet</p>
-                    )}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+          {renderSelectedDayDetails()}
         </DialogContent>
       </Dialog>
     </div>

@@ -567,6 +567,18 @@ export async function registerRoutes(
 
   // ==================== HABIT COMPLETIONS ====================
 
+  app.get("/api/habit-completions/range/:startDate/:endDate", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { startDate, endDate } = req.params;
+      const completions = await storage.getHabitCompletionsForRange(userId, startDate, endDate);
+      res.json(completions);
+    } catch (error) {
+      console.error("Error fetching habit completions range:", error);
+      res.status(500).json({ error: "Failed to fetch habit completions" });
+    }
+  });
+
   app.get("/api/habit-completions/:date", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
