@@ -145,16 +145,22 @@ export default function Course2JournalPage() {
   const { data: journals = [], isLoading: journalsLoading } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
     enabled: !!user && hasAccess,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
     queryKey: ["/api/eisenhower"],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const calendarRange = useMemo(() => {
@@ -175,6 +181,8 @@ export default function Course2JournalPage() {
   const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/range", rangeStartStr, rangeEndStr],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const dayStatus = useMemo(() => {
@@ -582,8 +590,6 @@ export default function Course2JournalPage() {
                   const reqs = getDayRequirements(date);
                   const isCurrentMonth = viewMode === "month" ? isSameMonth(date, currentMonth) : true;
                   const isToday = isSameDay(date, new Date());
-                  const allDone = reqs.totalRequired > 0 && reqs.completedCount >= reqs.totalRequired;
-                  const hasPartial = reqs.completedCount > 0 && !allDone;
                   
                   return (
                     <button
@@ -593,10 +599,9 @@ export default function Course2JournalPage() {
                       className={`
                         relative p-1 rounded-lg text-sm transition-colors
                         flex flex-col items-center justify-start gap-0.5
-                        ${viewMode === "week" ? "min-h-[120px] py-2" : "aspect-square"}
+                        ${viewMode === "week" ? "min-h-[140px] py-2" : "aspect-square"}
                         ${!isCurrentMonth && viewMode === "month" ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
                         ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
-                        ${allDone ? 'bg-primary/15' : hasPartial ? 'bg-amber-500/10' : ''}
                       `}
                       data-testid={`calendar-day-${dateStr}`}
                     >
@@ -604,52 +609,60 @@ export default function Course2JournalPage() {
                         {viewMode === "week" ? format(date, "d") : date.getDate()}
                       </span>
                       {viewMode === "week" && (
-                        <span className="text-xs text-muted-foreground">{format(date, "EEE")}</span>
+                        <span className="text-xs text-muted-foreground mb-1">{format(date, "EEE")}</span>
                       )}
-                      {isCurrentMonth && (
+                      {isCurrentMonth && viewMode === "week" && (
+                        <div className="flex flex-col items-start gap-0.5 w-full px-1 text-left overflow-hidden">
+                          <div className="flex items-center gap-1 w-full">
+                            <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${reqs.journalStatus?.morning ? "bg-amber-500 border-amber-500" : "border-muted-foreground/30"}`}>
+                              {reqs.journalStatus?.morning && <Check className="h-2 w-2 text-white" />}
+                            </div>
+                            <span className={`text-[10px] leading-tight truncate ${reqs.journalStatus?.morning ? "text-muted-foreground line-through" : ""}`}>AM</span>
+                          </div>
+                          <div className="flex items-center gap-1 w-full">
+                            <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${reqs.journalStatus?.evening ? "bg-indigo-500 border-indigo-500" : "border-muted-foreground/30"}`}>
+                              {reqs.journalStatus?.evening && <Check className="h-2 w-2 text-white" />}
+                            </div>
+                            <span className={`text-[10px] leading-tight truncate ${reqs.journalStatus?.evening ? "text-muted-foreground line-through" : ""}`}>PM</span>
+                          </div>
+                          {reqs.habitsForDay.map(h => {
+                            const done = reqs.completedIds.has(h.id);
+                            const catStyle = CATEGORY_STYLES[h.category || "health"];
+                            return (
+                              <div key={h.id} className="flex items-center gap-1 w-full">
+                                <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${done ? `${catStyle?.dot} border-transparent` : "border-muted-foreground/30"}`}>
+                                  {done && <Check className="h-2 w-2 text-white" />}
+                                </div>
+                                <span className={`text-[10px] leading-tight truncate ${done ? "text-muted-foreground line-through" : ""}`}>{h.name}</span>
+                              </div>
+                            );
+                          })}
+                          {reqs.q2Items.map(e => (
+                            <div key={e.id} className="flex items-center gap-1 w-full">
+                              <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${e.completed ? "bg-green-500 border-green-500" : "border-muted-foreground/30"}`}>
+                                {e.completed && <Check className="h-2 w-2 text-white" />}
+                              </div>
+                              <span className={`text-[10px] leading-tight truncate ${e.completed ? "text-muted-foreground line-through" : ""}`}>{e.task}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {isCurrentMonth && viewMode === "month" && (
                         <div className="flex flex-col items-center gap-0.5 mt-0.5">
                           <div className="flex gap-0.5">
-                            {reqs.journalStatus?.morning && (
-                              <div className={`w-2 h-2 rounded-full ${allDone ? "bg-primary" : "bg-amber-500"}`} />
-                            )}
-                            {reqs.journalStatus?.evening && (
-                              <div className={`w-2 h-2 rounded-full ${allDone ? "bg-primary" : "bg-indigo-500"}`} />
-                            )}
+                            <div className={`w-2 h-2 rounded-full ${reqs.journalStatus?.morning ? "bg-amber-500" : "bg-muted-foreground/20"}`} />
+                            <div className={`w-2 h-2 rounded-full ${reqs.journalStatus?.evening ? "bg-indigo-500" : "bg-muted-foreground/20"}`} />
                           </div>
-                          {viewMode === "week" && reqs.habitsForDay.length > 0 && (
-                            <div className="flex gap-0.5 flex-wrap justify-center max-w-full">
+                          {(reqs.habitsForDay.length > 0 || reqs.q2Items.length > 0) && (
+                            <div className="flex gap-0.5 flex-wrap justify-center">
                               {reqs.habitsForDay.map(h => {
                                 const done = reqs.completedIds.has(h.id);
                                 const catStyle = CATEGORY_STYLES[h.category || "health"];
-                                return (
-                                  <div 
-                                    key={h.id} 
-                                    className={`w-2 h-2 rounded-full ${done ? catStyle?.dot : "bg-muted-foreground/20"}`} 
-                                    title={h.name}
-                                  />
-                                );
+                                return <div key={h.id} className={`w-2 h-2 rounded-full ${done ? catStyle?.dot : "bg-muted-foreground/20"}`} title={h.name} />;
                               })}
-                            </div>
-                          )}
-                          {viewMode === "week" && reqs.q2Items.length > 0 && (
-                            <div className="flex gap-0.5">
                               {reqs.q2Items.map(e => (
-                                <div 
-                                  key={e.id} 
-                                  className={`w-2 h-2 rounded-sm ${e.completed ? "bg-green-500" : "bg-green-500/30"}`} 
-                                  title={e.task}
-                                />
+                                <div key={e.id} className={`w-2 h-2 rounded-sm ${e.completed ? "bg-green-500" : "bg-muted-foreground/20"}`} title={e.task} />
                               ))}
-                            </div>
-                          )}
-                          {viewMode === "month" && (reqs.habitsForDay.length > 0 || reqs.q2Items.length > 0) && (
-                            <div className="flex gap-0.5">
-                              {reqs.habitsForDay.length > 0 && (
-                                <div className={`w-2 h-2 rounded-full ${reqs.habitsForDay.every(h => reqs.completedIds.has(h.id)) ? "bg-cyan-500" : "bg-cyan-500/30"}`} />
-                              )}
-                              {reqs.q2Items.length > 0 && (
-                                <div className={`w-2 h-2 rounded-sm ${reqs.q2Items.every(e => e.completed) ? "bg-green-500" : "bg-green-500/30"}`} />
-                              )}
                             </div>
                           )}
                         </div>
@@ -674,12 +687,8 @@ export default function Course2JournalPage() {
                   <span>Evening</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span>All Done</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                  <span>Habits</span>
+                  <div className="w-3 h-3 rounded-full bg-muted-foreground/20" />
+                  <span>Not Done</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-green-500" />

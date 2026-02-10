@@ -226,6 +226,7 @@ export default function HabitsPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habit-completions", dateStr] });
+      qc.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
     },
   });
 

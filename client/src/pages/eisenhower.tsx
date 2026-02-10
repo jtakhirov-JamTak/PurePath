@@ -114,6 +114,7 @@ export default function EisenhowerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
       setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "" });
     },
@@ -125,6 +126,7 @@ export default function EisenhowerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
     },
   });
 
@@ -134,6 +136,7 @@ export default function EisenhowerPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
     },
   });
 
