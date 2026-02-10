@@ -14,8 +14,22 @@ import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2 } from "luci
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { EisenhowerEntry } from "@shared/schema";
+import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
-const ROLES = ["health", "wealth", "relationships"] as const;
+const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
+
+const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+  health: { bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-500" },
+  wealth: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-500/30", dot: "bg-amber-500" },
+  relationships: { bg: "bg-rose-500/10", text: "text-rose-700 dark:text-rose-400", border: "border-rose-500/30", dot: "bg-rose-500" },
+  career: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  mindfulness: { bg: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-400", border: "border-violet-500/30", dot: "bg-violet-500" },
+  learning: { bg: "bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-500" },
+};
+
+function getCategoryStyle(category: string | null) {
+  return CATEGORY_STYLES[category || "health"] || CATEGORY_STYLES.health;
+}
 const QUADRANTS = [
   { id: "q1", name: "Q1 - Urgent & Important", description: "Do Now", color: "bg-red-500/20 text-red-700 dark:text-red-400" },
   { id: "q2", name: "Q2 - Important, Not Urgent", description: "Schedule", color: "bg-green-500/20 text-green-700 dark:text-green-400" },
@@ -62,7 +76,7 @@ export default function EisenhowerPage() {
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
-    role: "health" as typeof ROLES[number],
+    role: "health" as HabitCategory,
     task: "",
     quadrant: "q2",
     deadline: "",
@@ -180,15 +194,23 @@ export default function EisenhowerPage() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label>Role</Label>
-                  <Select value={newEntry.role} onValueChange={(v) => setNewEntry({ ...newEntry, role: v as typeof ROLES[number] })}>
-                    <SelectTrigger data-testid="select-role">
+                  <Label>Category</Label>
+                  <Select value={newEntry.role} onValueChange={(v) => setNewEntry({ ...newEntry, role: v as HabitCategory })}>
+                    <SelectTrigger data-testid="select-category">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ROLES.map(role => (
-                        <SelectItem key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</SelectItem>
-                      ))}
+                      {CATEGORY_KEYS.map(key => {
+                        const style = getCategoryStyle(key);
+                        return (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center gap-2">
+                              <div className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                              {HABIT_CATEGORIES[key].label}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -297,7 +319,10 @@ export default function EisenhowerPage() {
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm ${entry.completed ? "line-through opacity-60" : ""}`}>{entry.task}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge variant="outline" className="text-xs capitalize">{entry.role}</Badge>
+                            <Badge variant="outline" className={`text-xs ${getCategoryStyle(entry.role).text} ${getCategoryStyle(entry.role).border}`}>
+                              <span className={`h-2 w-2 rounded-full mr-1 ${getCategoryStyle(entry.role).dot}`} />
+                              {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
+                            </Badge>
                             {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}
                             {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
                           </div>
