@@ -45,7 +45,7 @@ export function AppHeader({ showBackButton, backTo, backLabel, rightContent }: A
           <span className="font-serif text-xl font-semibold">Inner Journey</span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {rightContent}
           <ThemeToggle />
           

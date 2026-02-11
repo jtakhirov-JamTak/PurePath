@@ -111,9 +111,9 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-10">
-        <div className="mb-10 max-w-5xl">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-3">
+      <main className="container mx-auto px-4 py-12">
+        <div className="mb-12 max-w-5xl">
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">
             Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -124,14 +124,14 @@ export default function DashboardPage() {
         <div className="grid lg:grid-cols-[1fr_340px] gap-8">
           <div>
             {!hasPhase12 && !hasPhase3 && (
-              <Card className="mb-10 border-primary/30 bg-gradient-to-r from-primary/5 to-transparent overflow-visible" data-testid="card-allinone-promo">
+              <Card className="mb-10 overflow-visible" data-testid="card-allinone-promo">
                 <CardHeader className="pb-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center shadow-sm shrink-0">
-                      <Package className="h-7 w-7 text-primary" />
-                    </div>
                     <div className="flex-1">
-                      <CardTitle className="font-serif text-xl mb-1">Get the Complete Inner Journey</CardTitle>
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <Package className="h-6 w-6 text-primary" />
+                        <CardTitle className="font-serif text-xl">Get the Complete Inner Journey</CardTitle>
+                      </div>
                       <CardDescription className="text-base">All 3 phases for $499 (save $199 vs. buying separately)</CardDescription>
                     </div>
                     <Button 
@@ -148,9 +148,9 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
-                <Heart className="h-6 w-6 text-primary" />
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <Heart className="h-5 w-5 text-primary" />
                 <h2 className="font-serif text-2xl font-bold">Phase 1: Self-Reflection</h2>
                 {hasPhase12 ? (
                   <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -164,7 +164,7 @@ export default function DashboardPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-6">
                 Explore who you are and who you want to become through video lessons and AI-guided conversations.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -175,8 +175,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-muted-foreground" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <Badge variant="outline" className="text-xs mb-1">Lesson 1</Badge>
@@ -194,8 +194,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-muted-foreground" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <Badge variant="outline" className="text-xs mb-1">Lesson 2</Badge>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                         <MessageSquare className="h-5 w-5 text-primary" />
                       </div>
                       <div>
@@ -234,9 +234,9 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
-                <Sparkles className="h-6 w-6 text-primary" />
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <Sparkles className="h-5 w-5 text-primary" />
                 <h2 className="font-serif text-2xl font-bold">Phase 2: Structure</h2>
                 {hasPhase12 ? (
                   <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -250,7 +250,7 @@ export default function DashboardPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-6">
                 Build the daily systems and habits that turn self-knowledge into lasting change.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -261,8 +261,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-muted-foreground" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <Badge variant="outline" className="text-xs mb-1">Lesson 3</Badge>
@@ -280,8 +280,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <BookOpen className="h-5 w-5 text-amber-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <BookOpen className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Journaling</CardTitle>
@@ -298,8 +298,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-cyan-500/10 flex items-center justify-center shrink-0">
-                        <Repeat className="h-5 w-5 text-cyan-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Repeat className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Habits</CardTitle>
@@ -316,8 +316,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
-                        <ListTodo className="h-5 w-5 text-blue-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <ListTodo className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Daily Tasks</CardTitle>
@@ -337,9 +337,9 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="mb-10">
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
-                <Zap className="h-6 w-6 text-primary" />
+            <div className="mb-12">
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
+                <Zap className="h-5 w-5 text-primary" />
                 <h2 className="font-serif text-2xl font-bold">Phase 3: Transformation</h2>
                 {hasPhase3 ? (
                   <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
@@ -353,7 +353,7 @@ export default function DashboardPage() {
                   </Badge>
                 )}
               </div>
-              <p className="text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-6">
                 Understand your patterns and transform them with AI-powered analysis and personalized insights.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -364,8 +364,8 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-muted-foreground" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Video className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <Badge variant="outline" className="text-xs mb-1">Lesson</Badge>
@@ -383,7 +383,7 @@ export default function DashboardPage() {
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                         <Zap className="h-5 w-5 text-primary" />
                       </div>
                       <div>
@@ -405,16 +405,16 @@ export default function DashboardPage() {
             </div>
 
             <div className="mb-10">
-              <h2 className="font-serif text-2xl font-bold mb-6">Self-Development Tools</h2>
-              <p className="text-muted-foreground mb-4">
+              <h2 className="font-serif text-2xl font-bold mb-4">Self-Development Tools</h2>
+              <p className="text-muted-foreground mb-6">
                 Free tools available to all users to support your growth practice.
               </p>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/meditation")} data-testid="card-meditation">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-indigo-500/10 flex items-center justify-center shrink-0">
-                        <Brain className="h-6 w-6 text-indigo-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Brain className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Meditation</CardTitle>
@@ -427,8 +427,8 @@ export default function DashboardPage() {
                 <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/emotional-processing")} data-testid="card-emotional">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-rose-500/10 flex items-center justify-center shrink-0">
-                        <Heart className="h-6 w-6 text-rose-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Heart className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Emotional Processing</CardTitle>
@@ -441,8 +441,8 @@ export default function DashboardPage() {
                 <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/eisenhower")} data-testid="card-eisenhower">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
-                        <Grid3X3 className="h-6 w-6 text-amber-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Grid3X3 className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Eisenhower Matrix</CardTitle>
@@ -455,8 +455,8 @@ export default function DashboardPage() {
                 <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/empathy")} data-testid="card-empathy">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
-                        <Users className="h-6 w-6 text-emerald-500" />
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Users className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <CardTitle className="font-serif text-base">Empathy Module</CardTitle>
@@ -471,14 +471,14 @@ export default function DashboardPage() {
 
           <div className="space-y-4 lg:sticky lg:top-20 lg:self-start" data-testid="sidebar-today-progress">
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between gap-4">
                   <CardTitle className="font-serif text-lg">Today's Progress</CardTitle>
                   <Badge variant={completedItems >= totalItems ? "default" : "outline"} data-testid="badge-progress">
                     {completedItems}/{totalItems}
                   </Badge>
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden mt-3">
                   <div 
                     className="h-full bg-primary rounded-full transition-all"
                     style={{ width: `${progressPct}%` }}
@@ -486,9 +486,9 @@ export default function DashboardPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
                     <BookOpen className="h-3.5 w-3.5" />
                     Journaling
                   </p>
@@ -520,7 +520,7 @@ export default function DashboardPage() {
 
                 {todaysHabits.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
                       <Repeat className="h-3.5 w-3.5" />
                       Habits
                     </p>
@@ -550,7 +550,7 @@ export default function DashboardPage() {
 
                 {todayQ2.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
                       <Grid3X3 className="h-3.5 w-3.5" />
                       Q2 Scheduled
                     </p>

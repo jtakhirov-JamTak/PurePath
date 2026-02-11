@@ -137,18 +137,20 @@ export default function JournalEntryPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+      <header className="border-b border-border/50">
+        <div className="container mx-auto px-4 py-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/course2")} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              {isMorning ? (
-                <Sun className="h-6 w-6 text-amber-500" />
-              ) : (
-                <Moon className="h-6 w-6 text-indigo-500" />
-              )}
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/[0.08] flex items-center justify-center">
+                {isMorning ? (
+                  <Sun className="h-5 w-5 text-amber-500" />
+                ) : (
+                  <Moon className="h-5 w-5 text-indigo-500" />
+                )}
+              </div>
               <span className="font-serif text-lg font-medium capitalize">
                 {isEditing ? "Edit" : "New"} {session} Journal
               </span>
@@ -177,8 +179,8 @@ export default function JournalEntryPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="mb-8">
+      <main className="container mx-auto px-4 py-12 max-w-3xl">
+        <div className="mb-10">
           <h1 className="font-serif text-3xl font-bold mb-2 capitalize">{session} Reflection</h1>
           <p className="text-muted-foreground">{formattedDate}</p>
         </div>
@@ -197,7 +199,7 @@ export default function JournalEntryPage() {
             ))}
           </div>
         ) : isMorning ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card data-testid="card-gratitude">
               <CardHeader>
                 <CardTitle className="font-serif text-lg">Gratitude</CardTitle>
@@ -247,7 +249,7 @@ export default function JournalEntryPage() {
             </Card>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card data-testid="card-highlights">
               <CardHeader>
                 <CardTitle className="font-serif text-lg">Today's Highlights</CardTitle>
@@ -314,7 +316,7 @@ export default function JournalEntryPage() {
           </div>
         )}
 
-        <div className="mt-8 flex justify-end">
+        <div className="mt-12 flex justify-end">
           <Button 
             size="lg"
             onClick={() => saveMutation.mutate()} 

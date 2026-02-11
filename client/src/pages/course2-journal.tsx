@@ -457,18 +457,18 @@ export default function Course2JournalPage() {
         }
       />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+      <main className="container mx-auto px-4 py-10">
+        <div className="mb-10">
           <h1 className="font-serif text-3xl font-bold mb-2">Transformation Journal</h1>
           <p className="text-muted-foreground">Track your daily reflections, habits, and scheduled items</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card className="hover-elevate" data-testid="card-morning-session">
-            <CardContent className="py-5">
+            <CardContent className="py-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-lg bg-primary/[0.08] flex items-center justify-center">
                     <Sun className="h-6 w-6 text-amber-500" />
                   </div>
                   <div>
@@ -500,10 +500,10 @@ export default function Course2JournalPage() {
           </Card>
 
           <Card className="hover-elevate" data-testid="card-evening-session">
-            <CardContent className="py-5">
+            <CardContent className="py-6">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-lg bg-primary/[0.08] flex items-center justify-center">
                     <Moon className="h-6 w-6 text-indigo-500" />
                   </div>
                   <div>
@@ -535,7 +535,7 @@ export default function Course2JournalPage() {
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+        <div className="grid lg:grid-cols-[1fr_320px] gap-10">
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -597,11 +597,11 @@ export default function Course2JournalPage() {
                       onClick={() => handleDayClick(date)}
                       disabled={viewMode === "month" && !isCurrentMonth}
                       className={`
-                        relative p-1 rounded-lg text-sm transition-colors
+                        relative p-2 rounded-lg text-sm transition-colors
                         flex flex-col items-center justify-start gap-0.5
-                        ${viewMode === "week" ? "min-h-[140px] py-2" : "aspect-square"}
+                        ${viewMode === "week" ? "min-h-[150px] py-2" : "aspect-square"}
                         ${!isCurrentMonth && viewMode === "month" ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
-                        ${isToday ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''}
+                        ${isToday ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}
                       `}
                       data-testid={`calendar-day-${dateStr}`}
                     >
@@ -677,7 +677,7 @@ export default function Course2JournalPage() {
                 })}
               </div>
               
-              <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <div className="mt-4 pt-4 border-t flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-amber-500" />
                   <span>Morning</span>
@@ -700,7 +700,7 @@ export default function Course2JournalPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
                   <CardTitle className="font-serif text-lg">Your Streak</CardTitle>
@@ -710,7 +710,7 @@ export default function Course2JournalPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-3xl font-bold text-primary">{currentStreak}</p>
+                      <p className="text-2xl font-bold text-primary">{currentStreak}</p>
                       <p className="text-sm text-muted-foreground">Current streak</p>
                     </div>
                     <div className="text-right">
@@ -720,7 +720,7 @@ export default function Course2JournalPage() {
                   </div>
                   
                   {currentStreak > 0 && (
-                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10">
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-primary/[0.06]">
                       <Flame className="h-4 w-4 text-orange-500" />
                       <span className="text-sm font-medium">
                         Keep it up! {currentStreak} day{currentStreak > 1 ? 's' : ''} and counting!
@@ -732,7 +732,7 @@ export default function Course2JournalPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <Gift className="h-5 w-5 text-purple-500" />
                   <CardTitle className="font-serif text-lg">Rewards</CardTitle>
@@ -747,7 +747,7 @@ export default function Course2JournalPage() {
                         key={idx}
                         className={`flex items-center gap-3 p-3 rounded-md border transition-colors ${
                           reward.unlocked 
-                            ? 'bg-primary/10 border-primary/30' 
+                            ? 'bg-primary/[0.06] border-primary/20' 
                             : 'bg-muted/30 border-border opacity-60'
                         }`}
                         data-testid={`reward-${reward.days}`}
@@ -785,7 +785,7 @@ export default function Course2JournalPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-3">
                 <CardTitle className="font-serif text-lg">Quick Stats</CardTitle>
               </CardHeader>
               <CardContent>
@@ -812,7 +812,7 @@ export default function Course2JournalPage() {
       </main>
 
       <Dialog open={viewEntryDialogOpen} onOpenChange={setViewEntryDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">
               {selectedViewDate ? format(selectedViewDate, "EEEE, MMMM d, yyyy") : ""}

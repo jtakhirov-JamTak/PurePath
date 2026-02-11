@@ -243,10 +243,10 @@ export default function HabitsPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 flex items-center justify-center">
-            <Repeat className="h-7 w-7 text-cyan-500" />
+      <main className="container mx-auto px-4 py-12 max-w-4xl">
+        <div className="flex items-center gap-4 mb-10">
+          <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+            <Repeat className="h-7 w-7 text-primary" />
           </div>
           <div>
             <h1 className="font-serif text-3xl font-bold" data-testid="text-page-title">Habits</h1>
@@ -255,8 +255,8 @@ export default function HabitsPage() {
         </div>
 
         {todaysHabits.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="mb-10">
+            <div className="flex items-center justify-between gap-4 mb-5">
               <h2 className="text-lg font-semibold" data-testid="text-tracker-title">Daily Tracker</h2>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} data-testid="button-prev-day">
@@ -272,8 +272,8 @@ export default function HabitsPage() {
             </div>
 
             <Card>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between gap-4 mb-4">
+              <CardContent className="py-6">
+                <div className="flex items-center justify-between gap-4 mb-5">
                   <p className="text-sm text-muted-foreground" data-testid="text-completion-count">
                     {completedCount}/{todaysHabits.length} completed
                   </p>
@@ -286,7 +286,7 @@ export default function HabitsPage() {
                     </div>
                   )}
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {todaysHabits.map(habit => {
                     const isCompleted = completedHabitIds.has(habit.id);
                     const style = getCategoryStyle(habit.category);
@@ -295,8 +295,8 @@ export default function HabitsPage() {
                         key={habit.id}
                         type="button"
                         onClick={() => toggleCompletionMutation.mutate({ habitId: habit.id, completed: isCompleted })}
-                        className={`w-full flex items-center gap-3 p-3 rounded-md border transition-colors ${
-                          isCompleted ? "border-primary/30 bg-primary/5" : "border-border hover-elevate"
+                        className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-colors ${
+                          isCompleted ? "border-primary/20 bg-primary/5" : "border-border/50 hover-elevate"
                         }`}
                         data-testid={`tracker-habit-${habit.id}`}
                       >
@@ -343,7 +343,7 @@ export default function HabitsPage() {
                     {editingHabit ? "Update your habit details." : "Create a recurring habit. We recommend starting with 3."}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-5">
+                <div className="space-y-6">
                   <div>
                     <Label>Habit</Label>
                     <Input
@@ -504,15 +504,15 @@ export default function HabitsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {activeHabits.map(habit => {
                 const style = getCategoryStyle(habit.category);
                 return (
                   <Card key={habit.id} data-testid={`card-habit-${habit.id}`}>
-                    <CardContent className="py-4">
+                    <CardContent className="py-5">
                       <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`h-10 w-10 shrink-0 rounded-lg ${style.bg} flex items-center justify-center`}>
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/[0.08] flex items-center justify-center">
                             <div className={`h-3 w-3 rounded-full ${style.dot}`} />
                           </div>
                           <div className="min-w-0">

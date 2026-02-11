@@ -112,7 +112,7 @@ export default function BillingPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <main className="container mx-auto px-4 py-12 max-w-3xl">
         <Button 
           variant="ghost" 
           className="mb-6" 

@@ -58,9 +58,9 @@ export default function CoursePage() {
       />
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
-        <div className="mb-10">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-3">
+      <main className="container mx-auto px-4 py-12 max-w-4xl">
+        <div className="mb-12">
+          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">
             Your Inner Journey
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -69,7 +69,7 @@ export default function CoursePage() {
         </div>
 
         <div className="space-y-6">
-          <Card className={`overflow-visible ${expandedPhase === 1 ? "border-primary/30" : ""}`} data-testid="card-phase1">
+          <Card className={`overflow-visible ${expandedPhase === 1 ? "border-primary/20" : ""}`} data-testid="card-phase1">
             <CardHeader 
               className="cursor-pointer" 
               onClick={() => togglePhase(1)}
@@ -77,7 +77,7 @@ export default function CoursePage() {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/[0.08] flex items-center justify-center">
                     <Heart className="h-6 w-6 text-primary" />
                   </div>
                   <div>
@@ -93,7 +93,7 @@ export default function CoursePage() {
             </CardHeader>
 
             {expandedPhase === 1 && (
-              <CardContent className="pt-0 space-y-4">
+              <CardContent className="pt-0 space-y-5">
                 <Card className="hover-elevate overflow-visible" data-testid="card-lesson1">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -111,8 +111,8 @@ export default function CoursePage() {
                       <Card className="overflow-visible">
                         <CardHeader className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                              <Video className="h-5 w-5 text-muted-foreground" />
+                            <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                              <Video className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                               <p className="font-medium text-sm">Video Lesson</p>
@@ -124,7 +124,7 @@ export default function CoursePage() {
                       <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => hasPhase12 && setLocation("/course1")} data-testid="card-lesson1-gpt">
                         <CardHeader className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
                               <MessageSquare className="h-5 w-5 text-primary" />
                             </div>
                             <div>
@@ -155,8 +155,8 @@ export default function CoursePage() {
                       <Card className="overflow-visible">
                         <CardHeader className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                              <Video className="h-5 w-5 text-muted-foreground" />
+                            <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                              <Video className="h-5 w-5 text-primary" />
                             </div>
                             <div>
                               <p className="font-medium text-sm">Video Lesson</p>
@@ -168,7 +168,7 @@ export default function CoursePage() {
                       <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => hasPhase12 && setLocation("/course1")} data-testid="card-lesson2-gpt">
                         <CardHeader className="p-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                            <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
                               <MessageSquare className="h-5 w-5 text-primary" />
                             </div>
                             <div>
@@ -185,7 +185,7 @@ export default function CoursePage() {
             )}
           </Card>
 
-          <Card className={`overflow-visible ${expandedPhase === 2 ? "border-primary/30" : ""}`} data-testid="card-phase2">
+          <Card className={`overflow-visible ${expandedPhase === 2 ? "border-primary/20" : ""}`} data-testid="card-phase2">
             <CardHeader 
               className="cursor-pointer" 
               onClick={() => togglePhase(2)}
@@ -193,7 +193,7 @@ export default function CoursePage() {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/[0.08] flex items-center justify-center">
                     <Sparkles className="h-6 w-6 text-primary" />
                   </div>
                   <div>
@@ -209,7 +209,7 @@ export default function CoursePage() {
             </CardHeader>
 
             {expandedPhase === 2 && (
-              <CardContent className="pt-0 space-y-4">
+              <CardContent className="pt-0 space-y-5">
                 <Card className="hover-elevate overflow-visible" data-testid="card-lesson3">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -226,8 +226,8 @@ export default function CoursePage() {
                     <Card className="overflow-visible">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                            <Video className="h-5 w-5 text-muted-foreground" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Video className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Video Lesson</p>
@@ -240,13 +240,13 @@ export default function CoursePage() {
                 </Card>
 
                 <div>
-                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide mb-3">Your Tools</h3>
+                  <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide mb-4">Your Tools</h3>
                   <div className="grid sm:grid-cols-2 gap-3">
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/course2")} data-testid="card-tool-journal">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-amber-500/10 flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-amber-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <BookOpen className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Journaling</p>
@@ -258,8 +258,8 @@ export default function CoursePage() {
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/meditation")} data-testid="card-tool-meditation">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-indigo-500/10 flex items-center justify-center">
-                            <Brain className="h-5 w-5 text-indigo-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Brain className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Meditation</p>
@@ -271,8 +271,8 @@ export default function CoursePage() {
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/emotional-processing")} data-testid="card-tool-emotional">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-rose-500/10 flex items-center justify-center">
-                            <Heart className="h-5 w-5 text-rose-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Heart className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Emotional Integration</p>
@@ -284,8 +284,8 @@ export default function CoursePage() {
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/eisenhower")} data-testid="card-tool-eisenhower">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-amber-500/10 flex items-center justify-center">
-                            <Grid3X3 className="h-5 w-5 text-amber-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Grid3X3 className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Eisenhower Matrix</p>
@@ -297,8 +297,8 @@ export default function CoursePage() {
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/habits")} data-testid="card-tool-habits">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-cyan-500/10 flex items-center justify-center">
-                            <Repeat className="h-5 w-5 text-cyan-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Repeat className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Habits</p>
@@ -310,8 +310,8 @@ export default function CoursePage() {
                     <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/tasks")} data-testid="card-tool-tasks">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-blue-500/10 flex items-center justify-center">
-                            <ListTodo className="h-5 w-5 text-blue-500" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <ListTodo className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Daily Tasks</p>
@@ -326,7 +326,7 @@ export default function CoursePage() {
             )}
           </Card>
 
-          <Card className={`overflow-visible ${expandedPhase === 3 ? "border-primary/30" : ""}`} data-testid="card-phase3">
+          <Card className={`overflow-visible ${expandedPhase === 3 ? "border-primary/20" : ""}`} data-testid="card-phase3">
             <CardHeader 
               className="cursor-pointer" 
               onClick={() => togglePhase(3)}
@@ -334,7 +334,7 @@ export default function CoursePage() {
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-primary/[0.08] flex items-center justify-center">
                     <Zap className="h-6 w-6 text-primary" />
                   </div>
                   <div>
@@ -350,7 +350,7 @@ export default function CoursePage() {
             </CardHeader>
 
             {expandedPhase === 3 && (
-              <CardContent className="pt-0 space-y-4">
+              <CardContent className="pt-0 space-y-5">
                 <Card className="hover-elevate overflow-visible" data-testid="card-lesson4">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -367,8 +367,8 @@ export default function CoursePage() {
                     <Card className="overflow-visible">
                       <CardHeader className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                            <Video className="h-5 w-5 text-muted-foreground" />
+                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                            <Video className="h-5 w-5 text-primary" />
                           </div>
                           <div>
                             <p className="font-medium text-sm">Video Lesson</p>
@@ -383,7 +383,7 @@ export default function CoursePage() {
                 <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/phase3")} data-testid="card-tool-phase3-agent">
                   <CardHeader className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
                         <Zap className="h-5 w-5 text-primary" />
                       </div>
                       <div>

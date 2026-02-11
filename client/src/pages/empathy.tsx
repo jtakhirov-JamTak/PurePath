@@ -81,11 +81,11 @@ export default function EmpathyPage() {
         }
       />
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
+      <main className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center">
-              <Users className="h-7 w-7 text-emerald-500" />
+            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Users className="h-7 w-7 text-primary" />
             </div>
             <div>
               <h1 className="font-serif text-3xl font-bold">Empathy Module</h1>

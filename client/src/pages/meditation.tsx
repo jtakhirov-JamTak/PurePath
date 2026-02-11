@@ -8,11 +8,11 @@ export default function MeditationPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
+      <main className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 flex items-center justify-center">
-              <Brain className="h-7 w-7 text-indigo-500" />
+            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Brain className="h-7 w-7 text-primary" />
             </div>
             <div>
               <h1 className="font-serif text-3xl font-bold">Integrative Meditation</h1>
