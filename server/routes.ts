@@ -213,23 +213,53 @@ export async function registerRoutes(
       journals.forEach((journal) => {
         content += `## ${journal.date} - ${journal.session.charAt(0).toUpperCase() + journal.session.slice(1)} Session\n\n`;
         
-        if (journal.gratitude) {
-          content += `### Gratitude\n${journal.gratitude}\n\n`;
-        }
-        if (journal.intentions) {
-          content += `### Intentions\n${journal.intentions}\n\n`;
-        }
-        if (journal.highlights) {
-          content += `### Highlights\n${journal.highlights}\n\n`;
-        }
-        if (journal.reflections) {
-          content += `### Reflections\n${journal.reflections}\n\n`;
-        }
-        if (journal.challenges) {
-          content += `### Challenges\n${journal.challenges}\n\n`;
-        }
-        if (journal.tomorrowGoals) {
-          content += `### Tomorrow's Goals\n${journal.tomorrowGoals}\n\n`;
+        if (journal.content) {
+          try {
+            const parsed = JSON.parse(journal.content);
+            if (journal.session === "morning") {
+              if (parsed.intention) content += `### Intention\n${parsed.intention}\n\n`;
+              if (parsed.gratitude) content += `### Gratitude\n${parsed.gratitude}\n\n`;
+              if (parsed.joy) content += `### Joy\n${parsed.joy}\n\n`;
+              if (parsed.enjoy) content += `### Enjoy\n${parsed.enjoy}\n\n`;
+              if (parsed.avoidance) content += `### Avoidance\n${parsed.avoidance}\n\n`;
+              if (parsed.understanding) content += `### Understanding\n${parsed.understandingEmotion ? `(${parsed.understandingEmotion}) ` : ""}${parsed.understanding}\n\n`;
+              if (parsed.counterEvidence) content += `### Counter-Evidence\n${parsed.counterEvidence}\n\n`;
+              if (parsed.courageAction) content += `### Courage Action\n${parsed.courageAction}\n\n`;
+              if (parsed.stress) content += `### Stress\n${parsed.stress}\n\n`;
+              if (parsed.perspectiveShift) content += `### Perspective Shift\n${parsed.perspectiveShift}\n\n`;
+            } else {
+              if (parsed.review) content += `### Review\n${parsed.review}\n\n`;
+              if (parsed.feedback) content += `### Feedback\n${parsed.feedback}\n\n`;
+              if (parsed.insight) content += `### Insight\n${parsed.insight}\n\n`;
+              if (parsed.lesson) content += `### Lesson\n${parsed.lesson}\n\n`;
+              if (parsed.trigger) content += `### Trigger\n${parsed.trigger}\n\n`;
+              if (parsed.triggerStory) content += `### Story\n${parsed.triggerStory}\n\n`;
+              if (parsed.triggerImpulse) content += `### Impulse\n${parsed.triggerImpulse}\n\n`;
+              if (parsed.triggerEmotion) content += `### Emotion\n${parsed.triggerEmotion}${parsed.triggerEmotionLevel ? ` (${parsed.triggerEmotionLevel}/10)` : ""}\n\n`;
+              if (parsed.triggerUrge) content += `### Urge\n${parsed.triggerUrge}${parsed.triggerUrgeLevel ? ` (${parsed.triggerUrgeLevel}/10)` : ""}\n\n`;
+              if (parsed.triggerBehavior) content += `### Behavior\n${parsed.triggerBehavior}\n\n`;
+              if (parsed.triggerOutcome) content += `### Outcome\n${parsed.triggerOutcome}\n\n`;
+              if (parsed.triggerNextTime) content += `### Next Time\n${parsed.triggerNextTime}\n\n`;
+              if (parsed.satisfied) content += `### Satisfied With\n${parsed.satisfied}\n\n`;
+              if (parsed.dissatisfied) content += `### Dissatisfied With\n${parsed.dissatisfied}\n\n`;
+              if (parsed.shutdownEnough) content += `### Today Was Enough Because\n${parsed.shutdownEnough}\n\n`;
+              if (parsed.shutdownTomorrow) content += `### Tomorrow's First Step\n${parsed.shutdownTomorrow}\n\n`;
+            }
+          } catch {
+            if (journal.gratitude) content += `### Gratitude\n${journal.gratitude}\n\n`;
+            if (journal.intentions) content += `### Intentions\n${journal.intentions}\n\n`;
+            if (journal.highlights) content += `### Highlights\n${journal.highlights}\n\n`;
+            if (journal.reflections) content += `### Reflections\n${journal.reflections}\n\n`;
+            if (journal.challenges) content += `### Challenges\n${journal.challenges}\n\n`;
+            if (journal.tomorrowGoals) content += `### Tomorrow's Goals\n${journal.tomorrowGoals}\n\n`;
+          }
+        } else {
+          if (journal.gratitude) content += `### Gratitude\n${journal.gratitude}\n\n`;
+          if (journal.intentions) content += `### Intentions\n${journal.intentions}\n\n`;
+          if (journal.highlights) content += `### Highlights\n${journal.highlights}\n\n`;
+          if (journal.reflections) content += `### Reflections\n${journal.reflections}\n\n`;
+          if (journal.challenges) content += `### Challenges\n${journal.challenges}\n\n`;
+          if (journal.tomorrowGoals) content += `### Tomorrow's Goals\n${journal.tomorrowGoals}\n\n`;
         }
         content += "---\n\n";
       });

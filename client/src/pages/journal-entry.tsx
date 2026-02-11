@@ -5,26 +5,90 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock } from "lucide-react";
+import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, AlertTriangle, BarChart3, Power } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { Journal, Purchase } from "@shared/schema";
 
-const morningPrompts = {
-  gratitude: "What are three things you're grateful for today?",
-  intentions: "What are your top intentions for today? What do you want to accomplish or feel?",
-  affirmation: "Write a positive affirmation for yourself today.",
+interface MorningContent {
+  intention: string;
+  gratitude: string;
+  joy: string;
+  enjoy: string;
+  avoidance: string;
+  understanding: string;
+  understandingEmotion: string;
+  counterEvidence: string;
+  courageAction: string;
+  stress: string;
+  perspectiveShift: string;
+}
+
+interface EveningContent {
+  review: string;
+  feedback: string;
+  insight: string;
+  lesson: string;
+  trigger: string;
+  triggerStory: string;
+  triggerImpulse: string;
+  triggerEmotion: string;
+  triggerEmotionLevel: string;
+  triggerUrge: string;
+  triggerUrgeLevel: string;
+  triggerBehavior: string;
+  triggerOutcome: string;
+  triggerNextTime: string;
+  satisfied: string;
+  dissatisfied: string;
+  shutdownEnough: string;
+  shutdownTomorrow: string;
+}
+
+const emptyMorning: MorningContent = {
+  intention: "",
+  gratitude: "",
+  joy: "",
+  enjoy: "",
+  avoidance: "",
+  understanding: "",
+  understandingEmotion: "",
+  counterEvidence: "",
+  courageAction: "",
+  stress: "",
+  perspectiveShift: "",
 };
 
-const eveningPrompts = {
-  highlights: "What were the highlights of your day?",
-  reflections: "What did you learn about yourself today?",
-  challenges: "What challenges did you face and how did you handle them?",
-  tomorrowGoals: "What would you like to focus on tomorrow?",
+const emptyEvening: EveningContent = {
+  review: "",
+  feedback: "",
+  insight: "",
+  lesson: "",
+  trigger: "",
+  triggerStory: "",
+  triggerImpulse: "",
+  triggerEmotion: "",
+  triggerEmotionLevel: "",
+  triggerUrge: "",
+  triggerUrgeLevel: "",
+  triggerBehavior: "",
+  triggerOutcome: "",
+  triggerNextTime: "",
+  satisfied: "",
+  dissatisfied: "",
+  shutdownEnough: "",
+  shutdownTomorrow: "",
 };
+
+const emotionOptions = ["fear", "uncertainty", "resentment", "shame", "overwhelm", "other"];
+const triggerEmotionOptions = ["fear", "anger", "shame", "sadness", "guilt", "anxiety", "other"];
+const triggerUrgeOptions = ["defend", "check", "withdraw", "attack", "freeze", "avoid", "other"];
 
 export default function JournalEntryPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -37,16 +101,8 @@ export default function JournalEntryPage() {
   const session = params.session as "morning" | "evening";
   const isMorning = session === "morning";
 
-  const emptyFormData = {
-    gratitude: "",
-    intentions: "",
-    reflections: "",
-    highlights: "",
-    challenges: "",
-    tomorrowGoals: "",
-  };
-
-  const [formData, setFormData] = useState(emptyFormData);
+  const [morningData, setMorningData] = useState<MorningContent>(emptyMorning);
+  const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
@@ -54,8 +110,8 @@ export default function JournalEntryPage() {
     enabled: !!user,
   });
 
-  const hasAccess = purchases?.some(p => 
-    p.courseType === "phase12" || p.courseType === "allinone" || 
+  const hasAccess = purchases?.some(p =>
+    p.courseType === "phase12" || p.courseType === "allinone" ||
     p.courseType === "course2" || p.courseType === "bundle"
   );
 
@@ -66,29 +122,67 @@ export default function JournalEntryPage() {
 
   useEffect(() => {
     if (existingJournal) {
-      // Only populate if editing existing entry
       setIsEditing(true);
-      setFormData({
-        gratitude: existingJournal.gratitude || "",
-        intentions: existingJournal.intentions || "",
-        reflections: existingJournal.reflections || "",
-        highlights: existingJournal.highlights || "",
-        challenges: existingJournal.challenges || "",
-        tomorrowGoals: existingJournal.tomorrowGoals || "",
-      });
+      if (existingJournal.content) {
+        try {
+          const parsed = JSON.parse(existingJournal.content);
+          if (isMorning) {
+            setMorningData({ ...emptyMorning, ...parsed });
+          } else {
+            setEveningData({ ...emptyEvening, ...parsed });
+          }
+        } catch {
+          if (isMorning) {
+            setMorningData({
+              ...emptyMorning,
+              intention: existingJournal.intentions || "",
+              gratitude: existingJournal.gratitude || "",
+            });
+          } else {
+            setEveningData({
+              ...emptyEvening,
+              review: existingJournal.highlights || "",
+              insight: existingJournal.reflections || "",
+              shutdownTomorrow: existingJournal.tomorrowGoals || "",
+            });
+          }
+        }
+      } else {
+        if (isMorning) {
+          setMorningData({
+            ...emptyMorning,
+            intention: existingJournal.intentions || "",
+            gratitude: existingJournal.gratitude || "",
+          });
+        } else {
+          setEveningData({
+            ...emptyEvening,
+            review: existingJournal.highlights || "",
+            insight: existingJournal.reflections || "",
+            shutdownTomorrow: existingJournal.tomorrowGoals || "",
+          });
+        }
+      }
     } else {
-      // New entry - start fresh
       setIsEditing(false);
-      setFormData(emptyFormData);
+      if (isMorning) setMorningData(emptyMorning);
+      else setEveningData(emptyEvening);
     }
-  }, [existingJournal]);
+  }, [existingJournal, isMorning]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const contentData = isMorning ? morningData : eveningData;
       const response = await apiRequest("POST", "/api/journals", {
         date,
         session,
-        ...formData,
+        content: JSON.stringify(contentData),
+        gratitude: isMorning ? morningData.gratitude : "",
+        intentions: isMorning ? morningData.intention : "",
+        reflections: isMorning ? "" : eveningData.insight,
+        highlights: isMorning ? "" : eveningData.review,
+        challenges: isMorning ? morningData.avoidance : eveningData.trigger,
+        tomorrowGoals: isMorning ? "" : eveningData.shutdownTomorrow,
       });
       return response.json();
     },
@@ -98,6 +192,7 @@ export default function JournalEntryPage() {
         description: "Your journal entry has been saved successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
     },
     onError: (error: Error) => {
       toast({
@@ -135,10 +230,18 @@ export default function JournalEntryPage() {
 
   const formattedDate = date ? format(parseISO(date), "EEEE, MMMM d, yyyy") : "";
 
+  const updateMorning = (field: keyof MorningContent, value: string) => {
+    setMorningData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateEvening = (field: keyof EveningContent, value: string) => {
+    setEveningData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/50">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between gap-4">
+      <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => setLocation("/course2")} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
@@ -151,14 +254,17 @@ export default function JournalEntryPage() {
                   <Moon className="h-5 w-5 text-indigo-500" />
                 )}
               </div>
-              <span className="font-serif text-lg font-medium capitalize">
-                {isEditing ? "Edit" : "New"} {session} Journal
-              </span>
+              <div>
+                <span className="font-serif text-lg font-medium capitalize">
+                  {isEditing ? "Edit" : "New"} {session} Journal
+                </span>
+                <p className="text-xs text-muted-foreground">{formattedDate}</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
-              onClick={() => saveMutation.mutate()} 
+            <Button
+              onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
               data-testid="button-save"
             >
@@ -179,12 +285,7 @@ export default function JournalEntryPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-12 max-w-3xl">
-        <div className="mb-10">
-          <h1 className="font-serif text-3xl font-bold mb-2 capitalize">{session} Reflection</h1>
-          <p className="text-muted-foreground">{formattedDate}</p>
-        </div>
-
+      <main className="container mx-auto px-4 py-8 max-w-3xl">
         {journalLoading ? (
           <div className="space-y-6">
             {[1, 2, 3].map((i) => (
@@ -199,127 +300,479 @@ export default function JournalEntryPage() {
             ))}
           </div>
         ) : isMorning ? (
-          <div className="space-y-8">
-            <Card data-testid="card-gratitude">
+          <div className="space-y-10">
+            <Card data-testid="card-self-awareness">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Gratitude</CardTitle>
-                <CardDescription>{morningPrompts.gratitude}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Target className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Self-Awareness</CardTitle>
+                    <CardDescription>Set your intention for the day</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.gratitude}
-                  onChange={(e) => setFormData({ ...formData, gratitude: e.target.value })}
-                  placeholder="I am grateful for..."
-                  className="min-h-[120px] resize-none"
-                  data-testid="input-gratitude"
-                />
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Intention — What value do I want to practice today?</Label>
+                  <Textarea
+                    value={morningData.intention}
+                    onChange={(e) => updateMorning("intention", e.target.value)}
+                    placeholder="Today I want to practice..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-intention"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card data-testid="card-intentions">
+            <Card data-testid="card-happiness">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Intentions</CardTitle>
-                <CardDescription>{morningPrompts.intentions}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Heart className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Happiness</CardTitle>
+                    <CardDescription>Cultivate gratitude and joy</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.intentions}
-                  onChange={(e) => setFormData({ ...formData, intentions: e.target.value })}
-                  placeholder="Today, I intend to..."
-                  className="min-h-[120px] resize-none"
-                  data-testid="input-intentions"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Gratitude — Who am I grateful for? Do one small action.</Label>
+                  <Textarea
+                    value={morningData.gratitude}
+                    onChange={(e) => updateMorning("gratitude", e.target.value)}
+                    placeholder="I am grateful for..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-gratitude"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Joy — What's one thing I'm excited about?</Label>
+                  <Textarea
+                    value={morningData.joy}
+                    onChange={(e) => updateMorning("joy", e.target.value)}
+                    placeholder="I'm excited about..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-joy"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Enjoy — Make an exciting plan!</Label>
+                  <Textarea
+                    value={morningData.enjoy}
+                    onChange={(e) => updateMorning("enjoy", e.target.value)}
+                    placeholder="My exciting plan for today..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-enjoy"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card data-testid="card-affirmation">
+            <Card data-testid="card-courage">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Daily Affirmation</CardTitle>
-                <CardDescription>{morningPrompts.affirmation}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Shield className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Courage</CardTitle>
+                    <CardDescription>Face what you're avoiding</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.reflections}
-                  onChange={(e) => setFormData({ ...formData, reflections: e.target.value })}
-                  placeholder="I am..."
-                  className="min-h-[100px] resize-none"
-                  data-testid="input-affirmation"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Avoidance — What's the one thing I'm avoiding?</Label>
+                  <Textarea
+                    value={morningData.avoidance}
+                    onChange={(e) => updateMorning("avoidance", e.target.value)}
+                    placeholder="The thing I'm avoiding is..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-avoidance"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Understanding — What belief or emotion is under the avoidance?</Label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Select
+                      value={morningData.understandingEmotion}
+                      onValueChange={(v) => updateMorning("understandingEmotion", v)}
+                    >
+                      <SelectTrigger className="sm:w-[180px]" data-testid="select-understanding-emotion">
+                        <SelectValue placeholder="Select emotion..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {emotionOptions.map(e => (
+                          <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      value={morningData.understanding}
+                      onChange={(e) => updateMorning("understanding", e.target.value)}
+                      placeholder="The belief underneath is..."
+                      className="min-h-[60px] resize-none flex-1"
+                      data-testid="input-understanding"
+                    />
+                  </div>
+                </div>
+                <div className="rounded-md bg-primary/[0.04] p-3">
+                  <p className="text-sm text-muted-foreground italic">Containment — Do Emotional Containment exercise</p>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Counter-evidence — One real example that contradicts this belief</Label>
+                  <Textarea
+                    value={morningData.counterEvidence}
+                    onChange={(e) => updateMorning("counterEvidence", e.target.value)}
+                    placeholder="A real example that contradicts this..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-counter-evidence"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Action — One small exposure rep to begin</Label>
+                  <Textarea
+                    value={morningData.courageAction}
+                    onChange={(e) => updateMorning("courageAction", e.target.value)}
+                    placeholder="My one small step will be..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-courage-action"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-release">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Wind className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Release</CardTitle>
+                    <CardDescription>Let go of what's weighing on you</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Stress — What's the one thing I'm overly fixated on?</Label>
+                  <Textarea
+                    value={morningData.stress}
+                    onChange={(e) => updateMorning("stress", e.target.value)}
+                    placeholder="I'm overly fixated on..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-stress"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 30%?</Label>
+                  <Textarea
+                    value={morningData.perspectiveShift}
+                    onChange={(e) => updateMorning("perspectiveShift", e.target.value)}
+                    placeholder="If I loosened my grip, it would look like..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-perspective-shift"
+                  />
+                </div>
+                <div className="rounded-md bg-primary/[0.04] p-3">
+                  <p className="text-sm text-muted-foreground italic">Release — Loosen your grip</p>
+                </div>
               </CardContent>
             </Card>
           </div>
         ) : (
-          <div className="space-y-8">
-            <Card data-testid="card-highlights">
+          <div className="space-y-10">
+            <Card data-testid="card-daily-review">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Today's Highlights</CardTitle>
-                <CardDescription>{eveningPrompts.highlights}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Star className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Daily Review</CardTitle>
+                    <CardDescription>Reflect on your most important moment</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.highlights}
-                  onChange={(e) => setFormData({ ...formData, highlights: e.target.value })}
-                  placeholder="The best parts of today were..."
-                  className="min-h-[120px] resize-none"
-                  data-testid="input-highlights"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Review — What was the most important moment today? (keep it simple)</Label>
+                  <Textarea
+                    value={eveningData.review}
+                    onChange={(e) => updateEvening("review", e.target.value)}
+                    placeholder="The most important moment was..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-review"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Feedback — What did I feel? What did I do?</Label>
+                  <Textarea
+                    value={eveningData.feedback}
+                    onChange={(e) => updateEvening("feedback", e.target.value)}
+                    placeholder="I felt... and I did..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-feedback"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Insight — What value or need was underneath that?</Label>
+                  <Textarea
+                    value={eveningData.insight}
+                    onChange={(e) => updateEvening("insight", e.target.value)}
+                    placeholder="Underneath that was..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-insight"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Lesson — What can I learn from this that will help me moving forward?</Label>
+                  <Textarea
+                    value={eveningData.lesson}
+                    onChange={(e) => updateEvening("lesson", e.target.value)}
+                    placeholder="Moving forward, I'll remember..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-lesson"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card data-testid="card-reflections">
+            <Card data-testid="card-trigger-log">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Self-Reflection</CardTitle>
-                <CardDescription>{eveningPrompts.reflections}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Trigger Log</CardTitle>
+                    <CardDescription>Track and understand your emotional triggers</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.reflections}
-                  onChange={(e) => setFormData({ ...formData, reflections: e.target.value })}
-                  placeholder="Today I learned that..."
-                  className="min-h-[120px] resize-none"
-                  data-testid="input-reflections"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Trigger (observable — a camera/mic would capture this)</Label>
+                  <Textarea
+                    value={eveningData.trigger}
+                    onChange={(e) => updateEvening("trigger", e.target.value)}
+                    placeholder="What happened..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-trigger"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Story I told myself (1 sentence)</Label>
+                  <Textarea
+                    value={eveningData.triggerStory}
+                    onChange={(e) => updateEvening("triggerStory", e.target.value)}
+                    placeholder="The story I told myself was..."
+                    className="min-h-[50px] resize-none"
+                    data-testid="input-trigger-story"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">My first impulse/urge</Label>
+                  <Textarea
+                    value={eveningData.triggerImpulse}
+                    onChange={(e) => updateEvening("triggerImpulse", e.target.value)}
+                    placeholder="My first impulse was to..."
+                    className="min-h-[50px] resize-none"
+                    data-testid="input-trigger-impulse"
+                  />
+                </div>
+                <Separator />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Emotion (0–10)</Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={eveningData.triggerEmotion}
+                        onValueChange={(v) => updateEvening("triggerEmotion", v)}
+                      >
+                        <SelectTrigger className="flex-1" data-testid="select-trigger-emotion">
+                          <SelectValue placeholder="Emotion..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {triggerEmotionOptions.map(e => (
+                            <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={eveningData.triggerEmotionLevel}
+                        onChange={(e) => updateEvening("triggerEmotionLevel", e.target.value)}
+                        placeholder="0-10"
+                        className="w-20"
+                        data-testid="input-trigger-emotion-level"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Urge (0–10)</Label>
+                    <div className="flex gap-2">
+                      <Select
+                        value={eveningData.triggerUrge}
+                        onValueChange={(v) => updateEvening("triggerUrge", v)}
+                      >
+                        <SelectTrigger className="flex-1" data-testid="select-trigger-urge">
+                          <SelectValue placeholder="Urge..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {triggerUrgeOptions.map(e => (
+                            <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={eveningData.triggerUrgeLevel}
+                        onChange={(e) => updateEvening("triggerUrgeLevel", e.target.value)}
+                        placeholder="0-10"
+                        className="w-20"
+                        data-testid="input-trigger-urge-level"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">What I did (behavior)</Label>
+                  <Textarea
+                    value={eveningData.triggerBehavior}
+                    onChange={(e) => updateEvening("triggerBehavior", e.target.value)}
+                    placeholder="What I actually did..."
+                    className="min-h-[50px] resize-none"
+                    data-testid="input-trigger-behavior"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Outcome (what happened)</Label>
+                  <Textarea
+                    value={eveningData.triggerOutcome}
+                    onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
+                    placeholder="What happened as a result..."
+                    className="min-h-[50px] resize-none"
+                    data-testid="input-trigger-outcome"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Next Time — "If X happens, I will do Y."</Label>
+                  <Textarea
+                    value={eveningData.triggerNextTime}
+                    onChange={(e) => updateEvening("triggerNextTime", e.target.value)}
+                    placeholder="If this happens again, I will..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-trigger-next-time"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card data-testid="card-challenges">
+            <Card data-testid="card-8020-tracker">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Challenges & Growth</CardTitle>
-                <CardDescription>{eveningPrompts.challenges}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">80/20 Tracker</CardTitle>
+                    <CardDescription>What's working and what isn't</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.challenges}
-                  onChange={(e) => setFormData({ ...formData, challenges: e.target.value })}
-                  placeholder="A challenge I faced today was..."
-                  className="min-h-[120px] resize-none"
-                  data-testid="input-challenges"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">What am I satisfied with?</Label>
+                  <Textarea
+                    value={eveningData.satisfied}
+                    onChange={(e) => updateEvening("satisfied", e.target.value)}
+                    placeholder="I'm satisfied with..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-satisfied"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">What am I dissatisfied with?</Label>
+                  <Textarea
+                    value={eveningData.dissatisfied}
+                    onChange={(e) => updateEvening("dissatisfied", e.target.value)}
+                    placeholder="I'm dissatisfied with..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-dissatisfied"
+                  />
+                </div>
               </CardContent>
             </Card>
 
-            <Card data-testid="card-tomorrow">
+            <Card data-testid="card-shutdown">
               <CardHeader>
-                <CardTitle className="font-serif text-lg">Tomorrow's Focus</CardTitle>
-                <CardDescription>{eveningPrompts.tomorrowGoals}</CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Power className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Shutdown</CardTitle>
+                    <CardDescription>Close out your day with intention</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.tomorrowGoals}
-                  onChange={(e) => setFormData({ ...formData, tomorrowGoals: e.target.value })}
-                  placeholder="Tomorrow, I will focus on..."
-                  className="min-h-[100px] resize-none"
-                  data-testid="input-tomorrow"
-                />
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Today was enough because:</Label>
+                  <Textarea
+                    value={eveningData.shutdownEnough}
+                    onChange={(e) => updateEvening("shutdownEnough", e.target.value)}
+                    placeholder="Today was enough because..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-shutdown-enough"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
+                  <Textarea
+                    value={eveningData.shutdownTomorrow}
+                    onChange={(e) => updateEvening("shutdownTomorrow", e.target.value)}
+                    placeholder="Tomorrow I'll start with..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-shutdown-tomorrow"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
         )}
 
-        <div className="mt-12 flex justify-end">
-          <Button 
+        <div className="mt-10 flex justify-end">
+          <Button
             size="lg"
-            onClick={() => saveMutation.mutate()} 
+            onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
             data-testid="button-save-bottom"
           >
