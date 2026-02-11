@@ -208,10 +208,10 @@ export default function Course2JournalPage() {
     return map;
   }, [habitCompletions]);
 
-  const q2ByDate = useMemo(() => {
+  const priorityByDate = useMemo(() => {
     const map = new Map<string, EisenhowerEntry[]>();
     eisenhowerEntries
-      .filter(e => e.quadrant === "q2" && e.deadline)
+      .filter(e => (e.quadrant === "q1" || e.quadrant === "q2") && e.deadline)
       .forEach(e => {
         const d = e.deadline!;
         if (!map.has(d)) map.set(d, []);
@@ -301,16 +301,16 @@ export default function Course2JournalPage() {
     const journalStatus = dayStatus.get(dateStr);
     const habitsForDay = getHabitsForDate(habits, date);
     const completedIds = completionsByDate.get(dateStr) || new Set();
-    const q2Items = q2ByDate.get(dateStr) || [];
+    const priorityItems = priorityByDate.get(dateStr) || [];
 
-    const totalRequired = 2 + habitsForDay.length + q2Items.length;
+    const totalRequired = 2 + habitsForDay.length + priorityItems.length;
     let completedCount = 0;
     if (journalStatus?.morning) completedCount++;
     if (journalStatus?.evening) completedCount++;
     habitsForDay.forEach(h => { if (completedIds.has(h.id)) completedCount++; });
-    q2Items.forEach(e => { if (e.completed) completedCount++; });
+    priorityItems.forEach(e => { if (e.completed) completedCount++; });
 
-    return { dateStr, journalStatus, habitsForDay, completedIds, q2Items, totalRequired, completedCount };
+    return { dateStr, journalStatus, habitsForDay, completedIds, priorityItems, totalRequired, completedCount };
   }
 
   function renderSelectedDayDetails() {
@@ -420,13 +420,13 @@ export default function Course2JournalPage() {
           </div>
         )}
 
-        {reqs.q2Items.length > 0 && (
+        {reqs.priorityItems.length > 0 && (
           <div className="space-y-2">
             <p className="text-sm font-medium flex items-center gap-2">
               <Grid3X3 className="h-4 w-4 text-green-600 dark:text-green-400" />
-              Q2 Scheduled Items
+              Priority Items (Q1+Q2)
             </p>
-            {reqs.q2Items.map(entry => (
+            {reqs.priorityItems.map(entry => (
               <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg border">
                 <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${entry.completed ? "bg-primary border-primary" : "border-muted-foreground/30"}`}>
                   {entry.completed && <Check className="h-3 w-3 text-primary-foreground" />}
@@ -599,7 +599,7 @@ export default function Course2JournalPage() {
                       className={`
                         relative p-2 rounded-lg text-sm transition-colors
                         flex flex-col items-center justify-start gap-0.5
-                        ${viewMode === "week" ? "min-h-[150px] py-2" : "aspect-square"}
+                        ${viewMode === "week" ? "min-h-[200px] py-2" : "aspect-square"}
                         ${!isCurrentMonth && viewMode === "month" ? 'text-muted-foreground/30 cursor-not-allowed' : 'hover-elevate cursor-pointer'}
                         ${isToday ? 'ring-2 ring-primary ring-offset-1 ring-offset-background' : ''}
                       `}
@@ -612,37 +612,37 @@ export default function Course2JournalPage() {
                         <span className="text-xs text-muted-foreground mb-1">{format(date, "EEE")}</span>
                       )}
                       {isCurrentMonth && viewMode === "week" && (
-                        <div className="flex flex-col items-start gap-0.5 w-full px-1 text-left overflow-hidden">
-                          <div className="flex items-center gap-1 w-full">
+                        <div className="flex flex-col items-start gap-1 w-full px-1 text-left overflow-hidden">
+                          <div className="flex items-center gap-1 w-full py-0.5">
                             <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${reqs.journalStatus?.morning ? "bg-amber-500 border-amber-500" : "border-muted-foreground/30"}`}>
                               {reqs.journalStatus?.morning && <Check className="h-2 w-2 text-white" />}
                             </div>
-                            <span className={`text-[10px] leading-tight truncate ${reqs.journalStatus?.morning ? "text-muted-foreground line-through" : ""}`}>AM</span>
+                            <span className={`text-[11px] leading-tight truncate ${reqs.journalStatus?.morning ? "text-muted-foreground line-through" : ""}`}>Morning</span>
                           </div>
-                          <div className="flex items-center gap-1 w-full">
+                          <div className="flex items-center gap-1 w-full py-0.5">
                             <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${reqs.journalStatus?.evening ? "bg-indigo-500 border-indigo-500" : "border-muted-foreground/30"}`}>
                               {reqs.journalStatus?.evening && <Check className="h-2 w-2 text-white" />}
                             </div>
-                            <span className={`text-[10px] leading-tight truncate ${reqs.journalStatus?.evening ? "text-muted-foreground line-through" : ""}`}>PM</span>
+                            <span className={`text-[11px] leading-tight truncate ${reqs.journalStatus?.evening ? "text-muted-foreground line-through" : ""}`}>Evening</span>
                           </div>
                           {reqs.habitsForDay.map(h => {
                             const done = reqs.completedIds.has(h.id);
                             const catStyle = CATEGORY_STYLES[h.category || "health"];
                             return (
-                              <div key={h.id} className="flex items-center gap-1 w-full">
+                              <div key={h.id} className="flex items-center gap-1 w-full py-0.5">
                                 <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${done ? `${catStyle?.dot} border-transparent` : "border-muted-foreground/30"}`}>
                                   {done && <Check className="h-2 w-2 text-white" />}
                                 </div>
-                                <span className={`text-[10px] leading-tight truncate ${done ? "text-muted-foreground line-through" : ""}`}>{h.name}</span>
+                                <span className={`text-[11px] leading-tight truncate ${done ? "text-muted-foreground line-through" : ""}`}>{h.name}</span>
                               </div>
                             );
                           })}
-                          {reqs.q2Items.map(e => (
-                            <div key={e.id} className="flex items-center gap-1 w-full">
+                          {reqs.priorityItems.map(e => (
+                            <div key={e.id} className="flex items-center gap-1 w-full py-0.5">
                               <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 ${e.completed ? "bg-green-500 border-green-500" : "border-muted-foreground/30"}`}>
                                 {e.completed && <Check className="h-2 w-2 text-white" />}
                               </div>
-                              <span className={`text-[10px] leading-tight truncate ${e.completed ? "text-muted-foreground line-through" : ""}`}>{e.task}</span>
+                              <span className={`text-[11px] leading-tight truncate ${e.completed ? "text-muted-foreground line-through" : ""}`}>{e.task}</span>
                             </div>
                           ))}
                         </div>
@@ -653,14 +653,14 @@ export default function Course2JournalPage() {
                             <div className={`w-2 h-2 rounded-full ${reqs.journalStatus?.morning ? "bg-amber-500" : "bg-muted-foreground/20"}`} />
                             <div className={`w-2 h-2 rounded-full ${reqs.journalStatus?.evening ? "bg-indigo-500" : "bg-muted-foreground/20"}`} />
                           </div>
-                          {(reqs.habitsForDay.length > 0 || reqs.q2Items.length > 0) && (
+                          {(reqs.habitsForDay.length > 0 || reqs.priorityItems.length > 0) && (
                             <div className="flex gap-0.5 flex-wrap justify-center">
                               {reqs.habitsForDay.map(h => {
                                 const done = reqs.completedIds.has(h.id);
                                 const catStyle = CATEGORY_STYLES[h.category || "health"];
                                 return <div key={h.id} className={`w-2 h-2 rounded-full ${done ? catStyle?.dot : "bg-muted-foreground/20"}`} title={h.name} />;
                               })}
-                              {reqs.q2Items.map(e => (
+                              {reqs.priorityItems.map(e => (
                                 <div key={e.id} className={`w-2 h-2 rounded-sm ${e.completed ? "bg-green-500" : "bg-muted-foreground/20"}`} title={e.task} />
                               ))}
                             </div>
@@ -818,7 +818,7 @@ export default function Course2JournalPage() {
               {selectedViewDate ? format(selectedViewDate, "EEEE, MMMM d, yyyy") : ""}
             </DialogTitle>
             <DialogDescription>
-              Daily requirements: journaling, scheduled habits, and Q2 items
+              Daily requirements: journaling, scheduled habits, and priority items (Q1+Q2)
             </DialogDescription>
           </DialogHeader>
           {renderSelectedDayDetails()}

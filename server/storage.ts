@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -8,7 +8,8 @@ import {
   type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
-  type Task, type InsertTask
+  type Task, type InsertTask,
+  type MeditationInsight, type InsertMeditationInsight
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -58,6 +59,11 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
+
+  // Meditation Insights
+  getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]>;
+  createMeditationInsight(insight: InsertMeditationInsight): Promise<MeditationInsight>;
+  deleteMeditationInsight(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -276,6 +282,20 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTask(id: number): Promise<void> {
     await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  // Meditation Insights
+  async getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]> {
+    return db.select().from(meditationInsights).where(eq(meditationInsights.userId, userId)).orderBy(desc(meditationInsights.date));
+  }
+
+  async createMeditationInsight(insight: InsertMeditationInsight): Promise<MeditationInsight> {
+    const [newInsight] = await db.insert(meditationInsights).values(insight).returning();
+    return newInsight;
+  }
+
+  async deleteMeditationInsight(id: number): Promise<void> {
+    await db.delete(meditationInsights).where(eq(meditationInsights.id, id));
   }
 }
 

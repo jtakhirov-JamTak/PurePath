@@ -1,9 +1,53 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { AppHeader } from "@/components/app-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Clock, Headphones, Sofa } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Brain, Clock, Headphones, Sofa, Trash2, Plus, Calendar } from "lucide-react";
+import { format } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
+import type { MeditationInsight } from "@shared/schema";
 
 export default function MeditationPage() {
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const [insightDate, setInsightDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [insightText, setInsightText] = useState("");
+
+  const { data: insights, isLoading: insightsLoading } = useQuery<MeditationInsight[]>({
+    queryKey: ["/api/meditation-insights"],
+    enabled: isAuthenticated,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: { date: string; insight: string }) => {
+      await apiRequest("POST", "/api/meditation-insights", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meditation-insights"] });
+      setInsightText("");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/meditation-insights/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meditation-insights"] });
+    },
+  });
+
+  const handleSaveInsight = () => {
+    if (!insightText.trim()) return;
+    createMutation.mutate({ date: insightDate, insight: insightText.trim() });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -96,7 +140,7 @@ export default function MeditationPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
             <CardTitle className="font-serif">Post-Meditation Integration (2 minutes)</CardTitle>
           </CardHeader>
@@ -109,6 +153,93 @@ export default function MeditationPage() {
                 "The insight I gained was ______."
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-serif flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/[0.08] flex items-center justify-center">
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
+              Your Meditation Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!isAuthenticated ? (
+              <p className="text-muted-foreground text-center py-6" data-testid="text-login-prompt">
+                Log in to track your meditation insights.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="insight-date">Date</Label>
+                    <Input
+                      id="insight-date"
+                      type="date"
+                      value={insightDate}
+                      onChange={(e) => setInsightDate(e.target.value)}
+                      data-testid="input-insight-date"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="insight-text">Insight</Label>
+                    <Textarea
+                      id="insight-text"
+                      placeholder="The insight I gained was..."
+                      value={insightText}
+                      onChange={(e) => setInsightText(e.target.value)}
+                      data-testid="input-insight-text"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSaveInsight}
+                    disabled={!insightText.trim() || createMutation.isPending}
+                    data-testid="button-save-insight"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {createMutation.isPending ? "Saving..." : "Save Insight"}
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {insightsLoading ? (
+                    <p className="text-muted-foreground text-center py-4" data-testid="text-loading-insights">
+                      Loading insights...
+                    </p>
+                  ) : insights && insights.length > 0 ? (
+                    insights.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-start justify-between gap-3 p-3 rounded-lg bg-muted/50"
+                        data-testid={`card-insight-${item.id}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-muted-foreground mb-1" data-testid={`text-insight-date-${item.id}`}>
+                            {format(new Date(item.date + "T00:00:00"), "MMMM d, yyyy")}
+                          </p>
+                          <p data-testid={`text-insight-content-${item.id}`}>{item.insight}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteMutation.mutate(item.id)}
+                          disabled={deleteMutation.isPending}
+                          data-testid={`button-delete-insight-${item.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4" data-testid="text-no-insights">
+                      No insights recorded yet. Start meditating and capture your first insight.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

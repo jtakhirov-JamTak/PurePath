@@ -23,6 +23,7 @@ import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 import TasksPage from "@/pages/tasks";
+import ProgressPage from "@/pages/progress";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -107,6 +108,9 @@ function Router() {
       </Route>
       <Route path="/tasks">
         {() => <AuthenticatedRoute component={TasksPage} />}
+      </Route>
+      <Route path="/progress">
+        {() => <AuthenticatedRoute component={ProgressPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

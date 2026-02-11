@@ -251,3 +251,19 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+export const meditationInsights = pgTable("meditation_insights", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  insight: text("insight").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMeditationInsightSchema = createInsertSchema(meditationInsights).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type MeditationInsight = typeof meditationInsights.$inferSelect;
+export type InsertMeditationInsight = z.infer<typeof insertMeditationInsightSchema>;

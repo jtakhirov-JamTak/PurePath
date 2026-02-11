@@ -9,7 +9,7 @@ import {
   Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle,
   Brain, Heart, Grid3X3, Users, Zap,
   Video, MessageSquare, Repeat, ListTodo,
-  Sun, Moon, Check, Clock, AlertTriangle
+  Sun, Moon, Check, Clock, AlertTriangle, BarChart3
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek } from "date-fns";
@@ -83,14 +83,14 @@ export default function DashboardPage() {
   const hasMorning = todayJournals.some(j => j.session === "morning");
   const hasEvening = todayJournals.some(j => j.session === "evening");
 
-  const todayQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.deadline === todayStr);
+  const todayPriority = eisenhowerEntries.filter(e => (e.quadrant === "q1" || e.quadrant === "q2") && e.deadline === todayStr);
 
-  const totalItems = 2 + todaysHabits.length + todayQ2.length;
+  const totalItems = 2 + todaysHabits.length + todayPriority.length;
   let completedItems = 0;
   if (hasMorning) completedItems++;
   if (hasEvening) completedItems++;
   todaysHabits.forEach(h => { if (completedHabitIds.has(h.id)) completedItems++; });
-  todayQ2.forEach(e => { if (e.completed) completedItems++; });
+  todayPriority.forEach(e => { if (e.completed) completedItems++; });
   const progressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
   if (authLoading) {
@@ -465,6 +465,20 @@ export default function DashboardPage() {
                     <CardDescription className="text-sm">Reflect on interactions and build understanding</CardDescription>
                   </CardHeader>
                 </Card>
+
+                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/progress")} data-testid="card-progress">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <BarChart3 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-base">Weekly Progress</CardTitle>
+                      </div>
+                    </div>
+                    <CardDescription className="text-sm">Track your program adherence over time</CardDescription>
+                  </CardHeader>
+                </Card>
               </div>
             </div>
           </div>
@@ -548,14 +562,14 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {todayQ2.length > 0 && (
+                {todayPriority.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
                       <Grid3X3 className="h-3.5 w-3.5" />
-                      Q2 Scheduled
+                      Priority Items
                     </p>
                     <div className="space-y-2">
-                      {todayQ2.map(entry => {
+                      {todayPriority.map(entry => {
                         const done = entry.completed || false;
                         const status = getItemStatus(done, !done);
                         return (

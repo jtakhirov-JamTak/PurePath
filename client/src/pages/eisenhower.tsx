@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { EisenhowerEntry } from "@shared/schema";
@@ -34,7 +34,7 @@ const QUADRANTS = [
   { id: "q1", name: "Q1 - Urgent & Important", description: "Do Now", color: "bg-red-500/20 text-red-700 dark:text-red-400" },
   { id: "q2", name: "Q2 - Important, Not Urgent", description: "Schedule", color: "bg-green-500/20 text-green-700 dark:text-green-400" },
   { id: "q3", name: "Q3 - Urgent, Not Important", description: "Delegate", color: "bg-amber-500/20 text-amber-700 dark:text-amber-400" },
-  { id: "q4", name: "Q4 - Not Urgent, Not Important", description: "Eliminate", color: "bg-gray-500/20 text-gray-700 dark:text-gray-400" },
+  { id: "q4", name: "Q4 - Not Urgent, Not Important", description: "Avoid", color: "bg-gray-500/20 text-gray-700 dark:text-gray-400" },
 ];
 
 function generateTimeSlots() {
@@ -71,6 +71,10 @@ function calcDuration(startTime: string, endTime: string): string {
   return `${hours}h ${remaining}m`;
 }
 
+function isSchedulableQuadrant(quadrant: string) {
+  return quadrant === "q1" || quadrant === "q2";
+}
+
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -85,6 +89,17 @@ export default function EisenhowerPage() {
     decision: "",
   });
 
+  const [editEntry, setEditEntry] = useState<EisenhowerEntry | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    role: "health" as HabitCategory,
+    task: "",
+    quadrant: "q2",
+    deadline: "",
+    startTime: "",
+    endTime: "",
+  });
+
   const weekStart = format(currentWeek, "yyyy-MM-dd");
 
   const { data: entries = [], isLoading } = useQuery<EisenhowerEntry[]>({
@@ -92,20 +107,22 @@ export default function EisenhowerPage() {
   });
 
   const duration = newEntry.startTime && newEntry.endTime ? calcDuration(newEntry.startTime, newEntry.endTime) : "";
+  const editDuration = editForm.startTime && editForm.endTime ? calcDuration(editForm.startTime, editForm.endTime) : "";
 
   const createMutation = useMutation({
     mutationFn: async (entry: typeof newEntry) => {
-      const scheduledTime = entry.startTime && entry.endTime
+      const isSchedulable = isSchedulableQuadrant(entry.quadrant);
+      const scheduledTime = isSchedulable && entry.startTime && entry.endTime
         ? `${formatTimeLabel(entry.startTime)} - ${formatTimeLabel(entry.endTime)}`
-        : "";
-      const timeEstimate = entry.startTime && entry.endTime
+        : null;
+      const timeEstimate = isSchedulable && entry.startTime && entry.endTime
         ? calcDuration(entry.startTime, entry.endTime)
-        : "";
+        : null;
       return apiRequest("POST", "/api/eisenhower", {
         role: entry.role,
         task: entry.task,
         quadrant: entry.quadrant,
-        deadline: entry.deadline || null,
+        deadline: isSchedulable ? (entry.deadline || null) : null,
         decision: entry.decision || null,
         timeEstimate: timeEstimate || null,
         scheduledTime: scheduledTime || null,
@@ -117,6 +134,31 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
       setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "" });
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: typeof editForm }) => {
+      const { startTime, endTime, quadrant } = data.updates;
+      const isSchedulable = isSchedulableQuadrant(quadrant);
+      const scheduledTime = isSchedulable && startTime && endTime
+        ? `${formatTimeLabel(startTime)} - ${formatTimeLabel(endTime)}` : null;
+      const timeEstimate = isSchedulable && startTime && endTime
+        ? calcDuration(startTime, endTime) : null;
+      return apiRequest("PATCH", `/api/eisenhower/${data.id}`, {
+        role: data.updates.role,
+        task: data.updates.task,
+        quadrant: data.updates.quadrant,
+        deadline: isSchedulable ? (data.updates.deadline || null) : null,
+        scheduledTime,
+        timeEstimate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+      setEditDialogOpen(false);
+      setEditEntry(null);
     },
   });
 
@@ -144,7 +186,122 @@ export default function EisenhowerPage() {
     window.open("/api/eisenhower/export", "_blank");
   };
 
+  const handleOpenEdit = (entry: EisenhowerEntry) => {
+    setEditForm({
+      role: (entry.role as HabitCategory) || "health",
+      task: entry.task,
+      quadrant: entry.quadrant,
+      deadline: entry.deadline || "",
+      startTime: "",
+      endTime: "",
+    });
+    setEditEntry(entry);
+    setEditDialogOpen(true);
+  };
+
   const getEntriesByQuadrant = (quadrant: string) => entries.filter(e => e.quadrant === quadrant);
+
+  const renderFormFields = (
+    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string },
+    setFormState: (val: any) => void,
+    durationVal: string,
+    prefix: string,
+  ) => {
+    const schedulable = isSchedulableQuadrant(formState.quadrant);
+    return (
+      <div className="space-y-4">
+        <div>
+          <Label>Category</Label>
+          <Select value={formState.role} onValueChange={(v) => setFormState({ ...formState, role: v as HabitCategory })}>
+            <SelectTrigger data-testid={`${prefix}select-category`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORY_KEYS.map(key => {
+                const style = getCategoryStyle(key);
+                return (
+                  <SelectItem key={key} value={key}>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                      {HABIT_CATEGORIES[key].label}
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Task</Label>
+          <Textarea 
+            value={formState.task} 
+            onChange={(e) => setFormState({ ...formState, task: e.target.value })}
+            placeholder="What needs to be done?"
+            data-testid={`${prefix}input-task`}
+          />
+        </div>
+        <div>
+          <Label>Quadrant</Label>
+          <Select value={formState.quadrant} onValueChange={(v) => setFormState({ ...formState, quadrant: v })}>
+            <SelectTrigger data-testid={`${prefix}select-quadrant`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {QUADRANTS.map(q => (
+                <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {schedulable && (
+          <>
+            <div>
+              <Label>Date</Label>
+              <Input 
+                type="date" 
+                value={formState.deadline} 
+                onChange={(e) => setFormState({ ...formState, deadline: e.target.value })}
+                data-testid={`${prefix}input-deadline`}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Start Time</Label>
+                <Select value={formState.startTime} onValueChange={(v) => setFormState({ ...formState, startTime: v })}>
+                  <SelectTrigger data-testid={`${prefix}select-start-time`}>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {TIME_SLOTS.map(t => (
+                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>End Time</Label>
+                <Select value={formState.endTime} onValueChange={(v) => setFormState({ ...formState, endTime: v })}>
+                  <SelectTrigger data-testid={`${prefix}select-end-time`}>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {TIME_SLOTS.filter(t => !formState.startTime || t > formState.startTime).map(t => (
+                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {durationVal && (
+              <p className="text-sm text-muted-foreground" data-testid={`${prefix}text-duration`}>
+                Duration: {durationVal}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -195,93 +352,7 @@ export default function EisenhowerPage() {
                 <DialogTitle>Add New Entry</DialogTitle>
                 <DialogDescription>Add a task to your Eisenhower Matrix</DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Category</Label>
-                  <Select value={newEntry.role} onValueChange={(v) => setNewEntry({ ...newEntry, role: v as HabitCategory })}>
-                    <SelectTrigger data-testid="select-category">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_KEYS.map(key => {
-                        const style = getCategoryStyle(key);
-                        return (
-                          <SelectItem key={key} value={key}>
-                            <div className="flex items-center gap-2">
-                              <div className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                              {HABIT_CATEGORIES[key].label}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Task</Label>
-                  <Textarea 
-                    value={newEntry.task} 
-                    onChange={(e) => setNewEntry({ ...newEntry, task: e.target.value })}
-                    placeholder="What needs to be done?"
-                    data-testid="input-task"
-                  />
-                </div>
-                <div>
-                  <Label>Quadrant</Label>
-                  <Select value={newEntry.quadrant} onValueChange={(v) => setNewEntry({ ...newEntry, quadrant: v })}>
-                    <SelectTrigger data-testid="select-quadrant">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {QUADRANTS.map(q => (
-                        <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Date</Label>
-                  <Input 
-                    type="date" 
-                    value={newEntry.deadline} 
-                    onChange={(e) => setNewEntry({ ...newEntry, deadline: e.target.value })}
-                    data-testid="input-deadline"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Start Time</Label>
-                    <Select value={newEntry.startTime} onValueChange={(v) => setNewEntry({ ...newEntry, startTime: v })}>
-                      <SelectTrigger data-testid="select-start-time">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {TIME_SLOTS.map(t => (
-                          <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>End Time</Label>
-                    <Select value={newEntry.endTime} onValueChange={(v) => setNewEntry({ ...newEntry, endTime: v })}>
-                      <SelectTrigger data-testid="select-end-time">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {TIME_SLOTS.filter(t => !newEntry.startTime || t > newEntry.startTime).map(t => (
-                          <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {duration && (
-                  <p className="text-sm text-muted-foreground" data-testid="text-duration">
-                    Duration: {duration}
-                  </p>
-                )}
-              </div>
+              {renderFormFields(newEntry, (val: any) => setNewEntry(val), duration, "")}
               <DialogFooter>
                 <Button 
                   onClick={() => createMutation.mutate(newEntry)} 
@@ -294,6 +365,31 @@ export default function EisenhowerPage() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Entry</DialogTitle>
+              <DialogDescription>Update your Eisenhower Matrix entry</DialogDescription>
+            </DialogHeader>
+            {editEntry && editEntry.scheduledTime && (
+              <p className="text-sm text-muted-foreground">
+                Current schedule: {editEntry.scheduledTime}
+                {editEntry.timeEstimate ? ` (${editEntry.timeEstimate})` : ""}
+              </p>
+            )}
+            {renderFormFields(editForm, (val: any) => setEditForm(val), editDuration, "edit-")}
+            <DialogFooter>
+              <Button 
+                onClick={() => editEntry && editMutation.mutate({ id: editEntry.id, updates: editForm })} 
+                disabled={!editForm.task || editMutation.isPending}
+                data-testid="edit-dialog-submit"
+              >
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid md:grid-cols-2 gap-6">
           {QUADRANTS.map(quadrant => (
@@ -309,38 +405,51 @@ export default function EisenhowerPage() {
                   {getEntriesByQuadrant(quadrant.id).length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">No tasks in this quadrant</p>
                   ) : (
-                    getEntriesByQuadrant(quadrant.id).map(entry => (
-                      <div 
-                        key={entry.id} 
-                        className={`p-3 rounded-lg ${quadrant.color} flex items-start gap-3`}
-                      >
-                        <Checkbox 
-                          checked={entry.completed || false}
-                          onCheckedChange={(checked) => toggleMutation.mutate({ id: entry.id, completed: !!checked })}
-                          data-testid={`checkbox-entry-${entry.id}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm ${entry.completed ? "line-through opacity-60" : ""}`}>{entry.task}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge variant="outline" className={`text-xs ${getCategoryStyle(entry.role).text} ${getCategoryStyle(entry.role).border}`}>
-                              <span className={`h-2 w-2 rounded-full mr-1 ${getCategoryStyle(entry.role).dot}`} />
-                              {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
-                            </Badge>
-                            {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}
-                            {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
-                          </div>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => deleteMutation.mutate(entry.id)}
-                          data-testid={`button-delete-entry-${entry.id}`}
+                    getEntriesByQuadrant(quadrant.id).map(entry => {
+                      const isQ4Loss = entry.quadrant === "q4" && entry.completed;
+                      return (
+                        <div 
+                          key={entry.id} 
+                          className={`p-3 rounded-lg ${quadrant.color} flex items-start gap-3`}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
+                          <Checkbox 
+                            checked={entry.completed || false}
+                            onCheckedChange={(checked) => toggleMutation.mutate({ id: entry.id, completed: !!checked })}
+                            data-testid={`checkbox-entry-${entry.id}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${isQ4Loss ? "text-red-500 dark:text-red-400" : entry.completed ? "line-through opacity-60" : ""}`}>
+                              {entry.task}
+                              {isQ4Loss && <span className="ml-1 font-medium">(loss)</span>}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <Badge variant="outline" className={`text-xs ${getCategoryStyle(entry.role).text} ${getCategoryStyle(entry.role).border}`}>
+                                <span className={`h-2 w-2 rounded-full mr-1 ${getCategoryStyle(entry.role).dot}`} />
+                                {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
+                              </Badge>
+                              {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}
+                              {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleOpenEdit(entry)}
+                            data-testid={`button-edit-entry-${entry.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => deleteMutation.mutate(entry.id)}
+                            data-testid={`button-delete-entry-${entry.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </CardContent>
@@ -356,7 +465,7 @@ export default function EisenhowerPage() {
             <p><strong>Q1 (Urgent + Important):</strong> Crises, deadlines, pressing problems → Do now</p>
             <p><strong>Q2 (Important + Not Urgent):</strong> Prevention, planning, growth, relationships → Schedule</p>
             <p><strong>Q3 (Urgent + Not Important):</strong> Interruptions, other people's urgency → Delegate or decline</p>
-            <p><strong>Q4 (Not Urgent + Not Important):</strong> Time-wasters, avoidance → Eliminate</p>
+            <p><strong>Q4 (Not Urgent + Not Important):</strong> Time-wasters, avoidance — Avoid entirely. If done, it's a loss.</p>
             <p className="pt-2 border-t font-medium text-foreground">Goal: Reduce Q1 by investing in Q2. Your life gets calmer, clearer, and more intentional.</p>
           </CardContent>
         </Card>

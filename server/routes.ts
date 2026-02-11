@@ -625,6 +625,45 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== MEDITATION INSIGHTS ====================
+
+  app.get("/api/meditation-insights", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const insights = await storage.getMeditationInsightsByUser(userId);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching meditation insights:", error);
+      res.status(500).json({ error: "Failed to fetch insights" });
+    }
+  });
+
+  app.post("/api/meditation-insights", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { date, insight } = req.body;
+      if (!date || !insight) {
+        return res.status(400).json({ error: "date and insight are required" });
+      }
+      const newInsight = await storage.createMeditationInsight({ userId, date, insight });
+      res.json(newInsight);
+    } catch (error) {
+      console.error("Error creating meditation insight:", error);
+      res.status(500).json({ error: "Failed to save insight" });
+    }
+  });
+
+  app.delete("/api/meditation-insights/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteMeditationInsight(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting meditation insight:", error);
+      res.status(500).json({ error: "Failed to delete insight" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {
