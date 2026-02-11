@@ -6,6 +6,12 @@ Inner Journey is a 3-phase self-discovery and personal growth course platform wi
 
 ## Recent Changes (Feb 11, 2026)
 
+- **Journal Entry Redesign** — Morning and Evening journals completely restructured:
+  - **Morning** has 4 sections: Self-Awareness (intention), Happiness (gratitude, joy, enjoy), Courage (avoidance, understanding with emotion selector, containment prompt, counter-evidence, action), Release (stress, perspective shift)
+  - **Evening** has 4 sections: Daily Review (review, feedback, insight, lesson), Trigger Log (trigger, story, impulse, emotion 0-10, urge 0-10, behavior, outcome, next time), 80/20 Tracker (satisfied, dissatisfied), Shutdown (enough, tomorrow's step)
+  - Data stored as JSON in `content` text column; legacy columns still populated for backward compat
+  - Export route updated to parse new structured content
+
 - **Comprehensive UI Redesign** across all pages:
   - **Design tokens**: Single slate-blue accent color (hsl(221, 65%, 52%)), cleaner neutrals, real shadow values with actual opacity, 12px border radius
   - **Typography**: Inter for body text, Plus Jakarta Sans for headings, 16px base, 1.6 line-height
