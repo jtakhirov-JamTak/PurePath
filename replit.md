@@ -4,7 +4,23 @@
 
 Inner Journey is a 3-phase self-discovery and personal growth course platform with AI-powered features. The platform offers Phase 1+2 (Self-Reflection & Structure) and Phase 3 (Transformation), available individually or as an all-in-one bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 10, 2026)
+## Recent Changes (Feb 11, 2026)
+
+- **Comprehensive UI Redesign** across all pages:
+  - **Design tokens**: Single slate-blue accent color (hsl(221, 65%, 52%)), cleaner neutrals, real shadow values with actual opacity, 12px border radius
+  - **Typography**: Inter for body text, Plus Jakarta Sans for headings, 16px base, 1.6 line-height
+  - **Unified icon palette**: All feature/tool icons use bg-primary/[0.08] with text-primary (removed mixed amber/cyan/indigo/rose backgrounds)
+  - **Semantic exceptions**: Morning (amber Sun) and evening (indigo Moon) icons, habit category colored dots preserved
+  - **Landing page**: More whitespace, cleaner hero, refined pricing cards without icon circles
+  - **Dashboard**: Better visual hierarchy, cleaner Today's Progress sidebar, unified card icons
+  - **Course page**: Simplified phase accordion icons, unified tool card colors
+  - **Journal calendar**: More breathing room, cleaner sidebar stats cards
+  - **Journal entry**: Better form spacing, semantic session colors preserved
+  - **Habits page**: Unified icon backgrounds while preserving category dot colors
+  - **All tool pages** (Eisenhower, Meditation, Emotional Processing, Empathy, Tasks): Consistent py-12 header padding, unified icon backgrounds
+  - **Spacing**: Consistent 8px grid across all pages
+
+## Previous Changes (Feb 10, 2026)
 
 - **Journal Calendar** redesigned:
   - Default view is now **week** (7-day view), with zoom out/in button to toggle to **month** view
