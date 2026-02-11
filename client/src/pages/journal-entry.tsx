@@ -24,6 +24,7 @@ interface MorningContent {
   avoidance: string;
   understanding: string;
   understandingEmotion: string;
+  understandingEmotionOther: string;
   counterEvidence: string;
   courageAction: string;
   stress: string;
@@ -39,8 +40,10 @@ interface EveningContent {
   triggerStory: string;
   triggerImpulse: string;
   triggerEmotion: string;
+  triggerEmotionOther: string;
   triggerEmotionLevel: string;
   triggerUrge: string;
+  triggerUrgeOther: string;
   triggerUrgeLevel: string;
   triggerBehavior: string;
   triggerOutcome: string;
@@ -59,6 +62,7 @@ const emptyMorning: MorningContent = {
   avoidance: "",
   understanding: "",
   understandingEmotion: "",
+  understandingEmotionOther: "",
   counterEvidence: "",
   courageAction: "",
   stress: "",
@@ -74,8 +78,10 @@ const emptyEvening: EveningContent = {
   triggerStory: "",
   triggerImpulse: "",
   triggerEmotion: "",
+  triggerEmotionOther: "",
   triggerEmotionLevel: "",
   triggerUrge: "",
+  triggerUrgeOther: "",
   triggerUrgeLevel: "",
   triggerBehavior: "",
   triggerOutcome: "",
@@ -86,9 +92,9 @@ const emptyEvening: EveningContent = {
   shutdownTomorrow: "",
 };
 
-const emotionOptions = ["fear", "uncertainty", "resentment", "shame", "overwhelm", "other"];
-const triggerEmotionOptions = ["fear", "anger", "shame", "sadness", "guilt", "anxiety", "other"];
-const triggerUrgeOptions = ["defend", "check", "withdraw", "attack", "freeze", "avoid", "other"];
+const emotionOptions = ["fear", "anger", "sadness", "shame", "guilt", "anxiety", "disgust", "jealousy", "frustration", "other"];
+const triggerEmotionOptions = ["fear", "anger", "sadness", "shame", "guilt", "anxiety", "disgust", "jealousy", "frustration", "other"];
+const triggerUrgeOptions = ["defend", "withdraw", "attack", "freeze", "avoid", "people-please", "control", "numb", "overthink", "other"];
 
 export default function JournalEntryPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -415,6 +421,15 @@ export default function JournalEntryPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {morningData.understandingEmotion === "other" && (
+                      <Input
+                        value={morningData.understandingEmotionOther}
+                        onChange={(e) => updateMorning("understandingEmotionOther", e.target.value)}
+                        placeholder="Specify emotion..."
+                        className="sm:w-[180px]"
+                        data-testid="input-understanding-emotion-other"
+                      />
+                    )}
                     <Textarea
                       value={morningData.understanding}
                       onChange={(e) => updateMorning("understanding", e.target.value)}
@@ -627,6 +642,14 @@ export default function JournalEntryPage() {
                         data-testid="input-trigger-emotion-level"
                       />
                     </div>
+                    {eveningData.triggerEmotion === "other" && (
+                      <Input
+                        value={eveningData.triggerEmotionOther}
+                        onChange={(e) => updateEvening("triggerEmotionOther", e.target.value)}
+                        placeholder="Specify emotion..."
+                        data-testid="input-trigger-emotion-other"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Urge (0–10)</Label>
@@ -655,6 +678,14 @@ export default function JournalEntryPage() {
                         data-testid="input-trigger-urge-level"
                       />
                     </div>
+                    {eveningData.triggerUrge === "other" && (
+                      <Input
+                        value={eveningData.triggerUrgeOther}
+                        onChange={(e) => updateEvening("triggerUrgeOther", e.target.value)}
+                        placeholder="Specify urge..."
+                        data-testid="input-trigger-urge-other"
+                      />
+                    )}
                   </div>
                 </div>
                 <Separator />
