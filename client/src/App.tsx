@@ -31,6 +31,7 @@ import JournalHubPage from "@/pages/journal-hub";
 import ToolsHubPage from "@/pages/tools-hub";
 import LibraryPage from "@/pages/library";
 import IdentityDocPage from "@/pages/identity-doc";
+import MonthlyGoalPage from "@/pages/monthly-goal";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -139,6 +140,9 @@ function Router() {
       </Route>
       <Route path="/library">
         {() => <AuthenticatedRoute component={LibraryPage} />}
+      </Route>
+      <Route path="/monthly-goal">
+        {() => <AuthenticatedRoute component={MonthlyGoalPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

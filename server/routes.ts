@@ -307,8 +307,18 @@ export async function registerRoutes(
       });
 
       const history = await storage.getChatMessagesByUser(userId);
+      const currentMonth = format(new Date(), "yyyy-MM");
+      const monthlyGoal = await storage.getMonthlyGoal(userId, currentMonth);
+      let systemPrompt = SELF_DISCOVERY_SYSTEM_PROMPT;
+      if (monthlyGoal?.goalStatement) {
+        systemPrompt += `\n\nIMPORTANT CONTEXT — The user's current monthly goal:\nGoal: ${monthlyGoal.goalStatement}`;
+        if (monthlyGoal.value) systemPrompt += `\nValue it serves: ${monthlyGoal.value}`;
+        if (monthlyGoal.why) systemPrompt += `\nWhy: ${monthlyGoal.why}`;
+        if (monthlyGoal.nextConcreteStep) systemPrompt += `\nNext step: ${monthlyGoal.nextConcreteStep}`;
+        systemPrompt += `\nWeave this goal context naturally into your coaching when relevant. Don't force it, but be aware of it.`;
+      }
       const messages = [
-        { role: "system" as const, content: SELF_DISCOVERY_SYSTEM_PROMPT },
+        { role: "system" as const, content: systemPrompt },
         ...history.slice(-20).map((m) => ({
           role: m.role as "user" | "assistant",
           content: m.content,

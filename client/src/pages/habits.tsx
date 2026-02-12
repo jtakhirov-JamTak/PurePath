@@ -101,6 +101,7 @@ export default function HabitsPage() {
   const [newHabit, setNewHabit] = useState({
     name: "",
     category: "health" as string,
+    habitType: "maintenance" as string,
     recurringType: "indefinite" as "indefinite" | "count",
     recurringCount: "4",
     duration: "15",
@@ -134,7 +135,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", category: "health", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
+    setNewHabit({ name: "", category: "health", habitType: "maintenance", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -149,6 +150,7 @@ export default function HabitsPage() {
       return apiRequest("POST", "/api/habits", {
         name: data.name,
         category: data.category,
+        habitType: data.habitType,
         cadence,
         recurring,
         duration: parseInt(data.duration) || null,
@@ -175,6 +177,7 @@ export default function HabitsPage() {
       return apiRequest("PATCH", `/api/habits/${id}`, {
         name: data.name,
         category: data.category,
+        habitType: data.habitType,
         cadence,
         recurring,
         duration: parseInt(data.duration) || null,
@@ -196,6 +199,7 @@ export default function HabitsPage() {
     setNewHabit({
       name: habit.name,
       category: habit.category || "health",
+      habitType: habit.habitType || "maintenance",
       recurringType: isCount ? "count" : "indefinite",
       recurringCount: isCount ? habit.recurring! : "4",
       duration: habit.duration?.toString() || "15",
@@ -380,6 +384,28 @@ export default function HabitsPage() {
                   </div>
 
                   <div>
+                    <Label>Purpose</Label>
+                    <Select
+                      value={newHabit.habitType}
+                      onValueChange={(v) => setNewHabit({ ...newHabit, habitType: v })}
+                    >
+                      <SelectTrigger data-testid="select-habit-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="goal">Goal Habit</SelectItem>
+                        <SelectItem value="learning">Learning Habit</SelectItem>
+                        <SelectItem value="maintenance">Maintenance Habit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {newHabit.habitType === "goal" && "Directly supports your monthly goal"}
+                      {newHabit.habitType === "learning" && "Builds a skill or knowledge"}
+                      {newHabit.habitType === "maintenance" && "Maintains health, wellbeing, or routine"}
+                    </p>
+                  </div>
+
+                  <div>
                     <Label className="mb-2 block">Cadence (select days)</Label>
                     <div className="flex gap-1.5">
                       {DAYS.map(day => (
@@ -521,6 +547,11 @@ export default function HabitsPage() {
                               <Badge variant="outline" className={`text-xs ${style.text} ${style.border}`} data-testid={`badge-category-${habit.id}`}>
                                 {HABIT_CATEGORIES[(habit.category as HabitCategory) || "health"]?.label || "Health"}
                               </Badge>
+                              {habit.habitType && habit.habitType !== "maintenance" && (
+                                <Badge variant="secondary" className="text-xs" data-testid={`badge-habit-type-${habit.id}`}>
+                                  {habit.habitType === "goal" ? "Goal" : "Learning"}
+                                </Badge>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                               <Badge variant="outline" className="text-xs">

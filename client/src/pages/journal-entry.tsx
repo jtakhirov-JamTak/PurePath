@@ -15,7 +15,7 @@ import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Win
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, Purchase } from "@shared/schema";
+import type { Journal, Purchase, MonthlyGoal } from "@shared/schema";
 
 interface MorningContent {
   intention: string;
@@ -127,6 +127,18 @@ export default function JournalEntryPage() {
     queryKey: ["/api/journals", date, session],
     enabled: !!user && hasAccess,
   });
+
+  const currentMonthKey = date ? date.substring(0, 7) : format(new Date(), "yyyy-MM");
+  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", currentMonthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const hasGoal = monthlyGoal?.goalStatement && monthlyGoal.goalStatement.trim().length > 0;
 
   useEffect(() => {
     if (existingJournal) {
@@ -351,6 +363,17 @@ export default function JournalEntryPage() {
                     data-testid="input-intention"
                   />
                 </div>
+                {hasGoal && (
+                  <div className="rounded-md bg-muted/50 px-4 py-3 mt-2" data-testid="goal-context">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
+                    <p className="text-sm">{monthlyGoal.goalStatement}</p>
+                    {journalMode === "quick" && monthlyGoal.nextConcreteStep && (
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        What's one small action toward this today?
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 

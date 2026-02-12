@@ -2,12 +2,12 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Calendar } from "lucide-react";
+import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Calendar, Footprints, Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
 
 export default function PlanPage() {
   const { user } = useAuth();
@@ -28,6 +28,19 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
+  const currentMonthKey = format(today, "yyyy-MM");
+  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", currentMonthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const hasGoal = monthlyGoal?.goalStatement && monthlyGoal.goalStatement.trim().length > 0;
+
   const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
   const q2Items = thisWeekEntries.filter(e => e.quadrant === "q2");
   const completedQ2 = q2Items.filter(e => e.completed);
@@ -46,6 +59,47 @@ export default function PlanPage() {
         </div>
 
         <div className="max-w-3xl space-y-6">
+          <Card className="overflow-visible" data-testid="card-plan-monthly-goal">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-lg">Step 1: Monthly Goal</CardTitle>
+                  <CardDescription>Start here — everything this week should move you toward this</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {hasGoal ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium" data-testid="text-plan-goal">{monthlyGoal.goalStatement}</p>
+                  {monthlyGoal.nextConcreteStep && (
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Next step: {monthlyGoal.nextConcreteStep}</span>
+                    </div>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-edit-goal">
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Edit Goal
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    No monthly goal set yet. A clear goal gives direction to your weekly priorities and daily habits.
+                  </p>
+                  <Button variant="default" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-set-goal">
+                    <Target className="h-4 w-4 mr-2" />
+                    Set Monthly Goal
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="overflow-visible" data-testid="card-weekly-focus">
             <CardHeader>
               <div className="flex items-center gap-3 mb-1">

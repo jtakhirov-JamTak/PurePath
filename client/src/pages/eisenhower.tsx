@@ -87,6 +87,7 @@ export default function EisenhowerPage() {
     startTime: "",
     endTime: "",
     decision: "",
+    goalAlignment: "",
   });
 
   const [editEntry, setEditEntry] = useState<EisenhowerEntry | null>(null);
@@ -98,6 +99,7 @@ export default function EisenhowerPage() {
     deadline: "",
     startTime: "",
     endTime: "",
+    goalAlignment: "",
   });
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
@@ -126,6 +128,7 @@ export default function EisenhowerPage() {
         decision: entry.decision || null,
         timeEstimate: timeEstimate || null,
         scheduledTime: scheduledTime || null,
+        goalAlignment: entry.quadrant === "q2" ? (entry.goalAlignment || null) : null,
         weekStart,
       });
     },
@@ -133,7 +136,7 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
-      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "" });
+      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "" });
     },
   });
 
@@ -152,6 +155,7 @@ export default function EisenhowerPage() {
         deadline: isSchedulable ? (data.updates.deadline || null) : null,
         scheduledTime,
         timeEstimate,
+        goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
       });
     },
     onSuccess: () => {
@@ -194,6 +198,7 @@ export default function EisenhowerPage() {
       deadline: entry.deadline || "",
       startTime: "",
       endTime: "",
+      goalAlignment: entry.goalAlignment || "",
     });
     setEditEntry(entry);
     setEditDialogOpen(true);
@@ -202,7 +207,7 @@ export default function EisenhowerPage() {
   const getEntriesByQuadrant = (quadrant: string) => entries.filter(e => e.quadrant === quadrant);
 
   const renderFormFields = (
-    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string },
+    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string },
     setFormState: (val: any) => void,
     durationVal: string,
     prefix: string,
@@ -298,6 +303,17 @@ export default function EisenhowerPage() {
               </p>
             )}
           </>
+        )}
+        {formState.quadrant === "q2" && (
+          <div>
+            <Label>Goal Alignment (optional)</Label>
+            <Input
+              value={formState.goalAlignment}
+              onChange={(e) => setFormState({ ...formState, goalAlignment: e.target.value })}
+              placeholder="How does this support your monthly goal?"
+              data-testid={`${prefix}input-goal-alignment`}
+            />
+          </div>
         )}
       </div>
     );

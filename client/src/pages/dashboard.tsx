@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument } from "@shared/schema";
+import { Target, Footprints } from "lucide-react";
+import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -73,6 +74,17 @@ export default function DashboardPage() {
 
   const { data: weekCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+    enabled: !!user,
+  });
+
+  const currentMonthKey = format(today, "yyyy-MM");
+  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", currentMonthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
     enabled: !!user,
   });
 
@@ -216,6 +228,8 @@ export default function DashboardPage() {
           onSaveIntention={(text) => intentionMutation.mutate(text)}
           isSavingIntention={intentionMutation.isPending}
         />
+
+        <MonthlyGoalCard goal={monthlyGoal} setLocation={setLocation} />
 
         <Q2FocusCard q2Items={q2Items} setLocation={setLocation} />
 
@@ -485,6 +499,55 @@ function NorthStarStrip({
               <p className="text-xs text-muted-foreground" data-testid="text-saving-intention">Saving...</p>
             )}
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MonthlyGoalCard({
+  goal,
+  setLocation,
+}: {
+  goal: MonthlyGoal | undefined;
+  setLocation: (path: string) => void;
+}) {
+  const hasGoal = goal?.goalStatement && goal.goalStatement.trim().length > 0;
+
+  return (
+    <Card className="overflow-visible" data-testid="card-monthly-goal">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+            <Target className="h-4 w-4 text-primary" />
+          </div>
+          <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setLocation("/monthly-goal")}
+          data-testid="button-edit-monthly-goal"
+        >
+          {hasGoal ? <Pencil className="h-3.5 w-3.5 mr-1.5" /> : null}
+          {hasGoal ? "Edit" : "Set Goal"}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {hasGoal ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium" data-testid="text-goal-statement">{goal.goalStatement}</p>
+            {goal.nextConcreteStep && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span data-testid="text-next-step">Next step: {goal.nextConcreteStep}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No goal set for this month. Setting a clear monthly goal helps you stay focused and measure progress.
+          </p>
         )}
       </CardContent>
     </Card>

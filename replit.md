@@ -4,7 +4,21 @@
 
 Inner Journey is a 3-phase self-discovery and personal growth course platform with AI-powered features. The platform offers Phase 1+2 (Self-Reflection & Structure) and Phase 3 (Transformation), available individually or as an all-in-one bundle. Users authenticate via Replit Auth, purchase courses through Stripe, and access their content through a personalized dashboard.
 
-## Recent Changes (Feb 11, 2026)
+## Recent Changes (Feb 12, 2026)
+
+- **Monthly Goal System** — First-class goal-setting feature integrated across the platform:
+  - New `monthly_goals` DB table keyed by userId + monthKey (YYYY-MM) with upsert pattern
+  - Monthly Goal page (`/monthly-goal`) with 6-field form: goal statement, success marker, value, why, next concrete step, prize
+  - Month navigation (prev/next) for reviewing past goals
+  - **Dashboard**: Monthly Goal card shows current goal + next step with edit link
+  - **Plan page**: Monthly Goal appears as "Step 1" before weekly Eisenhower/Habits sections
+  - **Library**: "How to Set a Real Goal" guide with 7 condensed rules and link to set goal
+  - **Journal**: Morning Self-Awareness section shows monthly goal context; Quick mode adds "what's one small action?" prompt
+  - **Coach/GPT**: Monthly goal injected into system prompt for context-aware coaching
+  - **Habits**: New `habitType` field (goal/learning/maintenance) with Purpose selector in create/edit dialog; Goal/Learning badges on habit cards
+  - **Eisenhower Matrix**: New `goalAlignment` text field on Q2 items ("How does this support your monthly goal?")
+
+## Previous Changes (Feb 11, 2026)
 
 - **Journal Entry Redesign** — Morning and Evening journals completely restructured:
   - **Morning** has 4 sections: Self-Awareness (intention), Happiness (gratitude, joy, enjoy), Courage (avoidance, understanding with emotion selector, containment prompt, counter-evidence, action), Release (stress, perspective shift)
@@ -151,6 +165,7 @@ Preferred communication style: Simple, everyday language.
   - `habits` (recurring habits with day-of-week cadence, duration, optional start/end time, category)
   - `habit_completions` (daily habit check-offs, unique per user/habit/date)
   - `tasks` (daily tasks with quadrant labels)
+  - `monthly_goals` (monthly goal setting keyed by userId+monthKey, with goal_statement, success_marker, value, why, next_concrete_step, prize)
 
 ### Key Routes
 - `/` - Landing page (unauthenticated) or Dashboard (authenticated)
@@ -160,6 +175,7 @@ Preferred communication style: Simple, everyday language.
 - `/phase3` - Phase 3 Transformation Agent (doc upload + AI analysis)
 - `/checkout/:courseType` - Stripe checkout (phase12, phase3, allinone)
 - `/billing` - Purchase history and access status
+- `/monthly-goal` - Monthly goal setting with month navigation
 - `/meditation`, `/emotional-processing`, `/eisenhower`, `/empathy`, `/habits`, `/tasks` - Free tools
 - `/journal/:date/:session` - Individual journal entries
 
