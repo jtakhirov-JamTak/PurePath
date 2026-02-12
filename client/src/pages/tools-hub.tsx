@@ -1,9 +1,16 @@
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Heart, Users, Grid3X3 } from "lucide-react";
+import { Brain, Heart, Users, Grid3X3, FileText } from "lucide-react";
 import { useLocation } from "wouter";
 
 const tools = [
+  {
+    id: "identity",
+    title: "Identity Document",
+    description: "Define your identity, vision, and core values",
+    icon: FileText,
+    path: "/identity",
+  },
   {
     id: "meditation",
     title: "Meditation",

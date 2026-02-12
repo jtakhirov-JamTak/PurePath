@@ -268,3 +268,21 @@ export const insertMeditationInsightSchema = createInsertSchema(meditationInsigh
 
 export type MeditationInsight = typeof meditationInsights.$inferSelect;
 export type InsertMeditationInsight = z.infer<typeof insertMeditationInsightSchema>;
+
+export const identityDocuments = pgTable("identity_documents", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  identity: text("identity").notNull().default(""),
+  vision: text("vision").notNull().default(""),
+  values: text("values").notNull().default(""),
+  todayValue: varchar("today_value", { length: 200 }).default(""),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertIdentityDocumentSchema = createInsertSchema(identityDocuments).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type IdentityDocument = typeof identityDocuments.$inferSelect;
+export type InsertIdentityDocument = z.infer<typeof insertIdentityDocumentSchema>;

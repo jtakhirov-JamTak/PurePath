@@ -30,6 +30,7 @@ import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
 import ToolsHubPage from "@/pages/tools-hub";
 import LibraryPage from "@/pages/library";
+import IdentityDocPage from "@/pages/identity-doc";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -132,6 +133,9 @@ function Router() {
       </Route>
       <Route path="/tools">
         {() => <AuthenticatedRoute component={ToolsHubPage} />}
+      </Route>
+      <Route path="/identity">
+        {() => <AuthenticatedRoute component={IdentityDocPage} />}
       </Route>
       <Route path="/library">
         {() => <AuthenticatedRoute component={LibraryPage} />}

@@ -111,7 +111,7 @@ export default function JournalEntryPage() {
   const [morningData, setMorningData] = useState<MorningContent>(emptyMorning);
   const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
-  const [journalMode, setJournalMode] = useState<"quick" | "deep">("quick");
+  const [journalMode, setJournalMode] = useState<"quick" | "deep">("deep");
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],

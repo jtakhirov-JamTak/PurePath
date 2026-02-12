@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -9,7 +9,8 @@ import {
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
   type Task, type InsertTask,
-  type MeditationInsight, type InsertMeditationInsight
+  type MeditationInsight, type InsertMeditationInsight,
+  type IdentityDocument, type InsertIdentityDocument
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -64,6 +65,10 @@ export interface IStorage {
   getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]>;
   createMeditationInsight(insight: InsertMeditationInsight): Promise<MeditationInsight>;
   deleteMeditationInsight(id: number): Promise<void>;
+
+  // Identity Document
+  getIdentityDocument(userId: string): Promise<IdentityDocument | undefined>;
+  upsertIdentityDocument(doc: InsertIdentityDocument): Promise<IdentityDocument>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -296,6 +301,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMeditationInsight(id: number): Promise<void> {
     await db.delete(meditationInsights).where(eq(meditationInsights.id, id));
+  }
+
+  async getIdentityDocument(userId: string): Promise<IdentityDocument | undefined> {
+    const [doc] = await db.select().from(identityDocuments).where(eq(identityDocuments.userId, userId));
+    return doc;
+  }
+
+  async upsertIdentityDocument(doc: InsertIdentityDocument): Promise<IdentityDocument> {
+    const [result] = await db
+      .insert(identityDocuments)
+      .values({ ...doc, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: identityDocuments.userId,
+        set: {
+          identity: doc.identity,
+          vision: doc.vision,
+          values: doc.values,
+          todayValue: doc.todayValue,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
   }
 }
 

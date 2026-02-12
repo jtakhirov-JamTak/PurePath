@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -6,17 +5,15 @@ import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Sun, Moon, Pencil, Check, X, ArrowRight,
-  Heart, Brain, Users, CircleDot, ShieldCheck,
+  Sun, Moon, Pencil, Check, ArrowRight,
+  Heart, Brain, Users, CircleDot, FileText,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, differenceInDays, isToday } from "date-fns";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry } from "@shared/schema";
-import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
+import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -29,23 +26,6 @@ const CATEGORY_STYLES: Record<string, string> = {
   mindfulness: "bg-violet-500",
   learning: "bg-cyan-500",
 };
-
-interface NorthStar {
-  identity: string;
-  values: string;
-}
-
-function loadNorthStar(): NorthStar {
-  try {
-    const raw = localStorage.getItem("inner-journey-north-star");
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { identity: "", values: "" };
-}
-
-function saveNorthStar(ns: NorthStar) {
-  localStorage.setItem("inner-journey-north-star", JSON.stringify(ns));
-}
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -84,6 +64,11 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+
   const { data: weekCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
     enabled: !!user,
@@ -119,12 +104,10 @@ export default function DashboardPage() {
   });
   const noJournalIn3Days = journals.length > 0 && !hasRecentJournal;
 
-  const thisWeekEnd = new Date(weekEndStr + "T23:59:59");
   const q2Items = eisenhowerEntries.filter((e) => {
     if (e.quadrant !== "q2") return false;
     if (!e.deadline) return false;
-    const dl = new Date(e.deadline + "T00:00:00");
-    return dl >= new Date(todayStr + "T00:00:00") && dl <= thisWeekEnd;
+    return e.deadline === todayStr;
   });
 
   const toggleMutation = useMutation({
@@ -154,35 +137,24 @@ export default function DashboardPage() {
     },
   });
 
-  const [northStar, setNorthStar] = useState<NorthStar>(loadNorthStar);
-  const [editing, setEditing] = useState(false);
-  const [editIdentity, setEditIdentity] = useState("");
-  const [editValues, setEditValues] = useState("");
+  const todayValueMutation = useMutation({
+    mutationFn: async (value: string) => {
+      await apiRequest("PUT", "/api/identity-document", {
+        identity: identityDoc?.identity || "",
+        vision: identityDoc?.vision || "",
+        values: identityDoc?.values || "",
+        todayValue: value,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+  });
 
-  const startEdit = useCallback(() => {
-    setEditIdentity(northStar.identity);
-    setEditValues(northStar.values);
-    setEditing(true);
-  }, [northStar]);
-
-  const cancelEdit = useCallback(() => {
-    setEditing(false);
-  }, []);
-
-  const saveEdit = useCallback(() => {
-    const updated = { identity: editIdentity.trim(), values: editValues.trim() };
-    setNorthStar(updated);
-    saveNorthStar(updated);
-    setEditing(false);
-  }, [editIdentity, editValues]);
-
-  const valuesArray = northStar.values
-    ? northStar.values.split(",").map((v) => v.trim()).filter(Boolean)
+  const valuesArray = identityDoc?.values
+    ? identityDoc.values.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
-  const dayOfYear = Math.floor(
-    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000
-  );
-  const todayValue = valuesArray.length > 0 ? valuesArray[dayOfYear % valuesArray.length] : null;
+  const todayValue = identityDoc?.todayValue || null;
 
   if (authLoading) {
     return (
@@ -212,16 +184,11 @@ export default function DashboardPage() {
         />
 
         <NorthStarStrip
-          northStar={northStar}
+          identityDoc={identityDoc}
           todayValue={todayValue}
-          editing={editing}
-          editIdentity={editIdentity}
-          editValues={editValues}
-          setEditIdentity={setEditIdentity}
-          setEditValues={setEditValues}
-          startEdit={startEdit}
-          cancelEdit={cancelEdit}
-          saveEdit={saveEdit}
+          valuesArray={valuesArray}
+          setLocation={setLocation}
+          onSelectValue={(v) => todayValueMutation.mutate(v)}
         />
 
         <Q2FocusCard q2Items={q2Items} setLocation={setLocation} />
@@ -352,105 +319,79 @@ function NextStepCTA({
 }
 
 function NorthStarStrip({
-  northStar,
+  identityDoc,
   todayValue,
-  editing,
-  editIdentity,
-  editValues,
-  setEditIdentity,
-  setEditValues,
-  startEdit,
-  cancelEdit,
-  saveEdit,
+  valuesArray,
+  setLocation,
+  onSelectValue,
 }: {
-  northStar: NorthStar;
+  identityDoc?: IdentityDocument;
   todayValue: string | null;
-  editing: boolean;
-  editIdentity: string;
-  editValues: string;
-  setEditIdentity: (v: string) => void;
-  setEditValues: (v: string) => void;
-  startEdit: () => void;
-  cancelEdit: () => void;
-  saveEdit: () => void;
+  valuesArray: string[];
+  setLocation: (path: string) => void;
+  onSelectValue: (v: string) => void;
 }) {
-  if (editing) {
+  const hasContent = identityDoc?.identity || identityDoc?.values;
+
+  if (!hasContent) {
     return (
-      <Card className="overflow-visible" data-testid="card-north-star">
-        <CardContent className="p-4 space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Identity
-            </label>
-            <Input
-              value={editIdentity}
-              onChange={(e) => setEditIdentity(e.target.value)}
-              placeholder="I am someone who..."
-              data-testid="input-identity"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">
-              Values (comma-separated)
-            </label>
-            <Textarea
-              value={editValues}
-              onChange={(e) => setEditValues(e.target.value)}
-              placeholder="courage, patience, kindness"
-              className="resize-none"
-              rows={2}
-              data-testid="input-values"
-            />
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={saveEdit} data-testid="button-save-northstar">
-              <Check className="mr-1 h-4 w-4" />
-              Save
-            </Button>
-            <Button variant="ghost" onClick={cancelEdit} data-testid="button-cancel-northstar">
-              <X className="mr-1 h-4 w-4" />
-              Cancel
-            </Button>
+      <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setLocation("/identity")} data-testid="card-north-star">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <FileText className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Set up your Identity Document</p>
+              <p className="text-xs text-muted-foreground">Define your identity, vision, and values to guide your practice</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const hasContent = northStar.identity || northStar.values;
-
   return (
     <Card className="overflow-visible" data-testid="card-north-star">
-      <CardContent className="p-4">
+      <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0 space-y-1">
-            <p className="text-sm" data-testid="text-identity">
-              <span className="font-medium text-muted-foreground">Identity: </span>
-              {northStar.identity || (
-                <span className="italic text-muted-foreground/60">Define your identity...</span>
-              )}
-            </p>
-            <p className="text-sm" data-testid="text-values">
-              <span className="font-medium text-muted-foreground">Values: </span>
-              {northStar.values || (
-                <span className="italic text-muted-foreground/60">Define your values...</span>
-              )}
-            </p>
-            {todayValue && (
-              <p className="text-sm font-medium" data-testid="text-today-value">
-                Today I practice: <span className="text-primary">{todayValue}</span>
+            {identityDoc?.identity && (
+              <p className="text-sm" data-testid="text-identity">
+                <span className="font-medium text-muted-foreground">Identity: </span>
+                {identityDoc.identity.length > 100
+                  ? identityDoc.identity.slice(0, 100) + "..."
+                  : identityDoc.identity}
               </p>
             )}
           </div>
           <Button
             size="icon"
             variant="ghost"
-            onClick={startEdit}
+            onClick={() => setLocation("/identity")}
             data-testid="button-edit-northstar"
           >
             <Pencil className="h-4 w-4" />
           </Button>
         </div>
+
+        {valuesArray.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Today I practice:</p>
+            <div className="flex flex-wrap gap-2">
+              {valuesArray.map((v) => (
+                <Badge
+                  key={v}
+                  variant={todayValue === v ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => onSelectValue(v)}
+                  data-testid={`badge-select-value-${v}`}
+                >
+                  {v}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -684,6 +625,13 @@ function SupportSection({
       icon: Users,
       testId: "button-eq",
     },
+    {
+      title: "Identity Document",
+      description: "revisit who you are becoming",
+      path: "/identity",
+      icon: FileText,
+      testId: "button-identity",
+    },
   ];
 
   return (
@@ -691,7 +639,7 @@ function SupportSection({
       <h3 className="text-sm font-medium text-muted-foreground mb-3">
         Need support now?
       </h3>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {items.map((item) => {
           const Icon = item.icon;
           return (

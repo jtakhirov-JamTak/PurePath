@@ -694,6 +694,37 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== IDENTITY DOCUMENT ====================
+
+  app.get("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const doc = await storage.getIdentityDocument(userId);
+      res.json(doc || { userId, identity: "", vision: "", values: "", todayValue: "" });
+    } catch (error) {
+      console.error("Error fetching identity document:", error);
+      res.status(500).json({ error: "Failed to fetch identity document" });
+    }
+  });
+
+  app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { identity, vision, values, todayValue } = req.body;
+      const doc = await storage.upsertIdentityDocument({
+        userId,
+        identity: identity || "",
+        vision: vision || "",
+        values: values || "",
+        todayValue: todayValue || "",
+      });
+      res.json(doc);
+    } catch (error) {
+      console.error("Error saving identity document:", error);
+      res.status(500).json({ error: "Failed to save identity document" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {
