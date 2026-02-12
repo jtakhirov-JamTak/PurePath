@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
-import { Target, Footprints } from "lucide-react";
+import { Target, Footprints, AlertTriangle } from "lucide-react";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -515,14 +515,45 @@ function MonthlyGoalCard({
   const goalDisplay = goal?.goalWhat?.trim() || goal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
 
+  if (!hasGoal) {
+    return (
+      <Card className="overflow-visible" data-testid="card-monthly-goal">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+              <Target className="h-4 w-4 text-primary" />
+            </div>
+            <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-3">
+            No goal set for this month. A clear goal gives every day direction.
+          </p>
+          <Button
+            size="sm"
+            onClick={() => setLocation("/monthly-goal")}
+            data-testid="button-set-monthly-goal"
+          >
+            Set Goal
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="overflow-visible" data-testid="card-monthly-goal">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
             <Target className="h-4 w-4 text-primary" />
           </div>
-          <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
+          <div>
+            <CardTitle className="font-serif text-lg">Goal Review</CardTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Quick 2-min daily check-in</p>
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -530,26 +561,61 @@ function MonthlyGoalCard({
           onClick={() => setLocation("/monthly-goal")}
           data-testid="button-edit-monthly-goal"
         >
-          {hasGoal ? <Pencil className="h-3.5 w-3.5 mr-1.5" /> : null}
-          {hasGoal ? "Edit" : "Set Goal"}
+          <Pencil className="h-3.5 w-3.5 mr-1.5" />
+          Edit
         </Button>
       </CardHeader>
-      <CardContent>
-        {hasGoal ? (
-          <div className="space-y-2">
-            <p className="text-sm font-medium" data-testid="text-goal-statement">{goalDisplay}</p>
-            {goal?.blockingHabit && (
-              <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <span data-testid="text-next-step">Blocking habit: {goal.blockingHabit}</span>
-              </div>
-            )}
+      <CardContent className="space-y-4">
+        <div className="rounded-md bg-primary/[0.04] border border-primary/10 px-4 py-3">
+          <p className="text-sm font-medium leading-relaxed" data-testid="text-goal-statement">{goalDisplay}</p>
+          {goal?.goalWhen && (
+            <p className="text-xs text-muted-foreground mt-1" data-testid="text-goal-when">{goal.goalWhen}</p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-3" data-testid="review-blocking">
+            <div className="h-6 w-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="h-3 w-3 text-destructive" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Does this block my goal?</p>
+              {goal?.blockingHabit ? (
+                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-blocking-habit">Watch for: {goal.blockingHabit}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5">Notice what pulls you off track today</p>
+              )}
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No goal set for this month. Setting a clear monthly goal helps you stay focused and measure progress.
-          </p>
-        )}
+
+          <div className="flex items-start gap-3" data-testid="review-next-step">
+            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Footprints className="h-3 w-3 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">What's the next concrete step?</p>
+              {goal?.goalHow ? (
+                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-goal-how">Plan: {goal.goalHow}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5">One small action you can take today</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3" data-testid="review-enjoy">
+            <div className="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Heart className="h-3 w-3 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">How can I enjoy the process?</p>
+              {goal?.fun ? (
+                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-goal-fun">{goal.fun}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-0.5">Happiness lives in the pursuit</p>
+              )}
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
