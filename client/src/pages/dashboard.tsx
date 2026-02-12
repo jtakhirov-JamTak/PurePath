@@ -1,3 +1,4 @@
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sun, Moon, Pencil, Check, ArrowRight,
   Heart, Brain, Users, CircleDot, FileText,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, startOfWeek, endOfWeek, addDays, differenceInDays, isToday } from "date-fns";
+import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -144,6 +146,22 @@ export default function DashboardPage() {
         vision: identityDoc?.vision || "",
         values: identityDoc?.values || "",
         todayValue: value,
+        todayReflection: identityDoc?.todayReflection || "",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+  });
+
+  const reflectionMutation = useMutation({
+    mutationFn: async (reflection: string) => {
+      await apiRequest("PUT", "/api/identity-document", {
+        identity: identityDoc?.identity || "",
+        vision: identityDoc?.vision || "",
+        values: identityDoc?.values || "",
+        todayValue: identityDoc?.todayValue || "",
+        todayReflection: reflection,
       });
     },
     onSuccess: () => {
@@ -206,6 +224,17 @@ export default function DashboardPage() {
           journals={journals}
           weekCompletions={weekCompletions}
           habits={habits}
+        />
+
+        <EveningSection
+          todayValue={todayValue}
+          todayReflection={identityDoc?.todayReflection || ""}
+          hasEvening={hasEvening}
+          hasAccess={!!hasPhase12}
+          todayStr={todayStr}
+          setLocation={setLocation}
+          onSaveReflection={(text) => reflectionMutation.mutate(text)}
+          isSaving={reflectionMutation.isPending}
         />
 
         <SupportSection setLocation={setLocation} />
@@ -592,6 +621,108 @@ function MiniCalendar({
               </div>
             );
           })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EveningSection({
+  todayValue,
+  todayReflection,
+  hasEvening,
+  hasAccess,
+  todayStr,
+  setLocation,
+  onSaveReflection,
+  isSaving,
+}: {
+  todayValue: string | null;
+  todayReflection: string;
+  hasEvening: boolean;
+  hasAccess: boolean;
+  todayStr: string;
+  setLocation: (path: string) => void;
+  onSaveReflection: (text: string) => void;
+  isSaving: boolean;
+}) {
+  const [localReflection, setLocalReflection] = useState(todayReflection);
+  const [hasEdited, setHasEdited] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!hasEdited) {
+      setLocalReflection(todayReflection);
+    }
+  }, [todayReflection, hasEdited]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const handleReflectionChange = useCallback(
+    (value: string) => {
+      setLocalReflection(value);
+      setHasEdited(true);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        onSaveReflection(value);
+        setHasEdited(false);
+      }, 1000);
+    },
+    [onSaveReflection]
+  );
+
+  if (!hasAccess) return null;
+
+  return (
+    <Card className="overflow-visible" data-testid="card-evening">
+      <CardContent className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Moon className="h-5 w-5 text-indigo-500 shrink-0" />
+          <div>
+            <p className="text-base font-medium font-serif" data-testid="text-evening-title">Evening</p>
+          </div>
+        </div>
+
+        {todayValue && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              How did you practice <span className="font-medium text-foreground">{todayValue}</span> today?
+            </p>
+            <Textarea
+              value={localReflection}
+              onChange={(e) => handleReflectionChange(e.target.value)}
+              placeholder={`Describe how you practiced ${todayValue} today...`}
+              className="resize-none text-sm"
+              rows={3}
+              data-testid="textarea-reflection"
+            />
+            {isSaving && (
+              <p className="text-xs text-muted-foreground" data-testid="text-saving">Saving...</p>
+            )}
+          </div>
+        )}
+
+        {!todayValue && (
+          <p className="text-sm text-muted-foreground" data-testid="text-no-value-selected">
+            Select a value above to reflect on how you practiced it today.
+          </p>
+        )}
+
+        <div>
+          <Button
+            variant={hasEvening ? "outline" : "default"}
+            onClick={() => setLocation(`/journal/${todayStr}/evening`)}
+            data-testid="button-evening-journal"
+            className="w-full"
+          >
+            <Moon className="mr-2 h-4 w-4" />
+            {hasEvening ? "Review Evening Journal" : "Start Evening Journal"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
