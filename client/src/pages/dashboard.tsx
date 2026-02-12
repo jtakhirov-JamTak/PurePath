@@ -139,31 +139,36 @@ export default function DashboardPage() {
     },
   });
 
-  const todayValueMutation = useMutation({
-    mutationFn: async (value: string) => {
-      await apiRequest("PUT", "/api/identity-document", {
+  const saveIdentityField = useCallback(
+    (fields: Partial<{ todayValue: string; todayIntention: string; todayReflection: string }>) => {
+      return apiRequest("PUT", "/api/identity-document", {
         identity: identityDoc?.identity || "",
         vision: identityDoc?.vision || "",
         values: identityDoc?.values || "",
-        todayValue: value,
-        todayReflection: identityDoc?.todayReflection || "",
+        todayValue: fields.todayValue ?? identityDoc?.todayValue ?? "",
+        todayIntention: fields.todayIntention ?? identityDoc?.todayIntention ?? "",
+        todayReflection: fields.todayReflection ?? identityDoc?.todayReflection ?? "",
       });
     },
+    [identityDoc]
+  );
+
+  const todayValueMutation = useMutation({
+    mutationFn: async (value: string) => saveIdentityField({ todayValue: value }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+  });
+
+  const intentionMutation = useMutation({
+    mutationFn: async (intention: string) => saveIdentityField({ todayIntention: intention }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
     },
   });
 
   const reflectionMutation = useMutation({
-    mutationFn: async (reflection: string) => {
-      await apiRequest("PUT", "/api/identity-document", {
-        identity: identityDoc?.identity || "",
-        vision: identityDoc?.vision || "",
-        values: identityDoc?.values || "",
-        todayValue: identityDoc?.todayValue || "",
-        todayReflection: reflection,
-      });
-    },
+    mutationFn: async (reflection: string) => saveIdentityField({ todayReflection: reflection }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
     },
@@ -204,9 +209,12 @@ export default function DashboardPage() {
         <NorthStarStrip
           identityDoc={identityDoc}
           todayValue={todayValue}
+          todayIntention={identityDoc?.todayIntention || ""}
           valuesArray={valuesArray}
           setLocation={setLocation}
           onSelectValue={(v) => todayValueMutation.mutate(v)}
+          onSaveIntention={(text) => intentionMutation.mutate(text)}
+          isSavingIntention={intentionMutation.isPending}
         />
 
         <Q2FocusCard q2Items={q2Items} setLocation={setLocation} />
@@ -333,7 +341,10 @@ function NextStepCTA({
               </p>
             )}
             <Button
-              onClick={() => setLocation(buttonPath)}
+              onClick={() => {
+                setLocation(buttonPath);
+                window.scrollTo(0, 0);
+              }}
               data-testid="button-next-step"
               className="mt-2"
             >
@@ -350,16 +361,51 @@ function NextStepCTA({
 function NorthStarStrip({
   identityDoc,
   todayValue,
+  todayIntention,
   valuesArray,
   setLocation,
   onSelectValue,
+  onSaveIntention,
+  isSavingIntention,
 }: {
   identityDoc?: IdentityDocument;
   todayValue: string | null;
+  todayIntention: string;
   valuesArray: string[];
   setLocation: (path: string) => void;
   onSelectValue: (v: string) => void;
+  onSaveIntention: (text: string) => void;
+  isSavingIntention: boolean;
 }) {
+  const [localIntention, setLocalIntention] = useState(todayIntention);
+  const [hasEditedIntention, setHasEditedIntention] = useState(false);
+  const intentionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!hasEditedIntention) {
+      setLocalIntention(todayIntention);
+    }
+  }, [todayIntention, hasEditedIntention]);
+
+  useEffect(() => {
+    return () => {
+      if (intentionDebounceRef.current) clearTimeout(intentionDebounceRef.current);
+    };
+  }, []);
+
+  const handleIntentionChange = useCallback(
+    (value: string) => {
+      setLocalIntention(value);
+      setHasEditedIntention(true);
+      if (intentionDebounceRef.current) clearTimeout(intentionDebounceRef.current);
+      intentionDebounceRef.current = setTimeout(() => {
+        onSaveIntention(value);
+        setHasEditedIntention(false);
+      }, 1000);
+    },
+    [onSaveIntention]
+  );
+
   const hasContent = identityDoc?.identity || identityDoc?.values;
 
   if (!hasContent) {
@@ -419,6 +465,25 @@ function NorthStarStrip({
                 </Badge>
               ))}
             </div>
+          </div>
+        )}
+
+        {todayValue && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              How will I practice <span className="font-medium text-foreground">{todayValue}</span> today?
+            </p>
+            <Textarea
+              value={localIntention}
+              onChange={(e) => handleIntentionChange(e.target.value)}
+              placeholder={`My plan to practice ${todayValue} today...`}
+              className="resize-none text-sm"
+              rows={2}
+              data-testid="textarea-intention"
+            />
+            {isSavingIntention && (
+              <p className="text-xs text-muted-foreground" data-testid="text-saving-intention">Saving...</p>
+            )}
           </div>
         )}
       </CardContent>
@@ -715,7 +780,10 @@ function EveningSection({
         <div>
           <Button
             variant={hasEvening ? "outline" : "default"}
-            onClick={() => setLocation(`/journal/${todayStr}/evening`)}
+            onClick={() => {
+              setLocation(`/journal/${todayStr}/evening`);
+              window.scrollTo(0, 0);
+            }}
             data-testid="button-evening-journal"
             className="w-full"
           >
