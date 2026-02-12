@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Video, MessageSquare, BookOpen, Brain, Heart, Grid3X3, 
   CheckSquare, ArrowRight, Lock, Play, Loader2, ChevronDown,
-  Sparkles, Zap, Calendar, Repeat, ListTodo
+  Sparkles, Zap, Calendar, Repeat, ListTodo, Target
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -151,7 +151,7 @@ export default function CoursePage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="grid sm:grid-cols-3 gap-3">
                       <Card className="overflow-visible">
                         <CardHeader className="p-4">
                           <div className="flex items-center gap-3">
@@ -174,6 +174,19 @@ export default function CoursePage() {
                             <div>
                               <p className="font-medium text-sm">Self-Discovery GPT</p>
                               <p className="text-xs text-muted-foreground">AI-guided exploration</p>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                      <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/lesson2-worksheet")} data-testid="card-lesson2-worksheet">
+                        <CardHeader className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
+                              <Target className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Lesson 2 Worksheet</p>
+                              <p className="text-xs text-muted-foreground">Vision, identity, values</p>
                             </div>
                           </div>
                         </CardHeader>

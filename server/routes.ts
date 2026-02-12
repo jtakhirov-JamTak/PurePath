@@ -717,7 +717,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const doc = await storage.getIdentityDocument(userId);
-      res.json(doc || { userId, identity: "", vision: "", values: "", todayValue: "", todayIntention: "", todayReflection: "" });
+      res.json(doc || { userId, identity: "", vision: "", values: "", yearVision: "", yearVisualization: "", purpose: "", todayValue: "", todayIntention: "", todayReflection: "" });
     } catch (error) {
       console.error("Error fetching identity document:", error);
       res.status(500).json({ error: "Failed to fetch identity document" });
@@ -727,12 +727,15 @@ export async function registerRoutes(
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { identity, vision, values, todayValue, todayIntention, todayReflection } = req.body;
+      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection } = req.body;
       const doc = await storage.upsertIdentityDocument({
         userId,
         identity: identity || "",
         vision: vision || "",
         values: values || "",
+        yearVision: yearVision ?? "",
+        yearVisualization: yearVisualization ?? "",
+        purpose: purpose ?? "",
         todayValue: todayValue || "",
         todayIntention: todayIntention ?? "",
         todayReflection: todayReflection ?? "",
@@ -786,6 +789,47 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error saving monthly goal:", error);
       res.status(500).json({ error: "Failed to save monthly goal" });
+    }
+  });
+
+  // ==================== QUARTERLY GOALS ====================
+
+  app.get("/api/quarterly-goal", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const quarterKey = req.query.quarter as string;
+      if (!quarterKey) {
+        return res.status(400).json({ error: "quarter parameter required" });
+      }
+      const goal = await storage.getQuarterlyGoal(userId, quarterKey);
+      res.json(goal || { userId, quarterKey, quarterlyFocus: "", outcomeStatement: "", measurementPlan: "", baseline: "", target: "", prize: "" });
+    } catch (error) {
+      console.error("Error fetching quarterly goal:", error);
+      res.status(500).json({ error: "Failed to fetch quarterly goal" });
+    }
+  });
+
+  app.put("/api/quarterly-goal", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { quarterKey, quarterlyFocus, outcomeStatement, measurementPlan, baseline, target, prize } = req.body;
+      if (!quarterKey) {
+        return res.status(400).json({ error: "quarterKey is required" });
+      }
+      const goal = await storage.upsertQuarterlyGoal({
+        userId,
+        quarterKey,
+        quarterlyFocus: quarterlyFocus ?? "",
+        outcomeStatement: outcomeStatement ?? "",
+        measurementPlan: measurementPlan ?? "",
+        baseline: baseline ?? "",
+        target: target ?? "",
+        prize: prize ?? "",
+      });
+      res.json(goal);
+    } catch (error) {
+      console.error("Error saving quarterly goal:", error);
+      res.status(500).json({ error: "Failed to save quarterly goal" });
     }
   });
 

@@ -138,6 +138,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   decision: varchar("decision", { length: 50 }), // 'do_today', 'schedule', 'delegate', 'delete'
   scheduledTime: varchar("scheduled_time", { length: 50 }),
   goalAlignment: text("goal_alignment"),
+  blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -312,6 +313,9 @@ export const identityDocuments = pgTable("identity_documents", {
   identity: text("identity").notNull().default(""),
   vision: text("vision").notNull().default(""),
   values: text("values").notNull().default(""),
+  yearVision: text("year_vision").default(""),
+  yearVisualization: text("year_visualization").default(""),
+  purpose: text("purpose").default(""),
   todayValue: varchar("today_value", { length: 200 }).default(""),
   todayIntention: text("today_intention").default(""),
   todayReflection: text("today_reflection").default(""),
@@ -325,3 +329,29 @@ export const insertIdentityDocumentSchema = createInsertSchema(identityDocuments
 
 export type IdentityDocument = typeof identityDocuments.$inferSelect;
 export type InsertIdentityDocument = z.infer<typeof insertIdentityDocumentSchema>;
+
+// Quarterly Goals - one per user per quarter
+export const quarterlyGoals = pgTable("quarterly_goals", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  quarterKey: varchar("quarter_key", { length: 10 }).notNull(),
+  quarterlyFocus: text("quarterly_focus").default(""),
+  outcomeStatement: text("outcome_statement").default(""),
+  measurementPlan: text("measurement_plan").default(""),
+  baseline: text("baseline").default(""),
+  target: text("target").default(""),
+  prize: text("prize").default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("quarterly_goals_user_quarter_idx").on(table.userId, table.quarterKey),
+]);
+
+export const insertQuarterlyGoalSchema = createInsertSchema(quarterlyGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type QuarterlyGoal = typeof quarterlyGoals.$inferSelect;
+export type InsertQuarterlyGoal = z.infer<typeof insertQuarterlyGoalSchema>;

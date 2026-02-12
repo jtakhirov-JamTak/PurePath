@@ -88,6 +88,7 @@ export default function EisenhowerPage() {
     endTime: "",
     decision: "",
     goalAlignment: "",
+    blocksGoal: false,
   });
 
   const [editEntry, setEditEntry] = useState<EisenhowerEntry | null>(null);
@@ -100,6 +101,7 @@ export default function EisenhowerPage() {
     startTime: "",
     endTime: "",
     goalAlignment: "",
+    blocksGoal: false,
   });
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
@@ -129,6 +131,7 @@ export default function EisenhowerPage() {
         timeEstimate: timeEstimate || null,
         scheduledTime: scheduledTime || null,
         goalAlignment: entry.quadrant === "q2" ? (entry.goalAlignment || null) : null,
+        blocksGoal: entry.blocksGoal || false,
         weekStart,
       });
     },
@@ -136,7 +139,7 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
-      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "" });
+      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "", blocksGoal: false });
     },
   });
 
@@ -156,6 +159,7 @@ export default function EisenhowerPage() {
         scheduledTime,
         timeEstimate,
         goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
+        blocksGoal: data.updates.blocksGoal || false,
       });
     },
     onSuccess: () => {
@@ -199,6 +203,7 @@ export default function EisenhowerPage() {
       startTime: "",
       endTime: "",
       goalAlignment: entry.goalAlignment || "",
+      blocksGoal: entry.blocksGoal || false,
     });
     setEditEntry(entry);
     setEditDialogOpen(true);
@@ -207,7 +212,7 @@ export default function EisenhowerPage() {
   const getEntriesByQuadrant = (quadrant: string) => entries.filter(e => e.quadrant === quadrant);
 
   const renderFormFields = (
-    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string },
+    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string; blocksGoal: boolean },
     setFormState: (val: any) => void,
     durationVal: string,
     prefix: string,
@@ -315,6 +320,17 @@ export default function EisenhowerPage() {
             />
           </div>
         )}
+        <div className="flex items-center gap-3">
+          <Checkbox
+            id={`${prefix}blocks-goal`}
+            checked={formState.blocksGoal}
+            onCheckedChange={(v) => setFormState({ ...formState, blocksGoal: !!v })}
+            data-testid={`${prefix}checkbox-blocks-goal`}
+          />
+          <Label htmlFor={`${prefix}blocks-goal`} className="text-sm cursor-pointer">
+            Does this block my goal?
+          </Label>
+        </div>
       </div>
     );
   };
@@ -443,6 +459,11 @@ export default function EisenhowerPage() {
                                 <span className={`h-2 w-2 rounded-full mr-1 ${getCategoryStyle(entry.role).dot}`} />
                                 {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
                               </Badge>
+                              {entry.blocksGoal && (
+                                <Badge variant="outline" className="text-xs text-destructive border-destructive/30" data-testid={`badge-blocks-goal-${entry.id}`}>
+                                  Blocks Goal
+                                </Badge>
+                              )}
                               {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}
                               {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
                             </div>

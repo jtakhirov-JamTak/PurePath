@@ -89,6 +89,7 @@ const documents: LibraryDoc[] = [
         ],
       },
     ],
+    cta: { label: "Open Lesson 2 Worksheet", path: "/lesson2-worksheet" },
   },
   {
     id: "meditation-guide",

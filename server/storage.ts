@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, quarterlyGoals,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -11,7 +11,8 @@ import {
   type Task, type InsertTask,
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
-  type MonthlyGoal, type InsertMonthlyGoal
+  type MonthlyGoal, type InsertMonthlyGoal,
+  type QuarterlyGoal, type InsertQuarterlyGoal
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -74,6 +75,10 @@ export interface IStorage {
   // Monthly Goals
   getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
   upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal>;
+
+  // Quarterly Goals
+  getQuarterlyGoal(userId: string, quarterKey: string): Promise<QuarterlyGoal | undefined>;
+  upsertQuarterlyGoal(goal: InsertQuarterlyGoal): Promise<QuarterlyGoal>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -323,6 +328,9 @@ export class DatabaseStorage implements IStorage {
           identity: doc.identity,
           vision: doc.vision,
           values: doc.values,
+          yearVision: doc.yearVision,
+          yearVisualization: doc.yearVisualization,
+          purpose: doc.purpose,
           todayValue: doc.todayValue,
           todayIntention: doc.todayIntention,
           todayReflection: doc.todayReflection,
@@ -362,6 +370,32 @@ export class DatabaseStorage implements IStorage {
           successMarker: goal.successMarker,
           why: goal.why,
           nextConcreteStep: goal.nextConcreteStep,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+  async getQuarterlyGoal(userId: string, quarterKey: string): Promise<QuarterlyGoal | undefined> {
+    const [goal] = await db.select().from(quarterlyGoals).where(
+      and(eq(quarterlyGoals.userId, userId), eq(quarterlyGoals.quarterKey, quarterKey))
+    );
+    return goal;
+  }
+
+  async upsertQuarterlyGoal(goal: InsertQuarterlyGoal): Promise<QuarterlyGoal> {
+    const [result] = await db
+      .insert(quarterlyGoals)
+      .values({ ...goal, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [quarterlyGoals.userId, quarterlyGoals.quarterKey],
+        set: {
+          quarterlyFocus: goal.quarterlyFocus,
+          outcomeStatement: goal.outcomeStatement,
+          measurementPlan: goal.measurementPlan,
+          baseline: goal.baseline,
+          target: goal.target,
+          prize: goal.prize,
           updatedAt: new Date(),
         },
       })

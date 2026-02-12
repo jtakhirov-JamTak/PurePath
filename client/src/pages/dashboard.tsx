@@ -16,7 +16,7 @@ import {
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
 import { Target, Footprints, AlertTriangle } from "lucide-react";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
+import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal, QuarterlyGoal } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -78,10 +78,22 @@ export default function DashboardPage() {
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
+  const currentQuarterKey = `${today.getFullYear()}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
+
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
     queryFn: async () => {
       const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const { data: quarterlyGoal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", currentQuarterKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/quarterly-goal?quarter=${currentQuarterKey}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
@@ -227,6 +239,12 @@ export default function DashboardPage() {
           onSelectValue={(v) => todayValueMutation.mutate(v)}
           onSaveIntention={(text) => intentionMutation.mutate(text)}
           isSavingIntention={intentionMutation.isPending}
+        />
+
+        <GoalLadderStrip
+          quarterlyGoal={quarterlyGoal}
+          monthlyGoal={monthlyGoal}
+          setLocation={setLocation}
         />
 
         <MonthlyGoalCard goal={monthlyGoal} setLocation={setLocation} />
@@ -500,6 +518,53 @@ function NorthStarStrip({
             )}
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function GoalLadderStrip({
+  quarterlyGoal,
+  monthlyGoal,
+  setLocation,
+}: {
+  quarterlyGoal: QuarterlyGoal | undefined;
+  monthlyGoal: MonthlyGoal | undefined;
+  setLocation: (path: string) => void;
+}) {
+  const quarterFocus = quarterlyGoal?.quarterlyFocus?.trim() || "";
+  const monthGoal = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+  const todayMove = monthlyGoal?.nextConcreteStep?.trim() || monthlyGoal?.goalHow?.trim() || "";
+
+  if (!quarterFocus && !monthGoal) return null;
+
+  return (
+    <Card className="overflow-visible" data-testid="card-goal-ladder">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Target className="h-4 w-4 text-primary" />
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Goal Ladder</p>
+        </div>
+        <div className="space-y-2">
+          {quarterFocus && (
+            <div className="flex items-start gap-3 cursor-pointer hover-elevate rounded-md px-2 py-1.5" onClick={() => setLocation("/quarterly-goal")} data-testid="ladder-quarter">
+              <Badge variant="outline" className="shrink-0 text-xs no-default-active-elevate">Q</Badge>
+              <p className="text-sm">{quarterFocus}</p>
+            </div>
+          )}
+          {monthGoal && (
+            <div className="flex items-start gap-3 cursor-pointer hover-elevate rounded-md px-2 py-1.5" onClick={() => setLocation("/monthly-goal")} data-testid="ladder-month">
+              <Badge variant="outline" className="shrink-0 text-xs no-default-active-elevate">M</Badge>
+              <p className="text-sm font-medium">{monthGoal}</p>
+            </div>
+          )}
+          {todayMove && (
+            <div className="flex items-start gap-3 rounded-md px-2 py-1.5 bg-primary/[0.04]" data-testid="ladder-today">
+              <Badge className="shrink-0 text-xs">Now</Badge>
+              <p className="text-sm">{todayMove}</p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
