@@ -1,0 +1,155 @@
+Context:
+We have an existing React + TypeScript + Vite app using Wouter routing, TanStack React Query, shadcn/ui, Tailwind. Backend is Express + TS. Existing routes: /dashboard (home), /course1 (AI chat / GPTs), /course2 (journaling). Do NOT change payments or entitlements. Focus only on UX re-organization and daily engagement that is outcome-first.
+
+Goal:
+Redesign the logged-in experience so the app feels like a daily cockpit that drives outcomes through:
+
+low friction
+
+felt usefulness
+
+identity alignment
+
+supportive structure
+And avoid:
+
+streak shame loops
+
+low-quality journaling (“write junk to keep streak”)
+
+external control (points become the reason)
+
+1) Create new top-level navigation and pages
+
+Add a persistent top nav (desktop) + mobile nav with these sections:
+
+Today (/dashboard)
+
+Learn (/learn) – videos/lessons hub (can be placeholder cards for now)
+
+Coach (/coach) – wrapper page that links to /course1 GPT/chat
+
+Plan (/plan) – weekly planning hub (Eisenhower + Habits)
+
+Journal (/journal) – wrapper that links to /course2 calendar journal
+
+Tools (/tools) – Emotional Containment, Meditation, EQ Module (reference docs + flows)
+
+Library (/library) – supporting documents (Identity, Meditation, Emotional Containment, etc.)
+
+Implementation:
+
+Update Wouter routes to include these pages.
+
+Keep existing /course1 and /course2 routes working.
+
+Add a shared AppLayout component that renders nav + page content.
+
+2) Redesign /dashboard into a “Today cockpit”
+
+Replace the phase-grid style dashboard with a Today-first layout:
+
+Top: Primary “Next Step” CTA card
+
+Shows ONE dominant button:
+
+“Start Morning Check-in (2 min)” if user hasn’t done morning entry today
+
+Else “Start Evening Review (3 min)” if evening not done
+
+Else “Quick Check-in (2 min)” if both done
+
+If the user has not journaled for >3 days, show “Welcome back! Do a 2-minute restart.
+It does not matter how slowly you go as long as you do not stop.”
+
+North Star strip
+
+Show the user’s identity + values:
+
+Identity: User populated
+
+Values: User populated
+
+Show “Today I practice: [value]” (rotate daily or let user pick)
+
+Today’s Focus
+
+Show “Today’s Q2 Focus”(if applicable) section (from weekly plan)
+
+small text: “Begin — to begin is half the work”
+
+Daily Habits + Tasks
+
+Habit checklist (tap to complete) for 3–7 selected habits (mock data ok)
+
+Quick-add task input + list
+
+Mini calendar
+
+7-day strip showing status icons:
+
+journal morning done
+
+journal evening done
+
+habits completed
+No streaks, no point scores.
+
+Need support now?
+Add three buttons that open flows:
+
+Emotional Containment (60 seconds): feel → name → regulate → move
+
+Integrative Meditation (shows instructions + “write one sentence insight”)
+
+EQ Module (placeholder card if not implemented)
+
+3) Improve journaling UX in /course2
+
+Keep the existing calendar journaling page, but add:
+
+Two modes: Quick (2 min) and Deep Dive
+
+Quick mode prompts:
+
+Value I practice today
+
+One gratitude
+One thing Im excited about
+One thing Im avoiding 
+
+One small action
+
+Evening: 
+80/20
+
+“Today was enough because…”
+
+Deep dive mode expands to show the full template sections (Courage/Avoidance, Trigger Log, 80/20, Shutdown).
+Important: Do NOT label sections “MANDATORY” in UI; label them “Core” and “Optional”.
+
+No streaks. No “days in a row.” No points.
+
+4) Add weekly planning UI in /plan
+
+Create a simple “Plan Week” wizard UI:
+
+Select roles (Health, Wealth, Relationships, etc.)
+
+Set a total of 1–7 Q2 outcomes per week
+
+Schedule them onto a weekly calendar (basic UI; can store in local state or localStorage for now)
+
+Select habits aligned with outcomes
+
+5) Definition of done
+
+User can navigate the new IA cleanly
+
+/dashboard feels like a daily cockpit with one dominant “Next step” action
+
+Journaling supports Quick + Deep modes with compassionate re-entry (no streak shame)
+
+Planning page exists with a basic weekly plan flow
+
+Do not modify payment/entitlements code

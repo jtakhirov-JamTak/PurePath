@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, AlertTriangle, BarChart3, Power } from "lucide-react";
@@ -110,6 +111,7 @@ export default function JournalEntryPage() {
   const [morningData, setMorningData] = useState<MorningContent>(emptyMorning);
   const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
+  const [journalMode, setJournalMode] = useState<"quick" | "deep">("quick");
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -292,6 +294,25 @@ export default function JournalEntryPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="flex items-center justify-center gap-1 mb-8 p-1 bg-muted rounded-lg w-fit mx-auto" data-testid="mode-toggle">
+          <Button
+            variant={journalMode === "quick" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setJournalMode("quick")}
+            data-testid="button-mode-quick"
+          >
+            Quick (2 min)
+          </Button>
+          <Button
+            variant={journalMode === "deep" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setJournalMode("deep")}
+            data-testid="button-mode-deep"
+          >
+            Deep Dive
+          </Button>
+        </div>
+
         {journalLoading ? (
           <div className="space-y-6">
             {[1, 2, 3].map((i) => (
@@ -315,7 +336,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Self-Awareness</CardTitle>
-                    <CardDescription>Set your intention for the day</CardDescription>
+                    <CardDescription>Set your intention for the day <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -341,7 +362,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Happiness</CardTitle>
-                    <CardDescription>Cultivate gratitude and joy</CardDescription>
+                    <CardDescription>Cultivate gratitude and joy <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -367,17 +388,21 @@ export default function JournalEntryPage() {
                     data-testid="input-joy"
                   />
                 </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Enjoy — Make an exciting plan!</Label>
-                  <Textarea
-                    value={morningData.enjoy}
-                    onChange={(e) => updateMorning("enjoy", e.target.value)}
-                    placeholder="My exciting plan for today..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-enjoy"
-                  />
-                </div>
+                {journalMode === "deep" && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Enjoy — Make an exciting plan!</Label>
+                      <Textarea
+                        value={morningData.enjoy}
+                        onChange={(e) => updateMorning("enjoy", e.target.value)}
+                        placeholder="My exciting plan for today..."
+                        className="min-h-[60px] resize-none"
+                        data-testid="input-enjoy"
+                      />
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -389,7 +414,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Courage</CardTitle>
-                    <CardDescription>Face what you're avoiding</CardDescription>
+                    <CardDescription>Face what you're avoiding <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -404,55 +429,59 @@ export default function JournalEntryPage() {
                     data-testid="input-avoidance"
                   />
                 </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Understanding — What belief or emotion is under the avoidance?</Label>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Select
-                      value={morningData.understandingEmotion}
-                      onValueChange={(v) => updateMorning("understandingEmotion", v)}
-                    >
-                      <SelectTrigger className="sm:w-[180px]" data-testid="select-understanding-emotion">
-                        <SelectValue placeholder="Select emotion..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {emotionOptions.map(e => (
-                          <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {morningData.understandingEmotion === "other" && (
-                      <Input
-                        value={morningData.understandingEmotionOther}
-                        onChange={(e) => updateMorning("understandingEmotionOther", e.target.value)}
-                        placeholder="Specify emotion..."
-                        className="sm:w-[180px]"
-                        data-testid="input-understanding-emotion-other"
+                {journalMode === "deep" && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Understanding — What belief or emotion is under the avoidance?</Label>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Select
+                          value={morningData.understandingEmotion}
+                          onValueChange={(v) => updateMorning("understandingEmotion", v)}
+                        >
+                          <SelectTrigger className="sm:w-[180px]" data-testid="select-understanding-emotion">
+                            <SelectValue placeholder="Select emotion..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {emotionOptions.map(e => (
+                              <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {morningData.understandingEmotion === "other" && (
+                          <Input
+                            value={morningData.understandingEmotionOther}
+                            onChange={(e) => updateMorning("understandingEmotionOther", e.target.value)}
+                            placeholder="Specify emotion..."
+                            className="sm:w-[180px]"
+                            data-testid="input-understanding-emotion-other"
+                          />
+                        )}
+                        <Textarea
+                          value={morningData.understanding}
+                          onChange={(e) => updateMorning("understanding", e.target.value)}
+                          placeholder="The belief underneath is..."
+                          className="min-h-[60px] resize-none flex-1"
+                          data-testid="input-understanding"
+                        />
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-primary/[0.04] p-3">
+                      <p className="text-sm text-muted-foreground italic">Containment — Do Emotional Containment exercise</p>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Counter-evidence — One real example that contradicts this belief</Label>
+                      <Textarea
+                        value={morningData.counterEvidence}
+                        onChange={(e) => updateMorning("counterEvidence", e.target.value)}
+                        placeholder="A real example that contradicts this..."
+                        className="min-h-[60px] resize-none"
+                        data-testid="input-counter-evidence"
                       />
-                    )}
-                    <Textarea
-                      value={morningData.understanding}
-                      onChange={(e) => updateMorning("understanding", e.target.value)}
-                      placeholder="The belief underneath is..."
-                      className="min-h-[60px] resize-none flex-1"
-                      data-testid="input-understanding"
-                    />
-                  </div>
-                </div>
-                <div className="rounded-md bg-primary/[0.04] p-3">
-                  <p className="text-sm text-muted-foreground italic">Containment — Do Emotional Containment exercise</p>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Counter-evidence — One real example that contradicts this belief</Label>
-                  <Textarea
-                    value={morningData.counterEvidence}
-                    onChange={(e) => updateMorning("counterEvidence", e.target.value)}
-                    placeholder="A real example that contradicts this..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-counter-evidence"
-                  />
-                </div>
+                    </div>
+                  </>
+                )}
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Action — One small exposure rep to begin</Label>
@@ -467,48 +496,51 @@ export default function JournalEntryPage() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-release">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Wind className="h-4 w-4 text-primary" />
+            {journalMode === "deep" && (
+              <Card data-testid="card-release">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <Wind className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="font-serif text-lg">Release</CardTitle>
+                      <CardDescription>Let go of what's weighing on you <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Release</CardTitle>
-                    <CardDescription>Let go of what's weighing on you</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Stress — What's the one thing I'm overly fixated on?</Label>
+                    <Textarea
+                      value={morningData.stress}
+                      onChange={(e) => updateMorning("stress", e.target.value)}
+                      placeholder="I'm overly fixated on..."
+                      className="min-h-[60px] resize-none"
+                      data-testid="input-stress"
+                    />
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Stress — What's the one thing I'm overly fixated on?</Label>
-                  <Textarea
-                    value={morningData.stress}
-                    onChange={(e) => updateMorning("stress", e.target.value)}
-                    placeholder="I'm overly fixated on..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-stress"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 30%?</Label>
-                  <Textarea
-                    value={morningData.perspectiveShift}
-                    onChange={(e) => updateMorning("perspectiveShift", e.target.value)}
-                    placeholder="If I loosened my grip, it would look like..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-perspective-shift"
-                  />
-                </div>
-                <div className="rounded-md bg-primary/[0.04] p-3">
-                  <p className="text-sm text-muted-foreground italic">Release — Loosen your grip</p>
-                </div>
-              </CardContent>
-            </Card>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 30%?</Label>
+                    <Textarea
+                      value={morningData.perspectiveShift}
+                      onChange={(e) => updateMorning("perspectiveShift", e.target.value)}
+                      placeholder="If I loosened my grip, it would look like..."
+                      className="min-h-[60px] resize-none"
+                      data-testid="input-perspective-shift"
+                    />
+                  </div>
+                  <div className="rounded-md bg-primary/[0.04] p-3">
+                    <p className="text-sm text-muted-foreground italic">Release — Loosen your grip</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         ) : (
           <div className="space-y-10">
+            {journalMode === "deep" && (
             <Card data-testid="card-daily-review">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -517,7 +549,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Daily Review</CardTitle>
-                    <CardDescription>Reflect on your most important moment</CardDescription>
+                    <CardDescription>Reflect on your most important moment <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -567,7 +599,9 @@ export default function JournalEntryPage() {
                 </div>
               </CardContent>
             </Card>
+            )}
 
+            {journalMode === "deep" && (
             <Card data-testid="card-trigger-log">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -576,7 +610,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Trigger Log</CardTitle>
-                    <CardDescription>Track and understand your emotional triggers</CardDescription>
+                    <CardDescription>Track and understand your emotional triggers <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -723,6 +757,7 @@ export default function JournalEntryPage() {
                 </div>
               </CardContent>
             </Card>
+            )}
 
             <Card data-testid="card-8020-tracker">
               <CardHeader>
@@ -732,7 +767,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">80/20 Tracker</CardTitle>
-                    <CardDescription>What's working and what isn't</CardDescription>
+                    <CardDescription>What's working and what isn't <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -769,7 +804,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Shutdown</CardTitle>
-                    <CardDescription>Close out your day with intention</CardDescription>
+                    <CardDescription>Close out your day with intention <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
                 </div>
               </CardHeader>

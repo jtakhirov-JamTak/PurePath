@@ -1,51 +1,68 @@
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { AppHeader } from "@/components/app-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Sparkles, BookOpen, Package, Lock, ArrowRight, CheckCircle,
-  Brain, Heart, Grid3X3, Users, Zap,
-  Video, MessageSquare, Repeat, ListTodo,
-  Sun, Moon, Check, Clock, AlertTriangle, BarChart3
+import {
+  Sun, Moon, Pencil, Check, X, ArrowRight,
+  Heart, Brain, Users, CircleDot, ShieldCheck,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek, addDays, differenceInDays, isToday } from "date-fns";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const CATEGORY_STYLES: Record<string, { dot: string }> = {
-  health: { dot: "bg-emerald-500" },
-  wealth: { dot: "bg-amber-500" },
-  relationships: { dot: "bg-rose-500" },
-  career: { dot: "bg-blue-500" },
-  mindfulness: { dot: "bg-violet-500" },
-  learning: { dot: "bg-cyan-500" },
+const CATEGORY_STYLES: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-amber-500",
+  relationships: "bg-rose-500",
+  career: "bg-blue-500",
+  mindfulness: "bg-violet-500",
+  learning: "bg-cyan-500",
 };
 
-function getItemStatus(done: boolean, isPast: boolean): { label: string; className: string } {
-  if (done) return { label: "Done", className: "bg-green-500/10 text-green-600 border-green-500/20" };
-  if (isPast) return { label: "Behind", className: "bg-red-500/10 text-red-600 border-red-500/20" };
-  return { label: "To Do", className: "bg-muted text-muted-foreground" };
+interface NorthStar {
+  identity: string;
+  values: string;
+}
+
+function loadNorthStar(): NorthStar {
+  try {
+    const raw = localStorage.getItem("inner-journey-north-star");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { identity: "", values: "" };
+}
+
+function saveNorthStar(ns: NorthStar) {
+  localStorage.setItem("inner-journey-north-star", JSON.stringify(ns));
 }
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-
-  const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
-    queryKey: ["/api/purchases"],
-    enabled: !!user,
-  });
+  const queryClient = useQueryClient();
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
-  const currentHour = today.getHours();
-  const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
+  const weekEndDate = endOfWeek(today, { weekStartsOn: 1 });
+  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+  const weekEndStr = format(weekEndDate, "yyyy-MM-dd");
+
+  const { data: purchases } = useQuery<Purchase[]>({
+    queryKey: ["/api/purchases"],
+    enabled: !!user,
+  });
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
@@ -67,538 +84,634 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const hasPhase12 = purchases?.some(p => 
-    p.courseType === "phase12" || p.courseType === "allinone" || 
-    p.courseType === "course1" || p.courseType === "course2" || p.courseType === "bundle"
-  );
-  const hasPhase3 = purchases?.some(p => 
-    p.courseType === "phase3" || p.courseType === "allinone" || p.courseType === "bundle"
+  const { data: weekCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+    enabled: !!user,
+  });
+
+  const hasPhase12 = purchases?.some(
+    (p) =>
+      p.courseType === "phase12" ||
+      p.courseType === "allinone" ||
+      p.courseType === "course1" ||
+      p.courseType === "course2" ||
+      p.courseType === "bundle"
   );
 
   const todayDayCode = DAY_CODES[today.getDay()];
-  const todaysHabits = habits.filter(h => h.cadence.split(",").includes(todayDayCode));
-  const completedHabitIds = new Set(habitCompletions.map(hc => hc.habitId));
+  const todaysHabits = habits.filter((h) =>
+    h.cadence.split(",").includes(todayDayCode)
+  );
+  const completedHabitIds = new Set(habitCompletions.map((hc) => hc.habitId));
+  const completedCount = todaysHabits.filter((h) =>
+    completedHabitIds.has(h.id)
+  ).length;
 
-  const todayJournals = journals.filter(j => j.date === todayStr);
-  const hasMorning = todayJournals.some(j => j.session === "morning");
-  const hasEvening = todayJournals.some(j => j.session === "evening");
+  const todayJournals = journals.filter((j) => j.date === todayStr);
+  const hasMorning = todayJournals.some((j) => j.session === "morning");
+  const hasEvening = todayJournals.some((j) => j.session === "evening");
 
-  const todayPriority = eisenhowerEntries.filter(e => (e.quadrant === "q1" || e.quadrant === "q2") && e.deadline === todayStr);
+  const threeDaysAgo = new Date();
+  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+  const hasRecentJournal = journals.some((j) => {
+    const jDate = new Date(j.date + "T00:00:00");
+    return jDate >= threeDaysAgo;
+  });
+  const noJournalIn3Days = journals.length > 0 && !hasRecentJournal;
 
-  const totalItems = 2 + todaysHabits.length + todayPriority.length;
-  let completedItems = 0;
-  if (hasMorning) completedItems++;
-  if (hasEvening) completedItems++;
-  todaysHabits.forEach(h => { if (completedHabitIds.has(h.id)) completedItems++; });
-  todayPriority.forEach(e => { if (e.completed) completedItems++; });
-  const progressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  const thisWeekEnd = new Date(weekEndStr + "T23:59:59");
+  const q2Items = eisenhowerEntries.filter((e) => {
+    if (e.quadrant !== "q2") return false;
+    if (!e.deadline) return false;
+    const dl = new Date(e.deadline + "T00:00:00");
+    return dl >= new Date(todayStr + "T00:00:00") && dl <= thisWeekEnd;
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async ({
+      habitId,
+      completed,
+    }: {
+      habitId: number;
+      completed: boolean;
+    }) => {
+      if (completed) {
+        await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+      } else {
+        await apiRequest("POST", "/api/habit-completions", {
+          habitId,
+          date: todayStr,
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/habit-completions", todayStr],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+      });
+    },
+  });
+
+  const [northStar, setNorthStar] = useState<NorthStar>(loadNorthStar);
+  const [editing, setEditing] = useState(false);
+  const [editIdentity, setEditIdentity] = useState("");
+  const [editValues, setEditValues] = useState("");
+
+  const startEdit = useCallback(() => {
+    setEditIdentity(northStar.identity);
+    setEditValues(northStar.values);
+    setEditing(true);
+  }, [northStar]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(false);
+  }, []);
+
+  const saveEdit = useCallback(() => {
+    const updated = { identity: editIdentity.trim(), values: editValues.trim() };
+    setNorthStar(updated);
+    saveNorthStar(updated);
+    setEditing(false);
+  }, [editIdentity, editValues]);
+
+  const valuesArray = northStar.values
+    ? northStar.values.split(",").map((v) => v.trim()).filter(Boolean)
+    : [];
+  const dayOfYear = Math.floor(
+    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000
+  );
+  const todayValue = valuesArray.length > 0 ? valuesArray[dayOfYear % valuesArray.length] : null;
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <Skeleton className="h-16 w-full mb-8" />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Skeleton className="h-64" />
-            <Skeleton className="h-64" />
-          </div>
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
+          <Skeleton className="h-40 w-full" data-testid="skeleton-cta" />
+          <Skeleton className="h-24 w-full" data-testid="skeleton-northstar" />
+          <Skeleton className="h-32 w-full" data-testid="skeleton-q2" />
+          <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
+          <Skeleton className="h-20 w-full" data-testid="skeleton-calendar" />
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
+    <AppLayout>
+      <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
+        <NextStepCTA
+          hasMorning={hasMorning}
+          hasEvening={hasEvening}
+          noJournalIn3Days={noJournalIn3Days}
+          hasAccess={!!hasPhase12}
+          todayStr={todayStr}
+          setLocation={setLocation}
+          userName={user?.firstName}
+        />
 
-      <main className="container mx-auto px-4 py-12">
-        <div className="mb-12 max-w-5xl">
-          <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">
-            Welcome back{user?.firstName ? `, ${user.firstName}` : ""}
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Continue your journey of self-discovery and transformation.
+        <NorthStarStrip
+          northStar={northStar}
+          todayValue={todayValue}
+          editing={editing}
+          editIdentity={editIdentity}
+          editValues={editValues}
+          setEditIdentity={setEditIdentity}
+          setEditValues={setEditValues}
+          startEdit={startEdit}
+          cancelEdit={cancelEdit}
+          saveEdit={saveEdit}
+        />
+
+        <Q2FocusCard q2Items={q2Items} setLocation={setLocation} />
+
+        <HabitsChecklist
+          todaysHabits={todaysHabits}
+          completedHabitIds={completedHabitIds}
+          completedCount={completedCount}
+          toggleMutation={toggleMutation}
+        />
+
+        <MiniCalendar
+          weekStartDate={weekStartDate}
+          today={today}
+          journals={journals}
+          weekCompletions={weekCompletions}
+          habits={habits}
+        />
+
+        <SupportSection setLocation={setLocation} />
+      </div>
+    </AppLayout>
+  );
+}
+
+function NextStepCTA({
+  hasMorning,
+  hasEvening,
+  noJournalIn3Days,
+  hasAccess,
+  todayStr,
+  setLocation,
+  userName,
+}: {
+  hasMorning: boolean;
+  hasEvening: boolean;
+  noJournalIn3Days: boolean;
+  hasAccess: boolean;
+  todayStr: string;
+  setLocation: (path: string) => void;
+  userName?: string | null;
+}) {
+  if (!hasAccess) {
+    return (
+      <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-next-step">
+        <CardContent className="p-6">
+          <p className="text-lg font-medium mb-2" data-testid="text-cta-title">
+            Start your Inner Journey
           </p>
-        </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Unlock journaling, habits, and daily tools to build lasting change.
+          </p>
+          <Button
+            onClick={() => setLocation("/checkout/phase12")}
+            data-testid="button-unlock-access"
+          >
+            Get Started
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-        <div className="grid lg:grid-cols-[1fr_340px] gap-8">
-          <div>
-            {!hasPhase12 && !hasPhase3 && (
-              <Card className="mb-10 overflow-visible" data-testid="card-allinone-promo">
-                <CardHeader className="pb-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <Package className="h-6 w-6 text-primary" />
-                        <CardTitle className="font-serif text-xl">Get the Complete Inner Journey</CardTitle>
-                      </div>
-                      <CardDescription className="text-base">All 3 phases for $499 (save $199 vs. buying separately)</CardDescription>
-                    </div>
-                    <Button 
-                      size="lg"
-                      className="w-full sm:w-auto shrink-0"
-                      onClick={() => setLocation("/checkout/allinone")}
-                      data-testid="button-buy-allinone"
-                    >
-                      Get Started - $499
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
-                  </div>
-                </CardHeader>
-              </Card>
-            )}
+  let title: string;
+  let subtitle: string | null = null;
+  let buttonLabel: string;
+  let buttonPath: string;
+  let IconComponent = Sun;
+  let iconClass = "text-amber-500";
 
-            <div className="mb-12">
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <Heart className="h-5 w-5 text-primary" />
-                <h2 className="font-serif text-2xl font-bold">Phase 1: Self-Reflection</h2>
-                {hasPhase12 ? (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Unlocked
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Locked
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground mb-6">
-                Explore who you are and who you want to become through video lessons and AI-guided conversations.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/course")}
-                  data-testid="card-lesson1"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <Badge variant="outline" className="text-xs mb-1">Lesson 1</Badge>
-                        <CardTitle className="font-serif text-base">Who Am I?</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Deep self-reflection through guided video</CardDescription>
-                  </CardHeader>
-                </Card>
+  if (noJournalIn3Days) {
+    title = "Welcome back! Do a 2-minute restart.";
+    subtitle = "It does not matter how slowly you go as long as you do not stop.";
+    buttonLabel = "Start Morning Check-in (2 min)";
+    buttonPath = `/journal/${todayStr}/morning`;
+    IconComponent = Sun;
+    iconClass = "text-amber-500";
+  } else if (!hasMorning) {
+    title = userName ? `Good to see you, ${userName}` : "Ready for today";
+    buttonLabel = "Start Morning Check-in (2 min)";
+    buttonPath = `/journal/${todayStr}/morning`;
+    IconComponent = Sun;
+    iconClass = "text-amber-500";
+  } else if (!hasEvening) {
+    title = "Morning done — time to reflect";
+    buttonLabel = "Start Evening Review (3 min)";
+    buttonPath = `/journal/${todayStr}/evening`;
+    IconComponent = Moon;
+    iconClass = "text-indigo-500";
+  } else {
+    title = "Both sessions complete";
+    buttonLabel = "Quick Check-in (2 min)";
+    buttonPath = `/journal/${todayStr}/morning`;
+    IconComponent = Check;
+    iconClass = "text-green-500";
+  }
 
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/course")}
-                  data-testid="card-lesson2"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <Badge variant="outline" className="text-xs mb-1">Lesson 2</Badge>
-                        <CardTitle className="font-serif text-base">Who Do I Want To Be?</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Build a clear vision of your future self</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/course1")}
-                  data-testid="card-gpt-chat"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <MessageSquare className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Self-Discovery GPT</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">AI-guided conversations for deep self-exploration</CardDescription>
-                  </CardHeader>
-                </Card>
-              </div>
-              {!hasPhase12 && (
-                <div className="mt-4">
-                  <Button variant="outline" onClick={() => setLocation("/checkout/phase12")} data-testid="button-unlock-phase12">
-                    Unlock Phase 1 & 2 - $399
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-12">
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="font-serif text-2xl font-bold">Phase 2: Structure</h2>
-                {hasPhase12 ? (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Unlocked
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Locked
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground mb-6">
-                Build the daily systems and habits that turn self-knowledge into lasting change.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/course")}
-                  data-testid="card-lesson3"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <Badge variant="outline" className="text-xs mb-1">Lesson 3</Badge>
-                        <CardTitle className="font-serif text-base">How To Get There</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Learn how to use your daily tools</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/course2")}
-                  data-testid="card-journal"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Journaling</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Morning & evening reflection sessions</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/habits")}
-                  data-testid="card-habits"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Repeat className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Habits</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Build recurring habits with flexible scheduling</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card 
-                  className={`overflow-visible ${hasPhase12 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase12 && setLocation("/tasks")}
-                  data-testid="card-tasks"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <ListTodo className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Daily Tasks</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Track up to 3 daily tasks with quadrant labels</CardDescription>
-                  </CardHeader>
-                </Card>
-              </div>
-              {!hasPhase12 && (
-                <div className="mt-4">
-                  <Button variant="outline" onClick={() => setLocation("/checkout/phase12")} data-testid="button-unlock-phase12-2">
-                    Unlock Phase 1 & 2 - $399
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-12">
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <Zap className="h-5 w-5 text-primary" />
-                <h2 className="font-serif text-2xl font-bold">Phase 3: Transformation</h2>
-                {hasPhase3 ? (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Unlocked
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <Lock className="h-3 w-3 mr-1" />
-                    Locked
-                  </Badge>
-                )}
-              </div>
-              <p className="text-muted-foreground mb-6">
-                Understand your patterns and transform them with AI-powered analysis and personalized insights.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card 
-                  className={`overflow-visible ${hasPhase3 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase3 && setLocation("/phase3")}
-                  data-testid="card-phase3-lesson"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Video className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <Badge variant="outline" className="text-xs mb-1">Lesson</Badge>
-                        <CardTitle className="font-serif text-base">You Are Your Patterns</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Understand the patterns shaping your life</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card 
-                  className={`overflow-visible ${hasPhase3 ? "hover-elevate cursor-pointer" : "opacity-70"}`}
-                  onClick={() => hasPhase3 && setLocation("/phase3")}
-                  data-testid="card-transformation-agent"
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Zap className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Transformation Agent</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Upload documents & get AI pattern analysis</CardDescription>
-                  </CardHeader>
-                </Card>
-              </div>
-              {!hasPhase3 && (
-                <div className="mt-4">
-                  <Button variant="outline" onClick={() => setLocation("/checkout/phase3")} data-testid="button-unlock-phase3">
-                    Unlock Phase 3 - $299
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-10">
-              <h2 className="font-serif text-2xl font-bold mb-4">Self-Development Tools</h2>
-              <p className="text-muted-foreground mb-6">
-                Free tools available to all users to support your growth practice.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/meditation")} data-testid="card-meditation">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Brain className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Meditation</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Integrative meditation for subconscious processing</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/emotional-processing")} data-testid="card-emotional">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Heart className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Emotional Processing</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Feel, name, regulate, and move forward</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/eisenhower")} data-testid="card-eisenhower">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Grid3X3 className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Eisenhower Matrix</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Weekly priority planning by category & quadrant</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/empathy")} data-testid="card-empathy">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Empathy Module</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Reflect on interactions and build understanding</CardDescription>
-                  </CardHeader>
-                </Card>
-
-                <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/progress")} data-testid="card-progress">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-base">Weekly Progress</CardTitle>
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm">Track your program adherence over time</CardDescription>
-                  </CardHeader>
-                </Card>
-              </div>
-            </div>
+  return (
+    <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-next-step">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 mt-1">
+            <IconComponent className={`h-8 w-8 ${iconClass}`} />
           </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-lg font-medium mb-1" data-testid="text-cta-title">
+              {title}
+            </p>
+            {subtitle && (
+              <p className="text-sm text-muted-foreground italic mb-3" data-testid="text-cta-subtitle">
+                {subtitle}
+              </p>
+            )}
+            <Button
+              onClick={() => setLocation(buttonPath)}
+              data-testid="button-next-step"
+              className="mt-2"
+            >
+              {buttonLabel}
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start" data-testid="sidebar-today-progress">
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between gap-4">
-                  <CardTitle className="font-serif text-lg">Today's Progress</CardTitle>
-                  <Badge variant={completedItems >= totalItems ? "default" : "outline"} data-testid="badge-progress">
-                    {completedItems}/{totalItems}
-                  </Badge>
-                </div>
-                <div className="h-2.5 bg-muted rounded-full overflow-hidden mt-3">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${progressPct}%` }}
-                    data-testid="progress-bar"
+function NorthStarStrip({
+  northStar,
+  todayValue,
+  editing,
+  editIdentity,
+  editValues,
+  setEditIdentity,
+  setEditValues,
+  startEdit,
+  cancelEdit,
+  saveEdit,
+}: {
+  northStar: NorthStar;
+  todayValue: string | null;
+  editing: boolean;
+  editIdentity: string;
+  editValues: string;
+  setEditIdentity: (v: string) => void;
+  setEditValues: (v: string) => void;
+  startEdit: () => void;
+  cancelEdit: () => void;
+  saveEdit: () => void;
+}) {
+  if (editing) {
+    return (
+      <Card className="overflow-visible" data-testid="card-north-star">
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Identity
+            </label>
+            <Input
+              value={editIdentity}
+              onChange={(e) => setEditIdentity(e.target.value)}
+              placeholder="I am someone who..."
+              data-testid="input-identity"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              Values (comma-separated)
+            </label>
+            <Textarea
+              value={editValues}
+              onChange={(e) => setEditValues(e.target.value)}
+              placeholder="courage, patience, kindness"
+              className="resize-none"
+              rows={2}
+              data-testid="input-values"
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button onClick={saveEdit} data-testid="button-save-northstar">
+              <Check className="mr-1 h-4 w-4" />
+              Save
+            </Button>
+            <Button variant="ghost" onClick={cancelEdit} data-testid="button-cancel-northstar">
+              <X className="mr-1 h-4 w-4" />
+              Cancel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasContent = northStar.identity || northStar.values;
+
+  return (
+    <Card className="overflow-visible" data-testid="card-north-star">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 space-y-1">
+            <p className="text-sm" data-testid="text-identity">
+              <span className="font-medium text-muted-foreground">Identity: </span>
+              {northStar.identity || (
+                <span className="italic text-muted-foreground/60">Define your identity...</span>
+              )}
+            </p>
+            <p className="text-sm" data-testid="text-values">
+              <span className="font-medium text-muted-foreground">Values: </span>
+              {northStar.values || (
+                <span className="italic text-muted-foreground/60">Define your values...</span>
+              )}
+            </p>
+            {todayValue && (
+              <p className="text-sm font-medium" data-testid="text-today-value">
+                Today I practice: <span className="text-primary">{todayValue}</span>
+              </p>
+            )}
+          </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={startEdit}
+            data-testid="button-edit-northstar"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Q2FocusCard({
+  q2Items,
+  setLocation,
+}: {
+  q2Items: EisenhowerEntry[];
+  setLocation: (path: string) => void;
+}) {
+  return (
+    <Card className="overflow-visible" data-testid="card-q2-focus">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-serif">Today's Q2 Focus</CardTitle>
+        <p className="text-xs italic text-muted-foreground">
+          Begin — to begin is half the work
+        </p>
+      </CardHeader>
+      <CardContent className="pb-4">
+        {q2Items.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="text-no-q2">
+            No Q2 items scheduled
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {q2Items.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center gap-2 text-sm cursor-pointer hover-elevate rounded-md px-2 py-1"
+                onClick={() => setLocation("/eisenhower")}
+                data-testid={`q2-item-${item.id}`}
+              >
+                <CircleDot
+                  className={`h-3 w-3 shrink-0 ${
+                    item.completed ? "text-green-500" : "text-muted-foreground"
+                  }`}
+                />
+                <span className={item.completed ? "line-through text-muted-foreground" : ""}>
+                  {item.task}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HabitsChecklist({
+  todaysHabits,
+  completedHabitIds,
+  completedCount,
+  toggleMutation,
+}: {
+  todaysHabits: Habit[];
+  completedHabitIds: Set<number>;
+  completedCount: number;
+  toggleMutation: { mutate: (vars: { habitId: number; completed: boolean }) => void; isPending: boolean };
+}) {
+  return (
+    <Card className="overflow-visible" data-testid="card-habits">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
+          <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
+            {completedCount}/{todaysHabits.length} completed
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-4">
+        {todaysHabits.length === 0 ? (
+          <p className="text-sm text-muted-foreground" data-testid="text-no-habits">
+            No habits scheduled for today
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {todaysHabits.map((habit) => {
+              const done = completedHabitIds.has(habit.id);
+              const catStyle =
+                CATEGORY_STYLES[(habit.category as string) || "health"] ||
+                CATEGORY_STYLES.health;
+              return (
+                <li
+                  key={habit.id}
+                  className="flex items-center gap-3"
+                  data-testid={`habit-item-${habit.id}`}
+                >
+                  <Checkbox
+                    checked={done}
+                    onCheckedChange={() =>
+                      toggleMutation.mutate({ habitId: habit.id, completed: done })
+                    }
+                    data-testid={`checkbox-habit-${habit.id}`}
                   />
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
+                  <span
+                    className={`text-sm ${
+                      done ? "line-through text-muted-foreground" : ""
+                    }`}
+                  >
+                    {habit.name}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MiniCalendar({
+  weekStartDate,
+  today,
+  journals,
+  weekCompletions,
+  habits,
+}: {
+  weekStartDate: Date;
+  today: Date;
+  journals: Journal[];
+  weekCompletions: HabitCompletion[];
+  habits: Habit[];
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i));
+
+  return (
+    <Card className="overflow-visible" data-testid="card-mini-calendar">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-1">
+          {days.map((day, i) => {
+            const dayStr = format(day, "yyyy-MM-dd");
+            const dayCode = DAY_CODES[day.getDay()];
+            const isTodayDay = isToday(day);
+
+            const dayJournals = journals.filter((j) => j.date === dayStr);
+            const hasMJ = dayJournals.some((j) => j.session === "morning");
+            const hasEJ = dayJournals.some((j) => j.session === "evening");
+
+            const dayHabits = habits.filter((h) =>
+              h.cadence.split(",").includes(dayCode)
+            );
+            const dayCompleted = weekCompletions.filter(
+              (hc) => hc.date === dayStr
+            );
+            const allHabitsDone =
+              dayHabits.length > 0 &&
+              dayHabits.every((h) =>
+                dayCompleted.some((c) => c.habitId === h.id)
+              );
+
+            return (
+              <div
+                key={i}
+                className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-md ${
+                  isTodayDay ? "ring-2 ring-primary/50" : ""
+                }`}
+                data-testid={`calendar-day-${dayStr}`}
+              >
+                <span
+                  className={`text-xs font-medium ${
+                    isTodayDay ? "text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {DAY_LABELS[i]}
+                </span>
+                <span
+                  className={`text-sm font-medium ${
+                    isTodayDay ? "text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {format(day, "d")}
+                </span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {hasMJ && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-amber-500"
+                      title="Morning journal"
+                    />
+                  )}
+                  {hasEJ && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-indigo-500"
+                      title="Evening journal"
+                    />
+                  )}
+                  {allHabitsDone && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-green-500"
+                      title="All habits done"
+                    />
+                  )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Journaling
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <Sun className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm">Morning</span>
-                      </div>
-                      <Badge variant="outline" className={`text-xs ${getItemStatus(hasMorning, currentHour >= 12).className}`} data-testid="status-morning">
-                        {hasMorning && <Check className="h-3 w-3 mr-1" />}
-                        {!hasMorning && currentHour >= 12 && <AlertTriangle className="h-3 w-3 mr-1" />}
-                        {getItemStatus(hasMorning, currentHour >= 12).label}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <Moon className="h-4 w-4 text-indigo-500" />
-                        <span className="text-sm">Evening</span>
-                      </div>
-                      <Badge variant="outline" className={`text-xs ${getItemStatus(hasEvening, currentHour >= 22).className}`} data-testid="status-evening">
-                        {hasEvening && <Check className="h-3 w-3 mr-1" />}
-                        {!hasEvening && currentHour >= 22 && <AlertTriangle className="h-3 w-3 mr-1" />}
-                        {getItemStatus(hasEvening, currentHour >= 22).label}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-                {todaysHabits.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
-                      <Repeat className="h-3.5 w-3.5" />
-                      Habits
-                    </p>
-                    <div className="space-y-2">
-                      {todaysHabits.map(habit => {
-                        const done = completedHabitIds.has(habit.id);
-                        const catStyle = CATEGORY_STYLES[habit.category || "health"];
-                        const isPast = habit.endTime ? currentHour >= parseInt(habit.endTime.split(":")[0]) : false;
-                        const status = getItemStatus(done, isPast);
-                        return (
-                          <div key={habit.id} className="flex items-center justify-between gap-3 py-1.5" data-testid={`sidebar-habit-${habit.id}`}>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catStyle?.dot || "bg-muted"}`} />
-                              <span className={`text-sm truncate ${done ? "line-through text-muted-foreground" : ""}`}>{habit.name}</span>
-                            </div>
-                            <Badge variant="outline" className={`text-xs shrink-0 ${status.className}`}>
-                              {done && <Check className="h-3 w-3 mr-1" />}
-                              {!done && isPast && <AlertTriangle className="h-3 w-3 mr-1" />}
-                              {status.label}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+function SupportSection({
+  setLocation,
+}: {
+  setLocation: (path: string) => void;
+}) {
+  const items = [
+    {
+      title: "Emotional Containment (60 sec)",
+      description: "feel \u2192 name \u2192 regulate \u2192 move",
+      path: "/emotional-processing",
+      icon: Heart,
+      testId: "button-emotional",
+    },
+    {
+      title: "Integrative Meditation",
+      description: "quiet your mind, write one insight",
+      path: "/meditation",
+      icon: Brain,
+      testId: "button-meditation",
+    },
+    {
+      title: "EQ Module",
+      description: "reflect on interactions",
+      path: "/empathy",
+      icon: Users,
+      testId: "button-eq",
+    },
+  ];
 
-                {todayPriority.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-1.5">
-                      <Grid3X3 className="h-3.5 w-3.5" />
-                      Priority Items
-                    </p>
-                    <div className="space-y-2">
-                      {todayPriority.map(entry => {
-                        const done = entry.completed || false;
-                        const status = getItemStatus(done, !done);
-                        return (
-                          <div key={entry.id} className="flex items-center justify-between gap-3 py-1.5" data-testid={`sidebar-q2-${entry.id}`}>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className={`text-sm truncate ${done ? "line-through text-muted-foreground" : ""}`}>{entry.task}</span>
-                            </div>
-                            <Badge variant="outline" className={`text-xs shrink-0 ${status.className}`}>
-                              {done && <Check className="h-3 w-3 mr-1" />}
-                              {!done && <Clock className="h-3 w-3 mr-1" />}
-                              {status.label}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {totalItems === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    No items scheduled for today
-                  </p>
-                )}
+  return (
+    <div data-testid="section-support">
+      <h3 className="text-sm font-medium text-muted-foreground mb-3">
+        Need support now?
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card
+              key={item.testId}
+              className="overflow-visible hover-elevate cursor-pointer"
+              onClick={() => setLocation(item.path)}
+              data-testid={item.testId}
+            >
+              <CardContent className="p-4">
+                <Icon className="h-5 w-5 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {item.description}
+                </p>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </main>
+          );
+        })}
+      </div>
     </div>
   );
 }

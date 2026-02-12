@@ -24,6 +24,12 @@ import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 import TasksPage from "@/pages/tasks";
 import ProgressPage from "@/pages/progress";
+import LearnPage from "@/pages/learn";
+import CoachPage from "@/pages/coach";
+import PlanPage from "@/pages/plan";
+import JournalHubPage from "@/pages/journal-hub";
+import ToolsHubPage from "@/pages/tools-hub";
+import LibraryPage from "@/pages/library";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -111,6 +117,24 @@ function Router() {
       </Route>
       <Route path="/progress">
         {() => <AuthenticatedRoute component={ProgressPage} />}
+      </Route>
+      <Route path="/learn">
+        {() => <AuthenticatedRoute component={LearnPage} />}
+      </Route>
+      <Route path="/coach">
+        {() => <AuthenticatedRoute component={CoachPage} />}
+      </Route>
+      <Route path="/plan">
+        {() => <AuthenticatedRoute component={PlanPage} />}
+      </Route>
+      <Route path="/journal">
+        {() => <AuthenticatedRoute component={JournalHubPage} />}
+      </Route>
+      <Route path="/tools">
+        {() => <AuthenticatedRoute component={ToolsHubPage} />}
+      </Route>
+      <Route path="/library">
+        {() => <AuthenticatedRoute component={LibraryPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
