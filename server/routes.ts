@@ -727,6 +727,41 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== MONTHLY GOALS ====================
+
+  app.get("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
+      const goal = await storage.getMonthlyGoal(userId, monthKey);
+      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "" });
+    } catch (error) {
+      console.error("Error fetching monthly goal:", error);
+      res.status(500).json({ error: "Failed to fetch monthly goal" });
+    }
+  });
+
+  app.put("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { monthKey, goalStatement, successMarker, value, why, nextConcreteStep, prize } = req.body;
+      const goal = await storage.upsertMonthlyGoal({
+        userId,
+        monthKey: monthKey || format(new Date(), "yyyy-MM"),
+        goalStatement: goalStatement || "",
+        successMarker: successMarker ?? "",
+        value: value ?? "",
+        why: why ?? "",
+        nextConcreteStep: nextConcreteStep || "",
+        prize: prize ?? "",
+      });
+      res.json(goal);
+    } catch (error) {
+      console.error("Error saving monthly goal:", error);
+      res.status(500).json({ error: "Failed to save monthly goal" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {

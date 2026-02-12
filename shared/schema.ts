@@ -137,6 +137,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   timeEstimate: varchar("time_estimate", { length: 20 }), // e.g., "60m", "2h"
   decision: varchar("decision", { length: 50 }), // 'do_today', 'schedule', 'delegate', 'delete'
   scheduledTime: varchar("scheduled_time", { length: 50 }),
+  goalAlignment: text("goal_alignment"),
   completed: boolean("completed").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -193,6 +194,7 @@ export const habits = pgTable("habits", {
   userId: varchar("user_id").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   category: varchar("category", { length: 30 }).default("health"),
+  habitType: varchar("habit_type", { length: 30 }).default("maintenance"), // 'goal', 'learning', 'maintenance'
   cadence: varchar("cadence", { length: 50 }).notNull(),
   recurring: varchar("recurring", { length: 20 }).default("indefinite"),
   duration: integer("duration"),
@@ -268,6 +270,32 @@ export const insertMeditationInsightSchema = createInsertSchema(meditationInsigh
 
 export type MeditationInsight = typeof meditationInsights.$inferSelect;
 export type InsertMeditationInsight = z.infer<typeof insertMeditationInsightSchema>;
+
+// Monthly Goals - one per user per month
+export const monthlyGoals = pgTable("monthly_goals", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  monthKey: varchar("month_key", { length: 7 }).notNull(), // YYYY-MM
+  goalStatement: text("goal_statement").notNull().default(""),
+  successMarker: text("success_marker").default(""),
+  value: varchar("value", { length: 200 }).default(""),
+  why: text("why").default(""),
+  nextConcreteStep: text("next_concrete_step").notNull().default(""),
+  prize: text("prize").default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("monthly_goals_user_month_idx").on(table.userId, table.monthKey),
+]);
+
+export const insertMonthlyGoalSchema = createInsertSchema(monthlyGoals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type MonthlyGoal = typeof monthlyGoals.$inferSelect;
+export type InsertMonthlyGoal = z.infer<typeof insertMonthlyGoalSchema>;
 
 export const identityDocuments = pgTable("identity_documents", {
   id: serial("id").primaryKey(),

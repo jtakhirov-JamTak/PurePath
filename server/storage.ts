@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -10,7 +10,8 @@ import {
   type HabitCompletion, type InsertHabitCompletion,
   type Task, type InsertTask,
   type MeditationInsight, type InsertMeditationInsight,
-  type IdentityDocument, type InsertIdentityDocument
+  type IdentityDocument, type InsertIdentityDocument,
+  type MonthlyGoal, type InsertMonthlyGoal
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -69,6 +70,10 @@ export interface IStorage {
   // Identity Document
   getIdentityDocument(userId: string): Promise<IdentityDocument | undefined>;
   upsertIdentityDocument(doc: InsertIdentityDocument): Promise<IdentityDocument>;
+
+  // Monthly Goals
+  getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
+  upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -321,6 +326,33 @@ export class DatabaseStorage implements IStorage {
           todayValue: doc.todayValue,
           todayIntention: doc.todayIntention,
           todayReflection: doc.todayReflection,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined> {
+    const [goal] = await db.select().from(monthlyGoals).where(
+      and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
+    );
+    return goal;
+  }
+
+  async upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal> {
+    const [result] = await db
+      .insert(monthlyGoals)
+      .values({ ...goal, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [monthlyGoals.userId, monthlyGoals.monthKey],
+        set: {
+          goalStatement: goal.goalStatement,
+          successMarker: goal.successMarker,
+          value: goal.value,
+          why: goal.why,
+          nextConcreteStep: goal.nextConcreteStep,
+          prize: goal.prize,
           updatedAt: new Date(),
         },
       })
