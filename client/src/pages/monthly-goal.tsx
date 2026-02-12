@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, Target, Heart, Star, Zap, Crosshair, AlertTriangle, Gift, Smile, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Save, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 function getCurrentMonthKey() {
@@ -94,10 +94,10 @@ export default function MonthlyGoalPage() {
         habitAddress: habitAddress.trim(),
         prize: prize.trim(),
         fun: fun.trim(),
-        goalStatement: goalWhat.trim(),
-        successMarker: "",
-        why: "",
-        nextConcreteStep: "",
+        goalStatement: goal?.goalStatement || goalWhat.trim(),
+        successMarker: goal?.successMarker || "",
+        why: goal?.why || "",
+        nextConcreteStep: goal?.nextConcreteStep || "",
       });
     },
     onSuccess: () => {
@@ -183,13 +183,13 @@ export default function MonthlyGoalPage() {
               {hasVision && (
                 <div>
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Vision</Label>
-                  <p className="text-sm mt-1" data-testid="text-vision">{identityDoc!.vision}</p>
+                  <p className="text-sm mt-1" data-testid="text-vision">{identityDoc?.vision}</p>
                 </div>
               )}
               {hasIdentity && (
                 <div>
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Identity</Label>
-                  <p className="text-sm mt-1" data-testid="text-identity">{identityDoc!.identity}</p>
+                  <p className="text-sm mt-1" data-testid="text-identity">{identityDoc?.identity}</p>
                 </div>
               )}
             </CardContent>
