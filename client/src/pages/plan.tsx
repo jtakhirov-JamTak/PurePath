@@ -2,12 +2,12 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Calendar, Footprints, Pencil } from "lucide-react";
+import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Calendar, Footprints, Pencil, Crosshair } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal } from "@shared/schema";
 
 export default function PlanPage() {
   const { user } = useAuth();
@@ -29,6 +29,8 @@ export default function PlanPage() {
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
+  const currentQuarterKey = `${today.getFullYear()}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
+
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
     queryFn: async () => {
@@ -39,8 +41,20 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
+  const { data: quarterlyGoal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", currentQuarterKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/quarterly-goal?quarter=${currentQuarterKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
+  const quarterFocus = quarterlyGoal?.quarterlyFocus?.trim() || "";
+  const hasQuarterlyGoal = quarterFocus.length > 0;
 
   const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
   const q2Items = thisWeekEntries.filter(e => e.quadrant === "q2");
@@ -60,6 +74,44 @@ export default function PlanPage() {
         </div>
 
         <div className="max-w-3xl space-y-6">
+          <Card className="overflow-visible" data-testid="card-plan-quarterly-goal">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Crosshair className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-lg">Quarterly Focus</CardTitle>
+                  <CardDescription>Your big-picture direction for the quarter</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {hasQuarterlyGoal ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium" data-testid="text-plan-quarterly-focus">{quarterFocus}</p>
+                  {quarterlyGoal?.outcomeStatement && (
+                    <p className="text-sm text-muted-foreground">Outcome: {quarterlyGoal.outcomeStatement}</p>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goal")} data-testid="button-plan-edit-quarterly">
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Edit Quarterly Goal
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    No quarterly focus set yet. Define your big-picture direction to guide your monthly goals.
+                  </p>
+                  <Button variant="default" onClick={() => setLocation("/quarterly-goal")} data-testid="button-plan-set-quarterly">
+                    <Crosshair className="h-4 w-4 mr-2" />
+                    Set Quarterly Focus
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="overflow-visible" data-testid="card-plan-monthly-goal">
             <CardHeader>
               <div className="flex items-center gap-3 mb-1">
@@ -67,8 +119,8 @@ export default function PlanPage() {
                   <Target className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Step 1: Monthly Goal</CardTitle>
-                  <CardDescription>Start here — everything this week should move you toward this</CardDescription>
+                  <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
+                  <CardDescription>Everything this week should move you toward this</CardDescription>
                 </div>
               </div>
             </CardHeader>
