@@ -138,7 +138,8 @@ export default function JournalEntryPage() {
     },
     enabled: !!user,
   });
-  const hasGoal = monthlyGoal?.goalStatement && monthlyGoal.goalStatement.trim().length > 0;
+  const goalDisplayText = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+  const hasGoal = goalDisplayText.length > 0;
 
   useEffect(() => {
     if (existingJournal) {
@@ -366,8 +367,8 @@ export default function JournalEntryPage() {
                 {hasGoal && (
                   <div className="rounded-md bg-muted/50 px-4 py-3 mt-2" data-testid="goal-context">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
-                    <p className="text-sm">{monthlyGoal.goalStatement}</p>
-                    {journalMode === "quick" && monthlyGoal.nextConcreteStep && (
+                    <p className="text-sm">{goalDisplayText}</p>
+                    {journalMode === "quick" && (
                       <p className="text-xs text-muted-foreground mt-1.5">
                         What's one small action toward this today?
                       </p>

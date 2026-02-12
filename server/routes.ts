@@ -310,11 +310,18 @@ export async function registerRoutes(
       const currentMonth = format(new Date(), "yyyy-MM");
       const monthlyGoal = await storage.getMonthlyGoal(userId, currentMonth);
       let systemPrompt = SELF_DISCOVERY_SYSTEM_PROMPT;
-      if (monthlyGoal?.goalStatement) {
-        systemPrompt += `\n\nIMPORTANT CONTEXT — The user's current monthly goal:\nGoal: ${monthlyGoal.goalStatement}`;
+      const hasGoal = monthlyGoal?.goalWhat || monthlyGoal?.goalStatement;
+      if (hasGoal) {
+        systemPrompt += `\n\nIMPORTANT CONTEXT — The user's current monthly goal:`;
+        if (monthlyGoal.goalWhat) systemPrompt += `\nWhat: ${monthlyGoal.goalWhat}`;
+        if (monthlyGoal.goalWhen) systemPrompt += `\nWhen: ${monthlyGoal.goalWhen}`;
+        if (monthlyGoal.goalWhere) systemPrompt += `\nWhere: ${monthlyGoal.goalWhere}`;
+        if (monthlyGoal.goalHow) systemPrompt += `\nHow: ${monthlyGoal.goalHow}`;
+        if (monthlyGoal.goalStatement) systemPrompt += `\nGoal summary: ${monthlyGoal.goalStatement}`;
         if (monthlyGoal.value) systemPrompt += `\nValue it serves: ${monthlyGoal.value}`;
-        if (monthlyGoal.why) systemPrompt += `\nWhy: ${monthlyGoal.why}`;
-        if (monthlyGoal.nextConcreteStep) systemPrompt += `\nNext step: ${monthlyGoal.nextConcreteStep}`;
+        if (monthlyGoal.strengths) systemPrompt += `\nStrengths: ${monthlyGoal.strengths}`;
+        if (monthlyGoal.blockingHabit) systemPrompt += `\nBlocking habit: ${monthlyGoal.blockingHabit}`;
+        if (monthlyGoal.habitAddress) systemPrompt += `\nPlan to address it: ${monthlyGoal.habitAddress}`;
         systemPrompt += `\nWeave this goal context naturally into your coaching when relevant. Don't force it, but be aware of it.`;
       }
       const messages = [
@@ -744,7 +751,7 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
       const goal = await storage.getMonthlyGoal(userId, monthKey);
-      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "" });
+      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "" });
     } catch (error) {
       console.error("Error fetching monthly goal:", error);
       res.status(500).json({ error: "Failed to fetch monthly goal" });
@@ -754,7 +761,8 @@ export async function registerRoutes(
   app.put("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { monthKey, goalStatement, successMarker, value, why, nextConcreteStep, prize } = req.body;
+      const { monthKey, goalStatement, successMarker, value, why, nextConcreteStep, prize,
+        strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, blockingHabit, habitAddress, fun } = req.body;
       const goal = await storage.upsertMonthlyGoal({
         userId,
         monthKey: monthKey || format(new Date(), "yyyy-MM"),
@@ -764,6 +772,15 @@ export async function registerRoutes(
         why: why ?? "",
         nextConcreteStep: nextConcreteStep || "",
         prize: prize ?? "",
+        strengths: strengths ?? "",
+        advantage: advantage ?? "",
+        goalWhat: goalWhat ?? "",
+        goalWhen: goalWhen ?? "",
+        goalWhere: goalWhere ?? "",
+        goalHow: goalHow ?? "",
+        blockingHabit: blockingHabit ?? "",
+        habitAddress: habitAddress ?? "",
+        fun: fun ?? "",
       });
       res.json(goal);
     } catch (error) {

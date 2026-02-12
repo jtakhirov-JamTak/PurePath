@@ -512,7 +512,8 @@ function MonthlyGoalCard({
   goal: MonthlyGoal | undefined;
   setLocation: (path: string) => void;
 }) {
-  const hasGoal = goal?.goalStatement && goal.goalStatement.trim().length > 0;
+  const goalDisplay = goal?.goalWhat?.trim() || goal?.goalStatement?.trim() || "";
+  const hasGoal = goalDisplay.length > 0;
 
   return (
     <Card className="overflow-visible" data-testid="card-monthly-goal">
@@ -536,11 +537,11 @@ function MonthlyGoalCard({
       <CardContent>
         {hasGoal ? (
           <div className="space-y-2">
-            <p className="text-sm font-medium" data-testid="text-goal-statement">{goal.goalStatement}</p>
-            {goal.nextConcreteStep && (
+            <p className="text-sm font-medium" data-testid="text-goal-statement">{goalDisplay}</p>
+            {goal?.blockingHabit && (
               <div className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                <span data-testid="text-next-step">Next step: {goal.nextConcreteStep}</span>
+                <span data-testid="text-next-step">Blocking habit: {goal.blockingHabit}</span>
               </div>
             )}
           </div>

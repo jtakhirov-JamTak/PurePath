@@ -39,7 +39,8 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
-  const hasGoal = monthlyGoal?.goalStatement && monthlyGoal.goalStatement.trim().length > 0;
+  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+  const hasGoal = goalDisplay.length > 0;
 
   const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
   const q2Items = thisWeekEntries.filter(e => e.quadrant === "q2");
@@ -74,11 +75,11 @@ export default function PlanPage() {
             <CardContent>
               {hasGoal ? (
                 <div className="space-y-3">
-                  <p className="text-sm font-medium" data-testid="text-plan-goal">{monthlyGoal.goalStatement}</p>
-                  {monthlyGoal.nextConcreteStep && (
+                  <p className="text-sm font-medium" data-testid="text-plan-goal">{goalDisplay}</p>
+                  {monthlyGoal?.blockingHabit && (
                     <div className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      <span>Next step: {monthlyGoal.nextConcreteStep}</span>
+                      <span>Blocking habit: {monthlyGoal.blockingHabit}</span>
                     </div>
                   )}
                   <Button variant="outline" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-edit-goal">

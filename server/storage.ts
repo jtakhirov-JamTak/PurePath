@@ -347,12 +347,21 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: [monthlyGoals.userId, monthlyGoals.monthKey],
         set: {
+          value: goal.value,
+          strengths: goal.strengths,
+          advantage: goal.advantage,
+          goalWhat: goal.goalWhat,
+          goalWhen: goal.goalWhen,
+          goalWhere: goal.goalWhere,
+          goalHow: goal.goalHow,
+          blockingHabit: goal.blockingHabit,
+          habitAddress: goal.habitAddress,
+          prize: goal.prize,
+          fun: goal.fun,
           goalStatement: goal.goalStatement,
           successMarker: goal.successMarker,
-          value: goal.value,
           why: goal.why,
           nextConcreteStep: goal.nextConcreteStep,
-          prize: goal.prize,
           updatedAt: new Date(),
         },
       })

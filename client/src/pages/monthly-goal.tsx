@@ -2,16 +2,16 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, Target, CheckCircle, Heart, HelpCircle, Footprints, Gift, ChevronLeft, ChevronRight } from "lucide-react";
-import type { MonthlyGoal } from "@shared/schema";
+import { Save, Target, Heart, Star, Zap, Crosshair, AlertTriangle, Gift, Smile, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 function getCurrentMonthKey() {
   const now = new Date();
@@ -46,21 +46,36 @@ export default function MonthlyGoalPage() {
     enabled: !!user,
   });
 
-  const [goalStatement, setGoalStatement] = useState("");
-  const [successMarker, setSuccessMarker] = useState("");
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+
   const [value, setValue] = useState("");
-  const [why, setWhy] = useState("");
-  const [nextConcreteStep, setNextConcreteStep] = useState("");
+  const [strengths, setStrengths] = useState("");
+  const [advantage, setAdvantage] = useState("");
+  const [goalWhat, setGoalWhat] = useState("");
+  const [goalWhen, setGoalWhen] = useState("");
+  const [goalWhere, setGoalWhere] = useState("");
+  const [goalHow, setGoalHow] = useState("");
+  const [blockingHabit, setBlockingHabit] = useState("");
+  const [habitAddress, setHabitAddress] = useState("");
   const [prize, setPrize] = useState("");
+  const [fun, setFun] = useState("");
 
   useEffect(() => {
     if (goal) {
-      setGoalStatement(goal.goalStatement || "");
-      setSuccessMarker(goal.successMarker || "");
       setValue(goal.value || "");
-      setWhy(goal.why || "");
-      setNextConcreteStep(goal.nextConcreteStep || "");
+      setStrengths(goal.strengths || "");
+      setAdvantage(goal.advantage || "");
+      setGoalWhat(goal.goalWhat || "");
+      setGoalWhen(goal.goalWhen || "");
+      setGoalWhere(goal.goalWhere || "");
+      setGoalHow(goal.goalHow || "");
+      setBlockingHabit(goal.blockingHabit || "");
+      setHabitAddress(goal.habitAddress || "");
       setPrize(goal.prize || "");
+      setFun(goal.fun || "");
     }
   }, [goal]);
 
@@ -68,12 +83,21 @@ export default function MonthlyGoalPage() {
     mutationFn: async () => {
       await apiRequest("PUT", "/api/monthly-goal", {
         monthKey,
-        goalStatement: goalStatement.trim(),
-        successMarker: successMarker.trim(),
         value: value.trim(),
-        why: why.trim(),
-        nextConcreteStep: nextConcreteStep.trim(),
+        strengths: strengths.trim(),
+        advantage: advantage.trim(),
+        goalWhat: goalWhat.trim(),
+        goalWhen: goalWhen.trim(),
+        goalWhere: goalWhere.trim(),
+        goalHow: goalHow.trim(),
+        blockingHabit: blockingHabit.trim(),
+        habitAddress: habitAddress.trim(),
         prize: prize.trim(),
+        fun: fun.trim(),
+        goalStatement: goalWhat.trim(),
+        successMarker: "",
+        why: "",
+        nextConcreteStep: "",
       });
     },
     onSuccess: () => {
@@ -86,14 +110,17 @@ export default function MonthlyGoalPage() {
   });
 
   const hasChanges =
-    goalStatement !== (goal?.goalStatement || "") ||
-    successMarker !== (goal?.successMarker || "") ||
     value !== (goal?.value || "") ||
-    why !== (goal?.why || "") ||
-    nextConcreteStep !== (goal?.nextConcreteStep || "") ||
-    prize !== (goal?.prize || "");
-
-  const isCurrentMonth = monthKey === getCurrentMonthKey();
+    strengths !== (goal?.strengths || "") ||
+    advantage !== (goal?.advantage || "") ||
+    goalWhat !== (goal?.goalWhat || "") ||
+    goalWhen !== (goal?.goalWhen || "") ||
+    goalWhere !== (goal?.goalWhere || "") ||
+    goalHow !== (goal?.goalHow || "") ||
+    blockingHabit !== (goal?.blockingHabit || "") ||
+    habitAddress !== (goal?.habitAddress || "") ||
+    prize !== (goal?.prize || "") ||
+    fun !== (goal?.fun || "");
 
   if (isLoading) {
     return (
@@ -105,6 +132,9 @@ export default function MonthlyGoalPage() {
       </AppLayout>
     );
   }
+
+  const hasVision = identityDoc?.vision?.trim();
+  const hasIdentity = identityDoc?.identity?.trim();
 
   return (
     <AppLayout>
@@ -132,145 +162,230 @@ export default function MonthlyGoalPage() {
             </Button>
           </div>
           <p className="text-muted-foreground text-lg">
-            Set one clear, meaningful goal for this month. Keep it specific enough to measure, personal enough to care about.
+            One goal, one month. Answer each question to build a goal that sticks.
           </p>
         </div>
 
+        {(hasVision || hasIdentity) && (
+          <Card className="overflow-visible mb-8 border-primary/20" data-testid="card-vision-identity">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Eye className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">Your Vision & Identity</CardTitle>
+                  <CardDescription>Let this anchor every answer below</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {hasVision && (
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Vision</Label>
+                  <p className="text-sm mt-1" data-testid="text-vision">{identityDoc!.vision}</p>
+                </div>
+              )}
+              {hasIdentity && (
+                <div>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Identity</Label>
+                  <p className="text-sm mt-1" data-testid="text-identity">{identityDoc!.identity}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-6">
-          <Card className="overflow-visible" data-testid="card-goal-statement">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Target className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-serif text-lg">Goal Statement</CardTitle>
-                  <CardDescription>What exactly will you accomplish this month?</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={goalStatement}
-                onChange={(e) => setGoalStatement(e.target.value)}
-                placeholder="e.g. Run 3x per week for the whole month and complete a 5K by month-end"
-                className="min-h-[80px] text-base"
-                data-testid="input-goal-statement"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-success-marker">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <CheckCircle className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-serif text-lg">Success Marker</CardTitle>
-                  <CardDescription>How will you know it's done? Be specific and measurable.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={successMarker}
-                onChange={(e) => setSuccessMarker(e.target.value)}
-                placeholder="e.g. I'll have run at least 12 sessions and finished a 5K race or timed run under 30 min"
-                className="min-h-[60px] text-base"
-                data-testid="input-success-marker"
-              />
-            </CardContent>
-          </Card>
-
           <Card className="overflow-visible" data-testid="card-value">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Heart className="h-4 w-4 text-primary" />
-                </div>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">1</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Which Value Does This Serve?</CardTitle>
-                  <CardDescription>Link it to something you deeply care about.</CardDescription>
+                  <CardTitle className="font-serif text-lg">What do I value?</CardTitle>
+                  <CardDescription>What matters most to you right now? What value does this month serve?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Input
+              <Textarea
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="e.g. Health, Discipline, Self-respect"
-                className="text-base"
+                placeholder="e.g. Health, freedom, self-respect, growth, connection..."
+                className="min-h-[70px] text-base"
                 data-testid="input-value"
               />
             </CardContent>
           </Card>
 
-          <Card className="overflow-visible" data-testid="card-why">
+          <Card className="overflow-visible" data-testid="card-strengths">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <HelpCircle className="h-4 w-4 text-primary" />
-                </div>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">2</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Why This, Why Now?</CardTitle>
-                  <CardDescription>What makes this the right goal for right now?</CardDescription>
+                  <CardTitle className="font-serif text-lg">What am I already good at?</CardTitle>
+                  <CardDescription>What do people compliment you on? What comes naturally to you?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <Textarea
-                value={why}
-                onChange={(e) => setWhy(e.target.value)}
-                placeholder="e.g. I've been sedentary for too long and it's affecting my energy and confidence. Starting now gives me a full month before summer."
-                className="min-h-[80px] text-base"
-                data-testid="input-why"
+                value={strengths}
+                onChange={(e) => setStrengths(e.target.value)}
+                placeholder="e.g. I'm good at organizing things, people trust me easily, I learn fast when I care about something..."
+                className="min-h-[70px] text-base"
+                data-testid="input-strengths"
               />
             </CardContent>
           </Card>
 
-          <Card className="overflow-visible" data-testid="card-next-step">
+          <Card className="overflow-visible" data-testid="card-advantage">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Footprints className="h-4 w-4 text-primary" />
-                </div>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">3</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Next Concrete Step</CardTitle>
-                  <CardDescription>What's the very next physical action? Something you can do in under 5 minutes.</CardDescription>
+                  <CardTitle className="font-serif text-lg">How can I use that to my advantage?</CardTitle>
+                  <CardDescription>How can your strengths move you toward your vision?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Input
-                value={nextConcreteStep}
-                onChange={(e) => setNextConcreteStep(e.target.value)}
-                placeholder="e.g. Lay out running clothes tonight before bed"
-                className="text-base"
-                data-testid="input-next-step"
+              <Textarea
+                value={advantage}
+                onChange={(e) => setAdvantage(e.target.value)}
+                placeholder="e.g. Since I learn fast, I can dedicate focused time to mastering one skill this month..."
+                className="min-h-[70px] text-base"
+                data-testid="input-advantage"
               />
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-goal">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">4</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Select a Goal</CardTitle>
+                  <CardDescription>Be precise. A real goal answers all four.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">What?</Label>
+                <Textarea
+                  value={goalWhat}
+                  onChange={(e) => setGoalWhat(e.target.value)}
+                  placeholder="e.g. Complete a 5K run"
+                  className="min-h-[60px] text-base"
+                  data-testid="input-goal-what"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">When?</Label>
+                <Textarea
+                  value={goalWhen}
+                  onChange={(e) => setGoalWhen(e.target.value)}
+                  placeholder="e.g. By the last Sunday of this month, running 3x per week"
+                  className="min-h-[60px] text-base"
+                  data-testid="input-goal-when"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Where?</Label>
+                <Textarea
+                  value={goalWhere}
+                  onChange={(e) => setGoalWhere(e.target.value)}
+                  placeholder="e.g. At the park near my house, mornings before work"
+                  className="min-h-[60px] text-base"
+                  data-testid="input-goal-where"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">How?</Label>
+                <Textarea
+                  value={goalHow}
+                  onChange={(e) => setGoalHow(e.target.value)}
+                  placeholder="e.g. Follow a Couch-to-5K plan, track with a running app, lay out clothes the night before"
+                  className="min-h-[60px] text-base"
+                  data-testid="input-goal-how"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-blocking-habit">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">5</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">What habit is blocking my goal?</CardTitle>
+                  <CardDescription>Name it honestly. Then decide how to address it.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">The blocking habit</Label>
+                <Textarea
+                  value={blockingHabit}
+                  onChange={(e) => setBlockingHabit(e.target.value)}
+                  placeholder="e.g. Staying up too late scrolling my phone, so I'm too tired to exercise in the morning"
+                  className="min-h-[60px] text-base"
+                  data-testid="input-blocking-habit"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">How can I address it?</Label>
+                <Textarea
+                  value={habitAddress}
+                  onChange={(e) => setHabitAddress(e.target.value)}
+                  placeholder="e.g. Phone goes on airplane mode at 10 PM. Alarm is across the room."
+                  className="min-h-[60px] text-base"
+                  data-testid="input-habit-address"
+                />
+              </div>
             </CardContent>
           </Card>
 
           <Card className="overflow-visible" data-testid="card-prize">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Gift className="h-4 w-4 text-primary" />
-                </div>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">6</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">Prize</CardTitle>
-                  <CardDescription>How will you reward yourself when you hit the goal?</CardDescription>
+                  <CardDescription>What reward are you giving yourself when you hit this goal?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Input
+              <Textarea
                 value={prize}
                 onChange={(e) => setPrize(e.target.value)}
-                placeholder="e.g. New running shoes, or a day off to do whatever I want"
-                className="text-base"
+                placeholder="e.g. New running shoes, a weekend trip, a nice dinner out..."
+                className="min-h-[60px] text-base"
                 data-testid="input-prize"
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-fun">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">7</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">How can I have fun with this?</CardTitle>
+                  <CardDescription>Happiness lives in the pursuit, not the arrival. Make it enjoyable.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={fun}
+                onChange={(e) => setFun(e.target.value)}
+                placeholder="e.g. Run with a friend, try new routes, listen to a favorite podcast while running..."
+                className="min-h-[60px] text-base"
+                data-testid="input-fun"
               />
             </CardContent>
           </Card>
