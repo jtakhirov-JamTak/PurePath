@@ -700,7 +700,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const doc = await storage.getIdentityDocument(userId);
-      res.json(doc || { userId, identity: "", vision: "", values: "", todayValue: "" });
+      res.json(doc || { userId, identity: "", vision: "", values: "", todayValue: "", todayReflection: "" });
     } catch (error) {
       console.error("Error fetching identity document:", error);
       res.status(500).json({ error: "Failed to fetch identity document" });
@@ -710,13 +710,14 @@ export async function registerRoutes(
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { identity, vision, values, todayValue } = req.body;
+      const { identity, vision, values, todayValue, todayReflection } = req.body;
       const doc = await storage.upsertIdentityDocument({
         userId,
         identity: identity || "",
         vision: vision || "",
         values: values || "",
         todayValue: todayValue || "",
+        todayReflection: todayReflection ?? "",
       });
       res.json(doc);
     } catch (error) {

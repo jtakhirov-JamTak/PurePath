@@ -319,6 +319,7 @@ export class DatabaseStorage implements IStorage {
           vision: doc.vision,
           values: doc.values,
           todayValue: doc.todayValue,
+          todayReflection: doc.todayReflection,
           updatedAt: new Date(),
         },
       })
