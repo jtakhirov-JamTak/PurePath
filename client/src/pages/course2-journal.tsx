@@ -209,6 +209,23 @@ export default function Course2JournalPage() {
                 );
               })}
 
+              <LabelCell icon={<Moon className="h-4 w-4 text-indigo-500" />} label="Evening Journal" />
+              {days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const done = journalsByDate.get(dateStr)?.evening || false;
+                return (
+                  <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
+                    <div
+                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
+                      onClick={() => setLocation(`/journal/${dateStr}/evening`)}
+                      data-testid={`row-evening-${dateStr}`}
+                    >
+                      {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+                    </div>
+                  </DayCell>
+                );
+              })}
+
               <SectionHeaderRow gridCols={gridCols} label="Scheduled Items" days={days} todayStr={todayStr} />
               <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" badge />
               {days.map((day) => {
@@ -294,23 +311,6 @@ export default function Course2JournalPage() {
                   );
                 });
               })()}
-
-              <LabelCell icon={<Moon className="h-4 w-4 text-indigo-500" />} label="Evening Journal" />
-              {days.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const done = journalsByDate.get(dateStr)?.evening || false;
-                return (
-                  <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
-                    <div
-                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
-                      onClick={() => setLocation(`/journal/${dateStr}/evening`)}
-                      data-testid={`row-evening-${dateStr}`}
-                    >
-                      {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
-                    </div>
-                  </DayCell>
-                );
-              })}
             </div>
           </div>
         </div>
