@@ -196,6 +196,7 @@ export const habits = pgTable("habits", {
   name: varchar("name", { length: 200 }).notNull(),
   category: varchar("category", { length: 30 }).default("health"),
   habitType: varchar("habit_type", { length: 30 }).default("maintenance"), // 'goal', 'learning', 'maintenance'
+  timing: varchar("timing", { length: 20 }).default("daily"), // 'morning', 'daily', 'evening'
   cadence: varchar("cadence", { length: 50 }).notNull(),
   recurring: varchar("recurring", { length: 20 }).default("indefinite"),
   duration: integer("duration"),

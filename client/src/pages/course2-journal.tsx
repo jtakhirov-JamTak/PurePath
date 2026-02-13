@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -191,6 +191,7 @@ export default function Course2JournalPage() {
                 );
               })}
 
+              <SectionHeaderRow gridCols={gridCols} label="Journaling" days={days} todayStr={todayStr} />
               <LabelCell icon={<Sun className="h-4 w-4 text-amber-500" />} label="Morning Journal" />
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -208,6 +209,7 @@ export default function Course2JournalPage() {
                 );
               })}
 
+              <SectionHeaderRow gridCols={gridCols} label="Scheduled Items" days={days} todayStr={todayStr} />
               <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" badge />
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -249,23 +251,49 @@ export default function Course2JournalPage() {
               })}
 
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
-              {habits.map((habit) => {
-                const scheduledDays = new Set(habit.cadence.split(","));
-                const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
-                return (
-                  <HabitRow
-                    key={habit.id}
-                    habit={habit}
-                    catDot={catDot}
-                    scheduledDays={scheduledDays}
-                    days={days}
-                    todayStr={todayStr}
-                    cellH={cellH}
-                    completionsByDate={completionsByDate}
-                    onToggle={(completed, date) => toggleHabitMutation.mutate({ habitId: habit.id, completed, date })}
-                  />
-                );
-              })}
+              {(() => {
+                const timingOrder = { morning: 0, daily: 1, evening: 2 };
+                const sorted = [...habits].sort((a, b) => {
+                  const aT = timingOrder[(a.timing as keyof typeof timingOrder) || "daily"] ?? 1;
+                  const bT = timingOrder[(b.timing as keyof typeof timingOrder) || "daily"] ?? 1;
+                  return aT - bT;
+                });
+                const timingLabels: Record<string, string> = { morning: "Morning", daily: "Daily", evening: "Evening" };
+                let lastTiming = "";
+                return sorted.map((habit) => {
+                  const timing = habit.timing || "daily";
+                  const showSubheader = timing !== lastTiming;
+                  lastTiming = timing;
+                  const scheduledDays = new Set(habit.cadence.split(","));
+                  const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
+                  return (
+                    <React.Fragment key={habit.id}>
+                      {showSubheader && (
+                        <>
+                          <div className="flex items-center px-3 py-0.5">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{timingLabels[timing] || "Daily"}</p>
+                          </div>
+                          {days.map((day) => {
+                            const dateStr = format(day, "yyyy-MM-dd");
+                            const isToday = dateStr === todayStr;
+                            return <div key={dateStr} className={isToday ? "bg-primary/5" : ""} />;
+                          })}
+                        </>
+                      )}
+                      <HabitRow
+                        habit={habit}
+                        catDot={catDot}
+                        scheduledDays={scheduledDays}
+                        days={days}
+                        todayStr={todayStr}
+                        cellH={cellH}
+                        completionsByDate={completionsByDate}
+                        onToggle={(completed, date) => toggleHabitMutation.mutate({ habitId: habit.id, completed, date })}
+                      />
+                    </React.Fragment>
+                  );
+                });
+              })()}
 
               <LabelCell icon={<Moon className="h-4 w-4 text-indigo-500" />} label="Evening Journal" />
               {days.map((day) => {

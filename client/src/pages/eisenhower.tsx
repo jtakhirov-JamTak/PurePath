@@ -51,6 +51,22 @@ function generateTimeSlots() {
 
 const TIME_SLOTS = generateTimeSlots();
 
+function parseScheduledTime(scheduledTime: string): { startTime: string; endTime: string } {
+  const parts = scheduledTime.split(" - ");
+  if (parts.length !== 2) return { startTime: "", endTime: "" };
+  const parse12h = (t: string): string => {
+    const match = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return "";
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const ampm = match[3].toUpperCase();
+    if (ampm === "PM" && h !== 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    return `${h.toString().padStart(2, "0")}:${m}`;
+  };
+  return { startTime: parse12h(parts[0]), endTime: parse12h(parts[1]) };
+}
+
 function formatTimeLabel(time: string) {
   const [hStr, mStr] = time.split(":");
   const h = parseInt(hStr, 10);
@@ -195,13 +211,14 @@ export default function EisenhowerPage() {
   };
 
   const handleOpenEdit = (entry: EisenhowerEntry) => {
+    const parsed = entry.scheduledTime ? parseScheduledTime(entry.scheduledTime) : { startTime: "", endTime: "" };
     setEditForm({
       role: (entry.role as HabitCategory) || "health",
       task: entry.task,
       quadrant: entry.quadrant,
       deadline: entry.deadline || "",
-      startTime: "",
-      endTime: "",
+      startTime: parsed.startTime,
+      endTime: parsed.endTime,
       goalAlignment: entry.goalAlignment || "",
       blocksGoal: entry.blocksGoal || false,
     });

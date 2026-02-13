@@ -102,6 +102,7 @@ export default function HabitsPage() {
     name: "",
     category: "health" as string,
     habitType: "maintenance" as string,
+    timing: "daily" as string,
     recurringType: "indefinite" as "indefinite" | "count",
     recurringCount: "4",
     duration: "15",
@@ -135,7 +136,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", category: "health", habitType: "maintenance", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
+    setNewHabit({ name: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -151,6 +152,7 @@ export default function HabitsPage() {
         name: data.name,
         category: data.category,
         habitType: data.habitType,
+        timing: data.timing,
         cadence,
         recurring,
         duration: parseInt(data.duration) || null,
@@ -178,6 +180,7 @@ export default function HabitsPage() {
         name: data.name,
         category: data.category,
         habitType: data.habitType,
+        timing: data.timing,
         cadence,
         recurring,
         duration: parseInt(data.duration) || null,
@@ -200,6 +203,7 @@ export default function HabitsPage() {
       name: habit.name,
       category: habit.category || "health",
       habitType: habit.habitType || "maintenance",
+      timing: habit.timing || "daily",
       recurringType: isCount ? "count" : "indefinite",
       recurringCount: isCount ? habit.recurring! : "4",
       duration: habit.duration?.toString() || "15",
@@ -406,6 +410,28 @@ export default function HabitsPage() {
                   </div>
 
                   <div>
+                    <Label>Timing</Label>
+                    <Select
+                      value={newHabit.timing}
+                      onValueChange={(v) => setNewHabit({ ...newHabit, timing: v })}
+                    >
+                      <SelectTrigger data-testid="select-habit-timing">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="morning">Morning</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="evening">Evening</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {newHabit.timing === "morning" && "Part of your morning routine"}
+                      {newHabit.timing === "daily" && "Can be done anytime during the day"}
+                      {newHabit.timing === "evening" && "Part of your evening wind-down"}
+                    </p>
+                  </div>
+
+                  <div>
                     <Label className="mb-2 block">Cadence (select days)</Label>
                     <div className="flex gap-1.5">
                       {DAYS.map(day => (
@@ -550,6 +576,11 @@ export default function HabitsPage() {
                               {habit.habitType && habit.habitType !== "maintenance" && (
                                 <Badge variant="secondary" className="text-xs" data-testid={`badge-habit-type-${habit.id}`}>
                                   {habit.habitType === "goal" ? "Goal" : "Learning"}
+                                </Badge>
+                              )}
+                              {habit.timing && habit.timing !== "daily" && (
+                                <Badge variant="outline" className="text-xs" data-testid={`badge-timing-${habit.id}`}>
+                                  {habit.timing === "morning" ? "Morning" : "Evening"}
                                 </Badge>
                               )}
                             </div>
