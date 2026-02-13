@@ -53,7 +53,7 @@ export default function PlanPage() {
 
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
-  const quarterFocus = quarterlyGoal?.quarterlyFocus?.trim() || "";
+  const quarterFocus = quarterlyGoal?.outcomeStatement?.trim() || "";
   const hasQuarterlyGoal = quarterFocus.length > 0;
 
   const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
@@ -81,8 +81,8 @@ export default function PlanPage() {
                   <Crosshair className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Quarterly Focus</CardTitle>
-                  <CardDescription>Your big-picture direction for the quarter</CardDescription>
+                  <CardTitle className="font-serif text-lg">Quarterly Goal</CardTitle>
+                  <CardDescription>Your outcome target for the quarter</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -90,9 +90,6 @@ export default function PlanPage() {
               {hasQuarterlyGoal ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium" data-testid="text-plan-quarterly-focus">{quarterFocus}</p>
-                  {quarterlyGoal?.outcomeStatement && (
-                    <p className="text-sm text-muted-foreground">Outcome: {quarterlyGoal.outcomeStatement}</p>
-                  )}
                   <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goal")} data-testid="button-plan-edit-quarterly">
                     <Pencil className="h-3.5 w-3.5 mr-1.5" />
                     Edit Quarterly Goal
@@ -101,11 +98,11 @@ export default function PlanPage() {
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    No quarterly focus set yet. Define your big-picture direction to guide your monthly goals.
+                    No quarterly goal set yet. Define your outcome target to guide your monthly goals.
                   </p>
                   <Button variant="default" onClick={() => setLocation("/quarterly-goal")} data-testid="button-plan-set-quarterly">
                     <Crosshair className="h-4 w-4 mr-2" />
-                    Set Quarterly Focus
+                    Set Quarterly Goal
                   </Button>
                 </div>
               )}

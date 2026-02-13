@@ -41,7 +41,6 @@ function formatMonthLabel(monthKey: string) {
 }
 
 interface QuarterState {
-  quarterlyFocus: string;
   outcomeStatement: string;
 }
 
@@ -102,17 +101,16 @@ export default function QuarterlyGoalPage() {
   const isLoading = queries.some((q) => q.isLoading);
 
   const [forms, setForms] = useState<QuarterState[]>([
-    { quarterlyFocus: "", outcomeStatement: "" },
-    { quarterlyFocus: "", outcomeStatement: "" },
-    { quarterlyFocus: "", outcomeStatement: "" },
-    { quarterlyFocus: "", outcomeStatement: "" },
+    { outcomeStatement: "" },
+    { outcomeStatement: "" },
+    { outcomeStatement: "" },
+    { outcomeStatement: "" },
   ]);
 
   useEffect(() => {
     const goals = queries.map((q) => q.data);
     setForms(
       goals.map((g) => ({
-        quarterlyFocus: g?.quarterlyFocus || "",
         outcomeStatement: g?.outcomeStatement || "",
       }))
     );
@@ -131,7 +129,6 @@ export default function QuarterlyGoalPage() {
       const qk = quarterKeys[idx];
       await apiRequest("PUT", "/api/quarterly-goal", {
         quarterKey: qk,
-        quarterlyFocus: forms[idx].quarterlyFocus.trim(),
         outcomeStatement: forms[idx].outcomeStatement.trim(),
       });
     },
@@ -147,7 +144,6 @@ export default function QuarterlyGoalPage() {
   const hasChanges = (idx: number) => {
     const g = queries[idx].data;
     return (
-      forms[idx].quarterlyFocus !== (g?.quarterlyFocus || "") ||
       forms[idx].outcomeStatement !== (g?.outcomeStatement || "")
     );
   };
@@ -258,18 +254,6 @@ export default function QuarterlyGoalPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      What is the quarterly goal I'm focused on this quarter to get me closer to my yearly vision?
-                    </Label>
-                    <Textarea
-                      value={forms[idx].quarterlyFocus}
-                      onChange={(e) => updateForm(idx, "quarterlyFocus", e.target.value)}
-                      placeholder="e.g. Build emotional intelligence, launch a side project, get physically fit..."
-                      className="min-h-[70px] text-base"
-                      data-testid={`input-q${q}-focus`}
-                    />
-                  </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">
                       What is the specific outcome that means I progressed?

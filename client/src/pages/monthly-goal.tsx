@@ -66,7 +66,7 @@ export default function MonthlyGoalPage() {
     enabled: !!user,
   });
   const [, setLocation] = useLocation();
-  const quarterFocus = quarterlyGoal?.quarterlyFocus?.trim() || "";
+  const quarterFocus = quarterlyGoal?.outcomeStatement?.trim() || "";
 
   const [value, setValue] = useState("");
   const [strengths, setStrengths] = useState("");
@@ -188,7 +188,7 @@ export default function MonthlyGoalPage() {
               data-testid="link-quarterly-from-monthly"
             >
               <Crosshair className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm text-muted-foreground">Quarterly focus:</span>
+              <span className="text-sm text-muted-foreground">Quarterly goal:</span>
               <span className="text-sm font-medium">{quarterFocus}</span>
               <ArrowRight className="h-3.5 w-3.5 ml-auto text-muted-foreground shrink-0" />
             </div>
@@ -201,7 +201,7 @@ export default function MonthlyGoalPage() {
               data-testid="button-set-quarterly-from-monthly"
             >
               <Crosshair className="h-3.5 w-3.5 mr-1.5" />
-              Set Quarterly Focus First
+              Set Quarterly Goal First
             </Button>
           )}
         </div>

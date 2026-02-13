@@ -532,7 +532,7 @@ function GoalLadderStrip({
   monthlyGoal: MonthlyGoal | undefined;
   setLocation: (path: string) => void;
 }) {
-  const quarterFocus = quarterlyGoal?.quarterlyFocus?.trim() || "";
+  const quarterFocus = quarterlyGoal?.outcomeStatement?.trim() || "";
   const monthGoal = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const todayMove = monthlyGoal?.nextConcreteStep?.trim() || monthlyGoal?.goalHow?.trim() || "";
 
