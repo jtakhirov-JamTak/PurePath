@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AppLayout } from "@/components/app-layout";
@@ -12,20 +11,20 @@ import {
   Check, Repeat, Grid3X3, AlertTriangle
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, addWeeks, subWeeks, startOfWeek, addDays, isSameDay } from "date-fns";
+import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-const CATEGORY_STYLES: Record<string, { dot: string }> = {
-  health: { dot: "bg-emerald-500" },
-  wealth: { dot: "bg-amber-500" },
-  relationships: { dot: "bg-rose-500" },
-  career: { dot: "bg-blue-500" },
-  mindfulness: { dot: "bg-violet-500" },
-  learning: { dot: "bg-cyan-500" },
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-amber-500",
+  relationships: "bg-rose-500",
+  career: "bg-blue-500",
+  mindfulness: "bg-violet-500",
+  learning: "bg-cyan-500",
 };
 
 export default function Course2JournalPage() {
@@ -130,9 +129,9 @@ export default function Course2JournalPage() {
   if (journalsLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-4 py-12 max-w-3xl space-y-4">
+        <div className="p-6 space-y-4">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-[500px] w-full" />
         </div>
       </AppLayout>
     );
@@ -140,13 +139,13 @@ export default function Course2JournalPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-12 max-w-3xl">
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
+      <div className="p-4 lg:p-6 h-full flex flex-col">
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
           <div className="flex items-center gap-3">
             <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => subWeeks(w, 1))} data-testid="button-prev-week">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h1 className="font-serif text-2xl font-bold" data-testid="text-week-label">
+            <h1 className="font-serif text-xl font-bold" data-testid="text-week-label">
               {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
             </h1>
             <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => addWeeks(w, 1))} data-testid="button-next-week">
@@ -159,172 +158,153 @@ export default function Course2JournalPage() {
           </Button>
         </div>
 
-        <div className="space-y-6">
-          {days.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd");
-            const isToday = dateStr === todayStr;
-            const dayCode = DAY_CODES[day.getDay()];
-            const dayJournals = journalsByDate.get(dateStr);
-            const hasMorning = dayJournals?.morning || false;
-            const hasEvening = dayJournals?.evening || false;
-            const dayHabits = habits.filter((h) => h.cadence.split(",").includes(dayCode));
-            const completedIds = completionsByDate.get(dateStr) || new Set<number>();
+        <div className="flex-1 overflow-x-auto">
+          <div className="grid grid-cols-7 gap-2 min-w-[900px]">
+            {days.map((day) => {
+              const dateStr = format(day, "yyyy-MM-dd");
+              const isToday = dateStr === todayStr;
+              const dayCode = DAY_CODES[day.getDay()];
+              const dayJournals = journalsByDate.get(dateStr);
+              const hasMorning = dayJournals?.morning || false;
+              const hasEvening = dayJournals?.evening || false;
+              const dayHabits = habits.filter((h) => h.cadence.split(",").includes(dayCode));
+              const completedIds = completionsByDate.get(dateStr) || new Set<number>();
 
-            const totalItems = 2 + dayHabits.length + (isThisWeekDay(day, q2Items) ? q2Items.length : 0) + (isThisWeekDay(day, q1Items) ? q1Items.length : 0);
+              return (
+                <div
+                  key={dateStr}
+                  className={`rounded-lg border p-3 flex flex-col gap-1.5 ${isToday ? "border-primary/50 bg-primary/[0.03]" : "bg-card"}`}
+                  data-testid={`day-column-${dateStr}`}
+                >
+                  <div className={`text-center pb-2 border-b mb-1 ${isToday ? "border-primary/30" : ""}`}>
+                    <p className={`text-xs uppercase tracking-wide ${isToday ? "text-primary font-bold" : "text-muted-foreground font-medium"}`}>
+                      {format(day, "EEE")}
+                    </p>
+                    <p className={`text-lg font-bold leading-tight ${isToday ? "text-primary" : ""}`}>
+                      {format(day, "d")}
+                    </p>
+                  </div>
 
-            return (
-              <div key={dateStr} data-testid={`day-column-${dateStr}`}>
-                <div className={`flex items-center gap-3 mb-3 pb-2 border-b ${isToday ? "border-primary/40" : ""}`}>
-                  <span className={`font-serif text-lg font-bold ${isToday ? "text-primary" : ""}`}>
-                    {format(day, "EEE, MMM d")}
-                  </span>
-                  {isToday && <Badge className="shrink-0 text-xs">Today</Badge>}
-                </div>
-
-                <div className="space-y-2 pl-2">
-                  <JournalRow
-                    session="morning"
+                  <CellRow
+                    icon={<Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                    label="Morning"
                     done={hasMorning}
-                    dateStr={dateStr}
-                    setLocation={setLocation}
+                    onClick={() => setLocation(`/journal/${dateStr}/morning`)}
+                    testId={`row-morning-${dateStr}`}
                   />
 
                   {q2Items.length > 0 && (
-                    <>
-                      <SectionLabel icon={<Grid3X3 className="h-3.5 w-3.5" />} label="Q2" />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 pt-1">
+                        <Grid3X3 className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Q2</span>
+                      </div>
                       {q2Items.map((entry) => (
-                        <EisenhowerRow
-                          key={entry.id}
-                          entry={entry}
-                          onToggle={(completed) => toggleEisenhowerMutation.mutate({ id: entry.id, completed })}
-                        />
+                        <div key={entry.id} className="flex items-start gap-1.5 py-0.5" data-testid={`eisenhower-${entry.id}-${dateStr}`}>
+                          <Checkbox
+                            className="mt-0.5 h-3.5 w-3.5"
+                            checked={entry.completed || false}
+                            onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
+                            data-testid={`checkbox-eisenhower-${entry.id}`}
+                          />
+                          <span className={`text-xs leading-tight flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {entry.task}
+                          </span>
+                          {entry.blocksGoal && (
+                            <span className="text-[9px] text-destructive font-medium">!</span>
+                          )}
+                        </div>
                       ))}
-                    </>
+                    </div>
                   )}
 
                   {q1Items.length > 0 && (
-                    <>
-                      <SectionLabel icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Q1" />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 pt-1">
+                        <AlertTriangle className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Q1</span>
+                      </div>
                       {q1Items.map((entry) => (
-                        <EisenhowerRow
-                          key={entry.id}
-                          entry={entry}
-                          onToggle={(completed) => toggleEisenhowerMutation.mutate({ id: entry.id, completed })}
-                        />
+                        <div key={entry.id} className="flex items-start gap-1.5 py-0.5" data-testid={`eisenhower-q1-${entry.id}-${dateStr}`}>
+                          <Checkbox
+                            className="mt-0.5 h-3.5 w-3.5"
+                            checked={entry.completed || false}
+                            onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
+                            data-testid={`checkbox-eisenhower-q1-${entry.id}`}
+                          />
+                          <span className={`text-xs leading-tight flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {entry.task}
+                          </span>
+                        </div>
                       ))}
-                    </>
+                    </div>
                   )}
 
                   {dayHabits.length > 0 && (
-                    <>
-                      <SectionLabel icon={<Repeat className="h-3.5 w-3.5" />} label="Habits" />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 pt-1">
+                        <Repeat className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Habits</span>
+                      </div>
                       {dayHabits.map((habit) => {
                         const done = completedIds.has(habit.id);
-                        const catStyle = CATEGORY_STYLES[habit.category || "health"];
                         return (
-                          <div key={habit.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md" data-testid={`habit-${habit.id}-${dateStr}`}>
+                          <div key={habit.id} className="flex items-start gap-1.5 py-0.5" data-testid={`habit-${habit.id}-${dateStr}`}>
                             <Checkbox
+                              className="mt-0.5 h-3.5 w-3.5"
                               checked={done}
                               onCheckedChange={(v) => toggleHabitMutation.mutate({ habitId: habit.id, completed: !!v, date: dateStr })}
                               data-testid={`checkbox-habit-${habit.id}-${dateStr}`}
                             />
-                            <div className={`h-2 w-2 rounded-full shrink-0 ${catStyle?.dot || "bg-muted"}`} />
-                            <span className={`text-sm flex-1 ${done ? "line-through text-muted-foreground" : ""}`}>
+                            <div className={`h-2 w-2 rounded-full shrink-0 mt-1 ${CATEGORY_DOTS[habit.category || "health"] || "bg-muted"}`} />
+                            <span className={`text-xs leading-tight flex-1 ${done ? "line-through text-muted-foreground" : ""}`}>
                               {habit.name}
                             </span>
                           </div>
                         );
                       })}
-                    </>
+                    </div>
                   )}
 
-                  <JournalRow
-                    session="evening"
+                  <CellRow
+                    icon={<Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />}
+                    label="Evening"
                     done={hasEvening}
-                    dateStr={dateStr}
-                    setLocation={setLocation}
+                    onClick={() => setLocation(`/journal/${dateStr}/evening`)}
+                    testId={`row-evening-${dateStr}`}
                   />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </AppLayout>
   );
 }
 
-function isThisWeekDay(day: Date, items: EisenhowerEntry[]) {
-  return true;
-}
-
-function SectionLabel({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-1.5 pt-1">
-      {icon}
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-    </div>
-  );
-}
-
-function JournalRow({
-  session,
+function CellRow({
+  icon,
+  label,
   done,
-  dateStr,
-  setLocation,
+  onClick,
+  testId,
 }: {
-  session: "morning" | "evening";
+  icon: React.ReactNode;
+  label: string;
   done: boolean;
-  dateStr: string;
-  setLocation: (path: string) => void;
+  onClick: () => void;
+  testId: string;
 }) {
-  const isMorning = session === "morning";
   return (
     <div
-      className="flex items-center gap-3 py-2 px-2 rounded-md cursor-pointer hover-elevate"
-      onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
-      data-testid={`row-${session}-${dateStr}`}
+      className="flex items-center gap-1.5 py-1.5 px-1.5 rounded-md cursor-pointer hover-elevate"
+      onClick={onClick}
+      data-testid={testId}
     >
-      {isMorning ? (
-        <Sun className="h-4 w-4 text-amber-500 shrink-0" />
-      ) : (
-        <Moon className="h-4 w-4 text-indigo-500 shrink-0" />
-      )}
-      <span className="text-sm flex-1">{isMorning ? "Morning Journal" : "Evening Journal"}</span>
-      {done ? (
-        <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
-          <Check className="h-3 w-3 mr-1" />
-          Done
-        </Badge>
-      ) : (
-        <span className="text-xs text-muted-foreground">—</span>
-      )}
-    </div>
-  );
-}
-
-function EisenhowerRow({
-  entry,
-  onToggle,
-}: {
-  entry: EisenhowerEntry;
-  onToggle: (completed: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-1.5 px-2 rounded-md" data-testid={`eisenhower-${entry.id}`}>
-      <Checkbox
-        checked={entry.completed || false}
-        onCheckedChange={(v) => onToggle(!!v)}
-        data-testid={`checkbox-eisenhower-${entry.id}`}
-      />
-      <span className={`text-sm flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
-        {entry.task}
-      </span>
-      {entry.blocksGoal && (
-        <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
-          Blocks Goal
-        </Badge>
-      )}
+      {icon}
+      <span className="text-xs flex-1">{label}</span>
+      {done && <Check className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />}
     </div>
   );
 }
