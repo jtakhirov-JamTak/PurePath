@@ -368,11 +368,6 @@ export default function JournalEntryPage() {
                   <div className="rounded-md bg-muted/50 px-4 py-3 mt-2" data-testid="goal-context">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
                     <p className="text-sm">{goalDisplayText}</p>
-                    {journalMode === "quick" && (
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        What's one small action toward this today?
-                      </p>
-                    )}
                   </div>
                 )}
               </CardContent>
