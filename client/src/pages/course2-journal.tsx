@@ -114,6 +114,17 @@ export default function Course2JournalPage() {
     [eisenhowerEntries, weekStartStr]
   );
 
+  const eisenhowerByDate = useMemo(() => {
+    const map = new Map<string, EisenhowerEntry[]>();
+    [...q2Items, ...q1Items].forEach((e) => {
+      const d = e.deadline || "";
+      if (!d) return;
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(e);
+    });
+    return map;
+  }, [q2Items, q1Items]);
+
   const handleDownloadAll = async () => {
     const response = await fetch("/api/journals/export", { credentials: "include" });
     const blob = await response.blob();
@@ -136,7 +147,7 @@ export default function Course2JournalPage() {
     );
   }
 
-  const gridCols = "grid-cols-[160px_repeat(7,1fr)]";
+  const gridCols = "grid-cols-[minmax(180px,auto)_repeat(7,1fr)]";
   const cellH = "min-h-[36px]";
 
   return (
@@ -164,7 +175,6 @@ export default function Course2JournalPage() {
           <div className="min-w-[960px]">
             <div className={`grid ${gridCols} border rounded-md overflow-hidden`}>
 
-              {/* Header row */}
               <div className="bg-muted/40 p-2" />
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -181,7 +191,6 @@ export default function Course2JournalPage() {
                 );
               })}
 
-              {/* Morning Journal row */}
               <LabelCell icon={<Sun className="h-4 w-4 text-amber-500" />} label="Morning Journal" />
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -199,35 +208,46 @@ export default function Course2JournalPage() {
                 );
               })}
 
-              {/* Q2 items — each item gets its own row, shown only on its deadline day */}
-              {q2Items.map((entry, idx) => (
-                <ScheduledItemRow
-                  key={entry.id}
-                  entry={entry}
-                  quadrantLabel={idx === 0 ? "Q2" : ""}
-                  icon={idx === 0 ? <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 rounded px-1.5 py-0.5">Q2</span> : undefined}
-                  days={days}
-                  todayStr={todayStr}
-                  cellH={cellH}
-                  onToggle={(completed) => toggleEisenhowerMutation.mutate({ id: entry.id, completed })}
-                />
-              ))}
+              <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" badge />
+              {days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const items = eisenhowerByDate.get(dateStr) || [];
+                return (
+                  <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={items.length > 0 ? "" : cellH}>
+                    {items.length > 0 ? (
+                      <div className="space-y-1.5 py-2 w-full">
+                        {items.map((entry) => (
+                          <div key={entry.id} className="flex items-start gap-1.5 px-1" data-testid={`eisenhower-${entry.id}`}>
+                            <Checkbox
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                              checked={entry.completed || false}
+                              onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
+                              data-testid={`checkbox-eisenhower-${entry.id}`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-[11px] leading-tight ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                                {entry.task}
+                              </p>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className={`text-[9px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
+                                  {entry.quadrant}
+                                </span>
+                                {entry.scheduledTime && (
+                                  <span className="text-[9px] text-muted-foreground">{entry.scheduledTime}</span>
+                                )}
+                                {entry.blocksGoal && (
+                                  <span className="text-[9px] text-destructive font-bold">blocks goal</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </DayCell>
+                );
+              })}
 
-              {/* Q1 items — each item gets its own row, shown only on its deadline day */}
-              {q1Items.map((entry, idx) => (
-                <ScheduledItemRow
-                  key={entry.id}
-                  entry={entry}
-                  quadrantLabel={idx === 0 ? "Q1" : ""}
-                  icon={idx === 0 ? <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 rounded px-1.5 py-0.5">Q1</span> : undefined}
-                  days={days}
-                  todayStr={todayStr}
-                  cellH={cellH}
-                  onToggle={(completed) => toggleEisenhowerMutation.mutate({ id: entry.id, completed })}
-                />
-              ))}
-
-              {/* Habit rows — each habit gets its own row */}
               {habits.map((habit) => {
                 const scheduledDays = new Set(habit.cadence.split(","));
                 const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
@@ -246,7 +266,6 @@ export default function Course2JournalPage() {
                 );
               })}
 
-              {/* Evening Journal row */}
               <LabelCell icon={<Moon className="h-4 w-4 text-indigo-500" />} label="Evening Journal" />
               {days.map((day) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -271,13 +290,13 @@ export default function Course2JournalPage() {
   );
 }
 
-function LabelCell({ icon, label, sublabel }: { icon: React.ReactNode; label: string; sublabel?: string }) {
+function LabelCell({ icon, label, sublabel, badge }: { icon?: React.ReactNode; label: string; sublabel?: string; badge?: boolean }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
-      <div className="shrink-0">{icon}</div>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold truncate">{label}</p>
-        {sublabel && <p className="text-[10px] text-muted-foreground truncate">{sublabel}</p>}
+      {icon && <div className="shrink-0">{icon}</div>}
+      <div>
+        <p className="text-xs font-semibold leading-snug">{label}</p>
+        {sublabel && <p className="text-[10px] text-muted-foreground leading-snug">{sublabel}</p>}
       </div>
     </div>
   );
@@ -289,58 +308,6 @@ function DayCell({ dateStr, todayStr, cellH, children }: { dateStr: string; toda
     <div className={`border-l border-t px-1.5 flex items-center justify-center ${cellH} ${isToday ? "bg-primary/[0.03]" : ""}`}>
       {children}
     </div>
-  );
-}
-
-function ScheduledItemRow({
-  entry,
-  quadrantLabel,
-  icon,
-  days,
-  todayStr,
-  cellH,
-  onToggle,
-}: {
-  entry: EisenhowerEntry;
-  quadrantLabel: string;
-  icon?: React.ReactNode;
-  days: Date[];
-  todayStr: string;
-  cellH: string;
-  onToggle: (completed: boolean) => void;
-}) {
-  return (
-    <>
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-t">
-        {icon && <div className="shrink-0">{icon}</div>}
-        <div className="min-w-0 flex items-center gap-1.5 flex-1">
-          {entry.blocksGoal && (
-            <span className="text-[9px] text-destructive font-bold shrink-0">!</span>
-          )}
-          <p className={`text-xs truncate ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
-            {entry.task}
-          </p>
-        </div>
-      </div>
-      {days.map((day) => {
-        const dateStr = format(day, "yyyy-MM-dd");
-        const isScheduledHere = entry.deadline === dateStr;
-        return (
-          <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
-            {isScheduledHere ? (
-              <Checkbox
-                className="h-4 w-4"
-                checked={entry.completed || false}
-                onCheckedChange={(v) => onToggle(!!v)}
-                data-testid={`checkbox-eisenhower-${entry.id}`}
-              />
-            ) : (
-              <span />
-            )}
-          </DayCell>
-        );
-      })}
-    </>
   );
 }
 
@@ -365,9 +332,9 @@ function HabitRow({
 }) {
   return (
     <>
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-t">
+      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
         <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catDot}`} />
-        <p className="text-xs truncate">{habit.name}</p>
+        <p className="text-xs leading-snug">{habit.name}</p>
       </div>
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
@@ -385,9 +352,7 @@ function HabitRow({
                 onCheckedChange={(v) => onToggle(!!v, dateStr)}
                 data-testid={`checkbox-habit-${habit.id}-${dateStr}`}
               />
-            ) : (
-              <span />
-            )}
+            ) : null}
           </DayCell>
         );
       })}
