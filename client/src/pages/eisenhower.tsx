@@ -345,7 +345,7 @@ export default function EisenhowerPage() {
             data-testid={`${prefix}checkbox-blocks-goal`}
           />
           <Label htmlFor={`${prefix}blocks-goal`} className="text-sm cursor-pointer">
-            Does this block my goal?
+            Success Catalyst
           </Label>
         </div>
       </div>
@@ -477,8 +477,8 @@ export default function EisenhowerPage() {
                                 {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
                               </Badge>
                               {entry.blocksGoal && (
-                                <Badge variant="outline" className="text-xs text-destructive border-destructive/30" data-testid={`badge-blocks-goal-${entry.id}`}>
-                                  Blocks Goal
+                                <Badge variant="outline" className="text-xs text-primary border-primary/30" data-testid={`badge-blocks-goal-${entry.id}`}>
+                                  Success Catalyst
                                 </Badge>
                               )}
                               {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}

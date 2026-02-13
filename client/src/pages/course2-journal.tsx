@@ -255,7 +255,7 @@ export default function Course2JournalPage() {
                                   <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
                                 )}
                                 {entry.blocksGoal && (
-                                  <span className="text-[10px] text-destructive font-bold">blocks goal</span>
+                                  <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
                                 )}
                               </div>
                             </div>
