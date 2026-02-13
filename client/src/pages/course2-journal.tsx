@@ -228,15 +228,15 @@ export default function Course2JournalPage() {
                               <p className={`text-[11px] leading-tight ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
                                 {entry.task}
                               </p>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <span className={`text-[9px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={`text-[10px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
                                   {entry.quadrant}
                                 </span>
                                 {entry.scheduledTime && (
-                                  <span className="text-[9px] text-muted-foreground">{entry.scheduledTime}</span>
+                                  <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
                                 )}
                                 {entry.blocksGoal && (
-                                  <span className="text-[9px] text-destructive font-bold">blocks goal</span>
+                                  <span className="text-[10px] text-destructive font-bold">blocks goal</span>
                                 )}
                               </div>
                             </div>
@@ -248,6 +248,7 @@ export default function Course2JournalPage() {
                 );
               })}
 
+              <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {habits.map((habit) => {
                 const scheduledDays = new Set(habit.cadence.split(","));
                 const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
@@ -287,6 +288,23 @@ export default function Course2JournalPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function SectionHeaderRow({ gridCols, label, days, todayStr }: { gridCols: string; label: string; days: Date[]; todayStr: string }) {
+  return (
+    <>
+      <div className="flex items-center px-3 py-1.5 bg-muted/50 border-t">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const isToday = dateStr === todayStr;
+        return (
+          <div key={dateStr} className={`border-l border-t ${isToday ? "bg-primary/[0.03]" : "bg-muted/50"}`} />
+        );
+      })}
+    </>
   );
 }
 
