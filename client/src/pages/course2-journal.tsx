@@ -13,7 +13,6 @@ import {
 import { useLocation } from "wouter";
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
-import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -115,6 +114,21 @@ export default function Course2JournalPage() {
     [eisenhowerEntries, weekStartStr]
   );
 
+  const allHabitsByDay = useMemo(() => {
+    const map = new Map<string, Habit[]>();
+    days.forEach((day) => {
+      const dc = DAY_CODES[day.getDay()];
+      map.set(format(day, "yyyy-MM-dd"), habits.filter((h) => h.cadence.split(",").includes(dc)));
+    });
+    return map;
+  }, [days, habits]);
+
+  const maxHabitCount = useMemo(() => {
+    let max = 0;
+    allHabitsByDay.forEach((h) => { if (h.length > max) max = h.length; });
+    return max;
+  }, [allHabitsByDay]);
+
   const handleDownloadAll = async () => {
     const response = await fetch("/api/journals/export", { credentials: "include" });
     const blob = await response.blob();
@@ -136,6 +150,8 @@ export default function Course2JournalPage() {
       </AppLayout>
     );
   }
+
+  const gridCols = "grid-cols-[140px_repeat(7,1fr)]";
 
   return (
     <AppLayout>
@@ -159,24 +175,15 @@ export default function Course2JournalPage() {
         </div>
 
         <div className="flex-1 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-2 min-w-[900px]">
-            {days.map((day) => {
-              const dateStr = format(day, "yyyy-MM-dd");
-              const isToday = dateStr === todayStr;
-              const dayCode = DAY_CODES[day.getDay()];
-              const dayJournals = journalsByDate.get(dateStr);
-              const hasMorning = dayJournals?.morning || false;
-              const hasEvening = dayJournals?.evening || false;
-              const dayHabits = habits.filter((h) => h.cadence.split(",").includes(dayCode));
-              const completedIds = completionsByDate.get(dateStr) || new Set<number>();
+          <div className="min-w-[960px]">
 
-              return (
-                <div
-                  key={dateStr}
-                  className={`rounded-lg border p-3 flex flex-col gap-1.5 ${isToday ? "border-primary/50 bg-primary/[0.03]" : "bg-card"}`}
-                  data-testid={`day-column-${dateStr}`}
-                >
-                  <div className={`text-center pb-2 border-b mb-1 ${isToday ? "border-primary/30" : ""}`}>
+            <div className={`grid ${gridCols} gap-px`}>
+              <div />
+              {days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const isToday = dateStr === todayStr;
+                return (
+                  <div key={dateStr} className={`text-center py-2 rounded-t-md ${isToday ? "bg-primary/[0.06]" : ""}`}>
                     <p className={`text-xs uppercase tracking-wide ${isToday ? "text-primary font-bold" : "text-muted-foreground font-medium"}`}>
                       {format(day, "EEE")}
                     </p>
@@ -184,98 +191,160 @@ export default function Course2JournalPage() {
                       {format(day, "d")}
                     </p>
                   </div>
+                );
+              })}
+            </div>
 
-                  <CellRow
-                    icon={<Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                    label="Morning"
-                    done={hasMorning}
-                    onClick={() => setLocation(`/journal/${dateStr}/morning`)}
-                    testId={`row-morning-${dateStr}`}
-                  />
+            <div className="border rounded-md overflow-hidden">
+              <CalendarGridRow
+                gridCols={gridCols}
+                label="Morning Journal"
+                icon={<Sun className="h-4 w-4 text-amber-500" />}
+                days={days}
+                todayStr={todayStr}
+                renderCell={(day) => {
+                  const dateStr = format(day, "yyyy-MM-dd");
+                  const done = journalsByDate.get(dateStr)?.morning || false;
+                  return (
+                    <div
+                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md py-2"
+                      onClick={() => setLocation(`/journal/${dateStr}/morning`)}
+                      data-testid={`row-morning-${dateStr}`}
+                    >
+                      {done ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  );
+                }}
+              />
 
-                  {q2Items.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 pt-1">
-                        <Grid3X3 className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Q2</span>
-                      </div>
+              {q2Items.length > 0 && (
+                <CalendarGridRow
+                  gridCols={gridCols}
+                  label="Q2 Items"
+                  sublabel="Important, Not Urgent"
+                  icon={<Grid3X3 className="h-4 w-4 text-blue-500" />}
+                  days={days}
+                  todayStr={todayStr}
+                  borderTop
+                  renderCell={() => (
+                    <div className="space-y-1 py-1.5">
                       {q2Items.map((entry) => (
-                        <div key={entry.id} className="flex items-start gap-1.5 py-0.5" data-testid={`eisenhower-${entry.id}-${dateStr}`}>
+                        <div key={entry.id} className="flex items-start gap-1.5" data-testid={`eisenhower-${entry.id}`}>
                           <Checkbox
-                            className="mt-0.5 h-3.5 w-3.5"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
                             checked={entry.completed || false}
                             onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
                             data-testid={`checkbox-eisenhower-${entry.id}`}
                           />
-                          <span className={`text-xs leading-tight flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                          <span className={`text-[11px] leading-tight ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
                             {entry.task}
                           </span>
-                          {entry.blocksGoal && (
-                            <span className="text-[9px] text-destructive font-medium">!</span>
-                          )}
                         </div>
                       ))}
                     </div>
                   )}
+                />
+              )}
 
-                  {q1Items.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 pt-1">
-                        <AlertTriangle className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Q1</span>
-                      </div>
+              {q1Items.length > 0 && (
+                <CalendarGridRow
+                  gridCols={gridCols}
+                  label="Q1 Items"
+                  sublabel="Urgent & Important"
+                  icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+                  days={days}
+                  todayStr={todayStr}
+                  borderTop
+                  renderCell={() => (
+                    <div className="space-y-1 py-1.5">
                       {q1Items.map((entry) => (
-                        <div key={entry.id} className="flex items-start gap-1.5 py-0.5" data-testid={`eisenhower-q1-${entry.id}-${dateStr}`}>
+                        <div key={entry.id} className="flex items-start gap-1.5" data-testid={`eisenhower-q1-${entry.id}`}>
                           <Checkbox
-                            className="mt-0.5 h-3.5 w-3.5"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
                             checked={entry.completed || false}
                             onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
                             data-testid={`checkbox-eisenhower-q1-${entry.id}`}
                           />
-                          <span className={`text-xs leading-tight flex-1 ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                          <span className={`text-[11px] leading-tight ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
                             {entry.task}
                           </span>
                         </div>
                       ))}
                     </div>
                   )}
+                />
+              )}
 
-                  {dayHabits.length > 0 && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1 pt-1">
-                        <Repeat className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Habits</span>
+              {maxHabitCount > 0 && (
+                <CalendarGridRow
+                  gridCols={gridCols}
+                  label="Habits"
+                  icon={<Repeat className="h-4 w-4 text-violet-500" />}
+                  days={days}
+                  todayStr={todayStr}
+                  borderTop
+                  renderCell={(day) => {
+                    const dateStr = format(day, "yyyy-MM-dd");
+                    const dayHabits = allHabitsByDay.get(dateStr) || [];
+                    const completedIds = completionsByDate.get(dateStr) || new Set<number>();
+                    if (dayHabits.length === 0) {
+                      return <div className="py-2 text-center"><span className="text-xs text-muted-foreground">—</span></div>;
+                    }
+                    return (
+                      <div className="space-y-1 py-1.5">
+                        {dayHabits.map((habit) => {
+                          const done = completedIds.has(habit.id);
+                          return (
+                            <div key={habit.id} className="flex items-start gap-1.5" data-testid={`habit-${habit.id}-${dateStr}`}>
+                              <Checkbox
+                                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                                checked={done}
+                                onCheckedChange={(v) => toggleHabitMutation.mutate({ habitId: habit.id, completed: !!v, date: dateStr })}
+                                data-testid={`checkbox-habit-${habit.id}-${dateStr}`}
+                              />
+                              <div className={`h-2 w-2 rounded-full shrink-0 mt-1 ${CATEGORY_DOTS[habit.category || "health"] || "bg-muted"}`} />
+                              <span className={`text-[11px] leading-tight flex-1 ${done ? "line-through text-muted-foreground" : ""}`}>
+                                {habit.name}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
-                      {dayHabits.map((habit) => {
-                        const done = completedIds.has(habit.id);
-                        return (
-                          <div key={habit.id} className="flex items-start gap-1.5 py-0.5" data-testid={`habit-${habit.id}-${dateStr}`}>
-                            <Checkbox
-                              className="mt-0.5 h-3.5 w-3.5"
-                              checked={done}
-                              onCheckedChange={(v) => toggleHabitMutation.mutate({ habitId: habit.id, completed: !!v, date: dateStr })}
-                              data-testid={`checkbox-habit-${habit.id}-${dateStr}`}
-                            />
-                            <div className={`h-2 w-2 rounded-full shrink-0 mt-1 ${CATEGORY_DOTS[habit.category || "health"] || "bg-muted"}`} />
-                            <span className={`text-xs leading-tight flex-1 ${done ? "line-through text-muted-foreground" : ""}`}>
-                              {habit.name}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                    );
+                  }}
+                />
+              )}
 
-                  <CellRow
-                    icon={<Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />}
-                    label="Evening"
-                    done={hasEvening}
-                    onClick={() => setLocation(`/journal/${dateStr}/evening`)}
-                    testId={`row-evening-${dateStr}`}
-                  />
-                </div>
-              );
-            })}
+              <CalendarGridRow
+                gridCols={gridCols}
+                label="Evening Journal"
+                icon={<Moon className="h-4 w-4 text-indigo-500" />}
+                days={days}
+                todayStr={todayStr}
+                borderTop
+                renderCell={(day) => {
+                  const dateStr = format(day, "yyyy-MM-dd");
+                  const done = journalsByDate.get(dateStr)?.evening || false;
+                  return (
+                    <div
+                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md py-2"
+                      onClick={() => setLocation(`/journal/${dateStr}/evening`)}
+                      data-testid={`row-evening-${dateStr}`}
+                    >
+                      {done ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -283,28 +352,47 @@ export default function Course2JournalPage() {
   );
 }
 
-function CellRow({
-  icon,
+function CalendarGridRow({
+  gridCols,
   label,
-  done,
-  onClick,
-  testId,
+  sublabel,
+  icon,
+  days,
+  todayStr,
+  borderTop,
+  renderCell,
 }: {
-  icon: React.ReactNode;
+  gridCols: string;
   label: string;
-  done: boolean;
-  onClick: () => void;
-  testId: string;
+  sublabel?: string;
+  icon: React.ReactNode;
+  days: Date[];
+  todayStr: string;
+  borderTop?: boolean;
+  renderCell: (day: Date) => React.ReactNode;
 }) {
   return (
-    <div
-      className="flex items-center gap-1.5 py-1.5 px-1.5 rounded-md cursor-pointer hover-elevate"
-      onClick={onClick}
-      data-testid={testId}
-    >
-      {icon}
-      <span className="text-xs flex-1">{label}</span>
-      {done && <Check className="h-3 w-3 text-green-600 dark:text-green-400 shrink-0" />}
+    <div className={`grid ${gridCols} ${borderTop ? "border-t" : ""}`}>
+      <div className="flex items-start gap-2 p-3 bg-muted/30">
+        <div className="shrink-0 mt-0.5">{icon}</div>
+        <div>
+          <p className="text-xs font-semibold leading-tight">{label}</p>
+          {sublabel && <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{sublabel}</p>}
+        </div>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const isToday = dateStr === todayStr;
+        return (
+          <div
+            key={dateStr}
+            className={`px-2 border-l ${isToday ? "bg-primary/[0.03]" : ""}`}
+            data-testid={`cell-${label.toLowerCase().replace(/\s+/g, "-")}-${dateStr}`}
+          >
+            {renderCell(day)}
+          </div>
+        );
+      })}
     </div>
   );
 }
