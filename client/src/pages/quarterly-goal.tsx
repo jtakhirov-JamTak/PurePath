@@ -6,39 +6,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, ChevronLeft, ChevronRight, Target, Pencil, ArrowRight } from "lucide-react";
-import type { QuarterlyGoal, MonthlyGoal } from "@shared/schema";
+import { Save, ChevronLeft, ChevronRight, Eye, Pencil, ArrowRight } from "lucide-react";
+import type { QuarterlyGoal, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { Link } from "wouter";
 
-function getCurrentQuarterKey() {
-  const now = new Date();
-  const q = Math.ceil((now.getMonth() + 1) / 3);
-  return `${now.getFullYear()}-Q${q}`;
+function getQuarterLabel(q: number) {
+  const months = [
+    ["Jan", "Feb", "Mar"],
+    ["Apr", "May", "Jun"],
+    ["Jul", "Aug", "Sep"],
+    ["Oct", "Nov", "Dec"],
+  ];
+  return `Q${q} (${months[q - 1].join(" / ")})`;
 }
 
-function formatQuarterLabel(key: string) {
-  const [year, quarter] = key.split("-");
-  return `${quarter} ${year}`;
-}
-
-function shiftQuarter(key: string, delta: number) {
-  const [yearStr, qStr] = key.split("-");
-  let year = parseInt(yearStr);
-  let q = parseInt(qStr.replace("Q", ""));
-  q += delta;
-  while (q > 4) { q -= 4; year++; }
-  while (q < 1) { q += 4; year--; }
-  return `${year}-Q${q}`;
-}
-
-function getMonthsInQuarter(quarterKey: string): string[] {
-  const [yearStr, qStr] = quarterKey.split("-");
-  const year = yearStr;
-  const q = parseInt(qStr.replace("Q", ""));
+function getMonthsInQuarter(year: number, q: number): string[] {
   const startMonth = (q - 1) * 3 + 1;
   return [
     `${year}-${String(startMonth).padStart(2, "0")}`,
@@ -50,111 +37,129 @@ function getMonthsInQuarter(quarterKey: string): string[] {
 function formatMonthLabel(monthKey: string) {
   const [year, month] = monthKey.split("-");
   const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return date.toLocaleDateString("en-US", { month: "long" });
+}
+
+interface QuarterState {
+  quarterlyFocus: string;
+  outcomeStatement: string;
 }
 
 export default function QuarterlyGoalPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [quarterKey, setQuarterKey] = useState(getCurrentQuarterKey);
 
-  const monthKeys = getMonthsInQuarter(quarterKey);
+  const currentYear = new Date().getFullYear();
+  const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
+  const [year, setYear] = useState(currentYear);
 
-  const { data: goal, isLoading } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", quarterKey],
+  const quarterKeys = [1, 2, 3, 4].map((q) => `${year}-Q${q}`);
+
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+
+  const q1Query = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[0]],
     queryFn: async () => {
-      const res = await fetch(`/api/quarterly-goal?quarter=${quarterKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[0]}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const q2Query = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[1]],
+    queryFn: async () => {
+      const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[1]}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const q3Query = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[2]],
+    queryFn: async () => {
+      const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[2]}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const q4Query = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[3]],
+    queryFn: async () => {
+      const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[3]}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
       return res.json();
     },
     enabled: !!user,
   });
 
-  const { data: monthGoal1 } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", monthKeys[0]],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${monthKeys[0]}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
+  const queries = [q1Query, q2Query, q3Query, q4Query];
+  const isLoading = queries.some((q) => q.isLoading);
 
-  const { data: monthGoal2 } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", monthKeys[1]],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${monthKeys[1]}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const { data: monthGoal3 } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", monthKeys[2]],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${monthKeys[2]}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
-  const monthlyGoals = [monthGoal1, monthGoal2, monthGoal3];
-
-  const [quarterlyFocus, setQuarterlyFocus] = useState("");
-  const [outcomeStatement, setOutcomeStatement] = useState("");
-  const [measurementPlan, setMeasurementPlan] = useState("");
-  const [baseline, setBaseline] = useState("");
-  const [target, setTarget] = useState("");
-  const [prize, setPrize] = useState("");
+  const [forms, setForms] = useState<QuarterState[]>([
+    { quarterlyFocus: "", outcomeStatement: "" },
+    { quarterlyFocus: "", outcomeStatement: "" },
+    { quarterlyFocus: "", outcomeStatement: "" },
+    { quarterlyFocus: "", outcomeStatement: "" },
+  ]);
 
   useEffect(() => {
-    if (goal) {
-      setQuarterlyFocus(goal.quarterlyFocus || "");
-      setOutcomeStatement(goal.outcomeStatement || "");
-      setMeasurementPlan(goal.measurementPlan || "");
-      setBaseline(goal.baseline || "");
-      setTarget(goal.target || "");
-      setPrize(goal.prize || "");
-    }
-  }, [goal]);
+    const goals = queries.map((q) => q.data);
+    setForms(
+      goals.map((g) => ({
+        quarterlyFocus: g?.quarterlyFocus || "",
+        outcomeStatement: g?.outcomeStatement || "",
+      }))
+    );
+  }, [q1Query.data, q2Query.data, q3Query.data, q4Query.data]);
+
+  const updateForm = (idx: number, field: keyof QuarterState, value: string) => {
+    setForms((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (idx: number) => {
+      const qk = quarterKeys[idx];
       await apiRequest("PUT", "/api/quarterly-goal", {
-        quarterKey,
-        quarterlyFocus: quarterlyFocus.trim(),
-        outcomeStatement: outcomeStatement.trim(),
-        measurementPlan: measurementPlan.trim(),
-        baseline: baseline.trim(),
-        target: target.trim(),
-        prize: prize.trim(),
+        quarterKey: qk,
+        quarterlyFocus: forms[idx].quarterlyFocus.trim(),
+        outcomeStatement: forms[idx].outcomeStatement.trim(),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal", quarterKey] });
-      toast({ title: "Saved", description: "Your quarterly goal has been updated." });
+    onSuccess: (_, idx) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal", quarterKeys[idx]] });
+      toast({ title: "Saved", description: `Q${idx + 1} goal updated.` });
     },
     onError: () => {
       toast({ title: "Error", description: "Could not save. Please try again.", variant: "destructive" });
     },
   });
 
-  const hasChanges =
-    quarterlyFocus !== (goal?.quarterlyFocus || "") ||
-    outcomeStatement !== (goal?.outcomeStatement || "") ||
-    measurementPlan !== (goal?.measurementPlan || "") ||
-    baseline !== (goal?.baseline || "") ||
-    target !== (goal?.target || "") ||
-    prize !== (goal?.prize || "");
+  const hasChanges = (idx: number) => {
+    const g = queries[idx].data;
+    return (
+      forms[idx].quarterlyFocus !== (g?.quarterlyFocus || "") ||
+      forms[idx].outcomeStatement !== (g?.outcomeStatement || "")
+    );
+  };
+
+  const yearVision = identityDoc?.yearVision?.trim() || "";
 
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
+        <div className="container mx-auto px-4 py-12 max-w-3xl space-y-6">
           <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-32 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
       </AppLayout>
@@ -163,194 +168,181 @@ export default function QuarterlyGoalPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-3xl">
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-3">
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => setQuarterKey(k => shiftQuarter(k, -1))}
-              data-testid="button-prev-quarter"
+              onClick={() => setYear((y) => y - 1)}
+              data-testid="button-prev-year"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h1 className="font-serif text-3xl font-bold" data-testid="text-quarter-label">
-              {formatQuarterLabel(quarterKey)}
+            <h1 className="font-serif text-3xl font-bold" data-testid="text-year-label">
+              {year}
             </h1>
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => setQuarterKey(k => shiftQuarter(k, 1))}
-              data-testid="button-next-quarter"
+              onClick={() => setYear((y) => y + 1)}
+              data-testid="button-next-year"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
           <p className="text-muted-foreground text-lg">
-            One quarter, one focus. Define your lever and break it into months.
+            Break your yearly vision into four quarterly goals.
           </p>
         </div>
 
+        {yearVision ? (
+          <Card className="overflow-visible mb-8 border-primary/20" data-testid="card-year-vision">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Eye className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">1-Year Vision</CardTitle>
+                  <CardDescription>What you're building toward this year</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap" data-testid="text-year-vision">{yearVision}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-visible mb-8 border-dashed" data-testid="card-year-vision-empty">
+            <CardContent className="py-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                No 1-year vision set yet. Define where you want to be in a year to guide your quarters.
+              </p>
+              <Link href="/lesson2-worksheet">
+                <Button variant="outline" size="sm" data-testid="button-set-vision">
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  Set Your Vision
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-6">
-          <Card className="overflow-visible" data-testid="card-focus">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">1</Badge>
-                <div>
-                  <CardTitle className="font-serif text-lg">Quarterly Focus</CardTitle>
-                  <CardDescription>What's the one lever you're pulling this quarter?</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={quarterlyFocus}
-                onChange={(e) => setQuarterlyFocus(e.target.value)}
-                placeholder="e.g. Improve emotional intelligence, build a side project, get physically fit..."
-                className="min-h-[70px] text-base"
-                data-testid="input-quarterlyFocus"
-              />
-            </CardContent>
-          </Card>
+          {[1, 2, 3, 4].map((q) => {
+            const idx = q - 1;
+            const isCurrent = year === currentYear && q === currentQ;
+            const monthKeys = getMonthsInQuarter(year, q);
 
-          <Card className="overflow-visible" data-testid="card-outcome">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">2</Badge>
-                <div>
-                  <CardTitle className="font-serif text-lg">Outcome</CardTitle>
-                  <CardDescription>What changes by the end of this quarter?</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={outcomeStatement}
-                onChange={(e) => setOutcomeStatement(e.target.value)}
-                placeholder="e.g. I can regulate emotions in real-time and have built 3 meaningful relationships..."
-                className="min-h-[70px] text-base"
-                data-testid="input-outcomeStatement"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-measurement">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">3</Badge>
-                <div>
-                  <CardTitle className="font-serif text-lg">How Will You Measure It?</CardTitle>
-                  <CardDescription>Define how you'll know you're making progress.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Measurement Plan</Label>
-                <Textarea
-                  value={measurementPlan}
-                  onChange={(e) => setMeasurementPlan(e.target.value)}
-                  placeholder="e.g. Weekly journaling reflection score, number of deep conversations..."
-                  className="min-h-[70px] text-base"
-                  data-testid="input-measurementPlan"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Baseline (where you are now)</Label>
-                <Textarea
-                  value={baseline}
-                  onChange={(e) => setBaseline(e.target.value)}
-                  placeholder="e.g. Currently score 3/10 on emotional awareness..."
-                  className="min-h-[70px] text-base"
-                  data-testid="input-baseline"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Target (where you want to be)</Label>
-                <Textarea
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  placeholder="e.g. Score 7/10 by end of quarter..."
-                  className="min-h-[70px] text-base"
-                  data-testid="input-target"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-prize">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">4</Badge>
-                <div>
-                  <CardTitle className="font-serif text-lg">Prize</CardTitle>
-                  <CardDescription>What reward awaits you at the end of this quarter?</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={prize}
-                onChange={(e) => setPrize(e.target.value)}
-                placeholder="e.g. A weekend trip, new equipment, a celebration dinner..."
-                className="min-h-[70px] text-base"
-                data-testid="input-prize"
-              />
-            </CardContent>
-          </Card>
-
-          <div className="mt-10 mb-4">
-            <h2 className="font-serif text-2xl font-bold mb-1">Monthly Breakdown</h2>
-            <p className="text-muted-foreground">Break your quarterly focus into three monthly goals.</p>
-          </div>
-
-          {monthKeys.map((mk, idx) => {
-            const mg = monthlyGoals[idx];
-            const goalText = mg?.goalWhat?.trim() || mg?.goalStatement?.trim();
             return (
-              <Card key={mk} className="overflow-visible" data-testid={`card-month-${idx}`}>
+              <Card
+                key={q}
+                className={`overflow-visible ${isCurrent ? "border-primary/30" : ""}`}
+                data-testid={`card-q${q}`}
+              >
                 <CardHeader>
-                  <CardTitle className="font-serif text-lg">{formatMonthLabel(mk)}</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={isCurrent ? "default" : "outline"}
+                      className={`shrink-0 no-default-active-elevate ${isCurrent ? "" : ""}`}
+                    >
+                      Q{q}
+                    </Badge>
+                    <div className="flex-1">
+                      <CardTitle className="font-serif text-lg">{getQuarterLabel(q)}</CardTitle>
+                      {isCurrent && (
+                        <CardDescription>Current quarter</CardDescription>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  {goalText ? (
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm flex-1" data-testid={`text-month-goal-${idx}`}>{goalText}</p>
-                      <Link href="/monthly-goal">
-                        <Button variant="outline" size="sm" data-testid={`button-edit-month-${idx}`}>
-                          <Pencil className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                      </Link>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      What is the quarterly goal I'm focused on this quarter to get me closer to my yearly vision?
+                    </Label>
+                    <Textarea
+                      value={forms[idx].quarterlyFocus}
+                      onChange={(e) => updateForm(idx, "quarterlyFocus", e.target.value)}
+                      placeholder="e.g. Build emotional intelligence, launch a side project, get physically fit..."
+                      className="min-h-[70px] text-base"
+                      data-testid={`input-q${q}-focus`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      What is the specific outcome that means I progressed?
+                    </Label>
+                    <Textarea
+                      value={forms[idx].outcomeStatement}
+                      onChange={(e) => updateForm(idx, "outcomeStatement", e.target.value)}
+                      placeholder="e.g. I can regulate emotions in real-time, I shipped the MVP, I run 5K without stopping..."
+                      className="min-h-[70px] text-base"
+                      data-testid={`input-q${q}-outcome`}
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={() => saveMutation.mutate(idx)}
+                      disabled={!hasChanges(idx) || saveMutation.isPending}
+                      data-testid={`button-save-q${q}`}
+                    >
+                      <Save className="h-3.5 w-3.5 mr-1.5" />
+                      Save
+                    </Button>
+                  </div>
+
+                  <Separator />
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Monthly Goals</p>
+                    <div className="space-y-1.5">
+                      {monthKeys.map((mk) => {
+                        return (
+                          <MonthRow key={mk} monthKey={mk} />
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-muted-foreground" data-testid={`text-month-goal-${idx}`}>No goal set</p>
-                      <Link href="/monthly-goal">
-                        <Button variant="outline" size="sm" data-testid={`button-set-month-${idx}`}>
-                          <ArrowRight className="h-3 w-3 mr-1" />
-                          Set Goal
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             );
           })}
-
-          <div className="flex justify-end pt-2">
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={!hasChanges || saveMutation.isPending}
-              data-testid="button-save-quarterly"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saveMutation.isPending ? "Saving..." : "Save Goal"}
-            </Button>
-          </div>
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function MonthRow({ monthKey }: { monthKey: string }) {
+  const { user } = useAuth();
+  const { data: mg } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const goalText = mg?.goalWhat?.trim() || mg?.goalStatement?.trim() || "";
+
+  return (
+    <div className="flex items-center gap-3 py-1.5 px-2 rounded-md" data-testid={`month-row-${monthKey}`}>
+      <div className={`h-2 w-2 rounded-full shrink-0 ${goalText ? "bg-green-500" : "bg-muted-foreground/30"}`} />
+      <span className="text-sm flex-1 min-w-0">
+        <span className="font-medium">{formatMonthLabel(monthKey)}:</span>{" "}
+        <span className={goalText ? "" : "text-muted-foreground"}>{goalText || "Not set"}</span>
+      </span>
+      <Link href="/monthly-goal">
+        <Button variant="ghost" size="icon" data-testid={`button-month-${monthKey}`}>
+          {goalText ? <Pencil className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
+        </Button>
+      </Link>
+    </div>
   );
 }
