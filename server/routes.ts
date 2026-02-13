@@ -802,7 +802,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "quarter parameter required" });
       }
       const goal = await storage.getQuarterlyGoal(userId, quarterKey);
-      res.json(goal || { userId, quarterKey, quarterlyFocus: "", outcomeStatement: "", measurementPlan: "", baseline: "", target: "", prize: "" });
+      res.json(goal || { userId, quarterKey, outcomeStatement: "", measurementPlan: "", baseline: "", target: "", prize: "" });
     } catch (error) {
       console.error("Error fetching quarterly goal:", error);
       res.status(500).json({ error: "Failed to fetch quarterly goal" });
@@ -812,14 +812,14 @@ export async function registerRoutes(
   app.put("/api/quarterly-goal", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { quarterKey, quarterlyFocus, outcomeStatement, measurementPlan, baseline, target, prize } = req.body;
+      const { quarterKey, outcomeStatement, measurementPlan, baseline, target, prize } = req.body;
       if (!quarterKey) {
         return res.status(400).json({ error: "quarterKey is required" });
       }
       const goal = await storage.upsertQuarterlyGoal({
         userId,
         quarterKey,
-        quarterlyFocus: quarterlyFocus ?? "",
+        quarterlyFocus: "",
         outcomeStatement: outcomeStatement ?? "",
         measurementPlan: measurementPlan ?? "",
         baseline: baseline ?? "",
