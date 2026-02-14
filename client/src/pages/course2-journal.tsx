@@ -75,18 +75,20 @@ export default function Course2JournalPage() {
   }, [journals]);
 
   const completionsByDate = useMemo(() => {
-    const map = new Map<string, Set<number>>();
+    const map = new Map<string, Map<number, string>>();
     habitCompletions.forEach((hc) => {
-      if (!map.has(hc.date)) map.set(hc.date, new Set());
-      map.get(hc.date)!.add(hc.habitId);
+      if (!map.has(hc.date)) map.set(hc.date, new Map());
+      map.get(hc.date)!.set(hc.habitId, hc.status || "completed");
     });
     return map;
   }, [habitCompletions]);
 
-  const toggleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, completed, date }: { habitId: number; completed: boolean; date: string }) => {
-      if (completed) {
-        await apiRequest("POST", "/api/habit-completions", { habitId, date });
+  const cycleHabitMutation = useMutation({
+    mutationFn: async ({ habitId, currentStatus, date }: { habitId: number; currentStatus: string | null; date: string }) => {
+      if (currentStatus === null) {
+        await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
+      } else if (currentStatus === "completed") {
+        await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
       } else {
         await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
       }
@@ -125,13 +127,20 @@ export default function Course2JournalPage() {
     return map;
   }, [q2Items, q1Items]);
 
-  const handleDownloadAll = async () => {
-    const response = await fetch("/api/journals/export", { credentials: "include" });
+  const [showExport, setShowExport] = useState(false);
+  const [exportStart, setExportStart] = useState("");
+  const [exportEnd, setExportEnd] = useState("");
+
+  const handleExport = async () => {
+    const params = new URLSearchParams();
+    if (exportStart) params.set("startDate", exportStart);
+    if (exportEnd) params.set("endDate", exportEnd);
+    const response = await fetch(`/api/journals/export?${params.toString()}`, { credentials: "include" });
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "my-journals.txt";
+    a.download = `journal-export${exportStart ? `-${exportStart}` : ""}${exportEnd ? `-to-${exportEnd}` : ""}.txt`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -165,11 +174,40 @@ export default function Course2JournalPage() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleDownloadAll} data-testid="button-download-all">
+          <Button variant="outline" size="sm" onClick={() => setShowExport(!showExport)} data-testid="button-toggle-export">
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Export
           </Button>
         </div>
+
+        {showExport && (
+          <div className="flex items-end gap-3 mb-4 flex-wrap p-3 border rounded-md bg-muted/30" data-testid="export-panel">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">From</label>
+              <input
+                type="date"
+                value={exportStart}
+                onChange={(e) => setExportStart(e.target.value)}
+                className="block border rounded-md px-2 py-1.5 text-sm bg-background"
+                data-testid="input-export-start"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">To</label>
+              <input
+                type="date"
+                value={exportEnd}
+                onChange={(e) => setExportEnd(e.target.value)}
+                className="block border rounded-md px-2 py-1.5 text-sm bg-background"
+                data-testid="input-export-end"
+              />
+            </div>
+            <Button size="sm" onClick={handleExport} data-testid="button-export-download">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download
+            </Button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-x-auto">
           <div className="min-w-[960px]">
@@ -305,7 +343,7 @@ export default function Course2JournalPage() {
                         todayStr={todayStr}
                         cellH={cellH}
                         completionsByDate={completionsByDate}
-                        onToggle={(completed, date) => toggleHabitMutation.mutate({ habitId: habit.id, completed, date })}
+                        onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
                       />
                     </React.Fragment>
                   );
@@ -365,7 +403,7 @@ function HabitRow({
   todayStr,
   cellH,
   completionsByDate,
-  onToggle,
+  onCycle,
 }: {
   habit: Habit;
   catDot: string;
@@ -373,8 +411,8 @@ function HabitRow({
   days: Date[];
   todayStr: string;
   cellH: string;
-  completionsByDate: Map<string, Set<number>>;
-  onToggle: (completed: boolean, date: string) => void;
+  completionsByDate: Map<string, Map<number, string>>;
+  onCycle: (currentStatus: string | null, date: string) => void;
 }) {
   return (
     <>
@@ -386,18 +424,25 @@ function HabitRow({
         const dateStr = format(day, "yyyy-MM-dd");
         const dayCode = DAY_CODES[day.getDay()];
         const isScheduled = scheduledDays.has(dayCode);
-        const completedIds = completionsByDate.get(dateStr) || new Set<number>();
-        const done = completedIds.has(habit.id);
+        const dateMap = completionsByDate.get(dateStr);
+        const status = dateMap?.get(habit.id) || null;
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
-              <Checkbox
-                className="h-4 w-4"
-                checked={done}
-                onCheckedChange={(v) => onToggle(!!v, dateStr)}
-                data-testid={`checkbox-habit-${habit.id}-${dateStr}`}
-              />
+              <button
+                role="checkbox"
+                aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
+                aria-label={`${habit.name} - ${status || "not tracked"}`}
+                className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                }`}
+                onClick={() => onCycle(status, dateStr)}
+                data-testid={`habit-status-${habit.id}-${dateStr}`}
+              >
+                {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+              </button>
             ) : null}
           </DayCell>
         );

@@ -54,6 +54,7 @@ export interface IStorage {
   getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]>;
   getHabitCompletionsForRange(userId: string, startDate: string, endDate: string): Promise<HabitCompletion[]>;
   createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion>;
+  updateHabitCompletionStatus(userId: string, habitId: number, date: string, status: string): Promise<void>;
   deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void>;
   
   // Tasks
@@ -259,6 +260,18 @@ export class DatabaseStorage implements IStorage {
   async createHabitCompletion(completion: InsertHabitCompletion): Promise<HabitCompletion> {
     const [newCompletion] = await db.insert(habitCompletions).values(completion).returning();
     return newCompletion;
+  }
+
+  async updateHabitCompletionStatus(userId: string, habitId: number, date: string, status: string): Promise<void> {
+    await db.update(habitCompletions)
+      .set({ status })
+      .where(
+        and(
+          eq(habitCompletions.userId, userId),
+          eq(habitCompletions.habitId, habitId),
+          eq(habitCompletions.date, date)
+        )
+      );
   }
 
   async deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void> {

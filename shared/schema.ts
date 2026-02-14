@@ -222,6 +222,7 @@ export const habitCompletions = pgTable("habit_completions", {
   userId: varchar("user_id").notNull(),
   habitId: integer("habit_id").notNull(),
   date: date("date").notNull(),
+  status: varchar("status", { length: 20 }).default("completed").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("habit_completions_user_habit_date_idx").on(table.userId, table.habitId, table.date),

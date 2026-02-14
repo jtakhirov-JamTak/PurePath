@@ -113,7 +113,7 @@ export default function DashboardPage() {
   const todaysHabits = habits.filter((h) =>
     h.cadence.split(",").includes(todayDayCode)
   );
-  const completedHabitIds = new Set(habitCompletions.map((hc) => hc.habitId));
+  const completedHabitIds = new Set(habitCompletions.filter((hc) => hc.status === "completed" || !hc.status).map((hc) => hc.habitId));
   const completedCount = todaysHabits.filter((h) =>
     completedHabitIds.has(h.id)
   ).length;

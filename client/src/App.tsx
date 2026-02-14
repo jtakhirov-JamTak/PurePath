@@ -29,7 +29,6 @@ import CoachPage from "@/pages/coach";
 import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
 import ToolsHubPage from "@/pages/tools-hub";
-import LibraryPage from "@/pages/library";
 import IdentityDocPage from "@/pages/identity-doc";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
@@ -139,9 +138,6 @@ function Router() {
       </Route>
       <Route path="/identity">
         {() => <AuthenticatedRoute component={IdentityDocPage} />}
-      </Route>
-      <Route path="/library">
-        {() => <AuthenticatedRoute component={LibraryPage} />}
       </Route>
       <Route path="/monthly-goal">
         {() => <AuthenticatedRoute component={MonthlyGoalPage} />}

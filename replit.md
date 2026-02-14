@@ -16,14 +16,18 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state.
 - **UI Components**: shadcn/ui built on Radix UI, styled with Tailwind CSS and CSS variables for theming.
 - **Design System**: Single slate-blue accent, Inter for body, Plus Jakarta Sans for headings, 16px base font, 1.6 line-height, 12px border radius, unified icon palette.
+- **Navigation Structure**: Two main groups:
+  - **Action**: Plan, Journal Calendar, Today
+  - **Learning**: Learn, Coach, Tools
+  - Library section removed; "How to Set a Goal" and "Journaling Framework" moved to Tools.
 - **Key Features**:
   - **Goal Hierarchy System**: Integrates Quarterly, Monthly, and Daily goals. Includes a dedicated page for Monthly Goals and Quarterly Goals, and a dashboard card showing the hierarchical flow.
   - **Journaling**: Restructured Morning and Evening journals with detailed sections (e.g., Self-Awareness, Gratitude, Trigger Log, 80/20 Tracker). Data stored as JSON.
-  - **Habit Tracking**: Recurring habits with day-of-week cadence, duration, categories (health, wealth, etc.), and daily tracking. Habits can be typed (goal/learning/maintenance).
+  - **Habit Tracking**: Recurring habits with day-of-week cadence, duration, categories (health, wealth, etc.), and daily tracking. Habits can be typed (goal/learning/maintenance). Completions support `completed` and `skipped` statuses (cycling click: blank → completed → skipped → blank).
   - **Daily Tasks**: Up to 3 tasks per day with Eisenhower Matrix quadrant labels.
-  - **Eisenhower Matrix**: Weekly priority planning with categories and goal alignment field for Q2 items.
+  - **Eisenhower Matrix**: Weekly priority planning with categories and goal alignment field for Q2 items. "Success Catalyst" flagging (formerly blocksGoal).
   - **Self-Development Tools**: Meditation, Emotional Processing, and Empathy modules.
-  - **Journal Calendar**: Week/Month view, showing scheduled habits, journaling, and Q2 Eisenhower items with completion status.
+  - **Journal Calendar**: Week view with horizontal grid. Habits sorted by timing (morning → daily → evening). Export with date range filters. Habits and scheduled items have 3-state tracking (completed/skipped/blank).
   - **Dashboard**: "Today's Progress" sidebar showing required items (journals, habits, Q2) with status.
   - **Course Curriculum**: Collapsible phases with lesson overviews and video placeholders.
   - **Phase 3 Transformation**: Document upload for AI pattern analysis and downloadable reports.
