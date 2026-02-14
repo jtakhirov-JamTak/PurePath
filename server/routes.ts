@@ -497,7 +497,13 @@ export async function registerRoutes(
   app.patch("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const { id } = req.params;
-      const entry = await storage.updateEisenhowerEntry(parseInt(id), req.body);
+      const body = { ...req.body };
+      if (body.status !== undefined) {
+        body.completed = body.status === "completed";
+      } else if (body.completed !== undefined) {
+        body.status = body.completed ? "completed" : null;
+      }
+      const entry = await storage.updateEisenhowerEntry(parseInt(id), body);
       res.json(entry);
     } catch (error) {
       console.error("Error updating entry:", error);

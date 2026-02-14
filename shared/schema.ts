@@ -140,6 +140,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   goalAlignment: text("goal_alignment"),
   blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
+  status: varchar("status", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
