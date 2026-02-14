@@ -99,8 +99,9 @@ export default function Course2JournalPage() {
   });
 
   const toggleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      await apiRequest("PATCH", `/api/eisenhower/${id}`, { completed });
+    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
+      await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
@@ -275,14 +276,21 @@ export default function Course2JournalPage() {
                       <div className="space-y-1.5 py-2 w-full">
                         {items.map((entry) => (
                           <div key={entry.id} className="flex items-start gap-1.5 px-1" data-testid={`eisenhower-${entry.id}`}>
-                            <Checkbox
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                              checked={entry.completed || false}
-                              onCheckedChange={(v) => toggleEisenhowerMutation.mutate({ id: entry.id, completed: !!v })}
-                              data-testid={`checkbox-eisenhower-${entry.id}`}
-                            />
+                            <button
+                              role="checkbox"
+                              aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
+                              aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                              className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                                entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                              }`}
+                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+                              data-testid={`eisenhower-cycle-${entry.id}`}
+                            >
+                              {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                              {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
+                            </button>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-[11px] leading-tight ${entry.completed ? "line-through text-muted-foreground" : ""}`}>
+                              <p className={`text-[11px] leading-tight ${entry.status === "completed" ? "line-through text-muted-foreground" : entry.status === "skipped" ? "text-muted-foreground italic" : ""}`}>
                                 {entry.task}
                               </p>
                               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">

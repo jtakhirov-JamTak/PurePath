@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { EisenhowerEntry } from "@shared/schema";
@@ -187,8 +187,9 @@ export default function EisenhowerPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      return apiRequest("PATCH", `/api/eisenhower/${id}`, { completed });
+    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
+      return apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
@@ -455,19 +456,27 @@ export default function EisenhowerPage() {
                     <p className="text-sm text-muted-foreground text-center py-4">No tasks in this quadrant</p>
                   ) : (
                     getEntriesByQuadrant(quadrant.id).map(entry => {
-                      const isQ4Loss = entry.quadrant === "q4" && entry.completed;
+                      const isQ4Loss = entry.quadrant === "q4" && entry.status === "completed";
                       return (
                         <div 
                           key={entry.id} 
                           className={`p-3 rounded-lg ${quadrant.color} flex items-start gap-3`}
                         >
-                          <Checkbox 
-                            checked={entry.completed || false}
-                            onCheckedChange={(checked) => toggleMutation.mutate({ id: entry.id, completed: !!checked })}
-                            data-testid={`checkbox-entry-${entry.id}`}
-                          />
+                          <button
+                            role="checkbox"
+                            aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
+                            aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                            className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                              entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                            }`}
+                            onClick={() => toggleMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+                            data-testid={`eisenhower-cycle-${entry.id}`}
+                          >
+                            {entry.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                            {entry.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                          </button>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm ${isQ4Loss ? "text-red-500 dark:text-red-400" : entry.completed ? "line-through opacity-60" : ""}`}>
+                            <p className={`text-sm ${isQ4Loss ? "text-red-500 dark:text-red-400" : entry.status === "completed" ? "line-through opacity-60" : entry.status === "skipped" ? "text-muted-foreground italic opacity-60" : ""}`}>
                               {entry.task}
                               {isQ4Loss && <span className="ml-1 font-medium">(loss)</span>}
                             </p>

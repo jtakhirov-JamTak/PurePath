@@ -698,6 +698,17 @@ function Q2FocusCard({
   q2Items: EisenhowerEntry[];
   setLocation: (path: string) => void;
 }) {
+  const queryClient = useQueryClient();
+  const toggleMutation = useMutation({
+    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
+      await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+  });
+
   return (
     <Card className="overflow-visible" data-testid="card-q2-focus">
       <CardHeader className="pb-2">
@@ -716,18 +727,36 @@ function Q2FocusCard({
             {q2Items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-2 text-sm cursor-pointer hover-elevate rounded-md px-2 py-1"
-                onClick={() => setLocation("/eisenhower")}
+                className="flex items-center gap-3"
                 data-testid={`q2-item-${item.id}`}
               >
-                <CircleDot
-                  className={`h-3 w-3 shrink-0 ${
-                    item.completed ? "text-green-500" : "text-muted-foreground"
+                <button
+                  role="checkbox"
+                  aria-checked={item.status === "completed" ? true : item.status === "skipped" ? "mixed" : false}
+                  aria-label={`${item.task} - ${item.status === "completed" ? "completed" : item.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                  className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                    item.status === "completed" ? "bg-primary border-primary" : item.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
                   }`}
-                />
-                <span className={item.completed ? "line-through text-muted-foreground" : ""}>
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMutation.mutate({ id: item.id, currentStatus: item.status || null });
+                  }}
+                  data-testid={`q2-cycle-${item.id}`}
+                >
+                  {item.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                  {item.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                </button>
+                <span
+                  className={`text-sm cursor-pointer ${
+                    item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""
+                  }`}
+                  onClick={() => setLocation("/eisenhower")}
+                >
                   {item.task}
                 </span>
+                {item.status === "skipped" && (
+                  <span className="text-xs text-muted-foreground ml-auto">skipped</span>
+                )}
               </li>
             ))}
           </ul>
