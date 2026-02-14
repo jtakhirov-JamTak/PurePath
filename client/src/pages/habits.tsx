@@ -108,6 +108,9 @@ export default function HabitsPage() {
     duration: "15",
     startTime: "",
     endTime: "",
+    startDate: formatDate(new Date()),
+    hasEndDate: false as boolean,
+    endDate: "",
   });
 
   const { data: habits = [] } = useQuery<Habit[]>({
@@ -124,7 +127,10 @@ export default function HabitsPage() {
   const todayDayCode = DAY_CODE_MAP[trackerDate.getDay()];
   const todaysHabits = activeHabits.filter(h => {
     const codes = h.cadence.split(",");
-    return codes.includes(todayDayCode);
+    if (!codes.includes(todayDayCode)) return false;
+    if (h.startDate && dateStr < h.startDate) return false;
+    if (h.endDate && dateStr > h.endDate) return false;
+    return true;
   });
 
   const completedHabitIds = new Set(completions.map(c => c.habitId));
@@ -136,7 +142,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "" });
+    setNewHabit({ name: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -159,6 +165,8 @@ export default function HabitsPage() {
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         time,
+        startDate: data.startDate || null,
+        endDate: data.hasEndDate && data.endDate ? data.endDate : null,
       });
     },
     onSuccess: () => {
@@ -187,6 +195,8 @@ export default function HabitsPage() {
         startTime: data.startTime || null,
         endTime: data.endTime || null,
         time,
+        startDate: data.startDate || null,
+        endDate: data.hasEndDate && data.endDate ? data.endDate : null,
       });
     },
     onSuccess: () => {
@@ -209,6 +219,9 @@ export default function HabitsPage() {
       duration: habit.duration?.toString() || "15",
       startTime: habit.startTime || "",
       endTime: habit.endTime || "",
+      startDate: habit.startDate || formatDate(new Date()),
+      hasEndDate: !!habit.endDate,
+      endDate: habit.endDate || "",
     });
     setSelectedDays(habit.cadence.split(","));
     setEditingHabit(habit);
@@ -453,6 +466,44 @@ export default function HabitsPage() {
                   </div>
 
                   <div>
+                    <Label className="mb-1 block">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={newHabit.startDate}
+                      onChange={(e) => setNewHabit({ ...newHabit, startDate: e.target.value })}
+                      data-testid="input-start-date"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="mb-1 block">End Date</Label>
+                    <div className="flex items-center gap-3">
+                      <Select
+                        value={newHabit.hasEndDate ? "date" : "none"}
+                        onValueChange={(v) => setNewHabit({ ...newHabit, hasEndDate: v === "date" })}
+                      >
+                        <SelectTrigger className="w-[160px]" data-testid="select-end-date-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No End Date</SelectItem>
+                          <SelectItem value="date">Set End Date</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {newHabit.hasEndDate && (
+                        <Input
+                          type="date"
+                          value={newHabit.endDate}
+                          min={newHabit.startDate}
+                          onChange={(e) => setNewHabit({ ...newHabit, endDate: e.target.value })}
+                          className="flex-1"
+                          data-testid="input-end-date"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
                     <Label>Recurring</Label>
                     <div className="flex items-center gap-3 mt-1">
                       <Select
@@ -594,8 +645,13 @@ export default function HabitsPage() {
                                   {habit.duration}m
                                 </span>
                               )}
-                              {habit.recurring && habit.recurring !== "indefinite" ? (
-                                <span className="text-xs">{habit.recurring} weeks</span>
+                              {habit.startDate && (
+                                <span className="flex items-center gap-1 text-xs" data-testid={`text-start-date-${habit.id}`}>
+                                  From {habit.startDate}
+                                </span>
+                              )}
+                              {habit.endDate ? (
+                                <span className="text-xs" data-testid={`text-end-date-${habit.id}`}>to {habit.endDate}</span>
                               ) : (
                                 <span className="text-xs">No End Date</span>
                               )}

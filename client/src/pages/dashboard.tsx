@@ -109,9 +109,12 @@ export default function DashboardPage() {
   );
 
   const todayDayCode = DAY_CODES[today.getDay()];
-  const todaysHabits = habits.filter((h) =>
-    h.cadence.split(",").includes(todayDayCode)
-  );
+  const todaysHabits = habits.filter((h) => {
+    if (!h.cadence.split(",").includes(todayDayCode)) return false;
+    if (h.startDate && todayStr < h.startDate) return false;
+    if (h.endDate && todayStr > h.endDate) return false;
+    return true;
+  });
   const habitStatusMap = new Map<number, string>();
   habitCompletions.forEach((hc) => {
     habitStatusMap.set(hc.habitId, hc.status || "completed");

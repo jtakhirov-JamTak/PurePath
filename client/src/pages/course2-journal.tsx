@@ -431,7 +431,8 @@ function HabitRow({
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
         const dayCode = DAY_CODES[day.getDay()];
-        const isScheduled = scheduledDays.has(dayCode);
+        const inRange = (!habit.startDate || dateStr >= habit.startDate) && (!habit.endDate || dateStr <= habit.endDate);
+        const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
 

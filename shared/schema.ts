@@ -204,6 +204,8 @@ export const habits = pgTable("habits", {
   startTime: varchar("start_time", { length: 10 }),
   endTime: varchar("end_time", { length: 10 }),
   time: varchar("time", { length: 20 }).notNull(),
+  startDate: varchar("start_date", { length: 10 }),
+  endDate: varchar("end_date", { length: 10 }),
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
