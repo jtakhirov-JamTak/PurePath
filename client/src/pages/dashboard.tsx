@@ -5,13 +5,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sun, Moon, Pencil, Check, ArrowRight,
-  Heart, Brain, Users, CircleDot, FileText,
+  Heart, Brain, Users, CircleDot, FileText, Minus,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
@@ -113,9 +112,15 @@ export default function DashboardPage() {
   const todaysHabits = habits.filter((h) =>
     h.cadence.split(",").includes(todayDayCode)
   );
-  const completedHabitIds = new Set(habitCompletions.filter((hc) => hc.status === "completed" || !hc.status).map((hc) => hc.habitId));
+  const habitStatusMap = new Map<number, string>();
+  habitCompletions.forEach((hc) => {
+    habitStatusMap.set(hc.habitId, hc.status || "completed");
+  });
   const completedCount = todaysHabits.filter((h) =>
-    completedHabitIds.has(h.id)
+    habitStatusMap.get(h.id) === "completed"
+  ).length;
+  const skippedCount = todaysHabits.filter((h) =>
+    habitStatusMap.get(h.id) === "skipped"
   ).length;
 
   const todayJournals = journals.filter((j) => j.date === todayStr);
@@ -136,21 +141,20 @@ export default function DashboardPage() {
     return e.deadline === todayStr;
   });
 
-  const toggleMutation = useMutation({
+  const cycleHabitMutation = useMutation({
     mutationFn: async ({
       habitId,
-      completed,
+      currentStatus,
     }: {
       habitId: number;
-      completed: boolean;
+      currentStatus: string | null;
     }) => {
-      if (completed) {
-        await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+      if (currentStatus === null) {
+        await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed" });
+      } else if (currentStatus === "completed") {
+        await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped" });
       } else {
-        await apiRequest("POST", "/api/habit-completions", {
-          habitId,
-          date: todayStr,
-        });
+        await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
       }
     },
     onSuccess: () => {
@@ -253,9 +257,10 @@ export default function DashboardPage() {
 
         <HabitsChecklist
           todaysHabits={todaysHabits}
-          completedHabitIds={completedHabitIds}
+          habitStatusMap={habitStatusMap}
           completedCount={completedCount}
-          toggleMutation={toggleMutation}
+          skippedCount={skippedCount}
+          cycleHabitMutation={cycleHabitMutation}
         />
 
         <MiniCalendar
@@ -734,14 +739,16 @@ function Q2FocusCard({
 
 function HabitsChecklist({
   todaysHabits,
-  completedHabitIds,
+  habitStatusMap,
   completedCount,
-  toggleMutation,
+  skippedCount,
+  cycleHabitMutation,
 }: {
   todaysHabits: Habit[];
-  completedHabitIds: Set<number>;
+  habitStatusMap: Map<number, string>;
   completedCount: number;
-  toggleMutation: { mutate: (vars: { habitId: number; completed: boolean }) => void; isPending: boolean };
+  skippedCount: number;
+  cycleHabitMutation: { mutate: (vars: { habitId: number; currentStatus: string | null }) => void; isPending: boolean };
 }) {
   return (
     <Card className="overflow-visible" data-testid="card-habits">
@@ -749,7 +756,7 @@ function HabitsChecklist({
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
           <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
-            {completedCount}/{todaysHabits.length} completed
+            {completedCount}/{todaysHabits.length} completed{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
           </span>
         </div>
       </CardHeader>
@@ -761,7 +768,7 @@ function HabitsChecklist({
         ) : (
           <ul className="space-y-2">
             {todaysHabits.map((habit) => {
-              const done = completedHabitIds.has(habit.id);
+              const status = habitStatusMap.get(habit.id) || null;
               const catStyle =
                 CATEGORY_STYLES[(habit.category as string) || "health"] ||
                 CATEGORY_STYLES.health;
@@ -771,21 +778,32 @@ function HabitsChecklist({
                   className="flex items-center gap-3"
                   data-testid={`habit-item-${habit.id}`}
                 >
-                  <Checkbox
-                    checked={done}
-                    onCheckedChange={() =>
-                      toggleMutation.mutate({ habitId: habit.id, completed: done })
+                  <button
+                    role="checkbox"
+                    aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
+                    aria-label={`${habit.name} - ${status === "completed" ? "completed" : status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                    className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                      status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                    }`}
+                    onClick={() =>
+                      cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })
                     }
-                    data-testid={`checkbox-habit-${habit.id}`}
-                  />
+                    data-testid={`habit-cycle-${habit.id}`}
+                  >
+                    {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                    {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                  </button>
                   <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
                   <span
                     className={`text-sm ${
-                      done ? "line-through text-muted-foreground" : ""
+                      status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
                     }`}
                   >
                     {habit.name}
                   </span>
+                  {status === "skipped" && (
+                    <span className="text-xs text-muted-foreground ml-auto">skipped</span>
+                  )}
                 </li>
               );
             })}
