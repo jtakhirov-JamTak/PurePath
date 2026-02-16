@@ -23,12 +23,15 @@ Preferred communication style: Simple, everyday language.
 - **Key Features**:
   - **Goal Hierarchy System**: Integrates Quarterly, Monthly, and Daily goals. Includes a dedicated page for Monthly Goals and Quarterly Goals, and a dashboard card showing the hierarchical flow.
   - **Journaling**: Restructured Morning and Evening journals with detailed sections (e.g., Self-Awareness, Gratitude, Trigger Log, 80/20 Tracker). Data stored as JSON.
-  - **Habit Tracking**: Recurring habits with day-of-week cadence, duration, categories (health, wealth, etc.), and daily tracking. Habits can be typed (goal/learning/maintenance). Completions support `completed` and `skipped` statuses (cycling click: blank → completed → skipped → blank).
+  - **Habit Tracking**: Recurring habits with day-of-week cadence, duration, categories (health, wealth, etc.), and daily tracking. Habits can be typed (goal/learning/maintenance). Completions support `completed` and `skipped` statuses (cycling click: blank → completed → skipped → blank). Each habit requires a "Motivating Reason" field.
+  - **Voice Input**: Web Speech API integration via VoiceTextarea/VoiceInput components (`client/src/components/voice-input.tsx`). Available on all text fields across journals, goals, identity doc, habits, and dashboard. Mic button appears inline; gracefully hidden if browser doesn't support speech recognition.
   - **Daily Tasks**: Up to 3 tasks per day with Eisenhower Matrix quadrant labels.
   - **Eisenhower Matrix**: Weekly priority planning with categories and goal alignment field for Q2 items. "Success Catalyst" flagging (formerly blocksGoal).
   - **Self-Development Tools**: Meditation, Emotional Processing, and Empathy modules.
+  - **Regulation Now Page** (`/regulation`): Three quick regulation tools — Emotional Containment (60s), Breathwork (120s), Micro-Movement (90s). Each has expandable card with circular timer, play/pause/reset, configurable durations, and step-by-step instructions.
   - **Journal Calendar**: Week view with horizontal grid. Habits sorted by timing (morning → daily → evening). Export with date range filters. Habits and scheduled items have 3-state tracking (completed/skipped/blank).
-  - **Dashboard**: "Today's Progress" sidebar showing required items (journals, habits, Q2) with status.
+  - **Dashboard (Today)**: Redesigned vertical flow: 1-Year Vision → Q1-Q4 quarterly goals row → Monthly Promise → North Star (identity/values/intention with voice input) → Daily Habits (journals + habits with cycling status) → Weekly Items (Q2 focus + mini calendar) → Evening Reflection → Regulation Now link → Library link.
+  - **Vision Board** (`/plan`): 3 image uploads (1 main + 2 supporting) stored as base64 in identity_documents table. Upload, replace, and remove functionality.
   - **Course Curriculum**: Collapsible phases with lesson overviews and video placeholders.
   - **Phase 3 Transformation**: Document upload for AI pattern analysis and downloadable reports.
 

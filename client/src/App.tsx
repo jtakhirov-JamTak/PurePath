@@ -33,6 +33,7 @@ import IdentityDocPage from "@/pages/identity-doc";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
 import QuarterlyGoalPage from "@/pages/quarterly-goal";
+import RegulationPage from "@/pages/regulation";
 import { Loader2 } from "lucide-react";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -147,6 +148,9 @@ function Router() {
       </Route>
       <Route path="/quarterly-goal">
         {() => <AuthenticatedRoute component={QuarterlyGoalPage} />}
+      </Route>
+      <Route path="/regulation">
+        {() => <AuthenticatedRoute component={RegulationPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>

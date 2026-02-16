@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -96,9 +97,9 @@ export default function IdentityDocPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={identity}
-                onChange={(e) => setIdentity(e.target.value)}
+                onChange={(val) => setIdentity(val)}
                 placeholder="I am someone who shows up with courage every day. I am disciplined, present, and kind..."
                 className="min-h-[120px] resize-none"
                 data-testid="input-identity"
@@ -119,9 +120,9 @@ export default function IdentityDocPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={vision}
-                onChange={(e) => setVision(e.target.value)}
+                onChange={(val) => setVision(val)}
                 placeholder="In 3 years I see myself living with purpose, running a meaningful business, deeply connected to the people I love..."
                 className="min-h-[120px] resize-none"
                 data-testid="input-vision"
@@ -142,9 +143,9 @@ export default function IdentityDocPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Textarea
+              <VoiceTextarea
                 value={values}
-                onChange={(e) => setValues(e.target.value)}
+                onChange={(val) => setValues(val)}
                 placeholder="courage, patience, kindness, discipline, gratitude, honesty"
                 className="min-h-[80px] resize-none"
                 data-testid="input-values"

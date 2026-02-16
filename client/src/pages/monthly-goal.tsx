@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -248,9 +249,9 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(val) => setValue(val)}
                 placeholder="e.g. Health, freedom, self-respect, growth, connection..."
                 className="min-h-[70px] text-base"
                 data-testid="input-value"
@@ -269,9 +270,9 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={strengths}
-                onChange={(e) => setStrengths(e.target.value)}
+                onChange={(val) => setStrengths(val)}
                 placeholder="e.g. I'm good at organizing things, people trust me easily, I learn fast when I care about something..."
                 className="min-h-[70px] text-base"
                 data-testid="input-strengths"
@@ -290,9 +291,9 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={advantage}
-                onChange={(e) => setAdvantage(e.target.value)}
+                onChange={(val) => setAdvantage(val)}
                 placeholder="e.g. Since I learn fast, I can dedicate focused time to mastering one skill this month..."
                 className="min-h-[70px] text-base"
                 data-testid="input-advantage"
@@ -313,9 +314,9 @@ export default function MonthlyGoalPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">What?</Label>
-                <Textarea
+                <VoiceTextarea
                   value={goalWhat}
-                  onChange={(e) => setGoalWhat(e.target.value)}
+                  onChange={(val) => setGoalWhat(val)}
                   placeholder="e.g. Complete a 5K run"
                   className="min-h-[60px] text-base"
                   data-testid="input-goal-what"
@@ -323,9 +324,9 @@ export default function MonthlyGoalPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">When?</Label>
-                <Textarea
+                <VoiceTextarea
                   value={goalWhen}
-                  onChange={(e) => setGoalWhen(e.target.value)}
+                  onChange={(val) => setGoalWhen(val)}
                   placeholder="e.g. By the last Sunday of this month, running 3x per week"
                   className="min-h-[60px] text-base"
                   data-testid="input-goal-when"
@@ -333,9 +334,9 @@ export default function MonthlyGoalPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Where?</Label>
-                <Textarea
+                <VoiceTextarea
                   value={goalWhere}
-                  onChange={(e) => setGoalWhere(e.target.value)}
+                  onChange={(val) => setGoalWhere(val)}
                   placeholder="e.g. At the park near my house, mornings before work"
                   className="min-h-[60px] text-base"
                   data-testid="input-goal-where"
@@ -343,9 +344,9 @@ export default function MonthlyGoalPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">How?</Label>
-                <Textarea
+                <VoiceTextarea
                   value={goalHow}
-                  onChange={(e) => setGoalHow(e.target.value)}
+                  onChange={(val) => setGoalHow(val)}
                   placeholder="e.g. Follow a Couch-to-5K plan, track with a running app, lay out clothes the night before"
                   className="min-h-[60px] text-base"
                   data-testid="input-goal-how"
@@ -367,9 +368,9 @@ export default function MonthlyGoalPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">The blocking habit</Label>
-                <Textarea
+                <VoiceTextarea
                   value={blockingHabit}
-                  onChange={(e) => setBlockingHabit(e.target.value)}
+                  onChange={(val) => setBlockingHabit(val)}
                   placeholder="e.g. Staying up too late scrolling my phone, so I'm too tired to exercise in the morning"
                   className="min-h-[60px] text-base"
                   data-testid="input-blocking-habit"
@@ -377,9 +378,9 @@ export default function MonthlyGoalPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">How can I address it?</Label>
-                <Textarea
+                <VoiceTextarea
                   value={habitAddress}
-                  onChange={(e) => setHabitAddress(e.target.value)}
+                  onChange={(val) => setHabitAddress(val)}
                   placeholder="e.g. Phone goes on airplane mode at 10 PM. Alarm is across the room."
                   className="min-h-[60px] text-base"
                   data-testid="input-habit-address"
@@ -399,9 +400,9 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={prize}
-                onChange={(e) => setPrize(e.target.value)}
+                onChange={(val) => setPrize(val)}
                 placeholder="e.g. New running shoes, a weekend trip, a nice dinner out..."
                 className="min-h-[60px] text-base"
                 data-testid="input-prize"
@@ -420,9 +421,9 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <Textarea
+              <VoiceTextarea
                 value={fun}
-                onChange={(e) => setFun(e.target.value)}
+                onChange={(val) => setFun(val)}
                 placeholder="e.g. Run with a friend, try new routes, listen to a favorite podcast while running..."
                 className="min-h-[60px] text-base"
                 data-testid="input-fun"

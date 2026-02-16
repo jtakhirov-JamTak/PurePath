@@ -1,13 +1,131 @@
+import { useState, useRef, useCallback } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Calendar, Footprints, Pencil, Crosshair } from "lucide-react";
+import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Footprints, Pencil, ImagePlus, X, Eye } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal, IdentityDocument } from "@shared/schema";
+
+function VisionBoardUpload({
+  label,
+  slot,
+  imageData,
+  isMain,
+}: {
+  label: string;
+  slot: "main" | "left" | "right";
+  imageData: string;
+  isMain: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: async (base64: string) => {
+      await apiRequest("PUT", "/api/vision-board", { slot, imageData: base64 });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", "/api/vision-board", { slot, imageData: "" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+  });
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be smaller than 5MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      uploadMutation.mutate(result);
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [uploadMutation]);
+
+  const hasImage = imageData && imageData.length > 0;
+
+  return (
+    <div
+      className={`relative group ${isMain ? "col-span-2 row-span-2" : ""}`}
+      data-testid={`vision-slot-${slot}`}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileSelect}
+        data-testid={`input-vision-${slot}`}
+      />
+      {hasImage ? (
+        <div className={`relative overflow-hidden rounded-md border ${isMain ? "aspect-[4/3]" : "aspect-square"}`}>
+          <img
+            src={imageData}
+            alt={label}
+            className="w-full h-full object-cover"
+            data-testid={`img-vision-${slot}`}
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="invisible group-hover:visible text-white"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid={`button-replace-vision-${slot}`}
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="invisible group-hover:visible text-white"
+              onClick={() => removeMutation.mutate()}
+              data-testid={`button-remove-vision-${slot}`}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          {(uploadMutation.isPending || removeMutation.isPending) && (
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+              <p className="text-xs text-muted-foreground">Saving...</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className={`w-full border-2 border-dashed border-muted-foreground/20 rounded-md flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-colors ${
+            isMain ? "aspect-[4/3]" : "aspect-square"
+          }`}
+          data-testid={`button-upload-vision-${slot}`}
+        >
+          <ImagePlus className="h-6 w-6 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{label}</span>
+          {uploadMutation.isPending && (
+            <span className="text-xs text-muted-foreground">Uploading...</span>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function PlanPage() {
   const { user } = useAuth();
@@ -25,6 +143,11 @@ export default function PlanPage() {
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
+    enabled: !!user,
+  });
+
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
 
@@ -71,6 +194,47 @@ export default function PlanPage() {
         </div>
 
         <div className="max-w-3xl space-y-6">
+          <Card className="overflow-visible" data-testid="card-vision-board">
+            <CardHeader>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Eye className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-lg">Vision Board</CardTitle>
+                  <CardDescription>Visualize your 1-year vision — 1 main image + 2 supporting images</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <VisionBoardUpload
+                  label="Main Vision"
+                  slot="main"
+                  imageData={identityDoc?.visionBoardMain || ""}
+                  isMain={true}
+                />
+                <div className="flex flex-col gap-3">
+                  <VisionBoardUpload
+                    label="Supporting"
+                    slot="left"
+                    imageData={identityDoc?.visionBoardLeft || ""}
+                    isMain={false}
+                  />
+                  <VisionBoardUpload
+                    label="Supporting"
+                    slot="right"
+                    imageData={identityDoc?.visionBoardRight || ""}
+                    isMain={false}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Upload images that represent your 1-year vision. Max 5MB each.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card className="overflow-visible" data-testid="card-plan-monthly-goal">
             <CardHeader>
               <div className="flex items-center gap-3 mb-1">

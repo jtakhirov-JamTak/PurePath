@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -356,9 +357,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Intention — What value do I want to practice today?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={morningData.intention}
-                    onChange={(e) => updateMorning("intention", e.target.value)}
+                    onChange={(val) => updateMorning("intention", val)}
                     placeholder="Today I want to practice..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-intention"
@@ -388,9 +389,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Gratitude — Who am I grateful for? Do one small action.</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={morningData.gratitude}
-                    onChange={(e) => updateMorning("gratitude", e.target.value)}
+                    onChange={(val) => updateMorning("gratitude", val)}
                     placeholder="I am grateful for..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-gratitude"
@@ -399,9 +400,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Joy — What's one thing I'm excited about?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={morningData.joy}
-                    onChange={(e) => updateMorning("joy", e.target.value)}
+                    onChange={(val) => updateMorning("joy", val)}
                     placeholder="I'm excited about..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-joy"
@@ -412,9 +413,9 @@ export default function JournalEntryPage() {
                     <Separator />
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Enjoy — Make an exciting plan!</Label>
-                      <Textarea
+                      <VoiceTextarea
                         value={morningData.enjoy}
-                        onChange={(e) => updateMorning("enjoy", e.target.value)}
+                        onChange={(val) => updateMorning("enjoy", val)}
                         placeholder="My exciting plan for today..."
                         className="min-h-[60px] resize-none"
                         data-testid="input-enjoy"
@@ -440,9 +441,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Avoidance — What's the one thing I'm avoiding?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={morningData.avoidance}
-                    onChange={(e) => updateMorning("avoidance", e.target.value)}
+                    onChange={(val) => updateMorning("avoidance", val)}
                     placeholder="The thing I'm avoiding is..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-avoidance"
@@ -476,9 +477,9 @@ export default function JournalEntryPage() {
                             data-testid="input-understanding-emotion-other"
                           />
                         )}
-                        <Textarea
+                        <VoiceTextarea
                           value={morningData.understanding}
-                          onChange={(e) => updateMorning("understanding", e.target.value)}
+                          onChange={(val) => updateMorning("understanding", val)}
                           placeholder="The belief underneath is..."
                           className="min-h-[60px] resize-none flex-1"
                           data-testid="input-understanding"
@@ -491,9 +492,9 @@ export default function JournalEntryPage() {
                     <Separator />
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Counter-evidence — One real example that contradicts this belief</Label>
-                      <Textarea
+                      <VoiceTextarea
                         value={morningData.counterEvidence}
-                        onChange={(e) => updateMorning("counterEvidence", e.target.value)}
+                        onChange={(val) => updateMorning("counterEvidence", val)}
                         placeholder="A real example that contradicts this..."
                         className="min-h-[60px] resize-none"
                         data-testid="input-counter-evidence"
@@ -504,9 +505,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Action — One small exposure rep to begin</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={morningData.courageAction}
-                    onChange={(e) => updateMorning("courageAction", e.target.value)}
+                    onChange={(val) => updateMorning("courageAction", val)}
                     placeholder="My one small step will be..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-courage-action"
@@ -531,9 +532,9 @@ export default function JournalEntryPage() {
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Stress — What's the one thing I'm overly fixated on?</Label>
-                    <Textarea
+                    <VoiceTextarea
                       value={morningData.stress}
-                      onChange={(e) => updateMorning("stress", e.target.value)}
+                      onChange={(val) => updateMorning("stress", val)}
                       placeholder="I'm overly fixated on..."
                       className="min-h-[60px] resize-none"
                       data-testid="input-stress"
@@ -542,9 +543,9 @@ export default function JournalEntryPage() {
                   <Separator />
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 30%?</Label>
-                    <Textarea
+                    <VoiceTextarea
                       value={morningData.perspectiveShift}
-                      onChange={(e) => updateMorning("perspectiveShift", e.target.value)}
+                      onChange={(val) => updateMorning("perspectiveShift", val)}
                       placeholder="If I loosened my grip, it would look like..."
                       className="min-h-[60px] resize-none"
                       data-testid="input-perspective-shift"
@@ -575,9 +576,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Review — What was the most important moment today? (keep it simple)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.review}
-                    onChange={(e) => updateEvening("review", e.target.value)}
+                    onChange={(val) => updateEvening("review", val)}
                     placeholder="The most important moment was..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-review"
@@ -586,9 +587,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Feedback — What did I feel? What did I do?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.feedback}
-                    onChange={(e) => updateEvening("feedback", e.target.value)}
+                    onChange={(val) => updateEvening("feedback", val)}
                     placeholder="I felt... and I did..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-feedback"
@@ -597,9 +598,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Insight — What value or need was underneath that?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.insight}
-                    onChange={(e) => updateEvening("insight", e.target.value)}
+                    onChange={(val) => updateEvening("insight", val)}
                     placeholder="Underneath that was..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-insight"
@@ -608,9 +609,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Lesson — What can I learn from this that will help me moving forward?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.lesson}
-                    onChange={(e) => updateEvening("lesson", e.target.value)}
+                    onChange={(val) => updateEvening("lesson", val)}
                     placeholder="Moving forward, I'll remember..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-lesson"
@@ -636,9 +637,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Trigger (observable — a camera/mic would capture this)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.trigger}
-                    onChange={(e) => updateEvening("trigger", e.target.value)}
+                    onChange={(val) => updateEvening("trigger", val)}
                     placeholder="What happened..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-trigger"
@@ -647,9 +648,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Story I told myself (1 sentence)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.triggerStory}
-                    onChange={(e) => updateEvening("triggerStory", e.target.value)}
+                    onChange={(val) => updateEvening("triggerStory", val)}
                     placeholder="The story I told myself was..."
                     className="min-h-[50px] resize-none"
                     data-testid="input-trigger-story"
@@ -658,9 +659,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">My first impulse/urge</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.triggerImpulse}
-                    onChange={(e) => updateEvening("triggerImpulse", e.target.value)}
+                    onChange={(val) => updateEvening("triggerImpulse", val)}
                     placeholder="My first impulse was to..."
                     className="min-h-[50px] resize-none"
                     data-testid="input-trigger-impulse"
@@ -744,9 +745,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">What I did (behavior)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.triggerBehavior}
-                    onChange={(e) => updateEvening("triggerBehavior", e.target.value)}
+                    onChange={(val) => updateEvening("triggerBehavior", val)}
                     placeholder="What I actually did..."
                     className="min-h-[50px] resize-none"
                     data-testid="input-trigger-behavior"
@@ -755,9 +756,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Outcome (what happened)</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.triggerOutcome}
-                    onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
+                    onChange={(val) => updateEvening("triggerOutcome", val)}
                     placeholder="What happened as a result..."
                     className="min-h-[50px] resize-none"
                     data-testid="input-trigger-outcome"
@@ -766,9 +767,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Next Time — "If X happens, I will do Y."</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.triggerNextTime}
-                    onChange={(e) => updateEvening("triggerNextTime", e.target.value)}
+                    onChange={(val) => updateEvening("triggerNextTime", val)}
                     placeholder="If this happens again, I will..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-trigger-next-time"
@@ -793,9 +794,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">What am I satisfied with?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.satisfied}
-                    onChange={(e) => updateEvening("satisfied", e.target.value)}
+                    onChange={(val) => updateEvening("satisfied", val)}
                     placeholder="I'm satisfied with..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-satisfied"
@@ -804,9 +805,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">What am I dissatisfied with?</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.dissatisfied}
-                    onChange={(e) => updateEvening("dissatisfied", e.target.value)}
+                    onChange={(val) => updateEvening("dissatisfied", val)}
                     placeholder="I'm dissatisfied with..."
                     className="min-h-[80px] resize-none"
                     data-testid="input-dissatisfied"
@@ -830,9 +831,9 @@ export default function JournalEntryPage() {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Today was enough because:</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.shutdownEnough}
-                    onChange={(e) => updateEvening("shutdownEnough", e.target.value)}
+                    onChange={(val) => updateEvening("shutdownEnough", val)}
                     placeholder="Today was enough because..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-shutdown-enough"
@@ -841,9 +842,9 @@ export default function JournalEntryPage() {
                 <Separator />
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
-                  <Textarea
+                  <VoiceTextarea
                     value={eveningData.shutdownTomorrow}
-                    onChange={(e) => updateEvening("shutdownTomorrow", e.target.value)}
+                    onChange={(val) => updateEvening("shutdownTomorrow", val)}
                     placeholder="Tomorrow I'll start with..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-shutdown-tomorrow"

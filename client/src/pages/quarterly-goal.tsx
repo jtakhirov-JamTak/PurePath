@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -258,9 +259,9 @@ export default function QuarterlyGoalPage() {
                     <Label className="text-sm font-medium">
                       What is the specific outcome that means I progressed?
                     </Label>
-                    <Textarea
+                    <VoiceTextarea
                       value={forms[idx].outcomeStatement}
-                      onChange={(e) => updateForm(idx, "outcomeStatement", e.target.value)}
+                      onChange={(val) => updateForm(idx, "outcomeStatement", val)}
                       placeholder="e.g. I can regulate emotions in real-time, I shipped the MVP, I run 5K without stopping..."
                       className="min-h-[70px] text-base"
                       data-testid={`input-q${q}-outcome`}

@@ -4,6 +4,8 @@ import { AppHeader } from "@/components/app-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -100,6 +102,7 @@ export default function HabitsPage() {
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
   const [newHabit, setNewHabit] = useState({
     name: "",
+    motivatingReason: "",
     category: "health" as string,
     habitType: "maintenance" as string,
     timing: "daily" as string,
@@ -142,7 +145,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "" });
+    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -156,6 +159,7 @@ export default function HabitsPage() {
       const time = data.startTime || "09:00";
       return apiRequest("POST", "/api/habits", {
         name: data.name,
+        motivatingReason: data.motivatingReason || null,
         category: data.category,
         habitType: data.habitType,
         timing: data.timing,
@@ -186,6 +190,7 @@ export default function HabitsPage() {
       const time = data.startTime || "09:00";
       return apiRequest("PATCH", `/api/habits/${id}`, {
         name: data.name,
+        motivatingReason: data.motivatingReason || null,
         category: data.category,
         habitType: data.habitType,
         timing: data.timing,
@@ -211,6 +216,7 @@ export default function HabitsPage() {
     const isCount = habit.recurring && habit.recurring !== "indefinite";
     setNewHabit({
       name: habit.name,
+      motivatingReason: habit.motivatingReason || "",
       category: habit.category || "health",
       habitType: habit.habitType || "maintenance",
       timing: habit.timing || "daily",
@@ -257,7 +263,7 @@ export default function HabitsPage() {
     setTrackerDate(d);
   };
 
-  const canSubmit = newHabit.name.trim() !== "" && selectedDays.length > 0 && parseInt(newHabit.duration) > 0;
+  const canSubmit = newHabit.name.trim() !== "" && newHabit.motivatingReason.trim() !== "" && selectedDays.length > 0 && parseInt(newHabit.duration) > 0;
   const completedCount = todaysHabits.filter(h => completedHabitIds.has(h.id)).length;
 
   return (
@@ -373,6 +379,23 @@ export default function HabitsPage() {
                       onChange={(e) => setNewHabit({ ...newHabit, name: e.target.value })}
                       data-testid="input-habit-name"
                     />
+                  </div>
+
+                  <div>
+                    <Label>
+                      Why does this matter to you? <span className="text-destructive">*</span>
+                    </Label>
+                    <VoiceTextarea
+                      placeholder="e.g., I want to feel calm and centered every morning so I can show up better for my family"
+                      value={newHabit.motivatingReason}
+                      onChange={(val) => setNewHabit({ ...newHabit, motivatingReason: val })}
+                      className="resize-none text-sm"
+                      rows={2}
+                      data-testid="input-motivating-reason"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your personal reason for building this habit — this keeps you going when motivation dips
+                    </p>
                   </div>
 
                   <div>
@@ -635,6 +658,11 @@ export default function HabitsPage() {
                                 </Badge>
                               )}
                             </div>
+                            {habit.motivatingReason && (
+                              <p className="text-xs text-muted-foreground italic mt-0.5" data-testid={`text-reason-${habit.id}`}>
+                                {habit.motivatingReason}
+                              </p>
+                            )}
                             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                               <Badge variant="outline" className="text-xs">
                                 {formatCadence(habit.cadence)}

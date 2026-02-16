@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Pencil, Check, ArrowRight,
-  Heart, Brain, Users, CircleDot, FileText, Minus,
+  Heart, Brain, Users, FileText, Minus,
+  Target, Footprints, AlertTriangle,
+  Shield, BookOpen, Activity, Wind,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
-import { Target, Footprints, AlertTriangle } from "lucide-react";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal, QuarterlyGoal } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -77,7 +78,7 @@ export default function DashboardPage() {
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
-  const currentQuarterKey = `${today.getFullYear()}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
+  const currentYear = today.getFullYear();
 
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
@@ -89,15 +90,31 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const { data: quarterlyGoal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", currentQuarterKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/quarterly-goal?quarter=${currentQuarterKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
+  const quarterKeys = [`${currentYear}-Q1`, `${currentYear}-Q2`, `${currentYear}-Q3`, `${currentYear}-Q4`];
+  const currentQuarterKey = `${currentYear}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
+
+  const { data: q1Goal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[0]],
+    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[0]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
     enabled: !!user,
   });
+  const { data: q2Goal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[1]],
+    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[1]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
+    enabled: !!user,
+  });
+  const { data: q3Goal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[2]],
+    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[2]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
+    enabled: !!user,
+  });
+  const { data: q4Goal } = useQuery<QuarterlyGoal>({
+    queryKey: ["/api/quarterly-goal", quarterKeys[3]],
+    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[3]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
+    enabled: !!user,
+  });
+
+  const quarterlyGoals = [q1Goal, q2Goal, q3Goal, q4Goal];
 
   const hasPhase12 = purchases?.some(
     (p) =>
@@ -130,19 +147,13 @@ export default function DashboardPage() {
   const hasMorning = todayJournals.some((j) => j.session === "morning");
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
-  const threeDaysAgo = new Date();
-  threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-  const hasRecentJournal = journals.some((j) => {
-    const jDate = new Date(j.date + "T00:00:00");
-    return jDate >= threeDaysAgo;
-  });
-  const noJournalIn3Days = journals.length > 0 && !hasRecentJournal;
-
   const q2Items = eisenhowerEntries.filter((e) => {
     if (e.quadrant !== "q2") return false;
     if (!e.deadline) return false;
     return e.deadline === todayStr;
   });
+
+  const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
 
   const cycleHabitMutation = useMutation({
     mutationFn: async ({
@@ -161,12 +172,8 @@ export default function DashboardPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["/api/habit-completions", todayStr],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr] });
     },
   });
 
@@ -186,23 +193,17 @@ export default function DashboardPage() {
 
   const todayValueMutation = useMutation({
     mutationFn: async (value: string) => saveIdentityField({ todayValue: value }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
   });
 
   const intentionMutation = useMutation({
     mutationFn: async (intention: string) => saveIdentityField({ todayIntention: intention }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
   });
 
   const reflectionMutation = useMutation({
     mutationFn: async (reflection: string) => saveIdentityField({ todayReflection: reflection }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
   });
 
   const valuesArray = identityDoc?.values
@@ -215,10 +216,8 @@ export default function DashboardPage() {
       <AppLayout>
         <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
           <Skeleton className="h-40 w-full" data-testid="skeleton-cta" />
-          <Skeleton className="h-24 w-full" data-testid="skeleton-northstar" />
-          <Skeleton className="h-32 w-full" data-testid="skeleton-q2" />
+          <Skeleton className="h-24 w-full" data-testid="skeleton-goals" />
           <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
-          <Skeleton className="h-20 w-full" data-testid="skeleton-calendar" />
         </div>
       </AppLayout>
     );
@@ -227,15 +226,16 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
-        <NextStepCTA
-          hasMorning={hasMorning}
-          hasEvening={hasEvening}
-          noJournalIn3Days={noJournalIn3Days}
-          hasAccess={!!hasPhase12}
-          todayStr={todayStr}
+        <YearVisionSection identityDoc={identityDoc} setLocation={setLocation} />
+
+        <QuarterlyGoalsRow
+          quarterlyGoals={quarterlyGoals}
+          quarterKeys={quarterKeys}
+          currentQuarterKey={currentQuarterKey}
           setLocation={setLocation}
-          userName={user?.firstName}
         />
+
+        <MonthlyPromiseCard goal={monthlyGoal} setLocation={setLocation} />
 
         <NorthStarStrip
           identityDoc={identityDoc}
@@ -248,30 +248,28 @@ export default function DashboardPage() {
           isSavingIntention={intentionMutation.isPending}
         />
 
-        <GoalLadderStrip
-          quarterlyGoal={quarterlyGoal}
-          monthlyGoal={monthlyGoal}
-          setLocation={setLocation}
-        />
-
-        <MonthlyGoalCard goal={monthlyGoal} setLocation={setLocation} />
-
-        <Q2FocusCard q2Items={q2Items} setLocation={setLocation} />
-
-        <HabitsChecklist
+        <DailyHabitsSection
           todaysHabits={todaysHabits}
           habitStatusMap={habitStatusMap}
           completedCount={completedCount}
           skippedCount={skippedCount}
           cycleHabitMutation={cycleHabitMutation}
+          hasMorning={hasMorning}
+          hasEvening={hasEvening}
+          hasAccess={!!hasPhase12}
+          todayStr={todayStr}
+          setLocation={setLocation}
         />
 
-        <MiniCalendar
+        <WeeklyItemsSection
+          thisWeekEntries={thisWeekEntries}
+          q2Items={q2Items}
           weekStartDate={weekStartDate}
           today={today}
           journals={journals}
           weekCompletions={weekCompletions}
           habits={habits}
+          setLocation={setLocation}
         />
 
         <EveningSection
@@ -285,114 +283,131 @@ export default function DashboardPage() {
           isSaving={reflectionMutation.isPending}
         />
 
-        <SupportSection setLocation={setLocation} />
+        <RegulationLink setLocation={setLocation} />
+
+        <LibraryLink setLocation={setLocation} />
       </div>
     </AppLayout>
   );
 }
 
-function NextStepCTA({
-  hasMorning,
-  hasEvening,
-  noJournalIn3Days,
-  hasAccess,
-  todayStr,
+function YearVisionSection({
+  identityDoc,
   setLocation,
-  userName,
 }: {
-  hasMorning: boolean;
-  hasEvening: boolean;
-  noJournalIn3Days: boolean;
-  hasAccess: boolean;
-  todayStr: string;
+  identityDoc?: IdentityDocument;
   setLocation: (path: string) => void;
-  userName?: string | null;
 }) {
-  if (!hasAccess) {
-    return (
-      <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-next-step">
-        <CardContent className="p-6">
-          <p className="text-lg font-medium mb-2" data-testid="text-cta-title">
-            Start your Inner Journey
-          </p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Unlock journaling, habits, and daily tools to build lasting change.
-          </p>
-          <Button
-            onClick={() => setLocation("/checkout/phase12")}
-            data-testid="button-unlock-access"
-          >
-            Get Started
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  let title: string;
-  let subtitle: string | null = null;
-  let buttonLabel: string;
-  let buttonPath: string;
-  let IconComponent = Sun;
-  let iconClass = "text-amber-500";
-
-  if (noJournalIn3Days) {
-    title = "Welcome back! Do a 2-minute restart.";
-    subtitle = "It does not matter how slowly you go as long as you do not stop.";
-    buttonLabel = "Start Morning Check-in (2 min)";
-    buttonPath = `/journal/${todayStr}/morning`;
-    IconComponent = Sun;
-    iconClass = "text-amber-500";
-  } else if (!hasMorning) {
-    title = userName ? `Good to see you, ${userName}` : "Ready for today";
-    buttonLabel = "Start Morning Check-in (2 min)";
-    buttonPath = `/journal/${todayStr}/morning`;
-    IconComponent = Sun;
-    iconClass = "text-amber-500";
-  } else if (!hasEvening) {
-    title = "Morning done — time to reflect";
-    buttonLabel = "Start Evening Review (3 min)";
-    buttonPath = `/journal/${todayStr}/evening`;
-    IconComponent = Moon;
-    iconClass = "text-indigo-500";
-  } else {
-    title = "Both sessions complete";
-    buttonLabel = "Quick Check-in (2 min)";
-    buttonPath = `/journal/${todayStr}/morning`;
-    IconComponent = Check;
-    iconClass = "text-green-500";
-  }
+  const yearVision = identityDoc?.yearVision?.trim() || "";
 
   return (
-    <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-next-step">
-      <CardContent className="p-6">
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 mt-1">
-            <IconComponent className={`h-8 w-8 ${iconClass}`} />
+    <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-year-vision">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+              <Target className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">1-Year Vision</p>
+              {yearVision ? (
+                <p className="text-sm font-medium mt-1" data-testid="text-year-vision">{yearVision}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-1">Set your 1-year vision to guide everything below</p>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-lg font-medium mb-1" data-testid="text-cta-title">
-              {title}
-            </p>
-            {subtitle && (
-              <p className="text-sm text-muted-foreground italic mb-3" data-testid="text-cta-subtitle">
-                {subtitle}
+          <Button variant="ghost" size="icon" onClick={() => setLocation("/plan")} data-testid="button-edit-year-vision">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuarterlyGoalsRow({
+  quarterlyGoals,
+  quarterKeys,
+  currentQuarterKey,
+  setLocation,
+}: {
+  quarterlyGoals: (QuarterlyGoal | undefined)[];
+  quarterKeys: string[];
+  currentQuarterKey: string;
+  setLocation: (path: string) => void;
+}) {
+  const labels = ["Q1", "Q2", "Q3", "Q4"];
+
+  return (
+    <div className="grid grid-cols-4 gap-2" data-testid="row-quarterly-goals">
+      {quarterlyGoals.map((goal, i) => {
+        const isCurrent = quarterKeys[i] === currentQuarterKey;
+        const focus = goal?.quarterlyFocus?.trim() || goal?.outcomeStatement?.trim() || "";
+        return (
+          <Card
+            key={quarterKeys[i]}
+            className={`overflow-visible cursor-pointer hover-elevate ${isCurrent ? "ring-2 ring-primary/50" : ""}`}
+            onClick={() => setLocation("/quarterly-goal")}
+            data-testid={`card-quarter-${labels[i].toLowerCase()}`}
+          >
+            <CardContent className="p-3">
+              <Badge variant={isCurrent ? "default" : "outline"} className="text-xs mb-1.5">
+                {labels[i]}
+              </Badge>
+              <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`text-quarter-${labels[i].toLowerCase()}`}>
+                {focus || "Not set"}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonthlyPromiseCard({
+  goal,
+  setLocation,
+}: {
+  goal: MonthlyGoal | undefined;
+  setLocation: (path: string) => void;
+}) {
+  const goalDisplay = goal?.goalWhat?.trim() || goal?.goalStatement?.trim() || "";
+  const hasGoal = goalDisplay.length > 0;
+
+  return (
+    <Card className="overflow-visible" data-testid="card-monthly-promise">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2">
+            <Footprints className="h-4 w-4 text-primary" />
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Monthly Promise</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-edit-monthly-promise">
+            <Pencil className="h-3.5 w-3.5 mr-1" />
+            {hasGoal ? "Edit" : "Set"}
+          </Button>
+        </div>
+        {hasGoal ? (
+          <div>
+            <p className="text-sm font-medium" data-testid="text-monthly-promise">{goalDisplay}</p>
+            {goal?.blockingHabit && (
+              <p className="text-xs text-muted-foreground mt-1">
+                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                Watch for: {goal.blockingHabit}
               </p>
             )}
-            <Button
-              onClick={() => {
-                setLocation(buttonPath);
-                window.scrollTo(0, 0);
-              }}
-              data-testid="button-next-step"
-              className="mt-2"
-            >
-              {buttonLabel}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            {goal?.goalHow && (
+              <p className="text-xs text-muted-foreground mt-1">
+                <Footprints className="h-3 w-3 inline mr-1" />
+                Next step: {goal.goalHow}
+              </p>
+            )}
           </div>
-        </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No goal set this month. A clear promise gives each day direction.</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -456,7 +471,7 @@ function NorthStarStrip({
             <FileText className="h-5 w-5 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium">Set up your Identity Document</p>
-              <p className="text-xs text-muted-foreground">Define your identity, vision, and values to guide your practice</p>
+              <p className="text-xs text-muted-foreground">Define your identity, vision, and values</p>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
           </div>
@@ -473,18 +488,11 @@ function NorthStarStrip({
             {identityDoc?.identity && (
               <p className="text-sm" data-testid="text-identity">
                 <span className="font-medium text-muted-foreground">Identity: </span>
-                {identityDoc.identity.length > 100
-                  ? identityDoc.identity.slice(0, 100) + "..."
-                  : identityDoc.identity}
+                {identityDoc.identity.length > 100 ? identityDoc.identity.slice(0, 100) + "..." : identityDoc.identity}
               </p>
             )}
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setLocation("/identity")}
-            data-testid="button-edit-northstar"
-          >
+          <Button size="icon" variant="ghost" onClick={() => setLocation("/identity")} data-testid="button-edit-northstar">
             <Pencil className="h-4 w-4" />
           </Button>
         </div>
@@ -513,9 +521,9 @@ function NorthStarStrip({
             <p className="text-sm text-muted-foreground">
               How will I practice <span className="font-medium text-foreground">{todayValue}</span> today?
             </p>
-            <Textarea
+            <VoiceTextarea
               value={localIntention}
-              onChange={(e) => handleIntentionChange(e.target.value)}
+              onChange={(val) => handleIntentionChange(val)}
               placeholder={`My plan to practice ${todayValue} today...`}
               className="resize-none text-sm"
               rows={2}
@@ -531,177 +539,172 @@ function NorthStarStrip({
   );
 }
 
-function GoalLadderStrip({
-  quarterlyGoal,
-  monthlyGoal,
+function DailyHabitsSection({
+  todaysHabits,
+  habitStatusMap,
+  completedCount,
+  skippedCount,
+  cycleHabitMutation,
+  hasMorning,
+  hasEvening,
+  hasAccess,
+  todayStr,
   setLocation,
 }: {
-  quarterlyGoal: QuarterlyGoal | undefined;
-  monthlyGoal: MonthlyGoal | undefined;
+  todaysHabits: Habit[];
+  habitStatusMap: Map<number, string>;
+  completedCount: number;
+  skippedCount: number;
+  cycleHabitMutation: { mutate: (vars: { habitId: number; currentStatus: string | null }) => void; isPending: boolean };
+  hasMorning: boolean;
+  hasEvening: boolean;
+  hasAccess: boolean;
+  todayStr: string;
   setLocation: (path: string) => void;
 }) {
-  const quarterFocus = quarterlyGoal?.outcomeStatement?.trim() || "";
-  const monthGoal = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
-  const todayMove = monthlyGoal?.nextConcreteStep?.trim() || monthlyGoal?.goalHow?.trim() || "";
+  const journalItems = hasAccess ? [
+    {
+      id: "morning-journal",
+      name: "Morning Journal",
+      isDone: hasMorning,
+      icon: Sun,
+      iconClass: "text-amber-500",
+      onClick: () => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); },
+    },
+    {
+      id: "evening-journal",
+      name: "Evening Journal",
+      isDone: hasEvening,
+      icon: Moon,
+      iconClass: "text-indigo-500",
+      onClick: () => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); },
+    },
+  ] : [];
 
-  if (!quarterFocus && !monthGoal) return null;
-
-  return (
-    <Card className="overflow-visible" data-testid="card-goal-ladder">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Target className="h-4 w-4 text-primary" />
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Goal Ladder</p>
-        </div>
-        <div className="space-y-2">
-          {quarterFocus && (
-            <div className="flex items-start gap-3 cursor-pointer hover-elevate rounded-md px-2 py-1.5" onClick={() => setLocation("/quarterly-goal")} data-testid="ladder-quarter">
-              <Badge variant="outline" className="shrink-0 text-xs no-default-active-elevate">Q</Badge>
-              <p className="text-sm">{quarterFocus}</p>
-            </div>
-          )}
-          {monthGoal && (
-            <div className="flex items-start gap-3 cursor-pointer hover-elevate rounded-md px-2 py-1.5" onClick={() => setLocation("/monthly-goal")} data-testid="ladder-month">
-              <Badge variant="outline" className="shrink-0 text-xs no-default-active-elevate">M</Badge>
-              <p className="text-sm font-medium">{monthGoal}</p>
-            </div>
-          )}
-          {todayMove && (
-            <div className="flex items-start gap-3 rounded-md px-2 py-1.5 bg-primary/[0.04]" data-testid="ladder-today">
-              <Badge className="shrink-0 text-xs">Now</Badge>
-              <p className="text-sm">{todayMove}</p>
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MonthlyGoalCard({
-  goal,
-  setLocation,
-}: {
-  goal: MonthlyGoal | undefined;
-  setLocation: (path: string) => void;
-}) {
-  const goalDisplay = goal?.goalWhat?.trim() || goal?.goalStatement?.trim() || "";
-  const hasGoal = goalDisplay.length > 0;
-
-  if (!hasGoal) {
-    return (
-      <Card className="overflow-visible" data-testid="card-monthly-goal">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-              <Target className="h-4 w-4 text-primary" />
-            </div>
-            <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
-            No goal set for this month. A clear goal gives every day direction.
-          </p>
-          <Button
-            size="sm"
-            onClick={() => setLocation("/monthly-goal")}
-            data-testid="button-set-monthly-goal"
-          >
-            Set Goal
-            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const totalItems = todaysHabits.length + journalItems.length;
+  const totalDone = completedCount + journalItems.filter(j => j.isDone).length;
 
   return (
-    <Card className="overflow-visible" data-testid="card-monthly-goal">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-            <Target className="h-4 w-4 text-primary" />
-          </div>
-          <div>
-            <CardTitle className="font-serif text-lg">Goal Review</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">Quick 2-min daily check-in</p>
-          </div>
+    <Card className="overflow-visible" data-testid="card-daily-habits">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
+          <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
+            {totalDone}/{totalItems} done{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
+          </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setLocation("/monthly-goal")}
-          data-testid="button-edit-monthly-goal"
-        >
-          <Pencil className="h-3.5 w-3.5 mr-1.5" />
-          Edit
-        </Button>
+        {totalItems > 0 && (
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${totalItems > 0 ? (totalDone / totalItems) * 100 : 0}%` }}
+            />
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="rounded-md bg-primary/[0.04] border border-primary/10 px-4 py-3">
-          <p className="text-sm font-medium leading-relaxed" data-testid="text-goal-statement">{goalDisplay}</p>
-          {goal?.goalWhen && (
-            <p className="text-xs text-muted-foreground mt-1" data-testid="text-goal-when">{goal.goalWhen}</p>
+      <CardContent className="pb-4">
+        <ul className="space-y-2">
+          {journalItems.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={item.onClick}
+              data-testid={`habit-item-${item.id}`}
+            >
+              <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
+                item.isDone ? "bg-primary border-primary" : "border-border"
+              }`}>
+                {item.isDone && <Check className="h-3 w-3 text-primary-foreground" />}
+              </div>
+              <item.icon className={`h-4 w-4 ${item.iconClass} shrink-0`} />
+              <span className={`text-sm ${item.isDone ? "line-through text-muted-foreground" : ""}`}>
+                {item.name}
+              </span>
+              {!item.isDone && (
+                <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto" />
+              )}
+            </li>
+          ))}
+
+          {todaysHabits.map((habit) => {
+            const status = habitStatusMap.get(habit.id) || null;
+            const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
+            return (
+              <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
+                <button
+                  role="checkbox"
+                  aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
+                  aria-label={`${habit.name} - ${status === "completed" ? "completed" : status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                  className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                    status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                  }`}
+                  onClick={() => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })}
+                  data-testid={`habit-cycle-${habit.id}`}
+                >
+                  {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                  {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                </button>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
+                <span className={`text-sm flex-1 ${
+                  status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
+                }`}>
+                  {habit.name}
+                </span>
+                {habit.motivatingReason && (
+                  <span className="text-xs text-muted-foreground italic hidden sm:inline max-w-[120px] truncate" title={habit.motivatingReason}>
+                    {habit.motivatingReason}
+                  </span>
+                )}
+                {status === "skipped" && (
+                  <span className="text-xs text-muted-foreground ml-auto">skipped</span>
+                )}
+              </li>
+            );
+          })}
+
+          {totalItems === 0 && (
+            <li>
+              <p className="text-sm text-muted-foreground" data-testid="text-no-habits">
+                No habits scheduled for today
+              </p>
+            </li>
           )}
-        </div>
+        </ul>
 
-        <div className="space-y-3">
-          <div className="flex items-start gap-3" data-testid="review-blocking">
-            <div className="h-6 w-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
-              <AlertTriangle className="h-3 w-3 text-destructive" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Does this block my goal?</p>
-              {goal?.blockingHabit ? (
-                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-blocking-habit">Watch for: {goal.blockingHabit}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-0.5">Notice what pulls you off track today</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3" data-testid="review-next-step">
-            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Footprints className="h-3 w-3 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">What's the next concrete step?</p>
-              {goal?.goalHow ? (
-                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-goal-how">Plan: {goal.goalHow}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-0.5">One small action you can take today</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3" data-testid="review-enjoy">
-            <div className="h-6 w-6 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Heart className="h-3 w-3 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">How can I enjoy the process?</p>
-              {goal?.fun ? (
-                <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-goal-fun">{goal.fun}</p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-0.5">Happiness lives in the pursuit</p>
-              )}
-            </div>
-          </div>
+        <div className="mt-3">
+          <Button variant="ghost" size="sm" onClick={() => setLocation("/habits")} data-testid="button-manage-habits">
+            Manage Habits
+            <ArrowRight className="ml-1 h-3 w-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function Q2FocusCard({
+function WeeklyItemsSection({
+  thisWeekEntries,
   q2Items,
+  weekStartDate,
+  today,
+  journals,
+  weekCompletions,
+  habits,
   setLocation,
 }: {
+  thisWeekEntries: EisenhowerEntry[];
   q2Items: EisenhowerEntry[];
+  weekStartDate: Date;
+  today: Date;
+  journals: Journal[];
+  weekCompletions: HabitCompletion[];
+  habits: Habit[];
   setLocation: (path: string) => void;
 }) {
   const queryClient = useQueryClient();
+  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+  const weekEndStr = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+
   const toggleMutation = useMutation({
     mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
       const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
@@ -712,221 +715,87 @@ function Q2FocusCard({
     },
   });
 
-  return (
-    <Card className="overflow-visible" data-testid="card-q2-focus">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-serif">Today's Q2 Focus</CardTitle>
-        <p className="text-xs italic text-muted-foreground">
-          Begin — to begin is half the work
-        </p>
-      </CardHeader>
-      <CardContent className="pb-4">
-        {q2Items.length === 0 ? (
-          <p className="text-sm text-muted-foreground" data-testid="text-no-q2">
-            No Q2 items scheduled
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {q2Items.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center gap-3"
-                data-testid={`q2-item-${item.id}`}
-              >
-                <button
-                  role="checkbox"
-                  aria-checked={item.status === "completed" ? true : item.status === "skipped" ? "mixed" : false}
-                  aria-label={`${item.task} - ${item.status === "completed" ? "completed" : item.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
-                  className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                    item.status === "completed" ? "bg-primary border-primary" : item.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMutation.mutate({ id: item.id, currentStatus: item.status || null });
-                  }}
-                  data-testid={`q2-cycle-${item.id}`}
-                >
-                  {item.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                  {item.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
-                </button>
-                <span
-                  className={`text-sm cursor-pointer ${
-                    item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""
-                  }`}
-                  onClick={() => setLocation("/eisenhower")}
-                >
-                  {item.task}
-                </span>
-                {item.status === "skipped" && (
-                  <span className="text-xs text-muted-foreground ml-auto">skipped</span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function HabitsChecklist({
-  todaysHabits,
-  habitStatusMap,
-  completedCount,
-  skippedCount,
-  cycleHabitMutation,
-}: {
-  todaysHabits: Habit[];
-  habitStatusMap: Map<number, string>;
-  completedCount: number;
-  skippedCount: number;
-  cycleHabitMutation: { mutate: (vars: { habitId: number; currentStatus: string | null }) => void; isPending: boolean };
-}) {
-  return (
-    <Card className="overflow-visible" data-testid="card-habits">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
-          <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
-            {completedCount}/{todaysHabits.length} completed{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-4">
-        {todaysHabits.length === 0 ? (
-          <p className="text-sm text-muted-foreground" data-testid="text-no-habits">
-            No habits scheduled for today
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {todaysHabits.map((habit) => {
-              const status = habitStatusMap.get(habit.id) || null;
-              const catStyle =
-                CATEGORY_STYLES[(habit.category as string) || "health"] ||
-                CATEGORY_STYLES.health;
-              return (
-                <li
-                  key={habit.id}
-                  className="flex items-center gap-3"
-                  data-testid={`habit-item-${habit.id}`}
-                >
-                  <button
-                    role="checkbox"
-                    aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
-                    aria-label={`${habit.name} - ${status === "completed" ? "completed" : status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
-                    className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                      status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
-                    }`}
-                    onClick={() =>
-                      cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })
-                    }
-                    data-testid={`habit-cycle-${habit.id}`}
-                  >
-                    {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                    {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
-                  </button>
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
-                  <span
-                    className={`text-sm ${
-                      status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
-                    }`}
-                  >
-                    {habit.name}
-                  </span>
-                  {status === "skipped" && (
-                    <span className="text-xs text-muted-foreground ml-auto">skipped</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function MiniCalendar({
-  weekStartDate,
-  today,
-  journals,
-  weekCompletions,
-  habits,
-}: {
-  weekStartDate: Date;
-  today: Date;
-  journals: Journal[];
-  weekCompletions: HabitCompletion[];
-  habits: Habit[];
-}) {
+  const weekQ2 = thisWeekEntries.filter(e => e.quadrant === "q2");
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i));
 
   return (
-    <Card className="overflow-visible" data-testid="card-mini-calendar">
-      <CardContent className="p-4">
+    <Card className="overflow-visible" data-testid="card-weekly-items">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <CardTitle className="text-base font-serif">This Week</CardTitle>
+          <span className="text-xs text-muted-foreground">
+            {format(weekStartDate, "MMM d")} — {format(endOfWeek(today, { weekStartsOn: 1 }), "MMM d")}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pb-4">
+        {q2Items.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Today's Q2 Focus</p>
+            <ul className="space-y-1.5">
+              {q2Items.map((item) => (
+                <li key={item.id} className="flex items-center gap-3" data-testid={`q2-item-${item.id}`}>
+                  <button
+                    role="checkbox"
+                    aria-checked={item.status === "completed" ? true : item.status === "skipped" ? "mixed" : false}
+                    aria-label={`${item.task} - ${item.status === "completed" ? "completed" : item.status === "skipped" ? "skipped" : "not tracked"}`}
+                    className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                      item.status === "completed" ? "bg-primary border-primary" : item.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMutation.mutate({ id: item.id, currentStatus: item.status || null });
+                    }}
+                    data-testid={`q2-cycle-${item.id}`}
+                  >
+                    {item.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                    {item.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                  </button>
+                  <span className={`text-sm ${
+                    item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""
+                  }`}>{item.task}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {weekQ2.length > 0 && weekQ2.length !== q2Items.length && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Week's Q2 Items ({weekQ2.filter(e => e.completed).length}/{weekQ2.length} done)
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-open-eisenhower">
+              Open Eisenhower Matrix
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-1">
           {days.map((day, i) => {
             const dayStr = format(day, "yyyy-MM-dd");
             const dayCode = DAY_CODES[day.getDay()];
             const isTodayDay = isToday(day);
-
             const dayJournals = journals.filter((j) => j.date === dayStr);
             const hasMJ = dayJournals.some((j) => j.session === "morning");
             const hasEJ = dayJournals.some((j) => j.session === "evening");
-
-            const dayHabits = habits.filter((h) =>
-              h.cadence.split(",").includes(dayCode)
-            );
-            const dayCompleted = weekCompletions.filter(
-              (hc) => hc.date === dayStr
-            );
-            const allHabitsDone =
-              dayHabits.length > 0 &&
-              dayHabits.every((h) =>
-                dayCompleted.some((c) => c.habitId === h.id)
-              );
+            const dayHabits = habits.filter((h) => h.cadence.split(",").includes(dayCode));
+            const dayCompleted = weekCompletions.filter((hc) => hc.date === dayStr);
+            const allHabitsDone = dayHabits.length > 0 && dayHabits.every((h) => dayCompleted.some((c) => c.habitId === h.id));
 
             return (
               <div
                 key={i}
-                className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-md ${
-                  isTodayDay ? "ring-2 ring-primary/50" : ""
-                }`}
+                className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-md ${isTodayDay ? "ring-2 ring-primary/50" : ""}`}
                 data-testid={`calendar-day-${dayStr}`}
               >
-                <span
-                  className={`text-xs font-medium ${
-                    isTodayDay ? "text-primary" : "text-muted-foreground"
-                  }`}
-                >
-                  {DAY_LABELS[i]}
-                </span>
-                <span
-                  className={`text-sm font-medium ${
-                    isTodayDay ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {format(day, "d")}
-                </span>
+                <span className={`text-xs font-medium ${isTodayDay ? "text-primary" : "text-muted-foreground"}`}>{DAY_LABELS[i]}</span>
+                <span className={`text-sm font-medium ${isTodayDay ? "text-foreground" : "text-muted-foreground"}`}>{format(day, "d")}</span>
                 <div className="flex items-center gap-1 mt-0.5">
-                  {hasMJ && (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-amber-500"
-                      title="Morning journal"
-                    />
-                  )}
-                  {hasEJ && (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-indigo-500"
-                      title="Evening journal"
-                    />
-                  )}
-                  {allHabitsDone && (
-                    <span
-                      className="h-1.5 w-1.5 rounded-full bg-green-500"
-                      title="All habits done"
-                    />
-                  )}
+                  {hasMJ && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Morning journal" />}
+                  {hasEJ && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" title="Evening journal" />}
+                  {allHabitsDone && <span className="h-1.5 w-1.5 rounded-full bg-green-500" title="All habits done" />}
                 </div>
               </div>
             );
@@ -992,9 +861,7 @@ function EveningSection({
       <CardContent className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Moon className="h-5 w-5 text-indigo-500 shrink-0" />
-          <div>
-            <p className="text-base font-medium font-serif" data-testid="text-evening-title">Evening</p>
-          </div>
+          <p className="text-base font-medium font-serif" data-testid="text-evening-title">Evening</p>
         </div>
 
         {todayValue && (
@@ -1002,9 +869,9 @@ function EveningSection({
             <p className="text-sm text-muted-foreground">
               How did you practice <span className="font-medium text-foreground">{todayValue}</span> today?
             </p>
-            <Textarea
+            <VoiceTextarea
               value={localReflection}
-              onChange={(e) => handleReflectionChange(e.target.value)}
+              onChange={(val) => handleReflectionChange(val)}
               placeholder={`Describe how you practiced ${todayValue} today...`}
               className="resize-none text-sm"
               rows={3}
@@ -1022,88 +889,72 @@ function EveningSection({
           </p>
         )}
 
-        <div>
-          <Button
-            variant={hasEvening ? "outline" : "default"}
-            onClick={() => {
-              setLocation(`/journal/${todayStr}/evening`);
-              window.scrollTo(0, 0);
-            }}
-            data-testid="button-evening-journal"
-            className="w-full"
-          >
-            <Moon className="mr-2 h-4 w-4" />
-            {hasEvening ? "Review Evening Journal" : "Start Evening Journal"}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+        <Button
+          variant={hasEvening ? "outline" : "default"}
+          onClick={() => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); }}
+          data-testid="button-evening-journal"
+          className="w-full"
+        >
+          <Moon className="mr-2 h-4 w-4" />
+          {hasEvening ? "Review Evening Journal" : "Start Evening Journal"}
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RegulationLink({ setLocation }: { setLocation: (path: string) => void }) {
+  return (
+    <Card
+      className="overflow-visible hover-elevate cursor-pointer"
+      onClick={() => setLocation("/regulation")}
+      data-testid="card-regulation-link"
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+            <Shield className="h-5 w-5 text-rose-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Regulation Now</p>
+            <p className="text-xs text-muted-foreground">
+              Emotional containment, breathwork, micro-movement
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Heart className="h-3.5 w-3.5 text-muted-foreground" />
+            <Wind className="h-3.5 w-3.5 text-muted-foreground" />
+            <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function SupportSection({
-  setLocation,
-}: {
-  setLocation: (path: string) => void;
-}) {
-  const items = [
-    {
-      title: "Emotional Containment (60 sec)",
-      description: "feel \u2192 name \u2192 regulate \u2192 move",
-      path: "/emotional-processing",
-      icon: Heart,
-      testId: "button-emotional",
-    },
-    {
-      title: "Integrative Meditation",
-      description: "quiet your mind, write one insight",
-      path: "/meditation",
-      icon: Brain,
-      testId: "button-meditation",
-    },
-    {
-      title: "EQ Module",
-      description: "reflect on interactions",
-      path: "/empathy",
-      icon: Users,
-      testId: "button-eq",
-    },
-    {
-      title: "Identity Document",
-      description: "revisit who you are becoming",
-      path: "/identity",
-      icon: FileText,
-      testId: "button-identity",
-    },
-  ];
-
+function LibraryLink({ setLocation }: { setLocation: (path: string) => void }) {
   return (
-    <div data-testid="section-support">
-      <h3 className="text-sm font-medium text-muted-foreground mb-3">
-        Need support now?
-      </h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {items.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Card
-              key={item.testId}
-              className="overflow-visible hover-elevate cursor-pointer"
-              onClick={() => setLocation(item.path)}
-              data-testid={item.testId}
-            >
-              <CardContent className="p-4">
-                <Icon className="h-5 w-5 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {item.description}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </div>
+    <Card
+      className="overflow-visible hover-elevate cursor-pointer"
+      onClick={() => setLocation("/tools")}
+      data-testid="card-library-link"
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Library</p>
+            <p className="text-xs text-muted-foreground">
+              Guides, frameworks, and self-development tools
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -791,7 +791,7 @@ export async function registerRoutes(
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection } = req.body;
+      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight } = req.body;
       const doc = await storage.upsertIdentityDocument({
         userId,
         identity: identity || "",
@@ -803,11 +803,48 @@ export async function registerRoutes(
         todayValue: todayValue || "",
         todayIntention: todayIntention ?? "",
         todayReflection: todayReflection ?? "",
+        visionBoardMain: visionBoardMain ?? "",
+        visionBoardLeft: visionBoardLeft ?? "",
+        visionBoardRight: visionBoardRight ?? "",
       });
       res.json(doc);
     } catch (error) {
       console.error("Error saving identity document:", error);
       res.status(500).json({ error: "Failed to save identity document" });
+    }
+  });
+
+  app.put("/api/vision-board", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { slot, imageData } = req.body;
+      if (!["main", "left", "right"].includes(slot)) {
+        return res.status(400).json({ error: "Invalid slot. Use main, left, or right." });
+      }
+      const existing = await storage.getIdentityDocument(userId);
+      const updates: any = {
+        userId,
+        identity: existing?.identity || "",
+        vision: existing?.vision || "",
+        values: existing?.values || "",
+        yearVision: existing?.yearVision ?? "",
+        yearVisualization: existing?.yearVisualization ?? "",
+        purpose: existing?.purpose ?? "",
+        todayValue: existing?.todayValue || "",
+        todayIntention: existing?.todayIntention ?? "",
+        todayReflection: existing?.todayReflection ?? "",
+        visionBoardMain: existing?.visionBoardMain ?? "",
+        visionBoardLeft: existing?.visionBoardLeft ?? "",
+        visionBoardRight: existing?.visionBoardRight ?? "",
+      };
+      if (slot === "main") updates.visionBoardMain = imageData || "";
+      if (slot === "left") updates.visionBoardLeft = imageData || "";
+      if (slot === "right") updates.visionBoardRight = imageData || "";
+      const doc = await storage.upsertIdentityDocument(updates);
+      res.json({ success: true, slot });
+    } catch (error) {
+      console.error("Error saving vision board:", error);
+      res.status(500).json({ error: "Failed to save vision board image" });
     }
   });
 
