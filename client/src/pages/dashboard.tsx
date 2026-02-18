@@ -213,7 +213,7 @@ export default function DashboardPage() {
 
   const isGoalComplete = (g: MonthlyGoal | undefined) => {
     if (!g) return false;
-    const requiredFields = [g.value, g.strengths, g.advantage, g.goalWhat, g.goalWhen, g.goalWhere, g.goalHow, g.blockingHabit, g.habitAddress, g.prize, g.fun, g.deadline];
+    const requiredFields = [g.value, g.strengths, g.advantage, g.goalWhat, g.goalWhen, g.goalWhere, g.goalHow, g.successProof, g.proofMetric, g.weeklyBehavior, g.bestResult, g.innerObstacle, g.obstacleTrigger, g.obstacleThought, g.obstacleEmotion, g.obstacleBehavior, g.ifThenPlan1, g.ifThenPlan2, g.prize, g.fun, g.deadline];
     return requiredFields.every(f => f && f.trim().length > 0);
   };
 

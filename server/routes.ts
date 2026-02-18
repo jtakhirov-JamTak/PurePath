@@ -365,6 +365,17 @@ export async function registerRoutes(
         if (monthlyGoal.strengths) systemPrompt += `\nStrengths: ${monthlyGoal.strengths}`;
         if (monthlyGoal.blockingHabit) systemPrompt += `\nBlocking habit: ${monthlyGoal.blockingHabit}`;
         if (monthlyGoal.habitAddress) systemPrompt += `\nPlan to address it: ${monthlyGoal.habitAddress}`;
+        if (monthlyGoal.successProof) systemPrompt += `\nSuccess proof: ${monthlyGoal.successProof}`;
+        if (monthlyGoal.proofMetric) systemPrompt += `\nMetric: ${monthlyGoal.proofMetric}`;
+        if (monthlyGoal.weeklyBehavior) systemPrompt += `\nWeekly behavior: ${monthlyGoal.weeklyBehavior}`;
+        if (monthlyGoal.bestResult) systemPrompt += `\nBest result: ${monthlyGoal.bestResult}`;
+        if (monthlyGoal.innerObstacle) systemPrompt += `\nInner obstacle: ${monthlyGoal.innerObstacle}`;
+        if (monthlyGoal.obstacleTrigger) systemPrompt += `\nObstacle trigger: ${monthlyGoal.obstacleTrigger}`;
+        if (monthlyGoal.obstacleThought) systemPrompt += `\nObstacle thought: ${monthlyGoal.obstacleThought}`;
+        if (monthlyGoal.obstacleEmotion) systemPrompt += `\nObstacle emotion: ${monthlyGoal.obstacleEmotion}`;
+        if (monthlyGoal.obstacleBehavior) systemPrompt += `\nObstacle behavior: ${monthlyGoal.obstacleBehavior}`;
+        if (monthlyGoal.ifThenPlan1) systemPrompt += `\nIF-THEN plan 1: ${monthlyGoal.ifThenPlan1}`;
+        if (monthlyGoal.ifThenPlan2) systemPrompt += `\nIF-THEN plan 2: ${monthlyGoal.ifThenPlan2}`;
         systemPrompt += `\nWeave this goal context naturally into your coaching when relevant. Don't force it, but be aware of it.`;
       }
       const messages = [

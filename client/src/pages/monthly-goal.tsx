@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { VoiceTextarea } from "@/components/voice-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,11 +76,20 @@ export default function MonthlyGoalPage() {
   const [goalWhen, setGoalWhen] = useState("");
   const [goalWhere, setGoalWhere] = useState("");
   const [goalHow, setGoalHow] = useState("");
-  const [blockingHabit, setBlockingHabit] = useState("");
-  const [habitAddress, setHabitAddress] = useState("");
   const [prize, setPrize] = useState("");
   const [fun, setFun] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [successProof, setSuccessProof] = useState("");
+  const [proofMetric, setProofMetric] = useState("");
+  const [weeklyBehavior, setWeeklyBehavior] = useState("");
+  const [bestResult, setBestResult] = useState("");
+  const [innerObstacle, setInnerObstacle] = useState("");
+  const [obstacleTrigger, setObstacleTrigger] = useState("");
+  const [obstacleThought, setObstacleThought] = useState("");
+  const [obstacleEmotion, setObstacleEmotion] = useState("");
+  const [obstacleBehavior, setObstacleBehavior] = useState("");
+  const [ifThenPlan1, setIfThenPlan1] = useState("");
+  const [ifThenPlan2, setIfThenPlan2] = useState("");
 
   useEffect(() => {
     if (goal) {
@@ -92,11 +100,20 @@ export default function MonthlyGoalPage() {
       setGoalWhen(goal.goalWhen || "");
       setGoalWhere(goal.goalWhere || "");
       setGoalHow(goal.goalHow || "");
-      setBlockingHabit(goal.blockingHabit || "");
-      setHabitAddress(goal.habitAddress || "");
       setPrize(goal.prize || "");
       setFun(goal.fun || "");
       setDeadline(goal.deadline || "");
+      setSuccessProof(goal.successProof || "");
+      setProofMetric(goal.proofMetric || "");
+      setWeeklyBehavior(goal.weeklyBehavior || "");
+      setBestResult(goal.bestResult || "");
+      setInnerObstacle(goal.innerObstacle || "");
+      setObstacleTrigger(goal.obstacleTrigger || "");
+      setObstacleThought(goal.obstacleThought || "");
+      setObstacleEmotion(goal.obstacleEmotion || "");
+      setObstacleBehavior(goal.obstacleBehavior || "");
+      setIfThenPlan1(goal.ifThenPlan1 || "");
+      setIfThenPlan2(goal.ifThenPlan2 || "");
     }
   }, [goal]);
 
@@ -111,8 +128,8 @@ export default function MonthlyGoalPage() {
         goalWhen: goalWhen.trim(),
         goalWhere: goalWhere.trim(),
         goalHow: goalHow.trim(),
-        blockingHabit: blockingHabit.trim(),
-        habitAddress: habitAddress.trim(),
+        blockingHabit: goal?.blockingHabit || "",
+        habitAddress: goal?.habitAddress || "",
         prize: prize.trim(),
         fun: fun.trim(),
         deadline: deadline.trim(),
@@ -120,6 +137,17 @@ export default function MonthlyGoalPage() {
         successMarker: goal?.successMarker || "",
         why: goal?.why || "",
         nextConcreteStep: goal?.nextConcreteStep || "",
+        successProof: successProof.trim(),
+        proofMetric: proofMetric.trim(),
+        weeklyBehavior: weeklyBehavior.trim(),
+        bestResult: bestResult.trim(),
+        innerObstacle: innerObstacle.trim(),
+        obstacleTrigger: obstacleTrigger.trim(),
+        obstacleThought: obstacleThought.trim(),
+        obstacleEmotion: obstacleEmotion.trim(),
+        obstacleBehavior: obstacleBehavior.trim(),
+        ifThenPlan1: ifThenPlan1.trim(),
+        ifThenPlan2: ifThenPlan2.trim(),
       });
     },
     onSuccess: () => {
@@ -131,19 +159,9 @@ export default function MonthlyGoalPage() {
     },
   });
 
-  const hasChanges =
-    value !== (goal?.value || "") ||
-    strengths !== (goal?.strengths || "") ||
-    advantage !== (goal?.advantage || "") ||
-    goalWhat !== (goal?.goalWhat || "") ||
-    goalWhen !== (goal?.goalWhen || "") ||
-    goalWhere !== (goal?.goalWhere || "") ||
-    goalHow !== (goal?.goalHow || "") ||
-    blockingHabit !== (goal?.blockingHabit || "") ||
-    habitAddress !== (goal?.habitAddress || "") ||
-    prize !== (goal?.prize || "") ||
-    fun !== (goal?.fun || "") ||
-    deadline !== (goal?.deadline || "");
+  const allFields = [value, strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, successProof, proofMetric, weeklyBehavior, bestResult, innerObstacle, obstacleTrigger, obstacleThought, obstacleEmotion, obstacleBehavior, ifThenPlan1, ifThenPlan2, prize, fun, deadline];
+  const goalFields = [goal?.value, goal?.strengths, goal?.advantage, goal?.goalWhat, goal?.goalWhen, goal?.goalWhere, goal?.goalHow, goal?.successProof, goal?.proofMetric, goal?.weeklyBehavior, goal?.bestResult, goal?.innerObstacle, goal?.obstacleTrigger, goal?.obstacleThought, goal?.obstacleEmotion, goal?.obstacleBehavior, goal?.ifThenPlan1, goal?.ifThenPlan2, goal?.prize, goal?.fun, goal?.deadline];
+  const hasChanges = allFields.some((f, i) => f !== (goalFields[i] || ""));
 
   const fieldLabels: [string, string][] = [
     [value, "What do I value?"],
@@ -153,8 +171,17 @@ export default function MonthlyGoalPage() {
     [goalWhen, "Goal: When?"],
     [goalWhere, "Goal: Where?"],
     [goalHow, "Goal: How?"],
-    [blockingHabit, "Blocking habit"],
-    [habitAddress, "How to address it"],
+    [successProof, "Success Proof"],
+    [proofMetric, "Metric"],
+    [weeklyBehavior, "Weekly Behavior"],
+    [bestResult, "Best Result"],
+    [innerObstacle, "Inner Obstacle"],
+    [obstacleTrigger, "Trigger"],
+    [obstacleThought, "Thought"],
+    [obstacleEmotion, "Emotion"],
+    [obstacleBehavior, "Behavior"],
+    [ifThenPlan1, "IF-THEN Plan 1"],
+    [ifThenPlan2, "IF-THEN Plan 2"],
     [prize, "Prize"],
     [fun, "How to have fun"],
     [deadline, "Deadline"],
@@ -174,6 +201,9 @@ export default function MonthlyGoalPage() {
 
   const hasVision = identityDoc?.vision?.trim();
   const hasIdentity = identityDoc?.identity?.trim();
+
+  let cardNum = 0;
+  const nextCard = () => { cardNum++; return cardNum; };
 
   return (
     <AppLayout>
@@ -262,7 +292,7 @@ export default function MonthlyGoalPage() {
           <Card className="overflow-visible" data-testid="card-value">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">1</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">What do I value?</CardTitle>
                   <CardDescription>What matters most to you right now? What value does this month serve?</CardDescription>
@@ -283,7 +313,7 @@ export default function MonthlyGoalPage() {
           <Card className="overflow-visible" data-testid="card-strengths">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">2</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">What am I already good at?</CardTitle>
                   <CardDescription>What do people compliment you on? What comes naturally to you?</CardDescription>
@@ -304,7 +334,7 @@ export default function MonthlyGoalPage() {
           <Card className="overflow-visible" data-testid="card-advantage">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">3</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">How can I use that to my advantage?</CardTitle>
                   <CardDescription>How can your strengths move you toward your vision?</CardDescription>
@@ -325,7 +355,7 @@ export default function MonthlyGoalPage() {
           <Card className="overflow-visible" data-testid="card-goal">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">4</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">Select a Goal</CardTitle>
                   <CardDescription>Be precise. A real goal answers all four.</CardDescription>
@@ -335,77 +365,131 @@ export default function MonthlyGoalPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">What?</Label>
-                <VoiceTextarea
-                  value={goalWhat}
-                  onChange={(val) => setGoalWhat(val)}
-                  placeholder="e.g. Complete a 5K run"
-                  className="min-h-[60px] text-base"
-                  data-testid="input-goal-what"
-                />
+                <VoiceTextarea value={goalWhat} onChange={(val) => setGoalWhat(val)} placeholder="e.g. Complete a 5K run" className="min-h-[60px] text-base" data-testid="input-goal-what" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">When?</Label>
-                <VoiceTextarea
-                  value={goalWhen}
-                  onChange={(val) => setGoalWhen(val)}
-                  placeholder="e.g. By the last Sunday of this month, running 3x per week"
-                  className="min-h-[60px] text-base"
-                  data-testid="input-goal-when"
-                />
+                <VoiceTextarea value={goalWhen} onChange={(val) => setGoalWhen(val)} placeholder="e.g. By the last Sunday of this month" className="min-h-[60px] text-base" data-testid="input-goal-when" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Where?</Label>
-                <VoiceTextarea
-                  value={goalWhere}
-                  onChange={(val) => setGoalWhere(val)}
-                  placeholder="e.g. At the park near my house, mornings before work"
-                  className="min-h-[60px] text-base"
-                  data-testid="input-goal-where"
-                />
+                <VoiceTextarea value={goalWhere} onChange={(val) => setGoalWhere(val)} placeholder="e.g. At the park near my house" className="min-h-[60px] text-base" data-testid="input-goal-where" />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">How?</Label>
-                <VoiceTextarea
-                  value={goalHow}
-                  onChange={(val) => setGoalHow(val)}
-                  placeholder="e.g. Follow a Couch-to-5K plan, track with a running app, lay out clothes the night before"
-                  className="min-h-[60px] text-base"
-                  data-testid="input-goal-how"
-                />
+                <VoiceTextarea value={goalHow} onChange={(val) => setGoalHow(val)} placeholder="e.g. Follow a Couch-to-5K plan" className="min-h-[60px] text-base" data-testid="input-goal-how" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-visible" data-testid="card-blocking-habit">
+          <Card className="overflow-visible" data-testid="card-deadline">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">5</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">What habit is blocking my goal?</CardTitle>
-                  <CardDescription>Name it honestly. Then decide how to address it.</CardDescription>
+                  <CardTitle className="font-serif text-lg">Deadline</CardTitle>
+                  <CardDescription>Set a specific date. One month is concrete and forces focus.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} data-testid="input-deadline" />
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-success-proof">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Success Proof</CardTitle>
+                  <CardDescription>Observable proof a stranger would agree is real.</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">The blocking habit</Label>
-                <VoiceTextarea
-                  value={blockingHabit}
-                  onChange={(val) => setBlockingHabit(val)}
-                  placeholder="e.g. Staying up too late scrolling my phone, so I'm too tired to exercise in the morning"
-                  className="min-h-[60px] text-base"
-                  data-testid="input-blocking-habit"
-                />
+                <Label className="text-sm font-medium">The clearest proof of me achieving my goal is...</Label>
+                <VoiceTextarea value={successProof} onChange={(val) => setSuccessProof(val)} placeholder="Observable proof \u2014 if a stranger saw it, they\u2019d agree it\u2019s real" className="min-h-[60px] text-base" data-testid="input-success-proof" />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">How can I address it?</Label>
-                <VoiceTextarea
-                  value={habitAddress}
-                  onChange={(val) => setHabitAddress(val)}
-                  placeholder="e.g. Phone goes on airplane mode at 10 PM. Alarm is across the room."
-                  className="min-h-[60px] text-base"
-                  data-testid="input-habit-address"
-                />
+                <Label className="text-sm font-medium">Metric (how measured)</Label>
+                <VoiceTextarea value={proofMetric} onChange={(val) => setProofMetric(val)} placeholder="How will you measure this?" className="min-h-[60px] text-base" data-testid="input-proof-metric" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Weekly behavior that would cause it</Label>
+                <VoiceTextarea value={weeklyBehavior} onChange={(val) => setWeeklyBehavior(val)} placeholder="What weekly action drives this result?" className="min-h-[60px] text-base" data-testid="input-weekly-behavior" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-best-result">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Best Result</CardTitle>
+                  <CardDescription>Visualize the best possible outcome of achieving this proof point.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <VoiceTextarea value={bestResult} onChange={(val) => setBestResult(val)} placeholder="If I achieve this proof point, the best result is..." className="min-h-[70px] text-base" data-testid="input-best-result" />
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-inner-obstacle">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Inner Obstacle</CardTitle>
+                  <CardDescription>Identify the internal block \u2014 not external circumstances. Visualize the exact moment it happens.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">The main thing inside me that will block this is...</Label>
+                <VoiceTextarea value={innerObstacle} onChange={(val) => setInnerObstacle(val)} placeholder="Name the inner obstacle (not external)" className="min-h-[60px] text-base" data-testid="input-inner-obstacle" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Trigger (situation)</Label>
+                <VoiceTextarea value={obstacleTrigger} onChange={(val) => setObstacleTrigger(val)} placeholder="What specific situation triggers this?" className="min-h-[60px] text-base" data-testid="input-obstacle-trigger" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Thought (what I tell myself)</Label>
+                <VoiceTextarea value={obstacleThought} onChange={(val) => setObstacleThought(val)} placeholder="What thought runs through my mind?" className="min-h-[60px] text-base" data-testid="input-obstacle-thought" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Emotion (what I feel)</Label>
+                <VoiceTextarea value={obstacleEmotion} onChange={(val) => setObstacleEmotion(val)} placeholder="What emotion comes up?" className="min-h-[60px] text-base" data-testid="input-obstacle-emotion" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Behavior (what I do)</Label>
+                <VoiceTextarea value={obstacleBehavior} onChange={(val) => setObstacleBehavior(val)} placeholder="What do I end up doing?" className="min-h-[60px] text-base" data-testid="input-obstacle-behavior" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-if-then-plans">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Implementation Plans</CardTitle>
+                  <CardDescription>Write 2 IF-THEN plans. Small beats big. Immediate beats delayed.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Plan 1: IF... THEN...</Label>
+                <VoiceTextarea value={ifThenPlan1} onChange={(val) => setIfThenPlan1(val)} placeholder="IF (specific trigger happens) THEN (I will do a small, immediate action)" className="min-h-[60px] text-base" data-testid="input-if-then-plan-1" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Plan 2: IF... THEN...</Label>
+                <VoiceTextarea value={ifThenPlan2} onChange={(val) => setIfThenPlan2(val)} placeholder="IF (specific trigger happens) THEN (I will do a small, immediate action)" className="min-h-[60px] text-base" data-testid="input-if-then-plan-2" />
               </div>
             </CardContent>
           </Card>
@@ -413,7 +497,7 @@ export default function MonthlyGoalPage() {
           <Card className="overflow-visible" data-testid="card-prize">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">6</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">Prize</CardTitle>
                   <CardDescription>What reward are you giving yourself when you hit this goal?</CardDescription>
@@ -421,20 +505,14 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <VoiceTextarea
-                value={prize}
-                onChange={(val) => setPrize(val)}
-                placeholder="e.g. New running shoes, a weekend trip, a nice dinner out..."
-                className="min-h-[60px] text-base"
-                data-testid="input-prize"
-              />
+              <VoiceTextarea value={prize} onChange={(val) => setPrize(val)} placeholder="e.g. New running shoes, a weekend trip, a nice dinner out..." className="min-h-[60px] text-base" data-testid="input-prize" />
             </CardContent>
           </Card>
 
           <Card className="overflow-visible" data-testid="card-fun">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">7</Badge>
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
                   <CardTitle className="font-serif text-lg">How can I have fun with this?</CardTitle>
                   <CardDescription>Happiness lives in the pursuit, not the arrival. Make it enjoyable.</CardDescription>
@@ -442,33 +520,7 @@ export default function MonthlyGoalPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <VoiceTextarea
-                value={fun}
-                onChange={(val) => setFun(val)}
-                placeholder="e.g. Run with a friend, try new routes, listen to a favorite podcast while running..."
-                className="min-h-[60px] text-base"
-                data-testid="input-fun"
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-deadline">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="shrink-0 no-default-active-elevate">8</Badge>
-                <div>
-                  <CardTitle className="font-serif text-lg">Deadline</CardTitle>
-                  <CardDescription>Set a specific date to achieve your goal by. One month is concrete and forces focus.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                data-testid="input-deadline"
-              />
+              <VoiceTextarea value={fun} onChange={(val) => setFun(val)} placeholder="e.g. Run with a friend, try new routes, listen to a favorite podcast while running..." className="min-h-[60px] text-base" data-testid="input-fun" />
             </CardContent>
           </Card>
 

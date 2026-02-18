@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { ArrowRight, ArrowLeft, Check, Sparkles, Crosshair } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Sparkles, Crosshair, Eye, Timer } from "lucide-react";
 import type { MonthlyGoal } from "@shared/schema";
 
 function getCurrentMonthKey() {
@@ -23,7 +23,8 @@ interface WizardStep {
   title: string;
   part: 1 | 2;
   content: string;
-  fields?: { label: string; key: string; type?: string }[];
+  fields?: { label: string; key: string; type?: string; placeholder?: string }[];
+  visualization?: { prompt: string; seconds: number };
 }
 
 const STEPS: WizardStep[] = [
@@ -61,12 +62,46 @@ const STEPS: WizardStep[] = [
     ],
   },
   {
-    title: "Goals Eliminate Problems",
+    title: "Success Proof",
     part: 1,
-    content: "Pursuing what you want often removes what you don\u2019t. Goals dissolve irrelevant problems. Not every problem deserves attention. Ask one question: Does this block my goal? If not, ignore it and move forward.",
+    content: "Make your goal observable. If a stranger saw it, they\u2019d agree it\u2019s real. Vague outcomes feel good but produce nothing. Define proof that is undeniable, measurable, and tied to a weekly behavior you control.",
     fields: [
-      { label: "What habit is blocking my goal?", key: "blockingHabit" },
-      { label: "How can I address it?", key: "habitAddress" },
+      { label: "The clearest proof of me achieving my goal is...", key: "successProof", placeholder: "Observable proof \u2014 if a stranger saw it, they\u2019d agree it\u2019s real" },
+      { label: "Metric (how measured)", key: "proofMetric", placeholder: "How will you measure this?" },
+      { label: "Weekly behavior that would cause it", key: "weeklyBehavior", placeholder: "What weekly action drives this result?" },
+    ],
+  },
+  {
+    title: "Best Result",
+    part: 1,
+    content: "If I achieve this proof point, the best result is what? Connecting your goal to a vivid, emotional outcome fuels motivation. Take a moment to truly feel what success looks like.",
+    fields: [
+      { label: "If I achieve this proof point, the best result is...", key: "bestResult", placeholder: "Describe the best possible outcome vividly" },
+    ],
+    visualization: {
+      prompt: "Pause, close your eyes and imagine it vividly.",
+      seconds: 15,
+    },
+  },
+  {
+    title: "Inner Obstacle",
+    part: 1,
+    content: "Now identify the inner obstacle \u2014 not external. Not bad luck, other people, or circumstances. The thing inside you that will get in the way. Be honest. Visualize the exact real moment it happens.",
+    fields: [
+      { label: "The main thing inside me that will block this is...", key: "innerObstacle", placeholder: "Name the inner obstacle (not external)" },
+      { label: "Trigger (situation that activates it)", key: "obstacleTrigger", placeholder: "What specific situation triggers this?" },
+      { label: "Thought (what I tell myself)", key: "obstacleThought", placeholder: "What thought runs through my mind?" },
+      { label: "Emotion (what I feel)", key: "obstacleEmotion", placeholder: "What emotion comes up?" },
+      { label: "Behavior (what I do)", key: "obstacleBehavior", placeholder: "What do I end up doing?" },
+    ],
+  },
+  {
+    title: "Implementation Plans",
+    part: 1,
+    content: "Write 2 plans to address your inner obstacle. Use the IF-THEN format: IF a specific trigger happens, THEN you will do a small, immediate action. Small beats big. Immediate beats delayed.",
+    fields: [
+      { label: "Plan 1: IF... THEN...", key: "ifThenPlan1", placeholder: "IF (specific trigger happens) THEN (I will do a small, immediate action)" },
+      { label: "Plan 2: IF... THEN...", key: "ifThenPlan2", placeholder: "IF (specific trigger happens) THEN (I will do a small, immediate action)" },
     ],
   },
   {
@@ -115,6 +150,65 @@ const STEPS: WizardStep[] = [
 
 const TOTAL_STEPS = STEPS.length;
 
+function VisualizationTimer({ prompt, seconds }: { prompt: string; seconds: number }) {
+  const [running, setRunning] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(seconds);
+
+  useEffect(() => {
+    if (!running || timeLeft <= 0) return;
+    const id = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+    return () => clearInterval(id);
+  }, [running, timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft <= 0 && running) setRunning(false);
+  }, [timeLeft, running]);
+
+  const reset = () => { setRunning(false); setTimeLeft(seconds); };
+
+  return (
+    <Card className="overflow-visible border-dashed">
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start gap-3">
+          <Eye className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium mb-3">{prompt}</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Timer className="h-4 w-4 text-muted-foreground" />
+                <span className="text-lg font-mono tabular-nums">{timeLeft}s</span>
+              </div>
+              {!running && timeLeft === seconds && (
+                <Button size="sm" variant="outline" onClick={() => setRunning(true)} data-testid="button-viz-start">
+                  Start
+                </Button>
+              )}
+              {running && (
+                <Button size="sm" variant="outline" onClick={() => setRunning(false)} data-testid="button-viz-pause">
+                  Pause
+                </Button>
+              )}
+              {!running && timeLeft < seconds && timeLeft > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setRunning(true)} data-testid="button-viz-resume">
+                  Resume
+                </Button>
+              )}
+              {timeLeft <= 0 && (
+                <Badge variant="secondary" className="no-default-active-elevate">Done</Badge>
+              )}
+              {timeLeft < seconds && (
+                <Button size="sm" variant="ghost" onClick={reset} data-testid="button-viz-reset">
+                  Reset
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function GoalWizardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -135,6 +229,17 @@ export default function GoalWizardPage() {
   const [prize, setPrize] = useState("");
   const [fun, setFun] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [successProof, setSuccessProof] = useState("");
+  const [proofMetric, setProofMetric] = useState("");
+  const [weeklyBehavior, setWeeklyBehavior] = useState("");
+  const [bestResult, setBestResult] = useState("");
+  const [innerObstacle, setInnerObstacle] = useState("");
+  const [obstacleTrigger, setObstacleTrigger] = useState("");
+  const [obstacleThought, setObstacleThought] = useState("");
+  const [obstacleEmotion, setObstacleEmotion] = useState("");
+  const [obstacleBehavior, setObstacleBehavior] = useState("");
+  const [ifThenPlan1, setIfThenPlan1] = useState("");
+  const [ifThenPlan2, setIfThenPlan2] = useState("");
 
   const fieldState: Record<string, { value: string; setter: (v: string) => void }> = {
     value: { value, setter: setValue },
@@ -149,6 +254,17 @@ export default function GoalWizardPage() {
     prize: { value: prize, setter: setPrize },
     fun: { value: fun, setter: setFun },
     deadline: { value: deadline, setter: setDeadline },
+    successProof: { value: successProof, setter: setSuccessProof },
+    proofMetric: { value: proofMetric, setter: setProofMetric },
+    weeklyBehavior: { value: weeklyBehavior, setter: setWeeklyBehavior },
+    bestResult: { value: bestResult, setter: setBestResult },
+    innerObstacle: { value: innerObstacle, setter: setInnerObstacle },
+    obstacleTrigger: { value: obstacleTrigger, setter: setObstacleTrigger },
+    obstacleThought: { value: obstacleThought, setter: setObstacleThought },
+    obstacleEmotion: { value: obstacleEmotion, setter: setObstacleEmotion },
+    obstacleBehavior: { value: obstacleBehavior, setter: setObstacleBehavior },
+    ifThenPlan1: { value: ifThenPlan1, setter: setIfThenPlan1 },
+    ifThenPlan2: { value: ifThenPlan2, setter: setIfThenPlan2 },
   };
 
   const { data: goal } = useQuery<MonthlyGoal>({
@@ -175,6 +291,17 @@ export default function GoalWizardPage() {
       setPrize(goal.prize || "");
       setFun(goal.fun || "");
       setDeadline(goal.deadline || "");
+      setSuccessProof(goal.successProof || "");
+      setProofMetric(goal.proofMetric || "");
+      setWeeklyBehavior(goal.weeklyBehavior || "");
+      setBestResult(goal.bestResult || "");
+      setInnerObstacle(goal.innerObstacle || "");
+      setObstacleTrigger(goal.obstacleTrigger || "");
+      setObstacleThought(goal.obstacleThought || "");
+      setObstacleEmotion(goal.obstacleEmotion || "");
+      setObstacleBehavior(goal.obstacleBehavior || "");
+      setIfThenPlan1(goal.ifThenPlan1 || "");
+      setIfThenPlan2(goal.ifThenPlan2 || "");
     }
   }, [goal]);
 
@@ -198,6 +325,17 @@ export default function GoalWizardPage() {
         successMarker: "",
         why: "",
         nextConcreteStep: "",
+        successProof: successProof.trim(),
+        proofMetric: proofMetric.trim(),
+        weeklyBehavior: weeklyBehavior.trim(),
+        bestResult: bestResult.trim(),
+        innerObstacle: innerObstacle.trim(),
+        obstacleTrigger: obstacleTrigger.trim(),
+        obstacleThought: obstacleThought.trim(),
+        obstacleEmotion: obstacleEmotion.trim(),
+        obstacleBehavior: obstacleBehavior.trim(),
+        ifThenPlan1: ifThenPlan1.trim(),
+        ifThenPlan2: ifThenPlan2.trim(),
       });
     },
     onSuccess: () => {
@@ -257,7 +395,7 @@ export default function GoalWizardPage() {
         </Card>
 
         {currentStep.fields && (
-          <div className="space-y-5 mb-8">
+          <div className="space-y-5 mb-6">
             {currentStep.fields.map((field) => {
               const fs = fieldState[field.key];
               return (
@@ -274,7 +412,7 @@ export default function GoalWizardPage() {
                     <VoiceTextarea
                       value={fs.value}
                       onChange={(val) => fs.setter(val)}
-                      placeholder={`Enter your answer...`}
+                      placeholder={field.placeholder || "Enter your answer..."}
                       className="min-h-[70px] text-base"
                       data-testid={`input-wizard-${field.key}`}
                     />
@@ -282,6 +420,15 @@ export default function GoalWizardPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {currentStep.visualization && (
+          <div className="mb-8">
+            <VisualizationTimer
+              prompt={currentStep.visualization.prompt}
+              seconds={currentStep.visualization.seconds}
+            />
           </div>
         )}
 
