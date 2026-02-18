@@ -80,7 +80,7 @@ export default function DashboardPage() {
   const currentMonthKey = format(today, "yyyy-MM");
   const currentYear = today.getFullYear();
 
-  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
+  const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
     queryFn: async () => {
       const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
@@ -210,6 +210,20 @@ export default function DashboardPage() {
     ? identityDoc.values.split(",").map((v) => v.trim()).filter(Boolean)
     : [];
   const todayValue = identityDoc?.todayValue || null;
+
+  const isGoalComplete = (g: MonthlyGoal | undefined) => {
+    if (!g) return false;
+    const requiredFields = [g.value, g.strengths, g.advantage, g.goalWhat, g.goalWhen, g.goalWhere, g.goalHow, g.blockingHabit, g.habitAddress, g.prize, g.fun, g.deadline];
+    return requiredFields.every(f => f && f.trim().length > 0);
+  };
+
+  const redirectedRef = useRef(false);
+  useEffect(() => {
+    if (monthlyGoalLoaded && !isGoalComplete(monthlyGoal) && !redirectedRef.current) {
+      redirectedRef.current = true;
+      setLocation("/goal-wizard");
+    }
+  }, [monthlyGoalLoaded, monthlyGoal, setLocation]);
 
   if (authLoading) {
     return (
@@ -392,6 +406,12 @@ function MonthlyPromiseCard({
         {hasGoal ? (
           <div>
             <p className="text-sm font-medium" data-testid="text-monthly-promise">{goalDisplay}</p>
+            {goal?.deadline && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="text-monthly-deadline">
+                <Target className="h-3 w-3 inline mr-1" />
+                Deadline: {format(new Date(goal.deadline + "T00:00:00"), "MMM d, yyyy")}
+              </p>
+            )}
             {goal?.blockingHabit && (
               <p className="text-xs text-muted-foreground mt-1">
                 <AlertTriangle className="h-3 w-3 inline mr-1" />

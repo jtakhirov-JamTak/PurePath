@@ -379,6 +379,7 @@ export class DatabaseStorage implements IStorage {
           habitAddress: goal.habitAddress,
           prize: goal.prize,
           fun: goal.fun,
+          deadline: goal.deadline,
           goalStatement: goal.goalStatement,
           successMarker: goal.successMarker,
           why: goal.why,

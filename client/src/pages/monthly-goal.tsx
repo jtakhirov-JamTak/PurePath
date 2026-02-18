@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceTextarea } from "@/components/voice-input";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, ChevronLeft, ChevronRight, Eye, Crosshair, ArrowRight } from "lucide-react";
+import { Save, ChevronLeft, ChevronRight, Eye, Crosshair, ArrowRight, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
 import type { MonthlyGoal, IdentityDocument, QuarterlyGoal } from "@shared/schema";
 
@@ -80,6 +81,7 @@ export default function MonthlyGoalPage() {
   const [habitAddress, setHabitAddress] = useState("");
   const [prize, setPrize] = useState("");
   const [fun, setFun] = useState("");
+  const [deadline, setDeadline] = useState("");
 
   useEffect(() => {
     if (goal) {
@@ -94,6 +96,7 @@ export default function MonthlyGoalPage() {
       setHabitAddress(goal.habitAddress || "");
       setPrize(goal.prize || "");
       setFun(goal.fun || "");
+      setDeadline(goal.deadline || "");
     }
   }, [goal]);
 
@@ -112,6 +115,7 @@ export default function MonthlyGoalPage() {
         habitAddress: habitAddress.trim(),
         prize: prize.trim(),
         fun: fun.trim(),
+        deadline: deadline.trim(),
         goalStatement: goal?.goalStatement || goalWhat.trim(),
         successMarker: goal?.successMarker || "",
         why: goal?.why || "",
@@ -138,7 +142,24 @@ export default function MonthlyGoalPage() {
     blockingHabit !== (goal?.blockingHabit || "") ||
     habitAddress !== (goal?.habitAddress || "") ||
     prize !== (goal?.prize || "") ||
-    fun !== (goal?.fun || "");
+    fun !== (goal?.fun || "") ||
+    deadline !== (goal?.deadline || "");
+
+  const fieldLabels: [string, string][] = [
+    [value, "What do I value?"],
+    [strengths, "Strengths"],
+    [advantage, "Advantage"],
+    [goalWhat, "Goal: What?"],
+    [goalWhen, "Goal: When?"],
+    [goalWhere, "Goal: Where?"],
+    [goalHow, "Goal: How?"],
+    [blockingHabit, "Blocking habit"],
+    [habitAddress, "How to address it"],
+    [prize, "Prize"],
+    [fun, "How to have fun"],
+    [deadline, "Deadline"],
+  ];
+  const missingFields = fieldLabels.filter(([v]) => !v.trim()).map(([, label]) => label);
 
   if (isLoading) {
     return (
@@ -431,10 +452,36 @@ export default function MonthlyGoalPage() {
             </CardContent>
           </Card>
 
+          <Card className="overflow-visible" data-testid="card-deadline">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="shrink-0 no-default-active-elevate">8</Badge>
+                <div>
+                  <CardTitle className="font-serif text-lg">Deadline</CardTitle>
+                  <CardDescription>Set a specific date to achieve your goal by. One month is concrete and forces focus.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                data-testid="input-deadline"
+              />
+            </CardContent>
+          </Card>
+
+          {missingFields.length > 0 && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+              <p className="text-sm text-destructive font-medium">All fields are required. Please complete: {missingFields.join(", ")}.</p>
+            </div>
+          )}
+
           <div className="flex justify-end pt-2">
             <Button
               onClick={() => saveMutation.mutate()}
-              disabled={!hasChanges || saveMutation.isPending}
+              disabled={!hasChanges || saveMutation.isPending || missingFields.length > 0}
               data-testid="button-save-goal"
             >
               <Save className="h-4 w-4 mr-2" />

@@ -294,6 +294,7 @@ export const monthlyGoals = pgTable("monthly_goals", {
   habitAddress: text("habit_address").default(""),
   prize: text("prize").default(""),
   fun: text("fun").default(""),
+  deadline: text("deadline").default(""),
   goalStatement: text("goal_statement").notNull().default(""),
   successMarker: text("success_marker").default(""),
   why: text("why").default(""),

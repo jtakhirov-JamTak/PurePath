@@ -251,6 +251,12 @@ export default function PlanPage() {
               {hasGoal ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium" data-testid="text-plan-goal">{goalDisplay}</p>
+                  {monthlyGoal?.deadline && (
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground" data-testid="text-plan-deadline">
+                      <Target className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Deadline: {format(new Date(monthlyGoal.deadline + "T00:00:00"), "MMM d, yyyy")}</span>
+                    </div>
+                  )}
                   {monthlyGoal?.blockingHabit && (
                     <div className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />

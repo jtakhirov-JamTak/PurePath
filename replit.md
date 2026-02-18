@@ -21,7 +21,8 @@ Preferred communication style: Simple, everyday language.
   - **Learning**: Learn, Coach, Tools
   - Library section removed; "How to Set a Goal" and "Journaling Framework" moved to Tools.
 - **Key Features**:
-  - **Goal Hierarchy System**: Integrates Quarterly, Monthly, and Daily goals. Includes a dedicated page for Monthly Goals and Quarterly Goals, and a dashboard card showing the hierarchical flow.
+  - **Goal Hierarchy System**: Integrates Quarterly, Monthly, and Daily goals. Includes a dedicated page for Monthly Goals and Quarterly Goals, and a dashboard card showing the hierarchical flow. Monthly goals have a required deadline date field displayed on Today and Plan pages.
+  - **Goal-Setting Wizard** (`/goal-wizard`): 12-step self-guided "How to Set a Real Goal" exercise. Part 1 covers goal setting (strengths, precise goal definition, time horizon/deadline, blocking habits). Part 2 covers mindset (values, prizes, fun). All fields required. Users without a complete monthly goal are automatically redirected here from the dashboard.
   - **Journaling**: Restructured Morning and Evening journals with detailed sections (e.g., Self-Awareness, Gratitude, Trigger Log, 80/20 Tracker). Data stored as JSON.
   - **Habit Tracking**: Recurring habits with day-of-week cadence, duration, categories (health, wealth, etc.), and daily tracking. Habits can be typed (goal/learning/maintenance). Completions support `completed` and `skipped` statuses (cycling click: blank → completed → skipped → blank). Each habit requires a "Motivating Reason" field.
   - **Voice Input**: Web Speech API integration via VoiceTextarea/VoiceInput components (`client/src/components/voice-input.tsx`). Available on all text fields across journals, goals, identity doc, habits, and dashboard. Mic button appears inline; gracefully hidden if browser doesn't support speech recognition.

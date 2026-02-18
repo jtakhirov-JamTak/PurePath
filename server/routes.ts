@@ -855,7 +855,7 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
       const goal = await storage.getMonthlyGoal(userId, monthKey);
-      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "" });
+      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "", deadline: "" });
     } catch (error) {
       console.error("Error fetching monthly goal:", error);
       res.status(500).json({ error: "Failed to fetch monthly goal" });
@@ -866,7 +866,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const { monthKey, goalStatement, successMarker, value, why, nextConcreteStep, prize,
-        strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, blockingHabit, habitAddress, fun } = req.body;
+        strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, blockingHabit, habitAddress, fun, deadline } = req.body;
       const goal = await storage.upsertMonthlyGoal({
         userId,
         monthKey: monthKey || format(new Date(), "yyyy-MM"),
@@ -885,6 +885,7 @@ export async function registerRoutes(
         blockingHabit: blockingHabit ?? "",
         habitAddress: habitAddress ?? "",
         fun: fun ?? "",
+        deadline: deadline ?? "",
       });
       res.json(goal);
     } catch (error) {
