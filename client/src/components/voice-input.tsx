@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff } from "lucide-react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 
 interface SpeechRecognitionEvent {
   resultIndex: number;
@@ -35,6 +35,10 @@ function getSpeechRecognition(): (new () => SpeechRecognitionInstance) | null {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+function hasMediaRecorder(): boolean {
+  return typeof window !== "undefined" && typeof window.MediaRecorder !== "undefined";
+}
+
 interface VoiceInputButtonProps {
   onTranscript: (text: string) => void;
   className?: string;
@@ -43,18 +47,76 @@ interface VoiceInputButtonProps {
 
 export function VoiceInputButton({ onTranscript, className, disabled }: VoiceInputButtonProps) {
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   const SpeechRecognitionClass = getSpeechRecognition();
+  const canRecord = hasMediaRecorder();
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
     setIsListening(false);
   }, []);
 
-  const startListening = useCallback(() => {
+  const transcribeAudio = useCallback(async (blob: Blob) => {
+    setIsTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob, "recording.webm");
+      const res = await fetch("/api/audio/transcribe", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Transcription failed");
+      const data = await res.json();
+      if (data.text?.trim()) {
+        onTranscript(data.text.trim());
+      }
+    } catch (err) {
+      console.error("Transcription error:", err);
+    } finally {
+      setIsTranscribing(false);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+    }
+  }, [onTranscript]);
+
+  const startMediaRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        if (blob.size > 0) {
+          transcribeAudio(blob);
+        }
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsListening(true);
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      setIsListening(false);
+    }
+  }, [transcribeAudio]);
+
+  const startWebSpeech = useCallback(() => {
     if (!SpeechRecognitionClass) return;
 
     const recognition = new SpeechRecognitionClass();
@@ -88,10 +150,22 @@ export function VoiceInputButton({ onTranscript, className, disabled }: VoiceInp
     setIsListening(true);
   }, [SpeechRecognitionClass, onTranscript, stopListening]);
 
+  const startListening = useCallback(() => {
+    if (SpeechRecognitionClass) {
+      startWebSpeech();
+    } else if (canRecord) {
+      startMediaRecording();
+    }
+  }, [SpeechRecognitionClass, canRecord, startWebSpeech, startMediaRecording]);
+
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
+      if (recognitionRef.current) recognitionRef.current.abort();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
     };
   }, []);
@@ -104,7 +178,23 @@ export function VoiceInputButton({ onTranscript, className, disabled }: VoiceInp
     }
   }, [isListening, startListening, stopListening]);
 
-  if (!SpeechRecognitionClass) return null;
+  if (!SpeechRecognitionClass && !canRecord) return null;
+
+  if (isTranscribing) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        disabled
+        className={`shrink-0 text-muted-foreground ${className || ""}`}
+        data-testid="button-voice-transcribing"
+        aria-label="Transcribing audio"
+      >
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </Button>
+    );
+  }
 
   return (
     <Button

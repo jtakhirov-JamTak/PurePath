@@ -8,18 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useTimer, formatTime } from "@/hooks/use-timer";
 import {
-  Sun, Moon, Pencil, Check, ArrowRight,
-  Heart, Brain, Users, FileText, Minus,
-  Target, Footprints, AlertTriangle,
-  Shield, BookOpen, Activity, Wind,
+  Sun, Moon, Check, ArrowRight,
+  Heart, Activity, HandHeart,
+  Target, Minus, Play, Pause, RotateCcw,
+  Pencil, Plus, Trash2, Footprints,
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { format, startOfWeek, endOfWeek, addDays, isToday } from "date-fns";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal, QuarterlyGoal } from "@shared/schema";
+import { format, startOfWeek, endOfWeek } from "date-fns";
+import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, MonthlyGoal, Task } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const CATEGORY_STYLES: Record<string, string> = {
   health: "bg-emerald-500",
@@ -38,9 +40,7 @@ export default function DashboardPage() {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
   const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
-  const weekEndDate = endOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-  const weekEndStr = format(weekEndDate, "yyyy-MM-dd");
 
   const { data: purchases } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -72,13 +72,12 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const { data: weekCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+  const { data: allTasks = [] } = useQuery<Task[]>({
+    queryKey: ["/api/tasks"],
     enabled: !!user,
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
-  const currentYear = today.getFullYear();
 
   const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
@@ -89,32 +88,6 @@ export default function DashboardPage() {
     },
     enabled: !!user,
   });
-
-  const quarterKeys = [`${currentYear}-Q1`, `${currentYear}-Q2`, `${currentYear}-Q3`, `${currentYear}-Q4`];
-  const currentQuarterKey = `${currentYear}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
-
-  const { data: q1Goal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", quarterKeys[0]],
-    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[0]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
-    enabled: !!user,
-  });
-  const { data: q2Goal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", quarterKeys[1]],
-    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[1]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
-    enabled: !!user,
-  });
-  const { data: q3Goal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", quarterKeys[2]],
-    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[2]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
-    enabled: !!user,
-  });
-  const { data: q4Goal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", quarterKeys[3]],
-    queryFn: async () => { const res = await fetch(`/api/quarterly-goal?quarter=${quarterKeys[3]}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed"); return res.json(); },
-    enabled: !!user,
-  });
-
-  const quarterlyGoals = [q1Goal, q2Goal, q3Goal, q4Goal];
 
   const hasPhase12 = purchases?.some(
     (p) =>
@@ -127,42 +100,33 @@ export default function DashboardPage() {
 
   const todayDayCode = DAY_CODES[today.getDay()];
   const todaysHabits = habits.filter((h) => {
+    if (!h.active) return false;
     if (!h.cadence.split(",").includes(todayDayCode)) return false;
     if (h.startDate && todayStr < h.startDate) return false;
     if (h.endDate && todayStr > h.endDate) return false;
     return true;
   });
+
   const habitStatusMap = new Map<number, string>();
   habitCompletions.forEach((hc) => {
     habitStatusMap.set(hc.habitId, hc.status || "completed");
   });
-  const completedCount = todaysHabits.filter((h) =>
-    habitStatusMap.get(h.id) === "completed"
-  ).length;
-  const skippedCount = todaysHabits.filter((h) =>
-    habitStatusMap.get(h.id) === "skipped"
-  ).length;
 
   const todayJournals = journals.filter((j) => j.date === todayStr);
   const hasMorning = todayJournals.some((j) => j.session === "morning");
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
-  const q2Items = eisenhowerEntries.filter((e) => {
+  const todayTasks = allTasks.filter(t => t.date === todayStr).slice(0, 3);
+
+  const todayQ2Items = eisenhowerEntries.filter((e) => {
     if (e.quadrant !== "q2") return false;
-    if (!e.deadline) return false;
-    return e.deadline === todayStr;
+    if (e.scheduledDate) return e.scheduledDate === todayStr;
+    if (e.deadline) return e.deadline === todayStr;
+    return false;
   });
 
-  const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
-
   const cycleHabitMutation = useMutation({
-    mutationFn: async ({
-      habitId,
-      currentStatus,
-    }: {
-      habitId: number;
-      currentStatus: string | null;
-    }) => {
+    mutationFn: async ({ habitId, currentStatus }: { habitId: number; currentStatus: string | null }) => {
       if (currentStatus === null) {
         await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed" });
       } else if (currentStatus === "completed") {
@@ -173,43 +137,17 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr] });
     },
   });
 
-  const saveIdentityField = useCallback(
-    (fields: Partial<{ todayValue: string; todayIntention: string; todayReflection: string }>) => {
-      return apiRequest("PUT", "/api/identity-document", {
-        identity: identityDoc?.identity || "",
-        vision: identityDoc?.vision || "",
-        values: identityDoc?.values || "",
-        todayValue: fields.todayValue ?? identityDoc?.todayValue ?? "",
-        todayIntention: fields.todayIntention ?? identityDoc?.todayIntention ?? "",
-        todayReflection: fields.todayReflection ?? identityDoc?.todayReflection ?? "",
-      });
+  const toggleTaskMutation = useMutation({
+    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
+      return apiRequest("PATCH", `/api/tasks/${id}`, { completed: !completed });
     },
-    [identityDoc]
-  );
-
-  const todayValueMutation = useMutation({
-    mutationFn: async (value: string) => saveIdentityField({ todayValue: value }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
   });
-
-  const intentionMutation = useMutation({
-    mutationFn: async (intention: string) => saveIdentityField({ todayIntention: intention }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
-  });
-
-  const reflectionMutation = useMutation({
-    mutationFn: async (reflection: string) => saveIdentityField({ todayReflection: reflection }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] }); },
-  });
-
-  const valuesArray = identityDoc?.values
-    ? identityDoc.values.split(",").map((v) => v.trim()).filter(Boolean)
-    : [];
-  const todayValue = identityDoc?.todayValue || null;
 
   const isGoalComplete = (g: MonthlyGoal | undefined) => {
     if (!g) return false;
@@ -225,756 +163,719 @@ export default function DashboardPage() {
     }
   }, [monthlyGoalLoaded, monthlyGoal, setLocation]);
 
+  const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
+
   if (authLoading) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
-          <Skeleton className="h-40 w-full" data-testid="skeleton-cta" />
-          <Skeleton className="h-24 w-full" data-testid="skeleton-goals" />
+          <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
           <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
+          <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
         </div>
       </AppLayout>
     );
   }
 
+  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length;
+  const totalHabits = todaysHabits.length;
+  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
-        <YearVisionSection identityDoc={identityDoc} setLocation={setLocation} />
+      <div className="container mx-auto px-4 py-6 max-w-2xl space-y-5">
+        <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
+          <div>
+            <h1 className="font-serif text-2xl font-bold" data-testid="text-today-title">
+              {format(today, "EEEE, MMM d")}
+            </h1>
+            {goalDisplay && (
+              <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-monthly-promise">
+                <Target className="h-3 w-3 inline mr-1" />
+                {goalDisplay}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {!hasMorning && hasPhase12 && (
+              <Button
+                size="sm"
+                onClick={() => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); }}
+                data-testid="button-morning-journal"
+              >
+                <Sun className="h-4 w-4 mr-1" />
+                Morning
+              </Button>
+            )}
+            {hasMorning && !hasEvening && hasPhase12 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); }}
+                data-testid="button-evening-journal"
+              >
+                <Moon className="h-4 w-4 mr-1" />
+                Evening
+              </Button>
+            )}
+          </div>
+        </div>
 
-        <QuarterlyGoalsRow
-          quarterlyGoals={quarterlyGoals}
-          quarterKeys={quarterKeys}
-          currentQuarterKey={currentQuarterKey}
-          setLocation={setLocation}
-        />
+        {todaysHabits.length > 0 && (
+          <Card className="overflow-visible" data-testid="card-daily-habits">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <CardTitle className="text-base font-serif">Due Today</CardTitle>
+                <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
+                  {completedHabits}/{totalHabits} done
+                </span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0}%` }}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <ul className="space-y-2">
+                {todaysHabits.map((habit) => {
+                  const status = habitStatusMap.get(habit.id) || null;
+                  const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
+                  return (
+                    <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
+                      <button
+                        role="checkbox"
+                        aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
+                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                          status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                        }`}
+                        onClick={() => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })}
+                        data-testid={`habit-cycle-${habit.id}`}
+                      >
+                        {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                      </button>
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
+                      <span className={`text-sm flex-1 ${
+                        status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
+                      }`}>
+                        {habit.name}
+                      </span>
+                      {status === "skipped" && (
+                        <span className="text-xs text-muted-foreground">skipped</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
-        <MonthlyPromiseCard goal={monthlyGoal} setLocation={setLocation} />
+        {todaysHabits.length === 0 && (
+          <Card className="overflow-visible" data-testid="card-no-habits">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground" data-testid="text-no-habits">No habits due today.</p>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => setLocation("/habits")} data-testid="button-add-habits">
+                <Plus className="h-4 w-4 mr-1" />
+                Set up habits
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        <NorthStarStrip
-          identityDoc={identityDoc}
-          todayValue={todayValue}
-          todayIntention={identityDoc?.todayIntention || ""}
-          valuesArray={valuesArray}
-          setLocation={setLocation}
-          onSelectValue={(v) => todayValueMutation.mutate(v)}
-          onSaveIntention={(text) => intentionMutation.mutate(text)}
-          isSavingIntention={intentionMutation.isPending}
-        />
+        {todayTasks.length > 0 && (
+          <Card className="overflow-visible" data-testid="card-today-tasks">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <CardTitle className="text-base font-serif">Top Tasks</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setLocation("/tasks")} data-testid="button-manage-tasks">
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <ul className="space-y-2">
+                {todayTasks.map((task) => (
+                  <li key={task.id} className="flex items-center gap-3" data-testid={`task-item-${task.id}`}>
+                    <button
+                      className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                        task.completed ? "bg-primary border-primary" : "border-border"
+                      }`}
+                      onClick={() => toggleTaskMutation.mutate({ id: task.id, completed: task.completed || false })}
+                      data-testid={`task-toggle-${task.id}`}
+                    >
+                      {task.completed && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </button>
+                    <span className={`text-sm flex-1 ${task.completed ? "line-through text-muted-foreground" : ""}`}>
+                      {task.title}
+                    </span>
+                    {task.quadrant && (
+                      <Badge variant="outline" className="text-[10px]">{task.quadrant.toUpperCase()}</Badge>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
-        <DailyHabitsSection
-          todaysHabits={todaysHabits}
-          habitStatusMap={habitStatusMap}
-          completedCount={completedCount}
-          skippedCount={skippedCount}
-          cycleHabitMutation={cycleHabitMutation}
+        {todayQ2Items.length > 0 && (
+          <Card className="overflow-visible" data-testid="card-q2-blocks">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-serif">Scheduled Q2 Blocks</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <ul className="space-y-2">
+                {todayQ2Items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-3" data-testid={`q2-block-${item.id}`}>
+                    <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                    <span className="text-sm flex-1">{item.task}</span>
+                    {item.scheduledTime && (
+                      <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
+                    )}
+                    {item.durationMinutes && (
+                      <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        <JournalQuickEntry
+          todayStr={todayStr}
           hasMorning={hasMorning}
           hasEvening={hasEvening}
           hasAccess={!!hasPhase12}
-          todayStr={todayStr}
           setLocation={setLocation}
         />
 
-        <WeeklyItemsSection
-          thisWeekEntries={thisWeekEntries}
-          q2Items={q2Items}
-          weekStartDate={weekStartDate}
-          today={today}
-          journals={journals}
-          weekCompletions={weekCompletions}
-          habits={habits}
-          setLocation={setLocation}
-        />
-
-        <EveningSection
-          todayValue={todayValue}
-          todayReflection={identityDoc?.todayReflection || ""}
-          hasEvening={hasEvening}
-          hasAccess={!!hasPhase12}
-          todayStr={todayStr}
-          setLocation={setLocation}
-          onSaveReflection={(text) => reflectionMutation.mutate(text)}
-          isSaving={reflectionMutation.isPending}
-        />
-
-        <RegulationLink setLocation={setLocation} />
-
-        <LibraryLink setLocation={setLocation} />
+        <Card className="overflow-visible" data-testid="card-quick-tools">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-serif">Quick Tools</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => setQuickToolOpen("containment")}
+                data-testid="button-tool-containment"
+              >
+                <Heart className="h-5 w-5 text-rose-500" />
+                <span className="text-xs">Containment</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => setQuickToolOpen("movement")}
+                data-testid="button-tool-movement"
+              >
+                <Activity className="h-5 w-5 text-emerald-500" />
+                <span className="text-xs">Movement</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => setQuickToolOpen("compassion")}
+                data-testid="button-tool-compassion"
+              >
+                <HandHeart className="h-5 w-5 text-violet-500" />
+                <span className="text-xs">Compassion</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
+      <MovementModal open={quickToolOpen === "movement"} onClose={() => setQuickToolOpen(null)} />
+      <CompassionModal
+        open={quickToolOpen === "compassion"}
+        onClose={() => setQuickToolOpen(null)}
+        todayStr={todayStr}
+      />
     </AppLayout>
   );
 }
 
-function YearVisionSection({
-  identityDoc,
-  setLocation,
-}: {
-  identityDoc?: IdentityDocument;
-  setLocation: (path: string) => void;
-}) {
-  const yearVision = identityDoc?.yearVision?.trim() || "";
-
-  return (
-    <Card className="overflow-visible bg-primary/[0.03]" data-testid="card-year-vision">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-              <Target className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">1-Year Vision</p>
-              {yearVision ? (
-                <p className="text-sm font-medium mt-1" data-testid="text-year-vision">{yearVision}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground mt-1">Set your 1-year vision to guide everything below</p>
-              )}
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => setLocation("/plan")} data-testid="button-edit-year-vision">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function QuarterlyGoalsRow({
-  quarterlyGoals,
-  quarterKeys,
-  currentQuarterKey,
-  setLocation,
-}: {
-  quarterlyGoals: (QuarterlyGoal | undefined)[];
-  quarterKeys: string[];
-  currentQuarterKey: string;
-  setLocation: (path: string) => void;
-}) {
-  const labels = ["Q1", "Q2", "Q3", "Q4"];
-
-  return (
-    <div className="grid grid-cols-4 gap-2" data-testid="row-quarterly-goals">
-      {quarterlyGoals.map((goal, i) => {
-        const isCurrent = quarterKeys[i] === currentQuarterKey;
-        const focus = goal?.quarterlyFocus?.trim() || goal?.outcomeStatement?.trim() || "";
-        return (
-          <Card
-            key={quarterKeys[i]}
-            className={`overflow-visible cursor-pointer hover-elevate ${isCurrent ? "ring-2 ring-primary/50" : ""}`}
-            onClick={() => setLocation("/quarterly-goal")}
-            data-testid={`card-quarter-${labels[i].toLowerCase()}`}
-          >
-            <CardContent className="p-3">
-              <Badge variant={isCurrent ? "default" : "outline"} className="text-xs mb-1.5">
-                {labels[i]}
-              </Badge>
-              <p className="text-xs text-muted-foreground line-clamp-2" data-testid={`text-quarter-${labels[i].toLowerCase()}`}>
-                {focus || "Not set"}
-              </p>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
-function MonthlyPromiseCard({
-  goal,
-  setLocation,
-}: {
-  goal: MonthlyGoal | undefined;
-  setLocation: (path: string) => void;
-}) {
-  const goalDisplay = goal?.goalWhat?.trim() || goal?.goalStatement?.trim() || "";
-  const hasGoal = goalDisplay.length > 0;
-
-  return (
-    <Card className="overflow-visible" data-testid="card-monthly-promise">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="flex items-center gap-2">
-            <Footprints className="h-4 w-4 text-primary" />
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Monthly Promise</p>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-edit-monthly-promise">
-            <Pencil className="h-3.5 w-3.5 mr-1" />
-            {hasGoal ? "Edit" : "Set"}
-          </Button>
-        </div>
-        {hasGoal ? (
-          <div>
-            <p className="text-sm font-medium" data-testid="text-monthly-promise">{goalDisplay}</p>
-            {goal?.deadline && (
-              <p className="text-xs text-muted-foreground mt-1" data-testid="text-monthly-deadline">
-                <Target className="h-3 w-3 inline mr-1" />
-                Deadline: {format(new Date(goal.deadline + "T00:00:00"), "MMM d, yyyy")}
-              </p>
-            )}
-            {goal?.blockingHabit && (
-              <p className="text-xs text-muted-foreground mt-1">
-                <AlertTriangle className="h-3 w-3 inline mr-1" />
-                Watch for: {goal.blockingHabit}
-              </p>
-            )}
-            {goal?.goalHow && (
-              <p className="text-xs text-muted-foreground mt-1">
-                <Footprints className="h-3 w-3 inline mr-1" />
-                Next step: {goal.goalHow}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No goal set this month. A clear promise gives each day direction.</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function NorthStarStrip({
-  identityDoc,
-  todayValue,
-  todayIntention,
-  valuesArray,
-  setLocation,
-  onSelectValue,
-  onSaveIntention,
-  isSavingIntention,
-}: {
-  identityDoc?: IdentityDocument;
-  todayValue: string | null;
-  todayIntention: string;
-  valuesArray: string[];
-  setLocation: (path: string) => void;
-  onSelectValue: (v: string) => void;
-  onSaveIntention: (text: string) => void;
-  isSavingIntention: boolean;
-}) {
-  const [localIntention, setLocalIntention] = useState(todayIntention);
-  const [hasEditedIntention, setHasEditedIntention] = useState(false);
-  const intentionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!hasEditedIntention) {
-      setLocalIntention(todayIntention);
-    }
-  }, [todayIntention, hasEditedIntention]);
-
-  useEffect(() => {
-    return () => {
-      if (intentionDebounceRef.current) clearTimeout(intentionDebounceRef.current);
-    };
-  }, []);
-
-  const handleIntentionChange = useCallback(
-    (value: string) => {
-      setLocalIntention(value);
-      setHasEditedIntention(true);
-      if (intentionDebounceRef.current) clearTimeout(intentionDebounceRef.current);
-      intentionDebounceRef.current = setTimeout(() => {
-        onSaveIntention(value);
-        setHasEditedIntention(false);
-      }, 1000);
-    },
-    [onSaveIntention]
-  );
-
-  const hasContent = identityDoc?.identity || identityDoc?.values;
-
-  if (!hasContent) {
-    return (
-      <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setLocation("/identity")} data-testid="card-north-star">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">Set up your Identity Document</p>
-              <p className="text-xs text-muted-foreground">Define your identity, vision, and values</p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-visible" data-testid="card-north-star">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0 space-y-1">
-            {identityDoc?.identity && (
-              <p className="text-sm" data-testid="text-identity">
-                <span className="font-medium text-muted-foreground">Identity: </span>
-                {identityDoc.identity.length > 100 ? identityDoc.identity.slice(0, 100) + "..." : identityDoc.identity}
-              </p>
-            )}
-          </div>
-          <Button size="icon" variant="ghost" onClick={() => setLocation("/identity")} data-testid="button-edit-northstar">
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {valuesArray.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Today I practice:</p>
-            <div className="flex flex-wrap gap-2">
-              {valuesArray.map((v) => (
-                <Badge
-                  key={v}
-                  variant={todayValue === v ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => onSelectValue(v)}
-                  data-testid={`badge-select-value-${v}`}
-                >
-                  {v}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {todayValue && (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              How will I practice <span className="font-medium text-foreground">{todayValue}</span> today?
-            </p>
-            <VoiceTextarea
-              value={localIntention}
-              onChange={(val) => handleIntentionChange(val)}
-              placeholder={`My plan to practice ${todayValue} today...`}
-              className="resize-none text-sm"
-              rows={2}
-              data-testid="textarea-intention"
-            />
-            {isSavingIntention && (
-              <p className="text-xs text-muted-foreground" data-testid="text-saving-intention">Saving...</p>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function DailyHabitsSection({
-  todaysHabits,
-  habitStatusMap,
-  completedCount,
-  skippedCount,
-  cycleHabitMutation,
+function JournalQuickEntry({
+  todayStr,
   hasMorning,
   hasEvening,
   hasAccess,
-  todayStr,
   setLocation,
 }: {
-  todaysHabits: Habit[];
-  habitStatusMap: Map<number, string>;
-  completedCount: number;
-  skippedCount: number;
-  cycleHabitMutation: { mutate: (vars: { habitId: number; currentStatus: string | null }) => void; isPending: boolean };
+  todayStr: string;
   hasMorning: boolean;
   hasEvening: boolean;
   hasAccess: boolean;
-  todayStr: string;
-  setLocation: (path: string) => void;
-}) {
-  const journalItems = hasAccess ? [
-    {
-      id: "morning-journal",
-      name: "Morning Journal",
-      isDone: hasMorning,
-      icon: Sun,
-      iconClass: "text-amber-500",
-      onClick: () => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); },
-    },
-    {
-      id: "evening-journal",
-      name: "Evening Journal",
-      isDone: hasEvening,
-      icon: Moon,
-      iconClass: "text-indigo-500",
-      onClick: () => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); },
-    },
-  ] : [];
-
-  const totalItems = todaysHabits.length + journalItems.length;
-  const totalDone = completedCount + journalItems.filter(j => j.isDone).length;
-
-  return (
-    <Card className="overflow-visible" data-testid="card-daily-habits">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
-          <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
-            {totalDone}/{totalItems} done{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
-          </span>
-        </div>
-        {totalItems > 0 && (
-          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden mt-2">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${totalItems > 0 ? (totalDone / totalItems) * 100 : 0}%` }}
-            />
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="pb-4">
-        <ul className="space-y-2">
-          {journalItems.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-center gap-3 cursor-pointer"
-              onClick={item.onClick}
-              data-testid={`habit-item-${item.id}`}
-            >
-              <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
-                item.isDone ? "bg-primary border-primary" : "border-border"
-              }`}>
-                {item.isDone && <Check className="h-3 w-3 text-primary-foreground" />}
-              </div>
-              <item.icon className={`h-4 w-4 ${item.iconClass} shrink-0`} />
-              <span className={`text-sm ${item.isDone ? "line-through text-muted-foreground" : ""}`}>
-                {item.name}
-              </span>
-              {!item.isDone && (
-                <ArrowRight className="h-3 w-3 text-muted-foreground ml-auto" />
-              )}
-            </li>
-          ))}
-
-          {todaysHabits.map((habit) => {
-            const status = habitStatusMap.get(habit.id) || null;
-            const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
-            return (
-              <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
-                <button
-                  role="checkbox"
-                  aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
-                  aria-label={`${habit.name} - ${status === "completed" ? "completed" : status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
-                  className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                    status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
-                  }`}
-                  onClick={() => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })}
-                  data-testid={`habit-cycle-${habit.id}`}
-                >
-                  {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                  {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
-                </button>
-                <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
-                <span className={`text-sm flex-1 ${
-                  status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
-                }`}>
-                  {habit.name}
-                </span>
-                {habit.motivatingReason && (
-                  <span className="text-xs text-muted-foreground italic hidden sm:inline max-w-[120px] truncate" title={habit.motivatingReason}>
-                    {habit.motivatingReason}
-                  </span>
-                )}
-                {status === "skipped" && (
-                  <span className="text-xs text-muted-foreground ml-auto">skipped</span>
-                )}
-              </li>
-            );
-          })}
-
-          {totalItems === 0 && (
-            <li>
-              <p className="text-sm text-muted-foreground" data-testid="text-no-habits">
-                No habits scheduled for today
-              </p>
-            </li>
-          )}
-        </ul>
-
-        <div className="mt-3">
-          <Button variant="ghost" size="sm" onClick={() => setLocation("/habits")} data-testid="button-manage-habits">
-            Manage Habits
-            <ArrowRight className="ml-1 h-3 w-3" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function WeeklyItemsSection({
-  thisWeekEntries,
-  q2Items,
-  weekStartDate,
-  today,
-  journals,
-  weekCompletions,
-  habits,
-  setLocation,
-}: {
-  thisWeekEntries: EisenhowerEntry[];
-  q2Items: EisenhowerEntry[];
-  weekStartDate: Date;
-  today: Date;
-  journals: Journal[];
-  weekCompletions: HabitCompletion[];
-  habits: Habit[];
   setLocation: (path: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-  const weekEndStr = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const [quickNote, setQuickNote] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const toggleMutation = useMutation({
-    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
-      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
-      await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+  const saveMutation = useMutation({
+    mutationFn: async (note: string) => {
+      const session = hasMorning ? "evening" : "morning";
+      return apiRequest("PUT", "/api/journals", {
+        date: todayStr,
+        session,
+        reflections: note,
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     },
   });
 
-  const weekQ2 = thisWeekEntries.filter(e => e.quadrant === "q2");
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i));
-
-  return (
-    <Card className="overflow-visible" data-testid="card-weekly-items">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-base font-serif">This Week</CardTitle>
-          <span className="text-xs text-muted-foreground">
-            {format(weekStartDate, "MMM d")} — {format(endOfWeek(today, { weekStartsOn: 1 }), "MMM d")}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4 pb-4">
-        {q2Items.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Today's Q2 Focus</p>
-            <ul className="space-y-1.5">
-              {q2Items.map((item) => (
-                <li key={item.id} className="flex items-center gap-3" data-testid={`q2-item-${item.id}`}>
-                  <button
-                    role="checkbox"
-                    aria-checked={item.status === "completed" ? true : item.status === "skipped" ? "mixed" : false}
-                    aria-label={`${item.task} - ${item.status === "completed" ? "completed" : item.status === "skipped" ? "skipped" : "not tracked"}`}
-                    className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                      item.status === "completed" ? "bg-primary border-primary" : item.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
-                    }`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMutation.mutate({ id: item.id, currentStatus: item.status || null });
-                    }}
-                    data-testid={`q2-cycle-${item.id}`}
-                  >
-                    {item.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                    {item.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
-                  </button>
-                  <span className={`text-sm ${
-                    item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""
-                  }`}>{item.task}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {weekQ2.length > 0 && weekQ2.length !== q2Items.length && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              Week's Q2 Items ({weekQ2.filter(e => e.completed).length}/{weekQ2.length} done)
-            </p>
-            <Button variant="outline" size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-open-eisenhower">
-              Open Eisenhower Matrix
-              <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-1">
-          {days.map((day, i) => {
-            const dayStr = format(day, "yyyy-MM-dd");
-            const dayCode = DAY_CODES[day.getDay()];
-            const isTodayDay = isToday(day);
-            const dayJournals = journals.filter((j) => j.date === dayStr);
-            const hasMJ = dayJournals.some((j) => j.session === "morning");
-            const hasEJ = dayJournals.some((j) => j.session === "evening");
-            const dayHabits = habits.filter((h) => h.cadence.split(",").includes(dayCode));
-            const dayCompleted = weekCompletions.filter((hc) => hc.date === dayStr);
-            const allHabitsDone = dayHabits.length > 0 && dayHabits.every((h) => dayCompleted.some((c) => c.habitId === h.id));
-
-            return (
-              <div
-                key={i}
-                className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-md ${isTodayDay ? "ring-2 ring-primary/50" : ""}`}
-                data-testid={`calendar-day-${dayStr}`}
-              >
-                <span className={`text-xs font-medium ${isTodayDay ? "text-primary" : "text-muted-foreground"}`}>{DAY_LABELS[i]}</span>
-                <span className={`text-sm font-medium ${isTodayDay ? "text-foreground" : "text-muted-foreground"}`}>{format(day, "d")}</span>
-                <div className="flex items-center gap-1 mt-0.5">
-                  {hasMJ && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" title="Morning journal" />}
-                  {hasEJ && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" title="Evening journal" />}
-                  {allHabitsDone && <span className="h-1.5 w-1.5 rounded-full bg-green-500" title="All habits done" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EveningSection({
-  todayValue,
-  todayReflection,
-  hasEvening,
-  hasAccess,
-  todayStr,
-  setLocation,
-  onSaveReflection,
-  isSaving,
-}: {
-  todayValue: string | null;
-  todayReflection: string;
-  hasEvening: boolean;
-  hasAccess: boolean;
-  todayStr: string;
-  setLocation: (path: string) => void;
-  onSaveReflection: (text: string) => void;
-  isSaving: boolean;
-}) {
-  const [localReflection, setLocalReflection] = useState(todayReflection);
-  const [hasEdited, setHasEdited] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (!hasEdited) {
-      setLocalReflection(todayReflection);
-    }
-  }, [todayReflection, hasEdited]);
+  const handleNoteChange = useCallback((value: string) => {
+    setQuickNote(value);
+    setSaveStatus("saving");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (value.trim()) {
+        saveMutation.mutate(value);
+      } else {
+        setSaveStatus("idle");
+      }
+    }, 1500);
+  }, [saveMutation]);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
-
-  const handleReflectionChange = useCallback(
-    (value: string) => {
-      setLocalReflection(value);
-      setHasEdited(true);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        onSaveReflection(value);
-        setHasEdited(false);
-      }, 1000);
-    },
-    [onSaveReflection]
-  );
 
   if (!hasAccess) return null;
 
   return (
-    <Card className="overflow-visible" data-testid="card-evening">
-      <CardContent className="p-4 space-y-4">
-        <div className="flex items-center gap-3">
-          <Moon className="h-5 w-5 text-indigo-500 shrink-0" />
-          <p className="text-base font-medium font-serif" data-testid="text-evening-title">Evening</p>
+    <Card className="overflow-visible" data-testid="card-journal-quick">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <CardTitle className="text-base font-serif">
+            {hasMorning ? "Evening Thought" : "Morning Thought"}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {saveStatus === "saving" && (
+              <span className="text-xs text-muted-foreground" data-testid="text-save-status">Saving...</span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-xs text-green-600 dark:text-green-400" data-testid="text-save-status">
+                <Check className="h-3 w-3 inline mr-0.5" />
+                Saved
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const session = hasMorning ? "evening" : "morning";
+                setLocation(`/journal/${todayStr}/${session}`);
+                window.scrollTo(0, 0);
+              }}
+              data-testid="button-expand-journal"
+            >
+              Expand
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Button>
+          </div>
         </div>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <VoiceTextarea
+          value={quickNote}
+          onChange={handleNoteChange}
+          placeholder={hasMorning ? "What's on your mind this evening?" : "Set your intention for today..."}
+          rows={2}
+          className="resize-none text-sm"
+          data-testid="textarea-quick-journal"
+        />
+      </CardContent>
+    </Card>
+  );
+}
 
-        {todayValue && (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              How did you practice <span className="font-medium text-foreground">{todayValue}</span> today?
-            </p>
-            <VoiceTextarea
-              value={localReflection}
-              onChange={(val) => handleReflectionChange(val)}
-              placeholder={`Describe how you practiced ${todayValue} today...`}
-              className="resize-none text-sm"
-              rows={3}
-              data-testid="textarea-reflection"
-            />
-            {isSaving && (
-              <p className="text-xs text-muted-foreground" data-testid="text-saving">Saving...</p>
+const CONTAINMENT_STEPS = [
+  { label: "FEEL", instruction: "Notice the emotion in your body. Throat, chest, jaw. Don't push it away.", duration: 15 },
+  { label: "NAME", instruction: "Label the emotion: angry, sad, anxious, frustrated, hurt, scared.", duration: 0 },
+  { label: "REGULATE", instruction: "Take 3 slow breaths. In through your nose, out through your mouth.", duration: 20 },
+  { label: "MOVE", instruction: "Choose one small action: stand up, stretch, drink water, write one sentence.", duration: 0 },
+];
+
+function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [step, setStep] = useState(0);
+  const timer = useTimer(CONTAINMENT_STEPS[0].duration);
+  const [emotionName, setEmotionName] = useState("");
+  const [moveAction, setMoveAction] = useState("");
+  const queryClient = useQueryClient();
+
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const addTaskMutation = useMutation({
+    mutationFn: async (title: string) => {
+      return apiRequest("POST", "/api/tasks", {
+        title,
+        date: todayStr,
+        time: format(new Date(), "HH:mm"),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
+
+  const currentStep = CONTAINMENT_STEPS[step];
+  const isLastStep = step === CONTAINMENT_STEPS.length - 1;
+
+  const goNext = () => {
+    if (isLastStep) {
+      if (moveAction.trim()) {
+        addTaskMutation.mutate(moveAction.trim());
+      }
+      resetAndClose();
+      return;
+    }
+    const nextStep = step + 1;
+    setStep(nextStep);
+    const nextDuration = CONTAINMENT_STEPS[nextStep].duration;
+    if (nextDuration > 0) {
+      timer.setDuration(nextDuration);
+    }
+  };
+
+  const resetAndClose = () => {
+    setStep(0);
+    setEmotionName("");
+    setMoveAction("");
+    timer.setDuration(CONTAINMENT_STEPS[0].duration);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
+      <DialogContent className="sm:max-w-md" data-testid="modal-containment">
+        <DialogHeader>
+          <DialogTitle className="font-serif flex items-center gap-2">
+            <Heart className="h-5 w-5 text-rose-500" />
+            Emotional Containment
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            {CONTAINMENT_STEPS.map((_, i) => (
+              <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />
+            ))}
+          </div>
+
+          <div className="text-center space-y-3">
+            <Badge variant="secondary" className="text-sm">{currentStep.label}</Badge>
+            <p className="text-sm text-muted-foreground">{currentStep.instruction}</p>
+
+            {currentStep.duration > 0 && (
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative h-24 w-24">
+                  <svg className="h-24 w-24 -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+                    <circle
+                      cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
+                      className="text-primary transition-all duration-1000"
+                      strokeDasharray={`${2 * Math.PI * 54}`}
+                      strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-mono font-bold" data-testid="text-containment-timer">{formatTime(timer.seconds)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!timer.isRunning ? (
+                    <Button size="sm" onClick={timer.start} disabled={timer.seconds === 0} data-testid="button-containment-start">
+                      <Play className="h-4 w-4 mr-1" />
+                      {timer.isComplete ? "Done" : "Start"}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={timer.pause} data-testid="button-containment-pause">
+                      <Pause className="h-4 w-4 mr-1" />
+                      Pause
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={timer.reset} data-testid="button-containment-reset">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {["Angry", "Sad", "Anxious", "Frustrated", "Hurt", "Scared"].map(e => (
+                  <Badge
+                    key={e}
+                    variant={emotionName === e ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setEmotionName(e)}
+                    data-testid={`badge-emotion-${e.toLowerCase()}`}
+                  >
+                    {e}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-2">
+                <Textarea
+                  value={moveAction}
+                  onChange={(e) => setMoveAction(e.target.value)}
+                  placeholder="What small action will you take?"
+                  rows={2}
+                  className="text-sm resize-none"
+                  data-testid="input-move-action"
+                />
+                <p className="text-xs text-muted-foreground">This will be added to today's tasks</p>
+              </div>
             )}
           </div>
-        )}
 
-        {!todayValue && (
-          <p className="text-sm text-muted-foreground" data-testid="text-no-value-selected">
-            Select a value above to reflect on how you practiced it today.
-          </p>
-        )}
-
-        <Button
-          variant={hasEvening ? "outline" : "default"}
-          onClick={() => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); }}
-          data-testid="button-evening-journal"
-          className="w-full"
-        >
-          <Moon className="mr-2 h-4 w-4" />
-          {hasEvening ? "Review Evening Journal" : "Start Evening Journal"}
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={resetAndClose} data-testid="button-containment-close">
+              Close
+            </Button>
+            <Button
+              size="sm"
+              onClick={goNext}
+              disabled={currentStep.duration > 0 && !timer.isComplete && timer.seconds > 0}
+              data-testid="button-containment-next"
+            >
+              {isLastStep ? (moveAction.trim() ? "Add to Tasks & Done" : "Done") : "Next"}
+              <ArrowRight className="ml-1 h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function RegulationLink({ setLocation }: { setLocation: (path: string) => void }) {
+const MOVEMENT_SUGGESTIONS = [
+  "Walk around for 2 minutes",
+  "Stretch your arms and legs",
+  "Do 10 arm raises",
+  "Wash your hands or face",
+  "Stand and shake your body",
+];
+
+function MovementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const timer = useTimer(120);
+
+  const resetAndClose = () => {
+    timer.setDuration(120);
+    onClose();
+  };
+
   return (
-    <Card
-      className="overflow-visible hover-elevate cursor-pointer"
-      onClick={() => setLocation("/regulation")}
-      data-testid="card-regulation-link"
-    >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
-            <Shield className="h-5 w-5 text-rose-500" />
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
+      <DialogContent className="sm:max-w-md" data-testid="modal-movement">
+        <DialogHeader>
+          <DialogTitle className="font-serif flex items-center gap-2">
+            <Activity className="h-5 w-5 text-emerald-500" />
+            Micro Movement
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative h-28 w-28">
+              <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+                <circle
+                  cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
+                  className="text-emerald-500 transition-all duration-1000"
+                  strokeDasharray={`${2 * Math.PI * 54}`}
+                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-mono font-bold" data-testid="text-movement-timer">{formatTime(timer.seconds)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {!timer.isRunning ? (
+                <Button onClick={timer.start} disabled={timer.seconds === 0} data-testid="button-movement-start">
+                  <Play className="h-4 w-4 mr-1" />
+                  {timer.isComplete ? "Done" : "Start"}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={timer.pause} data-testid="button-movement-pause">
+                  <Pause className="h-4 w-4 mr-1" />
+                  Pause
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={timer.reset} data-testid="button-movement-reset">
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {[60, 120, 180].map(d => (
+                <Button
+                  key={d}
+                  variant={timer.totalSeconds === d ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => timer.setDuration(d)}
+                  data-testid={`button-movement-duration-${d}`}
+                >
+                  {formatTime(d)}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Regulation Now</p>
-            <p className="text-xs text-muted-foreground">
-              Emotional containment, breathwork, micro-movement
-            </p>
+
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Suggestions</p>
+            <ul className="space-y-1.5">
+              {MOVEMENT_SUGGESTIONS.map((s, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-sm text-muted-foreground">{s}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Heart className="h-3.5 w-3.5 text-muted-foreground" />
-            <Wind className="h-3.5 w-3.5 text-muted-foreground" />
-            <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={resetAndClose} data-testid="button-movement-close">
+              Close
+            </Button>
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function LibraryLink({ setLocation }: { setLocation: (path: string) => void }) {
+function CompassionModal({
+  open,
+  onClose,
+  todayStr,
+}: {
+  open: boolean;
+  onClose: () => void;
+  todayStr: string;
+}) {
+  const queryClient = useQueryClient();
+  const [whatsGoingOn, setWhatsGoingOn] = useState("");
+  const [lovedOneResponse, setLovedOneResponse] = useState("");
+  const [selfResponse, setSelfResponse] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const content = [
+        whatsGoingOn ? `What's going on: ${whatsGoingOn}` : "",
+        lovedOneResponse ? `To a loved one: ${lovedOneResponse}` : "",
+        selfResponse ? `To myself: ${selfResponse}` : "",
+      ].filter(Boolean).join("\n");
+      return apiRequest("PUT", "/api/journals", {
+        date: todayStr,
+        session: "morning",
+        reflections: content,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
+      setSaved(true);
+    },
+  });
+
+  const resetAndClose = () => {
+    setWhatsGoingOn("");
+    setLovedOneResponse("");
+    setSelfResponse("");
+    setSaved(false);
+    onClose();
+  };
+
   return (
-    <Card
-      className="overflow-visible hover-elevate cursor-pointer"
-      onClick={() => setLocation("/tools")}
-      data-testid="card-library-link"
-    >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <BookOpen className="h-5 w-5 text-primary" />
+    <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
+      <DialogContent className="sm:max-w-md" data-testid="modal-compassion">
+        <DialogHeader>
+          <DialogTitle className="font-serif flex items-center gap-2">
+            <HandHeart className="h-5 w-5 text-violet-500" />
+            Self-Compassion
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium mb-1.5">What's going on? <span className="text-muted-foreground font-normal">(optional)</span></p>
+              <VoiceTextarea
+                value={whatsGoingOn}
+                onChange={setWhatsGoingOn}
+                placeholder="Briefly describe the situation..."
+                rows={2}
+                className="resize-none text-sm"
+                data-testid="textarea-compassion-situation"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-1.5">What would you say to a loved one in this situation?</p>
+              <VoiceTextarea
+                value={lovedOneResponse}
+                onChange={setLovedOneResponse}
+                placeholder="Imagine someone you care about is going through this..."
+                rows={2}
+                className="resize-none text-sm"
+                data-testid="textarea-compassion-loved-one"
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-1.5">Now say that to yourself, as that loved one.</p>
+              <VoiceTextarea
+                value={selfResponse}
+                onChange={setSelfResponse}
+                placeholder="Speak to yourself with the same care..."
+                rows={2}
+                className="resize-none text-sm"
+                data-testid="textarea-compassion-self"
+              />
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Library</p>
-            <p className="text-xs text-muted-foreground">
-              Guides, frameworks, and self-development tools
-            </p>
+
+          <div className="flex justify-between items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => saveMutation.mutate()}
+              disabled={saved || saveMutation.isPending || (!lovedOneResponse.trim() && !selfResponse.trim())}
+              data-testid="button-compassion-save"
+            >
+              {saved ? (
+                <>
+                  <Check className="h-3 w-3 mr-1" />
+                  Saved to Journal
+                </>
+              ) : (
+                "Save to Journal"
+              )}
+            </Button>
+            <Button size="sm" onClick={resetAndClose} data-testid="button-compassion-done">
+              Done
+            </Button>
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

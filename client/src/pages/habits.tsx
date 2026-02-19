@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight, Pencil, Copy } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Habit, HabitCompletion } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
@@ -93,6 +93,35 @@ function getCategoryStyle(category: string | null) {
   return CATEGORY_STYLES[category || "health"] || CATEGORY_STYLES.health;
 }
 
+function getNextOccurrences(habit: Habit, count: number = 3): string[] {
+  const codes = habit.cadence.split(",");
+  const interval = habit.intervalWeeks || 1;
+  const results: string[] = [];
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+
+  const startDateObj = habit.startDate ? new Date(habit.startDate + "T00:00:00") : null;
+
+  for (let i = 0; i < 90 && results.length < count; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const dayCode = DAY_CODE_MAP[d.getDay()];
+    if (!codes.includes(dayCode)) continue;
+
+    if (habit.endDate && formatDate(d) > habit.endDate) break;
+    if (habit.startDate && formatDate(d) < habit.startDate) continue;
+
+    if (interval > 1 && startDateObj) {
+      const daysDiff = Math.floor((d.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      const weeksDiff = Math.floor(daysDiff / 7);
+      if (weeksDiff % interval !== 0) continue;
+    }
+
+    results.push(d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }));
+  }
+  return results;
+}
+
 export default function HabitsPage() {
   const qc = useQueryClient();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
@@ -114,6 +143,7 @@ export default function HabitsPage() {
     startDate: formatDate(new Date()),
     hasEndDate: false as boolean,
     endDate: "",
+    intervalWeeks: "1",
   });
 
   const { data: habits = [] } = useQuery<Habit[]>({
@@ -145,7 +175,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "" });
+    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "", intervalWeeks: "1" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -171,6 +201,7 @@ export default function HabitsPage() {
         time,
         startDate: data.startDate || null,
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
+        intervalWeeks: parseInt(data.intervalWeeks) || 1,
       });
     },
     onSuccess: () => {
@@ -202,6 +233,7 @@ export default function HabitsPage() {
         time,
         startDate: data.startDate || null,
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
+        intervalWeeks: parseInt(data.intervalWeeks) || 1,
       });
     },
     onSuccess: () => {
@@ -228,6 +260,7 @@ export default function HabitsPage() {
       startDate: habit.startDate || formatDate(new Date()),
       hasEndDate: !!habit.endDate,
       endDate: habit.endDate || "",
+      intervalWeeks: (habit.intervalWeeks || 1).toString(),
     });
     setSelectedDays(habit.cadence.split(","));
     setEditingHabit(habit);
@@ -237,6 +270,30 @@ export default function HabitsPage() {
   const deleteHabitMutation = useMutation({
     mutationFn: async (id: number) => {
       return apiRequest("DELETE", `/api/habits/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+  });
+
+  const duplicateHabitMutation = useMutation({
+    mutationFn: async (habit: Habit) => {
+      return apiRequest("POST", "/api/habits", {
+        name: `${habit.name} (copy)`,
+        motivatingReason: habit.motivatingReason || null,
+        category: habit.category,
+        habitType: habit.habitType,
+        timing: habit.timing,
+        cadence: habit.cadence,
+        recurring: habit.recurring,
+        duration: habit.duration,
+        startTime: habit.startTime || null,
+        endTime: habit.endTime || null,
+        time: habit.time || "09:00",
+        startDate: formatDate(new Date()),
+        endDate: null,
+        intervalWeeks: habit.intervalWeeks || 1,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
@@ -489,6 +546,27 @@ export default function HabitsPage() {
                   </div>
 
                   <div>
+                    <Label className="mb-1 block">Repeat Every</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={newHabit.intervalWeeks}
+                        onChange={(e) => setNewHabit({ ...newHabit, intervalWeeks: e.target.value })}
+                        className="w-20"
+                        data-testid="input-interval-weeks"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {parseInt(newHabit.intervalWeeks) === 1 ? "week" : "weeks"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {parseInt(newHabit.intervalWeeks) === 1 ? "Every week on selected days" : `Every ${newHabit.intervalWeeks} weeks on selected days`}
+                    </p>
+                  </div>
+
+                  <div>
                     <Label className="mb-1 block">Start Date</Label>
                     <Input
                       type="date"
@@ -666,6 +744,7 @@ export default function HabitsPage() {
                             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                               <Badge variant="outline" className="text-xs">
                                 {formatCadence(habit.cadence)}
+                                {(habit.intervalWeeks || 1) > 1 ? ` (every ${habit.intervalWeeks}w)` : ""}
                               </Badge>
                               {habit.duration && (
                                 <span className="flex items-center gap-1 text-xs">
@@ -696,9 +775,27 @@ export default function HabitsPage() {
                                 </span>
                               )}
                             </div>
+                            {(() => {
+                              const nextDates = getNextOccurrences(habit, 3);
+                              if (nextDates.length === 0) return null;
+                              return (
+                                <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-next-dates-${habit.id}`}>
+                                  Next: {nextDates.join(" · ")}
+                                </p>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => duplicateHabitMutation.mutate(habit)}
+                            disabled={activeHabits.length >= 5}
+                            data-testid={`button-duplicate-habit-${habit.id}`}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

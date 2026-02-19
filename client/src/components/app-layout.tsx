@@ -14,13 +14,10 @@ import {
   LogOut,
   CreditCard,
   ChevronDown,
-  LayoutDashboard,
-  GraduationCap,
-  MessageSquare,
-  Target,
-  BookOpen,
+  Sun,
+  Map,
+  Clock,
   Wrench,
-  Calendar,
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import type { LucideIcon } from "lucide-react";
@@ -31,31 +28,12 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-interface NavGroup {
-  groupLabel: string;
-  items: NavItem[];
-}
-
-const navGroups: NavGroup[] = [
-  {
-    groupLabel: "Action",
-    items: [
-      { label: "Plan", path: "/plan", icon: Target },
-      { label: "Journal Calendar", path: "/journal", icon: Calendar },
-      { label: "Today", path: "/dashboard", icon: LayoutDashboard },
-    ],
-  },
-  {
-    groupLabel: "Learning",
-    items: [
-      { label: "Learn", path: "/learn", icon: GraduationCap },
-      { label: "Coach", path: "/coach", icon: MessageSquare },
-      { label: "Tools", path: "/tools", icon: Wrench },
-    ],
-  },
+const navItems: NavItem[] = [
+  { label: "Today", path: "/dashboard", icon: Sun },
+  { label: "Plan", path: "/plan", icon: Map },
+  { label: "History", path: "/history", icon: Clock },
+  { label: "Tools", path: "/tools", icon: Wrench },
 ];
-
-const allNavItems = navGroups.flatMap(g => g.items);
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -92,32 +70,29 @@ export function AppLayout({ children }: AppLayoutProps) {
             data-testid="link-home-logo"
           >
             <Compass className="h-7 w-7 text-primary" />
-            <span className="font-serif text-xl font-semibold">Inner Journey</span>
+            <span className="font-serif text-xl font-semibold hidden sm:inline">Inner Journey</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-4" data-testid="desktop-nav">
-            {navGroups.map((group) => (
-              <div key={group.groupLabel} className="flex items-center gap-1">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold mr-1">{group.groupLabel}</span>
-                {group.items.map((item) => {
-                  const active = isActive(item.path);
-                  return (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        active
-                          ? "text-primary border-b-2 border-primary"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+          <nav className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
+            {navItems.map((item) => {
+              const active = isActive(item.path);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    active
+                      ? "text-primary bg-primary/[0.08]"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  data-testid={`nav-link-${item.label.toLowerCase()}`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -139,8 +114,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setLocation("/dashboard")} data-testid="menu-dashboard">
-                    <LayoutDashboard className="h-4 w-4 mr-2" />
-                    Dashboard
+                    <Sun className="h-4 w-4 mr-2" />
+                    Today
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setLocation("/billing")} data-testid="menu-billing">
                     <CreditCard className="h-4 w-4 mr-2" />
@@ -171,7 +146,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         data-testid="mobile-bottom-nav"
       >
         <div className="flex items-center justify-around h-[60px]">
-          {allNavItems.map((item) => {
+          {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;
             return (
@@ -181,7 +156,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-xs transition-colors ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
-                data-testid={`mobile-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                data-testid={`mobile-nav-${item.label.toLowerCase()}`}
               >
                 <Icon className="h-5 w-5" />
                 <span className="truncate max-w-[60px]">{item.label}</span>

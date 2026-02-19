@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { EisenhowerEntry } from "@shared/schema";
@@ -119,6 +119,13 @@ export default function EisenhowerPage() {
     goalAlignment: "",
     blocksGoal: false,
   });
+
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardRole, setWizardRole] = useState<HabitCategory>("health");
+  const [brainDump, setBrainDump] = useState("");
+  const [wizardItems, setWizardItems] = useState<Array<{ task: string; quadrant: string; deadline: string; goalAlignment: string }>>([]);
+  const [wizardSaving, setWizardSaving] = useState(false);
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
 
@@ -389,7 +396,11 @@ export default function EisenhowerPage() {
           </Button>
         </div>
 
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end gap-2 mb-4">
+          <Button variant="outline" onClick={() => { setWizardOpen(true); setWizardStep(0); setBrainDump(""); setWizardItems([]); }} data-testid="button-plan-week">
+            <Wand2 className="h-4 w-4 mr-2" />
+            Plan Week
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-entry">
@@ -532,6 +543,147 @@ export default function EisenhowerPage() {
             <p className="pt-2 border-t font-medium text-foreground">Goal: Reduce Q1 by investing in Q2. Your life gets calmer, clearer, and more intentional.</p>
           </CardContent>
         </Card>
+
+        <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+          <DialogContent className="sm:max-w-lg" data-testid="modal-plan-wizard">
+            <DialogHeader>
+              <DialogTitle className="font-serif flex items-center gap-2">
+                <Wand2 className="h-5 w-5 text-primary" />
+                Plan Your Week
+              </DialogTitle>
+              <DialogDescription>
+                {wizardStep === 0 && "Choose a focus area for this batch of tasks."}
+                {wizardStep === 1 && "Write all tasks on your mind — one per line."}
+                {wizardStep === 2 && "Classify each task into its quadrant."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= wizardStep ? "bg-primary" : "bg-muted"}`} />
+                ))}
+              </div>
+
+              {wizardStep === 0 && (
+                <div className="space-y-3">
+                  <Label>Focus Area</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {CATEGORY_KEYS.map(key => (
+                      <Button
+                        key={key}
+                        variant={wizardRole === key ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        onClick={() => setWizardRole(key)}
+                        data-testid={`wizard-role-${key}`}
+                      >
+                        <div className={`h-2.5 w-2.5 rounded-full ${getCategoryStyle(key).dot}`} />
+                        {HABIT_CATEGORIES[key].label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 1 && (
+                <div className="space-y-3">
+                  <Label>Brain Dump — one task per line</Label>
+                  <Textarea
+                    value={brainDump}
+                    onChange={(e) => setBrainDump(e.target.value)}
+                    placeholder={"Finish quarterly report\nSchedule dentist\nReview investments\nCall mom\nClean garage"}
+                    rows={8}
+                    className="text-sm"
+                    data-testid="textarea-brain-dump"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {brainDump.split("\n").filter(l => l.trim()).length} tasks listed
+                  </p>
+                </div>
+              )}
+
+              {wizardStep === 2 && (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                  {wizardItems.map((item, idx) => (
+                    <div key={idx} className="p-3 border rounded-md space-y-2" data-testid={`wizard-item-${idx}`}>
+                      <p className="text-sm font-medium">{item.task}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {QUADRANTS.map(q => (
+                          <Button
+                            key={q.id}
+                            variant={item.quadrant === q.id ? "default" : "outline"}
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => {
+                              const updated = [...wizardItems];
+                              updated[idx] = { ...updated[idx], quadrant: q.id };
+                              setWizardItems(updated);
+                            }}
+                            data-testid={`wizard-classify-${idx}-${q.id}`}
+                          >
+                            {q.description}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              {wizardStep > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => setWizardStep(s => s - 1)} data-testid="button-wizard-back">
+                  Back
+                </Button>
+              )}
+              {wizardStep < 2 && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (wizardStep === 1) {
+                      const lines = brainDump.split("\n").filter(l => l.trim());
+                      setWizardItems(lines.map(task => ({ task: task.trim(), quadrant: "q2", deadline: "", goalAlignment: "" })));
+                    }
+                    setWizardStep(s => s + 1);
+                  }}
+                  disabled={wizardStep === 1 && !brainDump.trim()}
+                  data-testid="button-wizard-next"
+                >
+                  Next
+                  <ArrowRight className="ml-1 h-3 w-3" />
+                </Button>
+              )}
+              {wizardStep === 2 && (
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    setWizardSaving(true);
+                    try {
+                      for (const item of wizardItems) {
+                        await apiRequest("POST", "/api/eisenhower", {
+                          role: wizardRole,
+                          task: item.task,
+                          quadrant: item.quadrant,
+                          deadline: item.deadline || null,
+                          goalAlignment: item.goalAlignment || null,
+                          weekStart,
+                        });
+                      }
+                      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+                      setWizardOpen(false);
+                    } finally {
+                      setWizardSaving(false);
+                    }
+                  }}
+                  disabled={wizardItems.length === 0 || wizardSaving}
+                  data-testid="button-wizard-save"
+                >
+                  {wizardSaving ? "Saving..." : `Add ${wizardItems.length} Tasks`}
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

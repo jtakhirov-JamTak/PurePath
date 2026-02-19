@@ -137,6 +137,9 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   timeEstimate: varchar("time_estimate", { length: 20 }), // e.g., "60m", "2h"
   decision: varchar("decision", { length: 50 }), // 'do_today', 'schedule', 'delegate', 'delete'
   scheduledTime: varchar("scheduled_time", { length: 50 }),
+  scheduledDate: date("scheduled_date"),
+  scheduledStartTime: varchar("scheduled_start_time", { length: 10 }),
+  durationMinutes: integer("duration_minutes"),
   goalAlignment: text("goal_alignment"),
   blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
@@ -205,6 +208,7 @@ export const habits = pgTable("habits", {
   endTime: varchar("end_time", { length: 10 }),
   time: varchar("time", { length: 20 }).notNull(),
   motivatingReason: text("motivating_reason"),
+  intervalWeeks: integer("interval_weeks").default(1),
   startDate: varchar("start_date", { length: 10 }),
   endDate: varchar("end_date", { length: 10 }),
   active: boolean("active").default(true),

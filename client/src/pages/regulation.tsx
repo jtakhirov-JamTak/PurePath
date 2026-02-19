@@ -1,55 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Wind, Activity, Play, Pause, RotateCcw, ChevronLeft } from "lucide-react";
 import { useLocation } from "wouter";
+import { useTimer, formatTime } from "@/hooks/use-timer";
 import type { LucideIcon } from "lucide-react";
-
-interface TimerState {
-  seconds: number;
-  isRunning: boolean;
-  totalSeconds: number;
-}
-
-function useTimer(defaultDuration: number) {
-  const [state, setState] = useState<TimerState>({
-    seconds: defaultDuration,
-    isRunning: false,
-    totalSeconds: defaultDuration,
-  });
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (state.isRunning && state.seconds > 0) {
-      intervalRef.current = setInterval(() => {
-        setState(prev => {
-          if (prev.seconds <= 1) {
-            return { ...prev, seconds: 0, isRunning: false };
-          }
-          return { ...prev, seconds: prev.seconds - 1 };
-        });
-      }, 1000);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [state.isRunning, state.seconds]);
-
-  const start = useCallback(() => setState(prev => ({ ...prev, isRunning: true })), []);
-  const pause = useCallback(() => setState(prev => ({ ...prev, isRunning: false })), []);
-  const reset = useCallback(() => setState(prev => ({ ...prev, seconds: prev.totalSeconds, isRunning: false })), []);
-  const setDuration = useCallback((d: number) => setState({ seconds: d, isRunning: false, totalSeconds: d }), []);
-
-  return { ...state, start, pause, reset, setDuration };
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
 
 interface RegulationCardProps {
   title: string;
@@ -65,7 +22,6 @@ interface RegulationCardProps {
 function RegulationCard({ title, description, icon: Icon, iconColor, defaultDuration, durationOptions, steps, testIdPrefix }: RegulationCardProps) {
   const timer = useTimer(defaultDuration);
   const [expanded, setExpanded] = useState(false);
-  const progress = timer.totalSeconds > 0 ? ((timer.totalSeconds - timer.seconds) / timer.totalSeconds) * 100 : 0;
 
   return (
     <Card className="overflow-visible" data-testid={`card-${testIdPrefix}`}>
@@ -91,7 +47,7 @@ function RegulationCard({ title, description, icon: Icon, iconColor, defaultDura
                   cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
                   className="text-primary transition-all duration-1000"
                   strokeDasharray={`${2 * Math.PI * 54}`}
-                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - progress / 100)}`}
+                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
                   strokeLinecap="round"
                 />
               </svg>
@@ -106,7 +62,7 @@ function RegulationCard({ title, description, icon: Icon, iconColor, defaultDura
               {!timer.isRunning ? (
                 <Button onClick={timer.start} disabled={timer.seconds === 0} data-testid={`button-start-${testIdPrefix}`}>
                   <Play className="h-4 w-4 mr-1" />
-                  {timer.seconds === 0 ? "Done" : "Start"}
+                  {timer.isComplete ? "Done" : "Start"}
                 </Button>
               ) : (
                 <Button variant="outline" onClick={timer.pause} data-testid={`button-pause-${testIdPrefix}`}>
@@ -156,17 +112,17 @@ export default function RegulationPage() {
   const tools: RegulationCardProps[] = [
     {
       title: "Emotional Containment",
-      description: "Feel, name, regulate, move — process emotions in under 60 seconds",
+      description: "Feel, name, regulate, move -- process emotions in under 60 seconds",
       icon: Heart,
       iconColor: "bg-rose-500",
       defaultDuration: 60,
       durationOptions: [30, 60, 90],
       testIdPrefix: "emotional",
       steps: [
-        "FEEL (10-20s) — Notice the emotion in your body. Throat, chest, jaw. Don't push it away.",
-        "NAME (5s) — Label the emotion: angry, sad, anxious, frustrated, hurt.",
-        "REGULATE (20-30s) — Take 3 slow breaths. In through your nose, out through your mouth.",
-        "MOVE (10s) — Choose one small action: stand up, stretch, drink water, write one sentence.",
+        "FEEL (10-20s) -- Notice the emotion in your body. Throat, chest, jaw. Don't push it away.",
+        "NAME (5s) -- Label the emotion: angry, sad, anxious, frustrated, hurt.",
+        "REGULATE (20-30s) -- Take 3 slow breaths. In through your nose, out through your mouth.",
+        "MOVE (10s) -- Choose one small action: stand up, stretch, drink water, write one sentence.",
       ],
     },
     {
@@ -178,10 +134,10 @@ export default function RegulationPage() {
       durationOptions: [60, 120, 300],
       testIdPrefix: "breathwork",
       steps: [
-        "Breathe IN for 4 seconds — fill your lungs fully.",
-        "HOLD for 4 seconds — stay still and present.",
-        "Breathe OUT for 4 seconds — release slowly and completely.",
-        "HOLD for 4 seconds — empty, quiet, reset.",
+        "Breathe IN for 4 seconds -- fill your lungs fully.",
+        "HOLD for 4 seconds -- stay still and present.",
+        "Breathe OUT for 4 seconds -- release slowly and completely.",
+        "HOLD for 4 seconds -- empty, quiet, reset.",
         "Repeat the cycle until the timer completes.",
       ],
     },
@@ -197,7 +153,7 @@ export default function RegulationPage() {
         "Stand up and shake your hands loosely for 10 seconds.",
         "Roll your shoulders backward 5 times, then forward 5 times.",
         "Stretch your arms above your head and hold for 10 seconds.",
-        "Do 5 slow neck rolls — left, then right.",
+        "Do 5 slow neck rolls -- left, then right.",
         "March in place for 20 seconds, lifting your knees high.",
         "Finish with 3 deep breaths, arms relaxed at your sides.",
       ],

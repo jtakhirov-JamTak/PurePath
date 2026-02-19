@@ -6,6 +6,10 @@ import { getUncachableStripeClient, getStripePublishableKey } from "./stripeClie
 import { COURSES, type CourseType, HABIT_CATEGORIES } from "@shared/schema";
 import OpenAI from "openai";
 import { format } from "date-fns";
+import multer from "multer";
+import fs from "fs";
+
+const upload = multer({ dest: "/tmp/audio-uploads", limits: { fileSize: 10 * 1024 * 1024 } });
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -1089,6 +1093,32 @@ Be compassionate but honest. Use evidence from their text to support your observ
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  app.post("/api/audio/transcribe", isAuthenticated, upload.single("audio"), async (req: any, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+      const allowedMimes = ["audio/webm", "audio/wav", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/flac"];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: "Unsupported audio format" });
+      }
+      const fileStream = fs.createReadStream(req.file.path);
+      const transcription = await openai.audio.transcriptions.create({
+        file: fileStream,
+        model: "whisper-1",
+      });
+      fs.unlinkSync(req.file.path);
+      res.json({ text: transcription.text });
+    } catch (error) {
+      console.error("Error transcribing audio:", error);
+      if (req.file?.path) {
+        try { fs.unlinkSync(req.file.path); } catch (_) {}
+      }
+      res.status(500).json({ error: "Failed to transcribe audio" });
     }
   });
 

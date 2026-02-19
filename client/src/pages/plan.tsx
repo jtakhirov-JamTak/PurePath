@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Footprints, Pencil, ImagePlus, X, Eye } from "lucide-react";
+import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Footprints, Pencil, ImagePlus, X, Eye, Wand2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -127,6 +127,89 @@ function VisionBoardUpload({
   );
 }
 
+const PLAN_STEPS = [
+  { key: "vision", label: "Vision", icon: Eye, description: "Upload your vision board images" },
+  { key: "goal", label: "Monthly Goal", icon: Target, description: "Set or review your monthly goal" },
+  { key: "habits", label: "Habits", icon: Repeat, description: "Set up recurring habits" },
+  { key: "eisenhower", label: "Weekly Plan", icon: Grid3X3, description: "Plan this week's priorities" },
+];
+
+function PlanWizardStepper({
+  hasGoal,
+  habitsCount,
+  q2Count,
+  hasVision,
+  onNavigate,
+}: {
+  hasGoal: boolean;
+  habitsCount: number;
+  q2Count: number;
+  hasVision: boolean;
+  onNavigate: (path: string) => void;
+}) {
+  const completed = [hasVision, hasGoal, habitsCount > 0, q2Count > 0];
+  const completedCount = completed.filter(Boolean).length;
+
+  if (completedCount === 4) return null;
+
+  const nextStep = completed.findIndex(c => !c);
+  const destinations = [null, "/monthly-goal", "/habits", "/eisenhower"];
+
+  return (
+    <Card className="max-w-3xl mb-6 overflow-visible" data-testid="card-plan-wizard">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+            <Wand2 className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <CardTitle className="font-serif text-lg">Weekly Planning Guide</CardTitle>
+            <CardDescription>{completedCount}/4 steps complete — pick up where you left off</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {PLAN_STEPS.map((step, idx) => {
+            const done = completed[idx];
+            const isCurrent = idx === nextStep;
+            return (
+              <div
+                key={step.key}
+                className={`flex items-center gap-3 p-2.5 rounded-md transition-colors ${isCurrent ? "bg-primary/[0.06]" : ""}`}
+                data-testid={`wizard-step-${step.key}`}
+              >
+                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                  done ? "bg-primary text-primary-foreground" : isCurrent ? "border-2 border-primary text-primary" : "border border-muted-foreground/30 text-muted-foreground"
+                }`}>
+                  {done ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium ${done ? "text-muted-foreground" : ""}`}>{step.label}</p>
+                  <p className="text-xs text-muted-foreground truncate">{step.description}</p>
+                </div>
+                {isCurrent && destinations[idx] && (
+                  <Button
+                    size="sm"
+                    onClick={() => onNavigate(destinations[idx]!)}
+                    data-testid={`button-wizard-go-${step.key}`}
+                  >
+                    Continue
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                )}
+                {isCurrent && idx === 0 && (
+                  <span className="text-xs text-muted-foreground">Upload below</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PlanPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -184,14 +267,26 @@ export default function PlanPage() {
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-10 max-w-2xl">
-          <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-plan-title">Plan</h1>
-          <p className="text-muted-foreground text-lg">
-            Weekly planning hub — set priorities and align your habits with outcomes.
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Week of {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
-          </p>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-plan-title">Plan</h1>
+              <p className="text-muted-foreground text-lg">
+                Weekly planning hub — set priorities and align your habits with outcomes.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Week of {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
+              </p>
+            </div>
+          </div>
         </div>
+
+        <PlanWizardStepper
+          hasGoal={hasGoal}
+          habitsCount={habits.length}
+          q2Count={q2Items.length}
+          hasVision={!!(identityDoc?.visionBoardMain)}
+          onNavigate={setLocation}
+        />
 
         <div className="max-w-3xl space-y-6">
           <Card className="overflow-visible" data-testid="card-vision-board">
