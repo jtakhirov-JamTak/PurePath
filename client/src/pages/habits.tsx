@@ -420,14 +420,14 @@ export default function HabitsPage() {
                   Add Habit
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>{editingHabit ? "Edit Habit" : "Add Habit"}</DialogTitle>
                   <DialogDescription>
                     {editingHabit ? "Update your habit details." : "Create a recurring habit. We recommend starting with 3."}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6">
+                <div className="space-y-4 overflow-y-auto flex-1 pr-1">
                   <div>
                     <Label>Habit</Label>
                     <Input
@@ -443,85 +443,86 @@ export default function HabitsPage() {
                       Why does this matter to you? <span className="text-destructive">*</span>
                     </Label>
                     <VoiceTextarea
-                      placeholder="e.g., I want to feel calm and centered every morning so I can show up better for my family"
+                      placeholder="Your personal reason — this keeps you going when motivation dips"
                       value={newHabit.motivatingReason}
                       onChange={(val) => setNewHabit({ ...newHabit, motivatingReason: val })}
                       className="resize-none text-sm"
                       rows={2}
                       data-testid="input-motivating-reason"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Your personal reason for building this habit — this keeps you going when motivation dips
-                    </p>
                   </div>
 
-                  <div>
-                    <Label>Category</Label>
-                    <Select
-                      value={newHabit.category}
-                      onValueChange={(v) => setNewHabit({ ...newHabit, category: v })}
-                    >
-                      <SelectTrigger data-testid="select-category">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(HABIT_CATEGORIES).map(([key, cat]) => {
-                          const style = getCategoryStyle(key);
-                          return (
-                            <SelectItem key={key} value={key}>
-                              <span className="flex items-center gap-2">
-                                <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                                {cat.label}
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Category</Label>
+                      <Select
+                        value={newHabit.category}
+                        onValueChange={(v) => setNewHabit({ ...newHabit, category: v })}
+                      >
+                        <SelectTrigger data-testid="select-category">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(HABIT_CATEGORIES).map(([key, cat]) => {
+                            const style = getCategoryStyle(key);
+                            return (
+                              <SelectItem key={key} value={key}>
+                                <span className="flex items-center gap-2">
+                                  <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
+                                  {cat.label}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Purpose</Label>
+                      <Select
+                        value={newHabit.habitType}
+                        onValueChange={(v) => setNewHabit({ ...newHabit, habitType: v })}
+                      >
+                        <SelectTrigger data-testid="select-habit-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="goal">Goal Habit</SelectItem>
+                          <SelectItem value="learning">Learning Habit</SelectItem>
+                          <SelectItem value="maintenance">Maintenance Habit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label>Purpose</Label>
-                    <Select
-                      value={newHabit.habitType}
-                      onValueChange={(v) => setNewHabit({ ...newHabit, habitType: v })}
-                    >
-                      <SelectTrigger data-testid="select-habit-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="goal">Goal Habit</SelectItem>
-                        <SelectItem value="learning">Learning Habit</SelectItem>
-                        <SelectItem value="maintenance">Maintenance Habit</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {newHabit.habitType === "goal" && "Directly supports your monthly goal"}
-                      {newHabit.habitType === "learning" && "Builds a skill or knowledge"}
-                      {newHabit.habitType === "maintenance" && "Maintains health, wellbeing, or routine"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label>Timing</Label>
-                    <Select
-                      value={newHabit.timing}
-                      onValueChange={(v) => setNewHabit({ ...newHabit, timing: v })}
-                    >
-                      <SelectTrigger data-testid="select-habit-timing">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="morning">Morning</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="evening">Evening</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {newHabit.timing === "morning" && "Part of your morning routine"}
-                      {newHabit.timing === "daily" && "Can be done anytime during the day"}
-                      {newHabit.timing === "evening" && "Part of your evening wind-down"}
-                    </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Timing</Label>
+                      <Select
+                        value={newHabit.timing}
+                        onValueChange={(v) => setNewHabit({ ...newHabit, timing: v })}
+                      >
+                        <SelectTrigger data-testid="select-habit-timing">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="morning">Morning</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="evening">Evening</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Duration (min)</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="480"
+                        value={newHabit.duration}
+                        onChange={(e) => setNewHabit({ ...newHabit, duration: e.target.value })}
+                        data-testid="input-duration"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -561,29 +562,25 @@ export default function HabitsPage() {
                         {parseInt(newHabit.intervalWeeks) === 1 ? "week" : "weeks"}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {parseInt(newHabit.intervalWeeks) === 1 ? "Every week on selected days" : `Every ${newHabit.intervalWeeks} weeks on selected days`}
-                    </p>
                   </div>
 
-                  <div>
-                    <Label className="mb-1 block">Start Date</Label>
-                    <Input
-                      type="date"
-                      value={newHabit.startDate}
-                      onChange={(e) => setNewHabit({ ...newHabit, startDate: e.target.value })}
-                      data-testid="input-start-date"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-1 block">End Date</Label>
-                    <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="mb-1 block">Start Date</Label>
+                      <Input
+                        type="date"
+                        value={newHabit.startDate}
+                        onChange={(e) => setNewHabit({ ...newHabit, startDate: e.target.value })}
+                        data-testid="input-start-date"
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block">End Date</Label>
                       <Select
                         value={newHabit.hasEndDate ? "date" : "none"}
                         onValueChange={(v) => setNewHabit({ ...newHabit, hasEndDate: v === "date" })}
                       >
-                        <SelectTrigger className="w-[160px]" data-testid="select-end-date-type">
+                        <SelectTrigger data-testid="select-end-date-type">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -591,92 +588,46 @@ export default function HabitsPage() {
                           <SelectItem value="date">Set End Date</SelectItem>
                         </SelectContent>
                       </Select>
-                      {newHabit.hasEndDate && (
-                        <Input
-                          type="date"
-                          value={newHabit.endDate}
-                          min={newHabit.startDate}
-                          onChange={(e) => setNewHabit({ ...newHabit, endDate: e.target.value })}
-                          className="flex-1"
-                          data-testid="input-end-date"
-                        />
-                      )}
                     </div>
                   </div>
-
-                  <div>
-                    <Label>Recurring</Label>
-                    <div className="flex items-center gap-3 mt-1">
-                      <Select
-                        value={newHabit.recurringType}
-                        onValueChange={(v) => setNewHabit({ ...newHabit, recurringType: v as "indefinite" | "count" })}
-                      >
-                        <SelectTrigger className="w-[140px]" data-testid="select-recurring-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="indefinite">No End Date</SelectItem>
-                          <SelectItem value="count">Weeks</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {newHabit.recurringType === "count" && (
-                        <Input
-                          type="number"
-                          min="1"
-                          max="52"
-                          value={newHabit.recurringCount}
-                          onChange={(e) => setNewHabit({ ...newHabit, recurringCount: e.target.value })}
-                          className="w-20"
-                          data-testid="input-recurring-count"
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Duration (minutes)</Label>
+                  {newHabit.hasEndDate && (
                     <Input
-                      type="number"
-                      min="1"
-                      max="480"
-                      value={newHabit.duration}
-                      onChange={(e) => setNewHabit({ ...newHabit, duration: e.target.value })}
-                      data-testid="input-duration"
+                      type="date"
+                      value={newHabit.endDate}
+                      min={newHabit.startDate}
+                      onChange={(e) => setNewHabit({ ...newHabit, endDate: e.target.value })}
+                      data-testid="input-end-date"
                     />
-                  </div>
+                  )}
 
                   <div>
                     <Label className="mb-1 block">
-                      Start / End Time
-                      <span className="text-muted-foreground font-normal ml-1">(optional, for calendar)</span>
+                      Time of day
+                      <span className="text-muted-foreground font-normal ml-1">(optional)</span>
                     </Label>
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Select value={newHabit.startTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, startTime: v === "none" ? "" : v })}>
-                          <SelectTrigger data-testid="select-start-time">
-                            <SelectValue placeholder="Start" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            <SelectItem value="none">No start time</SelectItem>
-                            {TIME_SLOTS.map(t => (
-                              <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Select value={newHabit.endTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, endTime: v === "none" ? "" : v })}>
-                          <SelectTrigger data-testid="select-end-time">
-                            <SelectValue placeholder="End" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            <SelectItem value="none">No end time</SelectItem>
-                            {TIME_SLOTS.filter(t => !newHabit.startTime || t > newHabit.startTime).map(t => (
-                              <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <Select value={newHabit.startTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, startTime: v === "none" ? "" : v })}>
+                        <SelectTrigger data-testid="select-start-time">
+                          <SelectValue placeholder="Start" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="none">No start time</SelectItem>
+                          {TIME_SLOTS.map(t => (
+                            <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={newHabit.endTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, endTime: v === "none" ? "" : v })}>
+                        <SelectTrigger data-testid="select-end-time">
+                          <SelectValue placeholder="End" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          <SelectItem value="none">No end time</SelectItem>
+                          {TIME_SLOTS.filter(t => !newHabit.startTime || t > newHabit.startTime).map(t => (
+                            <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
