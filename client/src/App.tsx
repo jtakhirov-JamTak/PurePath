@@ -32,7 +32,7 @@ import ToolsHubPage from "@/pages/tools-hub";
 import IdentityDocPage from "@/pages/identity-doc";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
-import QuarterlyGoalPage from "@/pages/quarterly-goal";
+
 import RegulationPage from "@/pages/regulation";
 import GoalWizardPage from "@/pages/goal-wizard";
 import HistoryPage from "@/pages/history";
@@ -148,9 +148,7 @@ function Router() {
       <Route path="/lesson2-worksheet">
         {() => <AuthenticatedRoute component={Lesson2WorksheetPage} />}
       </Route>
-      <Route path="/quarterly-goal">
-        {() => <AuthenticatedRoute component={QuarterlyGoalPage} />}
-      </Route>
+
       <Route path="/regulation">
         {() => <AuthenticatedRoute component={RegulationPage} />}
       </Route>

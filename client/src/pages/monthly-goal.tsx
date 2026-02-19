@@ -11,9 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, ChevronLeft, ChevronRight, Eye, Crosshair, ArrowRight, Calendar } from "lucide-react";
+import { Save, ChevronLeft, ChevronRight, Eye, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
-import type { MonthlyGoal, IdentityDocument, QuarterlyGoal } from "@shared/schema";
+import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 function getCurrentMonthKey() {
   const now = new Date();
@@ -53,21 +53,7 @@ export default function MonthlyGoalPage() {
     enabled: !!user,
   });
 
-  const currentQuarterKey = (() => {
-    const [y, m] = monthKey.split("-").map(Number);
-    return `${y}-Q${Math.ceil(m / 3)}`;
-  })();
-  const { data: quarterlyGoal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", currentQuarterKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/quarterly-goal?quarter=${currentQuarterKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
   const [, setLocation] = useLocation();
-  const quarterFocus = quarterlyGoal?.outcomeStatement?.trim() || "";
 
   const [value, setValue] = useState("");
   const [strengths, setStrengths] = useState("");
@@ -233,29 +219,6 @@ export default function MonthlyGoalPage() {
           <p className="text-muted-foreground text-lg">
             One goal, one month. Answer each question to build a goal that sticks.
           </p>
-          {quarterFocus ? (
-            <div
-              className="mt-3 flex items-center gap-2 cursor-pointer hover-elevate rounded-md px-3 py-2 bg-muted/50"
-              onClick={() => setLocation("/quarterly-goal")}
-              data-testid="link-quarterly-from-monthly"
-            >
-              <Crosshair className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm text-muted-foreground">Quarterly goal:</span>
-              <span className="text-sm font-medium">{quarterFocus}</span>
-              <ArrowRight className="h-3.5 w-3.5 ml-auto text-muted-foreground shrink-0" />
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => setLocation("/quarterly-goal")}
-              data-testid="button-set-quarterly-from-monthly"
-            >
-              <Crosshair className="h-3.5 w-3.5 mr-1.5" />
-              Set Quarterly Goal First
-            </Button>
-          )}
         </div>
 
         {(hasVision || hasIdentity) && (

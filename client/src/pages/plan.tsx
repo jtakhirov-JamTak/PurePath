@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal, IdentityDocument, PlanVersion } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, PlanVersion } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -216,7 +216,6 @@ function VisionStepContent({ identityDoc }: { identityDoc: IdentityDocument | un
 
 const WIZARD_STEPS = [
   { key: "vision", label: "Vision", icon: Eye, description: "Define who you want to become" },
-  { key: "quarterly", label: "Quarterly Goal", icon: Target, description: "Define your quarterly focus" },
   { key: "monthly", label: "Monthly Goal", icon: Target, description: "Set your monthly goal" },
   { key: "habits", label: "Habits", icon: Repeat, description: "Set up recurring habits" },
   { key: "eisenhower", label: "Weekly Plan", icon: Grid3X3, description: "Plan this week's priorities" },
@@ -246,7 +245,6 @@ function PlanVersioningPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
       setVersionName("");
       toast({ title: "Plan saved successfully" });
     },
@@ -260,7 +258,6 @@ function PlanVersioningPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
       setConfirmClear(false);
       toast({ title: "Plan data cleared" });
     },
@@ -274,7 +271,6 @@ function PlanVersioningPanel() {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
       queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
       setConfirmRestore(null);
       toast({ title: "Plan restored from saved version" });
     },
@@ -392,7 +388,7 @@ function PlanVersioningPanel() {
           <DialogHeader>
             <DialogTitle>Clear Plan Data?</DialogTitle>
             <DialogDescription>
-              This will clear your current vision board, quarterly goal, monthly goal, and deactivate all habits. You can save a version first to restore later.
+              This will clear your current vision board, monthly goal, and deactivate all habits. You can save a version first to restore later.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -466,7 +462,7 @@ export default function PlanPage() {
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
-  const currentQuarterKey = `${today.getFullYear()}-Q${Math.ceil((today.getMonth() + 1) / 3)}`;
+
 
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
@@ -478,18 +474,7 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
-  const { data: quarterlyGoal } = useQuery<QuarterlyGoal>({
-    queryKey: ["/api/quarterly-goal", currentQuarterKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/quarterly-goal?quarter=${currentQuarterKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
-
   const hasVision = !!(identityDoc?.visionBoardMain || identityDoc?.identity?.trim() || identityDoc?.vision?.trim());
-  const hasQuarterly = !!(quarterlyGoal?.quarterlyFocus?.trim());
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
   const activeHabits = habits.filter(h => h.active !== false);
@@ -498,7 +483,7 @@ export default function PlanPage() {
   const q2Items = thisWeekEntries.filter(e => e.quadrant === "q2");
   const hasEisenhower = thisWeekEntries.length > 0;
 
-  const stepCompletion = [hasVision, hasQuarterly, hasGoal, hasHabits, hasEisenhower];
+  const stepCompletion = [hasVision, hasGoal, hasHabits, hasEisenhower];
 
   const canAccessStep = (idx: number) => {
     if (idx === 0) return true;
@@ -511,36 +496,6 @@ export default function PlanPage() {
       case "vision":
         return (
           <VisionStepContent identityDoc={identityDoc} />
-        );
-
-      case "quarterly":
-        return (
-          <div className="space-y-4">
-            {hasQuarterly ? (
-              <div className="space-y-3">
-                <div className="p-4 rounded-md bg-muted/50">
-                  <p className="text-sm font-medium" data-testid="text-quarterly-focus">{quarterlyGoal?.quarterlyFocus}</p>
-                  {quarterlyGoal?.outcomeStatement && (
-                    <p className="text-xs text-muted-foreground mt-2">{quarterlyGoal.outcomeStatement}</p>
-                  )}
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goal")} data-testid="button-edit-quarterly">
-                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Edit Quarterly Goal
-                </Button>
-              </div>
-            ) : (
-              <div className="text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Define your quarterly focus to give structure to your monthly goals and weekly priorities.
-                </p>
-                <Button onClick={() => setLocation("/quarterly-goal")} data-testid="button-set-quarterly">
-                  <Target className="h-4 w-4 mr-2" />
-                  Set Quarterly Goal
-                </Button>
-              </div>
-            )}
-          </div>
         );
 
       case "monthly":

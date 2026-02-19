@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, quarterlyGoals, planVersions,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -12,7 +12,6 @@ import {
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
-  type QuarterlyGoal, type InsertQuarterlyGoal,
   type PlanVersion, type InsertPlanVersion
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
@@ -78,17 +77,13 @@ export interface IStorage {
   getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
   upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal>;
 
-  // Quarterly Goals
-  getQuarterlyGoal(userId: string, quarterKey: string): Promise<QuarterlyGoal | undefined>;
-  upsertQuarterlyGoal(goal: InsertQuarterlyGoal): Promise<QuarterlyGoal>;
-
   // Plan Versions
   getPlanVersionsByUser(userId: string): Promise<PlanVersion[]>;
   createPlanVersion(version: InsertPlanVersion): Promise<PlanVersion>;
   deletePlanVersion(id: number): Promise<void>;
 
   // Bulk clear for plan versioning
-  clearUserPlanData(userId: string, monthKey: string, quarterKey: string): Promise<void>;
+  clearUserPlanData(userId: string, monthKey: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -413,33 +408,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
-  async getQuarterlyGoal(userId: string, quarterKey: string): Promise<QuarterlyGoal | undefined> {
-    const [goal] = await db.select().from(quarterlyGoals).where(
-      and(eq(quarterlyGoals.userId, userId), eq(quarterlyGoals.quarterKey, quarterKey))
-    );
-    return goal;
-  }
-
-  async upsertQuarterlyGoal(goal: InsertQuarterlyGoal): Promise<QuarterlyGoal> {
-    const [result] = await db
-      .insert(quarterlyGoals)
-      .values({ ...goal, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: [quarterlyGoals.userId, quarterlyGoals.quarterKey],
-        set: {
-          quarterlyFocus: goal.quarterlyFocus,
-          outcomeStatement: goal.outcomeStatement,
-          measurementPlan: goal.measurementPlan,
-          baseline: goal.baseline,
-          target: goal.target,
-          prize: goal.prize,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return result;
-  }
-
   async getPlanVersionsByUser(userId: string): Promise<PlanVersion[]> {
     return db.select().from(planVersions).where(eq(planVersions.userId, userId)).orderBy(desc(planVersions.createdAt));
   }
@@ -453,15 +421,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(planVersions).where(eq(planVersions.id, id));
   }
 
-  async clearUserPlanData(userId: string, monthKey: string, quarterKey: string): Promise<void> {
+  async clearUserPlanData(userId: string, monthKey: string): Promise<void> {
     await db.update(identityDocuments).set({
       yearVision: "", yearVisualization: "",
       visionBoardMain: "", visionBoardLeft: "", visionBoardRight: "",
       updatedAt: new Date(),
     }).where(eq(identityDocuments.userId, userId));
-    await db.delete(quarterlyGoals).where(
-      and(eq(quarterlyGoals.userId, userId), eq(quarterlyGoals.quarterKey, quarterKey))
-    );
     await db.delete(monthlyGoals).where(
       and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
     );

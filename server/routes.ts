@@ -921,47 +921,6 @@ export async function registerRoutes(
     }
   });
 
-  // ==================== QUARTERLY GOALS ====================
-
-  app.get("/api/quarterly-goal", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const quarterKey = req.query.quarter as string;
-      if (!quarterKey) {
-        return res.status(400).json({ error: "quarter parameter required" });
-      }
-      const goal = await storage.getQuarterlyGoal(userId, quarterKey);
-      res.json(goal || { userId, quarterKey, outcomeStatement: "", measurementPlan: "", baseline: "", target: "", prize: "" });
-    } catch (error) {
-      console.error("Error fetching quarterly goal:", error);
-      res.status(500).json({ error: "Failed to fetch quarterly goal" });
-    }
-  });
-
-  app.put("/api/quarterly-goal", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { quarterKey, outcomeStatement, measurementPlan, baseline, target, prize } = req.body;
-      if (!quarterKey) {
-        return res.status(400).json({ error: "quarterKey is required" });
-      }
-      const goal = await storage.upsertQuarterlyGoal({
-        userId,
-        quarterKey,
-        quarterlyFocus: "",
-        outcomeStatement: outcomeStatement ?? "",
-        measurementPlan: measurementPlan ?? "",
-        baseline: baseline ?? "",
-        target: target ?? "",
-        prize: prize ?? "",
-      });
-      res.json(goal);
-    } catch (error) {
-      console.error("Error saving quarterly goal:", error);
-      res.status(500).json({ error: "Failed to save quarterly goal" });
-    }
-  });
-
   // ==================== PLAN VERSIONS ====================
 
   app.get("/api/plan-versions", isAuthenticated, async (req: any, res: Response) => {
@@ -980,18 +939,15 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const { mode, versionName } = req.body;
       const currentMonth = format(new Date(), "yyyy-MM");
-      const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
 
       const identityDoc = await storage.getIdentityDocument(userId);
       const monthlyGoal = await storage.getMonthlyGoal(userId, currentMonth);
-      const quarterlyGoal = await storage.getQuarterlyGoal(userId, currentQuarter);
       const allHabits = await storage.getHabitsByUser(userId);
       const activeHabits = allHabits.filter(h => h.active);
 
       const snapshot = {
         identityDoc: identityDoc || null,
         monthlyGoal: monthlyGoal || null,
-        quarterlyGoal: quarterlyGoal || null,
         habits: activeHabits,
         savedAt: new Date().toISOString(),
       };
@@ -1006,7 +962,7 @@ export async function registerRoutes(
 
       if (mode === "save_and_clear" || mode === "save_and_copy") {
         if (mode === "save_and_clear") {
-          await storage.clearUserPlanData(userId, currentMonth, currentQuarter);
+          await storage.clearUserPlanData(userId, currentMonth);
         }
       }
 
@@ -1044,19 +1000,6 @@ export async function registerRoutes(
           todayValue: snapshot.identityDoc.todayValue || "",
           todayIntention: snapshot.identityDoc.todayIntention || "",
           todayReflection: snapshot.identityDoc.todayReflection || "",
-        });
-      }
-
-      if (snapshot.quarterlyGoal) {
-        await storage.upsertQuarterlyGoal({
-          userId,
-          quarterKey: snapshot.quarterlyGoal.quarterKey,
-          quarterlyFocus: snapshot.quarterlyGoal.quarterlyFocus || "",
-          outcomeStatement: snapshot.quarterlyGoal.outcomeStatement || "",
-          measurementPlan: snapshot.quarterlyGoal.measurementPlan || "",
-          baseline: snapshot.quarterlyGoal.baseline || "",
-          target: snapshot.quarterlyGoal.target || "",
-          prize: snapshot.quarterlyGoal.prize || "",
         });
       }
 
@@ -1102,8 +1045,7 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const currentMonth = format(new Date(), "yyyy-MM");
-      const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
-      await storage.clearUserPlanData(userId, currentMonth, currentQuarter);
+      await storage.clearUserPlanData(userId, currentMonth);
       res.json({ success: true });
     } catch (error) {
       console.error("Error clearing plan data:", error);
