@@ -1,0 +1,89 @@
+You are working on my existing Replit full-stack app (React + Express + Drizzle + Postgres).
+
+Implement the following UX + feature updates with MINIMAL manual work needed from me. Make changes directly in the codebase (frontend + backend). If DB schema changes are required, update shared/schema.ts and run through the existing Drizzle patterns.
+
+### A) Emotional Containment updates
+1) Update the Emotional Containment exercise copy to the “scientific” version:
+   - FEEL → LABEL → REGULATE → MOVE
+   - LABEL sentence should be: “I feel ___ because ___.” plus “and it’s okay / it makes sense to feel this way.”
+   - Keep the validation phrase as a selectable chip: ["it’s okay", "it makes sense"].
+2) Add a +15 seconds increment control:
+   - Any timer used in Emotional Containment must have a “+15s” button that adds 15 seconds to the remaining time without restarting the timer.
+   - Apply this at least to FEEL, LABEL, and REGULATE steps.
+3) Ensure the timer still has a real alarm sound when finished.
+
+### B) Micro-Movement updates
+Replace the Micro-Movement options with exactly:
+- Go for a 5-minute walk (timer + alarm)
+- Do 20 air squats (rep counter)
+- Do 20 jumping jacks (rep counter)
+- Make your bed (optional 2-minute timer)
+- Do a 5-minute errand (timer + alarm)
+Make the UI one-tap: selecting an option immediately starts the timer/counter.
+
+### C) Self-Compassion updates (scientifically closer, but still fast)
+Replace the self-compassion tool with a structured “Self-Compassion Break” flow:
+1) Mindfulness: “This is a moment of suffering.” (15s, +15s)
+2) Common humanity: “Suffering is part of being human. I’m not alone.” (15s, +15s)
+3) Kindness: ask “What would you say to someone you love in this situation?” then “Now say it to yourself.” (30s+, +15s)
+Include voice input support wherever text is entered (if voice input exists already, apply it here too). If not, implement Web Speech API speech-to-text as an optional mic button.
+
+### D) 1-Year Vision Board: only 1 image + fix upload persistence
+1) Vision board must support ONLY ONE image. Remove/hide left/right slots in the UI.
+2) Fix the upload not saving:
+   - Verify server persistence: identity document upsert must update visionBoardMain (and any legacy fields if still present).
+   - Ensure /api/vision-board (or whichever endpoint is used) actually persists to DB and returns the saved image.
+3) If the frontend uses base64 upload, make sure it works end-to-end.
+
+### E) Plan tab: guided sequence + reduce overwhelm
+Rebuild the Plan tab into a guided wizard/stepper that flows in this order:
+1) 1-Year Vision (required)
+   - Explain what it is briefly.
+   - Collect: year vision statement, WOOP details (Outcome, Inner Obstacle, 1–2 If-Then plans), and the single vision board image.
+2) Quarterly Goal (required) - use existing quarterly goal functionality
+3) Monthly Goal (required, condensed UI)
+   - Show only essential fields by default: goal statement, why, success marker, next 2-minute step, 1 if-then plan.
+   - Put all other fields behind an “Optional details” accordion.
+4) Habits (required)
+5) Eisenhower Matrix (required)
+Only show the next step once the current step’s required fields are filled.
+
+### F) Plan Versioning controls
+If all Plan steps are complete, show three buttons:
+- Clear All
+- Save Version and Clear All
+- Save Version and Copy to create new Version
+
+Implementation approach:
+- Create a new DB table plan_versions (or similar) that stores:
+  - userId
+  - name (default: “Plan Version YYYY-MM-DD”)
+  - createdAt
+  - effectiveDate
+  - snapshot JSON (identity doc + current quarter goal + current month goal + active habits)
+- Add APIs:
+  - GET /api/plan-versions (list)
+  - POST /api/plan-versions/save (save snapshot with mode: save_only | save_and_clear | save_and_copy)
+  - POST /api/plan-versions/:id/restore (restore snapshot into current plan)
+- Implement UI for viewing/restoring versions.
+- Clear All should clear current plan data (identity doc year vision/WOOP/image, quarterly goal for current quarter, monthly goal for current month, and set habits inactive). Do NOT delete journal history.
+
+### G) Journaling becomes part of Habits breakout
+Move AM and PM journaling into the Habits rows:
+- Morning section includes “AM Journal” as a fixed system habit item
+- Evening section includes “PM Journal” as a fixed system habit item
+Clicking those opens the appropriate journal entry UI for today.
+Completion state should reflect whether that entry exists for today/session.
+Keep any calendar/history view if it already exists, but daily usage should happen through Habits.
+
+### H) Testing checklist
+After implementing, verify:
+- Vision board image saves and reloads after refresh
+- Emotional containment timers can add +15s and alarm triggers
+- Micro-movement timers/counters work
+- Self-compassion voice input + timers work
+- Plan wizard gating works
+- Version save/clear/copy/restore works
+- AM/PM journal appears inside Habits and marks completion
+
+Make changes in-place; do not create a separate project. Prefer reusing existing components and styles (shadcn/ui). Keep backwards compatibility where possible.

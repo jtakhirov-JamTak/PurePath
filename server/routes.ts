@@ -962,6 +962,166 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== PLAN VERSIONS ====================
+
+  app.get("/api/plan-versions", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const versions = await storage.getPlanVersionsByUser(userId);
+      res.json(versions);
+    } catch (error) {
+      console.error("Error fetching plan versions:", error);
+      res.status(500).json({ error: "Failed to fetch plan versions" });
+    }
+  });
+
+  app.post("/api/plan-versions/save", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { mode, versionName } = req.body;
+      const currentMonth = format(new Date(), "yyyy-MM");
+      const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
+
+      const identityDoc = await storage.getIdentityDocument(userId);
+      const monthlyGoal = await storage.getMonthlyGoal(userId, currentMonth);
+      const quarterlyGoal = await storage.getQuarterlyGoal(userId, currentQuarter);
+      const allHabits = await storage.getHabitsByUser(userId);
+      const activeHabits = allHabits.filter(h => h.active);
+
+      const snapshot = {
+        identityDoc: identityDoc || null,
+        monthlyGoal: monthlyGoal || null,
+        quarterlyGoal: quarterlyGoal || null,
+        habits: activeHabits,
+        savedAt: new Date().toISOString(),
+      };
+
+      const name = versionName || `Plan Version ${format(new Date(), "yyyy-MM-dd")}`;
+      const version = await storage.createPlanVersion({
+        userId,
+        versionName: name,
+        effectiveDate: format(new Date(), "yyyy-MM-dd"),
+        data: snapshot,
+      });
+
+      if (mode === "save_and_clear" || mode === "save_and_copy") {
+        if (mode === "save_and_clear") {
+          await storage.clearUserPlanData(userId, currentMonth, currentQuarter);
+        }
+      }
+
+      res.json(version);
+    } catch (error) {
+      console.error("Error saving plan version:", error);
+      res.status(500).json({ error: "Failed to save plan version" });
+    }
+  });
+
+  app.post("/api/plan-versions/:id/restore", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const versions = await storage.getPlanVersionsByUser(userId);
+      const version = versions.find(v => v.id === parseInt(id));
+      if (!version) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+
+      const snapshot = version.data as any;
+
+      if (snapshot.identityDoc) {
+        await storage.upsertIdentityDocument({
+          userId,
+          identity: snapshot.identityDoc.identity || "",
+          vision: snapshot.identityDoc.vision || "",
+          values: snapshot.identityDoc.values || "",
+          yearVision: snapshot.identityDoc.yearVision || "",
+          yearVisualization: snapshot.identityDoc.yearVisualization || "",
+          visionBoardMain: snapshot.identityDoc.visionBoardMain || "",
+          visionBoardLeft: snapshot.identityDoc.visionBoardLeft || "",
+          visionBoardRight: snapshot.identityDoc.visionBoardRight || "",
+          purpose: snapshot.identityDoc.purpose || "",
+          todayValue: snapshot.identityDoc.todayValue || "",
+          todayIntention: snapshot.identityDoc.todayIntention || "",
+          todayReflection: snapshot.identityDoc.todayReflection || "",
+        });
+      }
+
+      if (snapshot.quarterlyGoal) {
+        await storage.upsertQuarterlyGoal({
+          userId,
+          quarterKey: snapshot.quarterlyGoal.quarterKey,
+          quarterlyFocus: snapshot.quarterlyGoal.quarterlyFocus || "",
+          outcomeStatement: snapshot.quarterlyGoal.outcomeStatement || "",
+          measurementPlan: snapshot.quarterlyGoal.measurementPlan || "",
+          baseline: snapshot.quarterlyGoal.baseline || "",
+          target: snapshot.quarterlyGoal.target || "",
+          prize: snapshot.quarterlyGoal.prize || "",
+        });
+      }
+
+      if (snapshot.monthlyGoal) {
+        const mg = snapshot.monthlyGoal;
+        await storage.upsertMonthlyGoal({
+          userId, monthKey: mg.monthKey,
+          goalStatement: mg.goalStatement || "", successMarker: mg.successMarker ?? "", value: mg.value ?? "",
+          why: mg.why ?? "", nextConcreteStep: mg.nextConcreteStep || "", prize: mg.prize ?? "",
+          strengths: mg.strengths ?? "", advantage: mg.advantage ?? "", goalWhat: mg.goalWhat ?? "",
+          goalWhen: mg.goalWhen ?? "", goalWhere: mg.goalWhere ?? "", goalHow: mg.goalHow ?? "",
+          blockingHabit: mg.blockingHabit ?? "", habitAddress: mg.habitAddress ?? "", fun: mg.fun ?? "",
+          deadline: mg.deadline ?? "", successProof: mg.successProof ?? "", proofMetric: mg.proofMetric ?? "",
+          weeklyBehavior: mg.weeklyBehavior ?? "", bestResult: mg.bestResult ?? "",
+          innerObstacle: mg.innerObstacle ?? "", obstacleTrigger: mg.obstacleTrigger ?? "",
+          obstacleThought: mg.obstacleThought ?? "", obstacleEmotion: mg.obstacleEmotion ?? "",
+          obstacleBehavior: mg.obstacleBehavior ?? "", ifThenPlan1: mg.ifThenPlan1 ?? "", ifThenPlan2: mg.ifThenPlan2 ?? "",
+        });
+      }
+
+      if (snapshot.habits && Array.isArray(snapshot.habits)) {
+        for (const h of snapshot.habits) {
+          await storage.createHabit({
+            userId, name: h.name, category: h.category || "health",
+            habitType: h.habitType || "maintenance", timing: h.timing || "daily",
+            cadence: h.cadence, recurring: h.recurring || "indefinite",
+            duration: h.duration, startTime: h.startTime, endTime: h.endTime,
+            time: h.time, motivatingReason: h.motivatingReason,
+            intervalWeeks: h.intervalWeeks || 1, startDate: h.startDate, endDate: h.endDate,
+            active: true,
+          });
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error restoring plan version:", error);
+      res.status(500).json({ error: "Failed to restore plan version" });
+    }
+  });
+
+  app.post("/api/plan-versions/clear", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const currentMonth = format(new Date(), "yyyy-MM");
+      const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
+      await storage.clearUserPlanData(userId, currentMonth, currentQuarter);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing plan data:", error);
+      res.status(500).json({ error: "Failed to clear plan data" });
+    }
+  });
+
+  app.delete("/api/plan-versions/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePlanVersion(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting plan version:", error);
+      res.status(500).json({ error: "Failed to delete plan version" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {

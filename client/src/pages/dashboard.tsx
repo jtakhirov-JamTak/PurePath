@@ -177,8 +177,13 @@ export default function DashboardPage() {
     );
   }
 
-  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length;
-  const totalHabits = todaysHabits.length;
+  const journalHabitItems = hasPhase12 ? [
+    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning },
+    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening },
+  ] : [];
+
+  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
+  const totalHabits = todaysHabits.length + journalHabitItems.length;
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
 
   return (
@@ -221,7 +226,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {todaysHabits.length > 0 && (
+        {(todaysHabits.length > 0 || journalHabitItems.length > 0) && (
           <Card className="overflow-visible" data-testid="card-daily-habits">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -239,6 +244,28 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="pb-4">
               <ul className="space-y-2">
+                {journalHabitItems.map((jh) => (
+                  <li key={jh.id} className="flex items-center gap-3" data-testid={`journal-habit-${jh.isMorning ? "morning" : "evening"}`}>
+                    <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
+                      jh.done ? "bg-primary border-primary" : "border-border"
+                    }`}>
+                      {jh.done && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span className="h-2 w-2 rounded-full shrink-0 bg-violet-400" />
+                    <button
+                      className={`text-sm flex-1 text-left hover:underline ${jh.done ? "line-through text-muted-foreground" : ""}`}
+                      onClick={() => {
+                        const session = jh.isMorning ? "morning" : "evening";
+                        setLocation(`/journal/${todayStr}/${session}`);
+                        window.scrollTo(0, 0);
+                      }}
+                      data-testid={`button-journal-habit-${jh.isMorning ? "morning" : "evening"}`}
+                    >
+                      {jh.name}
+                    </button>
+                    {jh.done && <span className="text-xs text-muted-foreground">done</span>}
+                  </li>
+                ))}
                 {todaysHabits.map((habit) => {
                   const status = habitStatusMap.get(habit.id) || null;
                   const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
@@ -273,7 +300,7 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {todaysHabits.length === 0 && (
+        {todaysHabits.length === 0 && journalHabitItems.length === 0 && (
           <Card className="overflow-visible" data-testid="card-no-habits">
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground" data-testid="text-no-habits">No habits due today.</p>
@@ -506,16 +533,59 @@ function JournalQuickEntry({
 }
 
 const CONTAINMENT_STEPS = [
-  { label: "FEEL", instruction: "Notice the emotion in your body. Throat, chest, jaw. Don't push it away.", duration: 15 },
-  { label: "NAME", instruction: "Label the emotion: angry, sad, anxious, frustrated, hurt, scared.", duration: 0 },
-  { label: "REGULATE", instruction: "Take 3 slow breaths. In through your nose, out through your mouth.", duration: 20 },
-  { label: "MOVE", instruction: "Choose one small action: stand up, stretch, drink water, write one sentence.", duration: 0 },
+  { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
+  { label: "LABEL", instruction: "Name the emotion using this sentence:", duration: 15 },
+  { label: "REGULATE", instruction: "Take slow breaths. In through your nose (4 counts), hold (4 counts), out through your mouth (6 counts).", duration: 20 },
+  { label: "MOVE", instruction: "Choose one small action to shift your state: stand up, stretch, drink water, or write one sentence.", duration: 0 },
 ];
+
+function TimerCircle({ timer, color, testId }: { timer: ReturnType<typeof useTimer>; color: string; testId: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative h-24 w-24">
+        <svg className="h-24 w-24 -rotate-90" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
+            className={`${color} transition-all duration-1000`}
+            strokeDasharray={`${2 * Math.PI * 54}`}
+            strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-mono font-bold" data-testid={testId}>{formatTime(timer.seconds)}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {!timer.isRunning ? (
+          <Button size="sm" onClick={timer.start} disabled={timer.seconds === 0} data-testid={`${testId}-start`}>
+            <Play className="h-4 w-4 mr-1" />
+            {timer.isComplete ? "Done" : "Start"}
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" onClick={timer.pause} data-testid={`${testId}-pause`}>
+            <Pause className="h-4 w-4 mr-1" />
+            Pause
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={timer.reset} data-testid={`${testId}-reset`}>
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => timer.addTime(15)} data-testid={`${testId}-add15`}>
+          <Plus className="h-3 w-3 mr-1" />
+          15s
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const timer = useTimer(CONTAINMENT_STEPS[0].duration);
   const [emotionName, setEmotionName] = useState("");
+  const [becauseText, setBecauseText] = useState("");
+  const [validationChip, setValidationChip] = useState<string>("");
   const [moveAction, setMoveAction] = useState("");
   const queryClient = useQueryClient();
 
@@ -523,39 +593,35 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
   const addTaskMutation = useMutation({
     mutationFn: async (title: string) => {
       return apiRequest("POST", "/api/tasks", {
-        title,
-        date: todayStr,
-        time: format(new Date(), "HH:mm"),
+        title, date: todayStr, time: format(new Date(), "HH:mm"),
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }); },
   });
 
   const currentStep = CONTAINMENT_STEPS[step];
   const isLastStep = step === CONTAINMENT_STEPS.length - 1;
 
+  const canAdvance = () => {
+    if (currentStep.duration > 0 && !timer.isComplete && timer.seconds > 0) return false;
+    if (step === 1 && !emotionName) return false;
+    return true;
+  };
+
   const goNext = () => {
     if (isLastStep) {
-      if (moveAction.trim()) {
-        addTaskMutation.mutate(moveAction.trim());
-      }
+      if (moveAction.trim()) addTaskMutation.mutate(moveAction.trim());
       resetAndClose();
       return;
     }
     const nextStep = step + 1;
     setStep(nextStep);
     const nextDuration = CONTAINMENT_STEPS[nextStep].duration;
-    if (nextDuration > 0) {
-      timer.setDuration(nextDuration);
-    }
+    if (nextDuration > 0) timer.setDuration(nextDuration);
   };
 
   const resetAndClose = () => {
-    setStep(0);
-    setEmotionName("");
-    setMoveAction("");
+    setStep(0); setEmotionName(""); setBecauseText(""); setValidationChip(""); setMoveAction("");
     timer.setDuration(CONTAINMENT_STEPS[0].duration);
     onClose();
   };
@@ -581,54 +647,52 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
             <p className="text-sm text-muted-foreground">{currentStep.instruction}</p>
 
             {currentStep.duration > 0 && (
-              <div className="flex flex-col items-center gap-3">
-                <div className="relative h-24 w-24">
-                  <svg className="h-24 w-24 -rotate-90" viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
-                    <circle
-                      cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
-                      className="text-primary transition-all duration-1000"
-                      strokeDasharray={`${2 * Math.PI * 54}`}
-                      strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-lg font-mono font-bold" data-testid="text-containment-timer">{formatTime(timer.seconds)}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!timer.isRunning ? (
-                    <Button size="sm" onClick={timer.start} disabled={timer.seconds === 0} data-testid="button-containment-start">
-                      <Play className="h-4 w-4 mr-1" />
-                      {timer.isComplete ? "Done" : "Start"}
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={timer.pause} data-testid="button-containment-pause">
-                      <Pause className="h-4 w-4 mr-1" />
-                      Pause
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={timer.reset} data-testid="button-containment-reset">
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+              <TimerCircle timer={timer} color="text-primary" testId="text-containment-timer" />
             )}
 
             {step === 1 && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                {["Angry", "Sad", "Anxious", "Frustrated", "Hurt", "Scared"].map(e => (
-                  <Badge
-                    key={e}
-                    variant={emotionName === e ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => setEmotionName(e)}
-                    data-testid={`badge-emotion-${e.toLowerCase()}`}
-                  >
-                    {e}
-                  </Badge>
-                ))}
+              <div className="space-y-3 text-left">
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {["Angry", "Sad", "Anxious", "Frustrated", "Hurt", "Scared"].map(e => (
+                    <Badge
+                      key={e}
+                      variant={emotionName === e ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setEmotionName(e)}
+                      data-testid={`badge-emotion-${e.toLowerCase()}`}
+                    >
+                      {e}
+                    </Badge>
+                  ))}
+                </div>
+                {emotionName && (
+                  <div className="space-y-2 text-center">
+                    <p className="text-sm font-medium">
+                      "I feel <span className="text-primary">{emotionName.toLowerCase()}</span> because..."
+                    </p>
+                    <Textarea
+                      value={becauseText}
+                      onChange={(e) => setBecauseText(e.target.value)}
+                      placeholder="...describe briefly what triggered this"
+                      rows={2}
+                      className="text-sm resize-none"
+                      data-testid="input-because-text"
+                    />
+                    <div className="flex gap-2 justify-center">
+                      {["it's okay", "it makes sense"].map(chip => (
+                        <Badge
+                          key={chip}
+                          variant={validationChip === chip ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => setValidationChip(chip)}
+                          data-testid={`badge-validation-${chip.replace(/\s/g, "-")}`}
+                        >
+                          ...and {chip} to feel this way
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -651,12 +715,7 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
             <Button variant="ghost" size="sm" onClick={resetAndClose} data-testid="button-containment-close">
               Close
             </Button>
-            <Button
-              size="sm"
-              onClick={goNext}
-              disabled={currentStep.duration > 0 && !timer.isComplete && timer.seconds > 0}
-              data-testid="button-containment-next"
-            >
+            <Button size="sm" onClick={goNext} disabled={!canAdvance()} data-testid="button-containment-next">
               {isLastStep ? (moveAction.trim() ? "Add to Tasks & Done" : "Done") : "Next"}
               <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
@@ -667,21 +726,38 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
-const MOVEMENT_SUGGESTIONS = [
-  "Walk around for 2 minutes",
-  "Stretch your arms and legs",
-  "Do 10 arm raises",
-  "Wash your hands or face",
-  "Stand and shake your body",
+const MOVEMENT_OPTIONS = [
+  { label: "5-minute walk", type: "timer" as const, duration: 300, icon: Footprints },
+  { label: "20 air squats", type: "counter" as const, target: 20, icon: Activity },
+  { label: "20 jumping jacks", type: "counter" as const, target: 20, icon: Activity },
+  { label: "Make your bed", type: "timer" as const, duration: 120, icon: Target },
+  { label: "5-minute errand", type: "timer" as const, duration: 300, icon: ArrowRight },
 ];
 
 function MovementModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const timer = useTimer(120);
+  const timer = useTimer(300);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [count, setCount] = useState(0);
 
   const resetAndClose = () => {
-    timer.setDuration(120);
+    timer.setDuration(300);
+    setSelected(null);
+    setCount(0);
     onClose();
   };
+
+  const selectOption = (idx: number) => {
+    const opt = MOVEMENT_OPTIONS[idx];
+    setSelected(idx);
+    setCount(0);
+    if (opt.type === "timer") {
+      timer.setDuration(opt.duration);
+      setTimeout(() => timer.start(), 50);
+    }
+  };
+
+  const option = selected !== null ? MOVEMENT_OPTIONS[selected] : null;
+  const counterDone = option?.type === "counter" && count >= (option.target || 0);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
@@ -693,69 +769,99 @@ function MovementModal({ open, onClose }: { open: boolean; onClose: () => void }
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative h-28 w-28">
-              <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
-                <circle
-                  cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
-                  className="text-emerald-500 transition-all duration-1000"
-                  strokeDasharray={`${2 * Math.PI * 54}`}
-                  strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xl font-mono font-bold" data-testid="text-movement-timer">{formatTime(timer.seconds)}</span>
+          {selected === null ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground text-center mb-3">Tap to start immediately</p>
+              {MOVEMENT_OPTIONS.map((opt, idx) => {
+                const Icon = opt.icon;
+                return (
+                  <Button
+                    key={idx}
+                    variant="outline"
+                    className="w-full justify-start gap-3 h-auto py-3"
+                    onClick={() => selectOption(idx)}
+                    data-testid={`button-movement-option-${idx}`}
+                  >
+                    <Icon className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span className="text-sm">{opt.label}</span>
+                    <Badge variant="secondary" className="ml-auto text-[10px]">
+                      {opt.type === "timer" ? formatTime(opt.duration) : `${opt.target} reps`}
+                    </Badge>
+                  </Button>
+                );
+              })}
+            </div>
+          ) : option?.type === "timer" ? (
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm font-medium">{option.label}</p>
+              <div className="relative h-28 w-28">
+                <svg className="h-28 w-28 -rotate-90" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted/30" />
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="6"
+                    className="text-emerald-500 transition-all duration-1000"
+                    strokeDasharray={`${2 * Math.PI * 54}`}
+                    strokeDashoffset={`${2 * Math.PI * 54 * (1 - timer.progress / 100)}`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xl font-mono font-bold" data-testid="text-movement-timer">{formatTime(timer.seconds)}</span>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {!timer.isRunning ? (
-                <Button onClick={timer.start} disabled={timer.seconds === 0} data-testid="button-movement-start">
-                  <Play className="h-4 w-4 mr-1" />
-                  {timer.isComplete ? "Done" : "Start"}
+              <div className="flex items-center gap-2">
+                {!timer.isRunning ? (
+                  <Button onClick={timer.start} disabled={timer.seconds === 0} data-testid="button-movement-start">
+                    <Play className="h-4 w-4 mr-1" />
+                    {timer.isComplete ? "Done" : "Start"}
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={timer.pause} data-testid="button-movement-pause">
+                    <Pause className="h-4 w-4 mr-1" />
+                    Pause
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={timer.reset} data-testid="button-movement-reset">
+                  <RotateCcw className="h-4 w-4" />
                 </Button>
-              ) : (
-                <Button variant="outline" onClick={timer.pause} data-testid="button-movement-pause">
-                  <Pause className="h-4 w-4 mr-1" />
-                  Pause
-                </Button>
+              </div>
+              {timer.isComplete && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Well done!</p>
               )}
-              <Button variant="ghost" size="icon" onClick={timer.reset} data-testid="button-movement-reset">
-                <RotateCcw className="h-4 w-4" />
-              </Button>
             </div>
-
-            <div className="flex items-center gap-2">
-              {[60, 120, 180].map(d => (
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm font-medium">{option?.label}</p>
+              <div className="text-center">
+                <span className="text-5xl font-mono font-bold" data-testid="text-movement-counter">{count}</span>
+                <span className="text-lg text-muted-foreground">/{option?.target}</span>
+              </div>
+              <div className="flex items-center gap-3">
                 <Button
-                  key={d}
-                  variant={timer.totalSeconds === d ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => timer.setDuration(d)}
-                  data-testid={`button-movement-duration-${d}`}
+                  size="lg"
+                  onClick={() => setCount(c => Math.min(c + 1, option?.target || 20))}
+                  disabled={counterDone}
+                  data-testid="button-movement-increment"
                 >
-                  {formatTime(d)}
+                  <Plus className="h-5 w-5 mr-1" />
+                  Count
                 </Button>
-              ))}
+                <Button variant="ghost" size="icon" onClick={() => setCount(0)} data-testid="button-movement-count-reset">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </div>
+              {counterDone && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">Well done!</p>
+              )}
             </div>
-          </div>
+          )}
 
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Suggestions</p>
-            <ul className="space-y-1.5">
-              {MOVEMENT_SUGGESTIONS.map((s, i) => (
-                <li key={i} className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-sm text-muted-foreground">{s}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="flex justify-end">
-            <Button variant="ghost" size="sm" onClick={resetAndClose} data-testid="button-movement-close">
+          <div className="flex justify-between items-center gap-2">
+            {selected !== null && (
+              <Button variant="ghost" size="sm" onClick={() => { setSelected(null); setCount(0); timer.reset(); }} data-testid="button-movement-back">
+                Back
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={resetAndClose} className="ml-auto" data-testid="button-movement-close">
               Close
             </Button>
           </div>
@@ -764,6 +870,12 @@ function MovementModal({ open, onClose }: { open: boolean; onClose: () => void }
     </Dialog>
   );
 }
+
+const COMPASSION_STEPS = [
+  { label: "Mindfulness", prompt: "This is a moment of suffering.", duration: 15 },
+  { label: "Common Humanity", prompt: "Suffering is part of being human. I am not alone.", duration: 15 },
+  { label: "Kindness", prompt: "", duration: 30 },
+];
 
 function CompassionModal({
   open,
@@ -775,7 +887,8 @@ function CompassionModal({
   todayStr: string;
 }) {
   const queryClient = useQueryClient();
-  const [whatsGoingOn, setWhatsGoingOn] = useState("");
+  const [step, setStep] = useState(0);
+  const timer = useTimer(COMPASSION_STEPS[0].duration);
   const [lovedOneResponse, setLovedOneResponse] = useState("");
   const [selfResponse, setSelfResponse] = useState("");
   const [saved, setSaved] = useState(false);
@@ -783,7 +896,6 @@ function CompassionModal({
   const saveMutation = useMutation({
     mutationFn: async () => {
       const content = [
-        whatsGoingOn ? `What's going on: ${whatsGoingOn}` : "",
         lovedOneResponse ? `To a loved one: ${lovedOneResponse}` : "",
         selfResponse ? `To myself: ${selfResponse}` : "",
       ].filter(Boolean).join("\n");
@@ -800,11 +912,27 @@ function CompassionModal({
   });
 
   const resetAndClose = () => {
-    setWhatsGoingOn("");
-    setLovedOneResponse("");
-    setSelfResponse("");
-    setSaved(false);
+    setStep(0); setLovedOneResponse(""); setSelfResponse(""); setSaved(false);
+    timer.setDuration(COMPASSION_STEPS[0].duration);
     onClose();
+  };
+
+  const currentStep = COMPASSION_STEPS[step];
+  const isLastStep = step === COMPASSION_STEPS.length - 1;
+
+  const canAdvance = () => {
+    if (step < 2 && !timer.isComplete && timer.seconds > 0) return false;
+    return true;
+  };
+
+  const goNext = () => {
+    if (isLastStep) {
+      resetAndClose();
+      return;
+    }
+    const next = step + 1;
+    setStep(next);
+    timer.setDuration(COMPASSION_STEPS[next].duration);
   };
 
   return (
@@ -813,66 +941,84 @@ function CompassionModal({
         <DialogHeader>
           <DialogTitle className="font-serif flex items-center gap-2">
             <HandHeart className="h-5 w-5 text-violet-500" />
-            Self-Compassion
+            Self-Compassion Break
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-medium mb-1.5">What's going on? <span className="text-muted-foreground font-normal">(optional)</span></p>
-              <VoiceTextarea
-                value={whatsGoingOn}
-                onChange={setWhatsGoingOn}
-                placeholder="Briefly describe the situation..."
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-compassion-situation"
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium mb-1.5">What would you say to a loved one in this situation?</p>
-              <VoiceTextarea
-                value={lovedOneResponse}
-                onChange={setLovedOneResponse}
-                placeholder="Imagine someone you care about is going through this..."
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-compassion-loved-one"
-              />
-            </div>
-            <div>
-              <p className="text-sm font-medium mb-1.5">Now say that to yourself, as that loved one.</p>
-              <VoiceTextarea
-                value={selfResponse}
-                onChange={setSelfResponse}
-                placeholder="Speak to yourself with the same care..."
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-compassion-self"
-              />
-            </div>
+          <div className="flex items-center gap-2 mb-2">
+            {COMPASSION_STEPS.map((_, i) => (
+              <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-violet-500" : "bg-muted"}`} />
+            ))}
+          </div>
+
+          <div className="text-center space-y-3">
+            <Badge variant="secondary" className="text-sm">{currentStep.label}</Badge>
+
+            {step < 2 && (
+              <>
+                <p className="text-sm italic text-muted-foreground">"{currentStep.prompt}"</p>
+                <p className="text-xs text-muted-foreground">Sit with this thought. Let it sink in.</p>
+                <TimerCircle timer={timer} color="text-violet-500" testId="text-compassion-timer" />
+              </>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-3 text-left">
+                <div>
+                  <p className="text-sm font-medium mb-1.5">What would you say to someone you love in this situation?</p>
+                  <VoiceTextarea
+                    value={lovedOneResponse}
+                    onChange={setLovedOneResponse}
+                    placeholder="Imagine someone you care about is going through this..."
+                    rows={2}
+                    className="resize-none text-sm"
+                    data-testid="textarea-compassion-loved-one"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1.5">Now say that to yourself.</p>
+                  <VoiceTextarea
+                    value={selfResponse}
+                    onChange={setSelfResponse}
+                    placeholder="Speak to yourself with the same care..."
+                    rows={2}
+                    className="resize-none text-sm"
+                    data-testid="textarea-compassion-self"
+                  />
+                </div>
+                <TimerCircle timer={timer} color="text-violet-500" testId="text-compassion-timer" />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => saveMutation.mutate()}
-              disabled={saved || saveMutation.isPending || (!lovedOneResponse.trim() && !selfResponse.trim())}
-              data-testid="button-compassion-save"
-            >
-              {saved ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  Saved to Journal
-                </>
-              ) : (
-                "Save to Journal"
-              )}
-            </Button>
-            <Button size="sm" onClick={resetAndClose} data-testid="button-compassion-done">
-              Done
-            </Button>
+            {step === 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => saveMutation.mutate()}
+                disabled={saved || saveMutation.isPending || (!lovedOneResponse.trim() && !selfResponse.trim())}
+                data-testid="button-compassion-save"
+              >
+                {saved ? (
+                  <>
+                    <Check className="h-3 w-3 mr-1" />
+                    Saved to Journal
+                  </>
+                ) : (
+                  "Save to Journal"
+                )}
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="ghost" size="sm" onClick={resetAndClose} data-testid="button-compassion-done">
+                Close
+              </Button>
+              <Button size="sm" onClick={goNext} disabled={!canAdvance()} data-testid="button-compassion-next">
+                {isLastStep ? "Done" : "Next"}
+                <ArrowRight className="ml-1 h-3 w-3" />
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

@@ -3,31 +3,38 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Target, Grid3X3, Repeat, ListTodo, ArrowRight, Footprints, Pencil, ImagePlus, X, Eye, Wand2, Check } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Target, Grid3X3, Repeat, ArrowRight, ArrowLeft, Pencil, ImagePlus, X, Eye,
+  Check, Save, Trash2, RotateCcw, Copy, Clock, ChevronDown, ChevronUp, Lock
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal, IdentityDocument } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, QuarterlyGoal, IdentityDocument, PlanVersion } from "@shared/schema";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
-function VisionBoardUpload({
-  label,
-  slot,
+function VisionBoardSingle({
   imageData,
-  isMain,
 }: {
-  label: string;
-  slot: "main" | "left" | "right";
   imageData: string;
-  isMain: boolean;
 }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useMutation({
     mutationFn: async (base64: string) => {
-      await apiRequest("PUT", "/api/vision-board", { slot, imageData: base64 });
+      await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: base64 });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
@@ -36,7 +43,7 @@ function VisionBoardUpload({
 
   const removeMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", "/api/vision-board", { slot, imageData: "" });
+      await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: "" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
@@ -62,25 +69,22 @@ function VisionBoardUpload({
   const hasImage = imageData && imageData.length > 0;
 
   return (
-    <div
-      className={`relative group ${isMain ? "col-span-2 row-span-2" : ""}`}
-      data-testid={`vision-slot-${slot}`}
-    >
+    <div className="relative group" data-testid="vision-slot-main">
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         className="hidden"
         onChange={handleFileSelect}
-        data-testid={`input-vision-${slot}`}
+        data-testid="input-vision-main"
       />
       {hasImage ? (
-        <div className={`relative overflow-hidden rounded-md border ${isMain ? "aspect-[4/3]" : "aspect-square"}`}>
+        <div className="relative overflow-hidden rounded-md border aspect-[16/9] max-w-lg mx-auto">
           <img
             src={imageData}
-            alt={label}
+            alt="Vision Board"
             className="w-full h-full object-cover"
-            data-testid={`img-vision-${slot}`}
+            data-testid="img-vision-main"
           />
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2">
             <Button
@@ -88,7 +92,7 @@ function VisionBoardUpload({
               size="icon"
               className="invisible group-hover:visible text-white"
               onClick={() => fileInputRef.current?.click()}
-              data-testid={`button-replace-vision-${slot}`}
+              data-testid="button-replace-vision-main"
             >
               <ImagePlus className="h-4 w-4" />
             </Button>
@@ -97,7 +101,7 @@ function VisionBoardUpload({
               size="icon"
               className="invisible group-hover:visible text-white"
               onClick={() => removeMutation.mutate()}
-              data-testid={`button-remove-vision-${slot}`}
+              data-testid="button-remove-vision-main"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -111,13 +115,12 @@ function VisionBoardUpload({
       ) : (
         <button
           onClick={() => fileInputRef.current?.click()}
-          className={`w-full border-2 border-dashed border-muted-foreground/20 rounded-md flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-colors ${
-            isMain ? "aspect-[4/3]" : "aspect-square"
-          }`}
-          data-testid={`button-upload-vision-${slot}`}
+          className="w-full max-w-lg mx-auto block border-2 border-dashed border-muted-foreground/20 rounded-md aspect-[16/9] flex flex-col items-center justify-center gap-2 cursor-pointer hover-elevate transition-colors"
+          data-testid="button-upload-vision-main"
         >
-          <ImagePlus className="h-6 w-6 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">{label}</span>
+          <ImagePlus className="h-8 w-8 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Upload your vision image</span>
+          <span className="text-xs text-muted-foreground">Max 5MB</span>
           {uploadMutation.isPending && (
             <span className="text-xs text-muted-foreground">Uploading...</span>
           )}
@@ -127,85 +130,228 @@ function VisionBoardUpload({
   );
 }
 
-const PLAN_STEPS = [
-  { key: "vision", label: "Vision", icon: Eye, description: "Upload your vision board images" },
-  { key: "goal", label: "Monthly Goal", icon: Target, description: "Set or review your monthly goal" },
+const WIZARD_STEPS = [
+  { key: "vision", label: "Vision", icon: Eye, description: "Upload your vision board image" },
+  { key: "quarterly", label: "Quarterly Goal", icon: Target, description: "Define your quarterly focus" },
+  { key: "monthly", label: "Monthly Goal", icon: Target, description: "Set your monthly goal" },
   { key: "habits", label: "Habits", icon: Repeat, description: "Set up recurring habits" },
   { key: "eisenhower", label: "Weekly Plan", icon: Grid3X3, description: "Plan this week's priorities" },
 ];
 
-function PlanWizardStepper({
-  hasGoal,
-  habitsCount,
-  q2Count,
-  hasVision,
-  onNavigate,
-}: {
-  hasGoal: boolean;
-  habitsCount: number;
-  q2Count: number;
-  hasVision: boolean;
-  onNavigate: (path: string) => void;
-}) {
-  const completed = [hasVision, hasGoal, habitsCount > 0, q2Count > 0];
-  const completedCount = completed.filter(Boolean).length;
+function PlanVersioningPanel() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [showVersions, setShowVersions] = useState(false);
+  const [versionName, setVersionName] = useState("");
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
 
-  if (completedCount === 4) return null;
+  const { data: versions = [] } = useQuery<PlanVersion[]>({
+    queryKey: ["/api/plan-versions"],
+  });
 
-  const nextStep = completed.findIndex(c => !c);
-  const destinations = [null, "/monthly-goal", "/habits", "/eisenhower"];
+  const saveMutation = useMutation({
+    mutationFn: async (mode: string) => {
+      return apiRequest("POST", "/api/plan-versions/save", {
+        mode,
+        versionName: versionName || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
+      setVersionName("");
+      toast({ title: "Plan saved successfully" });
+    },
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/plan-versions/clear", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
+      setConfirmClear(false);
+      toast({ title: "Plan data cleared" });
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("POST", `/api/plan-versions/${id}/restore`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quarterly-goal"] });
+      setConfirmRestore(null);
+      toast({ title: "Plan restored from saved version" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/plan-versions/${id}`, undefined);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
+      toast({ title: "Version deleted" });
+    },
+  });
 
   return (
-    <Card className="max-w-3xl mb-6 overflow-visible" data-testid="card-plan-wizard">
+    <Card className="overflow-visible" data-testid="card-plan-versioning">
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-            <Wand2 className="h-5 w-5 text-primary" />
+            <Save className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <CardTitle className="font-serif text-lg">Weekly Planning Guide</CardTitle>
-            <CardDescription>{completedCount}/4 steps complete — pick up where you left off</CardDescription>
+          <div className="flex-1 min-w-0">
+            <CardTitle className="font-serif text-lg">Plan Versions</CardTitle>
+            <CardDescription>Save your current plan, restore previous ones, or start fresh</CardDescription>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {PLAN_STEPS.map((step, idx) => {
-            const done = completed[idx];
-            const isCurrent = idx === nextStep;
-            return (
-              <div
-                key={step.key}
-                className={`flex items-center gap-3 p-2.5 rounded-md transition-colors ${isCurrent ? "bg-primary/[0.06]" : ""}`}
-                data-testid={`wizard-step-${step.key}`}
-              >
-                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                  done ? "bg-primary text-primary-foreground" : isCurrent ? "border-2 border-primary text-primary" : "border border-muted-foreground/30 text-muted-foreground"
-                }`}>
-                  {done ? <Check className="h-3.5 w-3.5" /> : idx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${done ? "text-muted-foreground" : ""}`}>{step.label}</p>
-                  <p className="text-xs text-muted-foreground truncate">{step.description}</p>
-                </div>
-                {isCurrent && destinations[idx] && (
-                  <Button
-                    size="sm"
-                    onClick={() => onNavigate(destinations[idx]!)}
-                    data-testid={`button-wizard-go-${step.key}`}
-                  >
-                    Continue
-                    <ArrowRight className="ml-1 h-3 w-3" />
-                  </Button>
-                )}
-                {isCurrent && idx === 0 && (
-                  <span className="text-xs text-muted-foreground">Upload below</span>
-                )}
-              </div>
-            );
-          })}
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Input
+            value={versionName}
+            onChange={(e) => setVersionName(e.target.value)}
+            placeholder="Version name (optional)"
+            className="flex-1 min-w-[180px]"
+            data-testid="input-version-name"
+          />
+          <Button
+            size="sm"
+            onClick={() => saveMutation.mutate("save")}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-plan"
+          >
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Save
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => saveMutation.mutate("save_and_copy")}
+            disabled={saveMutation.isPending}
+            data-testid="button-save-copy"
+          >
+            <Copy className="h-3.5 w-3.5 mr-1.5" />
+            Save & Copy
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setConfirmClear(true)}
+            data-testid="button-clear-plan"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Clear
+          </Button>
         </div>
+
+        {versions.length > 0 && (
+          <div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowVersions(!showVersions)}
+              className="w-full justify-between"
+              data-testid="button-toggle-versions"
+            >
+              <span className="text-sm">{versions.length} saved version{versions.length !== 1 ? "s" : ""}</span>
+              {showVersions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+            {showVersions && (
+              <div className="space-y-2 mt-2">
+                {versions.map(v => (
+                  <div key={v.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50" data-testid={`version-row-${v.id}`}>
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{v.versionName}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(v.createdAt), "MMM d, yyyy h:mm a")}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setConfirmRestore(v.id)}
+                      data-testid={`button-restore-${v.id}`}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteMutation.mutate(v.id)}
+                      data-testid={`button-delete-version-${v.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
+
+      <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear Plan Data?</DialogTitle>
+            <DialogDescription>
+              This will clear your current vision board, quarterly goal, monthly goal, and deactivate all habits. You can save a version first to restore later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmClear(false)}>Cancel</Button>
+            <Button
+              variant="outline"
+              onClick={() => { saveMutation.mutate("save_and_clear"); setConfirmClear(false); }}
+              disabled={saveMutation.isPending}
+            >
+              Save First, Then Clear
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => clearMutation.mutate()}
+              disabled={clearMutation.isPending}
+              data-testid="button-confirm-clear"
+            >
+              Clear Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmRestore !== null} onOpenChange={(o) => { if (!o) setConfirmRestore(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restore This Version?</DialogTitle>
+            <DialogDescription>
+              This will overwrite your current plan data with the saved version. New habits will be added alongside existing ones.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmRestore(null)}>Cancel</Button>
+            <Button
+              onClick={() => confirmRestore !== null && restoreMutation.mutate(confirmRestore)}
+              disabled={restoreMutation.isPending}
+              data-testid="button-confirm-restore"
+            >
+              Restore
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -213,6 +359,7 @@ function PlanWizardStepper({
 export default function PlanPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [wizardStep, setWizardStep] = useState(0);
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -257,226 +404,261 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
+  const hasVision = !!(identityDoc?.visionBoardMain);
+  const hasQuarterly = !!(quarterlyGoal?.quarterlyFocus?.trim());
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
+  const activeHabits = habits.filter(h => h.active !== false);
+  const hasHabits = activeHabits.length > 0;
   const thisWeekEntries = eisenhowerEntries.filter(e => e.weekStart === weekStartStr);
   const q2Items = thisWeekEntries.filter(e => e.quadrant === "q2");
-  const completedQ2 = q2Items.filter(e => e.completed);
+  const hasEisenhower = thisWeekEntries.length > 0;
+
+  const stepCompletion = [hasVision, hasQuarterly, hasGoal, hasHabits, hasEisenhower];
+
+  const canAccessStep = (idx: number) => {
+    if (idx === 0) return true;
+    return stepCompletion[idx - 1];
+  };
+
+  const renderStepContent = () => {
+    const step = WIZARD_STEPS[wizardStep];
+    switch (step.key) {
+      case "vision":
+        return (
+          <div className="space-y-4">
+            <VisionBoardSingle imageData={identityDoc?.visionBoardMain || ""} />
+            <p className="text-xs text-muted-foreground text-center">
+              Upload one image that represents your vision. This anchors everything that follows.
+            </p>
+          </div>
+        );
+
+      case "quarterly":
+        return (
+          <div className="space-y-4">
+            {hasQuarterly ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-md bg-muted/50">
+                  <p className="text-sm font-medium" data-testid="text-quarterly-focus">{quarterlyGoal?.quarterlyFocus}</p>
+                  {quarterlyGoal?.outcomeStatement && (
+                    <p className="text-xs text-muted-foreground mt-2">{quarterlyGoal.outcomeStatement}</p>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goals")} data-testid="button-edit-quarterly">
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Edit Quarterly Goal
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Define your quarterly focus to give structure to your monthly goals and weekly priorities.
+                </p>
+                <Button onClick={() => setLocation("/quarterly-goals")} data-testid="button-set-quarterly">
+                  <Target className="h-4 w-4 mr-2" />
+                  Set Quarterly Goal
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "monthly":
+        return (
+          <div className="space-y-4">
+            {hasGoal ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-md bg-muted/50">
+                  <p className="text-sm font-medium" data-testid="text-plan-goal">{goalDisplay}</p>
+                  {monthlyGoal?.deadline && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Deadline: {format(new Date(monthlyGoal.deadline + "T00:00:00"), "MMM d, yyyy")}
+                    </p>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-edit-goal">
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Edit Monthly Goal
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  A monthly goal gives direction to your weekly priorities and daily habits.
+                </p>
+                <Button onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-set-goal">
+                  <Target className="h-4 w-4 mr-2" />
+                  Set Monthly Goal
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "habits":
+        return (
+          <div className="space-y-4">
+            {hasHabits ? (
+              <div className="space-y-2">
+                {activeHabits.slice(0, 5).map(habit => (
+                  <div key={habit.id} className="flex items-center gap-3 py-1.5" data-testid={`habit-plan-${habit.id}`}>
+                    <div className="h-2 w-2 rounded-full shrink-0 bg-primary" />
+                    <span className="text-sm flex-1">{habit.name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{habit.category}</span>
+                  </div>
+                ))}
+                {activeHabits.length > 5 && (
+                  <p className="text-xs text-muted-foreground">+{activeHabits.length - 5} more</p>
+                )}
+                <Button variant="outline" size="sm" onClick={() => setLocation("/habits")} data-testid="button-open-habits">
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Manage Habits
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Set up the daily and weekly habits that will move you toward your goal.
+                </p>
+                <Button onClick={() => setLocation("/habits")} data-testid="button-create-habits">
+                  <Repeat className="h-4 w-4 mr-2" />
+                  Create Habits
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      case "eisenhower":
+        return (
+          <div className="space-y-4">
+            {hasEisenhower ? (
+              <div className="space-y-2">
+                {q2Items.length > 0 && (
+                  <div className="space-y-1.5 mb-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Q2 Focus Items</p>
+                    {q2Items.map(item => (
+                      <div key={item.id} className="flex items-center gap-3 py-1" data-testid={`q2-item-${item.id}`}>
+                        <div className={`h-2 w-2 rounded-full shrink-0 ${item.completed ? "bg-green-500" : "bg-primary"}`} />
+                        <span className={`text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                          {item.task}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Badge variant="outline">{thisWeekEntries.length} items planned</Badge>
+                <div className="mt-2">
+                  <Button variant="outline" size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-open-eisenhower">
+                    <Grid3X3 className="h-3.5 w-3.5 mr-1.5" />
+                    Open Matrix
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Use the Eisenhower Matrix to plan your week's priorities and focus on what matters most.
+                </p>
+                <Button onClick={() => setLocation("/eisenhower")} data-testid="button-plan-eisenhower">
+                  <Grid3X3 className="h-4 w-4 mr-2" />
+                  Plan This Week
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-10 max-w-2xl">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-plan-title">Plan</h1>
-              <p className="text-muted-foreground text-lg">
-                Weekly planning hub — set priorities and align your habits with outcomes.
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Week of {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
-              </p>
-            </div>
-          </div>
+          <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-plan-title">Plan</h1>
+          <p className="text-muted-foreground text-lg">
+            Build your plan step by step. Each step unlocks when the previous one is complete.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Week of {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
+          </p>
         </div>
 
-        <PlanWizardStepper
-          hasGoal={hasGoal}
-          habitsCount={habits.length}
-          q2Count={q2Items.length}
-          hasVision={!!(identityDoc?.visionBoardMain)}
-          onNavigate={setLocation}
-        />
-
         <div className="max-w-3xl space-y-6">
-          <Card className="overflow-visible" data-testid="card-vision-board">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Eye className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Vision Board</CardTitle>
-                  <CardDescription>Visualize your 1-year vision — 1 main image + 2 supporting images</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <VisionBoardUpload
-                  label="Main Vision"
-                  slot="main"
-                  imageData={identityDoc?.visionBoardMain || ""}
-                  isMain={true}
-                />
-                <div className="flex flex-col gap-3">
-                  <VisionBoardUpload
-                    label="Supporting"
-                    slot="left"
-                    imageData={identityDoc?.visionBoardLeft || ""}
-                    isMain={false}
-                  />
-                  <VisionBoardUpload
-                    label="Supporting"
-                    slot="right"
-                    imageData={identityDoc?.visionBoardRight || ""}
-                    isMain={false}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                Upload images that represent your 1-year vision. Max 5MB each.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-plan-monthly-goal">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Monthly Goal</CardTitle>
-                  <CardDescription>Everything this week should move you toward this</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {hasGoal ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium" data-testid="text-plan-goal">{goalDisplay}</p>
-                  {monthlyGoal?.deadline && (
-                    <div className="flex items-start gap-2 text-sm text-muted-foreground" data-testid="text-plan-deadline">
-                      <Target className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      <span>Deadline: {format(new Date(monthlyGoal.deadline + "T00:00:00"), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                  {monthlyGoal?.blockingHabit && (
-                    <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <Footprints className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      <span>Blocking habit: {monthlyGoal.blockingHabit}</span>
-                    </div>
-                  )}
-                  <Button variant="outline" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-edit-goal">
-                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                    Edit Goal
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    No monthly goal set yet. A clear goal gives direction to your weekly priorities and daily habits.
-                  </p>
-                  <Button variant="default" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-set-goal">
-                    <Target className="h-4 w-4 mr-2" />
-                    Set Monthly Goal
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-weekly-focus">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Target className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">This Week's Q2 Focus</CardTitle>
-                  <CardDescription>Your most important non-urgent outcomes</CardDescription>
-                </div>
-                {q2Items.length > 0 && (
-                  <Badge variant="outline">{completedQ2.length}/{q2Items.length} done</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {q2Items.length > 0 ? (
-                <div className="space-y-2">
-                  {q2Items.map(item => (
-                    <div key={item.id} className="flex items-center gap-3 py-1.5" data-testid={`q2-item-${item.id}`}>
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${item.completed ? "bg-green-500" : "bg-primary"}`} />
-                      <span className={`text-sm flex-1 ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                        {item.task}
+          <Card className="overflow-visible" data-testid="card-plan-wizard">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2 mb-4">
+                {WIZARD_STEPS.map((step, idx) => {
+                  const done = stepCompletion[idx];
+                  const isActive = idx === wizardStep;
+                  const locked = !canAccessStep(idx);
+                  return (
+                    <button
+                      key={step.key}
+                      className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-md transition-colors ${
+                        isActive ? "bg-primary/[0.08]" : locked ? "opacity-40" : "hover-elevate"
+                      }`}
+                      onClick={() => { if (!locked) setWizardStep(idx); }}
+                      disabled={locked}
+                      data-testid={`wizard-tab-${step.key}`}
+                    >
+                      <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                        done ? "bg-primary text-primary-foreground" : isActive ? "border-2 border-primary text-primary" : "border border-muted-foreground/30 text-muted-foreground"
+                      }`}>
+                        {done ? <Check className="h-3.5 w-3.5" /> : locked ? <Lock className="h-3 w-3" /> : idx + 1}
+                      </div>
+                      <span className={`text-[11px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                        {step.label}
                       </span>
-                      {item.deadline && (
-                        <span className="text-xs text-muted-foreground">{format(new Date(item.deadline), "EEE")}</span>
-                      )}
-                    </div>
-                  ))}
+                    </button>
+                  );
+                })}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  {(() => { const Icon = WIZARD_STEPS[wizardStep].icon; return <Icon className="h-5 w-5 text-primary" />; })()}
+                  <h3 className="font-serif text-lg font-semibold">{WIZARD_STEPS[wizardStep].label}</h3>
+                  {stepCompletion[wizardStep] && <Badge variant="secondary" className="text-[10px]">Complete</Badge>}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No Q2 items planned this week yet.</p>
-              )}
-              <div className="mt-4">
-                <Button variant="outline" onClick={() => setLocation("/eisenhower")} data-testid="button-open-eisenhower">
-                  <Grid3X3 className="h-4 w-4 mr-2" />
-                  Open Eisenhower Matrix
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <p className="text-sm text-muted-foreground">{WIZARD_STEPS[wizardStep].description}</p>
+              </div>
+
+              {renderStepContent()}
+
+              <div className="flex justify-between items-center mt-6 pt-4 border-t gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}
+                  disabled={wizardStep === 0}
+                  data-testid="button-wizard-prev"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Step {wizardStep + 1} of {WIZARD_STEPS.length}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => setWizardStep(Math.min(WIZARD_STEPS.length - 1, wizardStep + 1))}
+                  disabled={wizardStep === WIZARD_STEPS.length - 1 || !canAccessStep(wizardStep + 1)}
+                  data-testid="button-wizard-next"
+                >
+                  Next
+                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-visible" data-testid="card-habits-overview">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Repeat className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Active Habits</CardTitle>
-                  <CardDescription>Recurring habits aligned with your outcomes</CardDescription>
-                </div>
-                <Badge variant="outline">{habits.length} active</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {habits.length > 0 ? (
-                <div className="space-y-2">
-                  {habits.map(habit => (
-                    <div key={habit.id} className="flex items-center gap-3 py-1.5" data-testid={`habit-plan-${habit.id}`}>
-                      <div className="h-2 w-2 rounded-full shrink-0 bg-primary" />
-                      <span className="text-sm flex-1">{habit.name}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{habit.category}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No habits created yet.</p>
-              )}
-              <div className="mt-4">
-                <Button variant="outline" onClick={() => setLocation("/habits")} data-testid="button-open-habits">
-                  <Repeat className="h-4 w-4 mr-2" />
-                  Manage Habits
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-tasks-overview">
-            <CardHeader>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <ListTodo className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="font-serif text-lg">Daily Tasks</CardTitle>
-                  <CardDescription>Track up to 3 daily tasks with quadrant labels</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={() => setLocation("/tasks")} data-testid="button-open-tasks">
-                <ListTodo className="h-4 w-4 mr-2" />
-                Manage Tasks
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
+          <PlanVersioningPanel />
 
           <p className="text-center text-sm text-muted-foreground italic">
             Begin — to begin is half the work.

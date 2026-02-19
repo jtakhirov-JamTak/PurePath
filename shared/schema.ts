@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -380,3 +380,20 @@ export const insertQuarterlyGoalSchema = createInsertSchema(quarterlyGoals).omit
 
 export type QuarterlyGoal = typeof quarterlyGoals.$inferSelect;
 export type InsertQuarterlyGoal = z.infer<typeof insertQuarterlyGoalSchema>;
+
+export const planVersions = pgTable("plan_versions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  versionName: varchar("version_name", { length: 200 }).notNull(),
+  effectiveDate: date("effective_date"),
+  data: jsonb("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPlanVersionSchema = createInsertSchema(planVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type PlanVersion = typeof planVersions.$inferSelect;
+export type InsertPlanVersion = z.infer<typeof insertPlanVersionSchema>;

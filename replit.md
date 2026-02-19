@@ -30,10 +30,14 @@ Preferred communication style: Simple, everyday language.
   - **Daily Tasks**: Up to 3 tasks per day with Eisenhower Matrix quadrant labels.
   - **Eisenhower Matrix**: Weekly priority planning with categories and goal alignment field for Q2 items. "Success Catalyst" flagging (formerly blocksGoal). Includes "Plan Week" wizard with 3-step guided flow: role selection, brain dump, and task classification into quadrants.
   - **Self-Development Tools**: Meditation, Emotional Processing, and Empathy modules.
-  - **Regulation Now Page** (`/regulation`): Three quick regulation tools — Emotional Containment (60s), Breathwork (120s), Micro-Movement (90s). Each has expandable card with circular timer, play/pause/reset, configurable durations, and step-by-step instructions.
+  - **Regulation Now Page** (`/regulation`): Three quick regulation tools with expandable cards, circular timers, play/pause/reset.
+  - **Quick Tools (Dashboard)**: Emotional Containment (4-step FEEL→LABEL→REGULATE→MOVE flow with "I feel ___ because ___" sentence builder, validation chips, +15s timer increments), Micro-Movement (5 fixed options: 5min walk, 20 squats, 20 jumping jacks, make bed, 5min errand with timer/counter modes), Self-Compassion Break (3-step Mindfulness→Common Humanity→Kindness structured flow with per-step timers, voice input, +15s increments, save-to-journal).
   - **Journal Calendar**: Week view with horizontal grid. Habits sorted by timing (morning → daily → evening). Export with date range filters. Habits and scheduled items have 3-state tracking (completed/skipped/blank).
   - **Dashboard (Today)**: Redesigned vertical flow: 1-Year Vision → Q1-Q4 quarterly goals row → Monthly Promise → North Star (identity/values/intention with voice input) → Daily Habits (journals + habits with cycling status) → Weekly Items (Q2 focus + mini calendar) → Evening Reflection → Regulation Now link → Library link.
-  - **Vision Board** (`/plan`): 3 image uploads (1 main + 2 supporting) stored as base64 in identity_documents table. Upload, replace, and remove functionality.
+  - **Vision Board** (`/plan`): Single image upload stored as base64 in identity_documents table (visionBoardMain). Upload, replace, and remove functionality.
+  - **Plan Wizard** (`/plan`): 5-step gated wizard (Vision→Quarterly→Monthly→Habits→Eisenhower) with step completion checks and navigation gating. Each step must be completed before the next unlocks.
+  - **Plan Versioning**: Save/restore/clear plan data via `plan_versions` table. Snapshot stores identity doc, monthly goal, quarterly goal, and active habits as JSONB. Modes: save, save_and_copy, save_and_clear. Version list with restore/delete.
+  - **Journaling as Habits**: AM/PM journal entries appear as system habits in dashboard's "Due Today" card with click-to-navigate and auto-complete status based on journal existence.
   - **Course Curriculum**: Collapsible phases with lesson overviews and video placeholders.
   - **Phase 3 Transformation**: Document upload for AI pattern analysis and downloadable reports.
 
@@ -46,7 +50,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM.
-- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`.
+- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`, `plan_versions`.
 - **Shared Types**: TypeScript types and Zod schemas shared between client and server.
 
 ### Key Design Patterns

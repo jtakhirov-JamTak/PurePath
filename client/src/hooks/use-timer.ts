@@ -90,9 +90,16 @@ export function useTimer(defaultDuration: number) {
     isComplete: false,
   }), []);
 
+  const addTime = useCallback((extra: number) => setState(prev => ({
+    ...prev,
+    seconds: prev.seconds + extra,
+    totalSeconds: prev.totalSeconds + extra,
+    isComplete: false,
+  })), []);
+
   const progress = state.totalSeconds > 0 ? ((state.totalSeconds - state.seconds) / state.totalSeconds) * 100 : 0;
 
-  return { ...state, progress, start, pause, reset, setDuration };
+  return { ...state, progress, start, pause, reset, setDuration, addTime };
 }
 
 export function formatTime(seconds: number): string {

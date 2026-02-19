@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, quarterlyGoals,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, quarterlyGoals, planVersions,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -12,7 +12,8 @@ import {
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
-  type QuarterlyGoal, type InsertQuarterlyGoal
+  type QuarterlyGoal, type InsertQuarterlyGoal,
+  type PlanVersion, type InsertPlanVersion
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -80,6 +81,14 @@ export interface IStorage {
   // Quarterly Goals
   getQuarterlyGoal(userId: string, quarterKey: string): Promise<QuarterlyGoal | undefined>;
   upsertQuarterlyGoal(goal: InsertQuarterlyGoal): Promise<QuarterlyGoal>;
+
+  // Plan Versions
+  getPlanVersionsByUser(userId: string): Promise<PlanVersion[]>;
+  createPlanVersion(version: InsertPlanVersion): Promise<PlanVersion>;
+  deletePlanVersion(id: number): Promise<void>;
+
+  // Bulk clear for plan versioning
+  clearUserPlanData(userId: string, monthKey: string, quarterKey: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,6 +352,9 @@ export class DatabaseStorage implements IStorage {
           values: doc.values,
           yearVision: doc.yearVision,
           yearVisualization: doc.yearVisualization,
+          visionBoardMain: doc.visionBoardMain,
+          visionBoardLeft: doc.visionBoardLeft,
+          visionBoardRight: doc.visionBoardRight,
           purpose: doc.purpose,
           todayValue: doc.todayValue,
           todayIntention: doc.todayIntention,
@@ -426,6 +438,34 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async getPlanVersionsByUser(userId: string): Promise<PlanVersion[]> {
+    return db.select().from(planVersions).where(eq(planVersions.userId, userId)).orderBy(desc(planVersions.createdAt));
+  }
+
+  async createPlanVersion(version: InsertPlanVersion): Promise<PlanVersion> {
+    const [newVersion] = await db.insert(planVersions).values(version).returning();
+    return newVersion;
+  }
+
+  async deletePlanVersion(id: number): Promise<void> {
+    await db.delete(planVersions).where(eq(planVersions.id, id));
+  }
+
+  async clearUserPlanData(userId: string, monthKey: string, quarterKey: string): Promise<void> {
+    await db.update(identityDocuments).set({
+      yearVision: "", yearVisualization: "",
+      visionBoardMain: "", visionBoardLeft: "", visionBoardRight: "",
+      updatedAt: new Date(),
+    }).where(eq(identityDocuments.userId, userId));
+    await db.delete(quarterlyGoals).where(
+      and(eq(quarterlyGoals.userId, userId), eq(quarterlyGoals.quarterKey, quarterKey))
+    );
+    await db.delete(monthlyGoals).where(
+      and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
+    );
+    await db.update(habits).set({ active: false }).where(eq(habits.userId, userId));
   }
 }
 
