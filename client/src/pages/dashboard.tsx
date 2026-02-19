@@ -56,6 +56,8 @@ export default function DashboardPage() {
   const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions", todayStr],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: journals = [] } = useQuery<Journal[]>({

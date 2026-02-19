@@ -61,6 +61,8 @@ export default function Course2JournalPage() {
   const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
     enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const journalsByDate = useMemo(() => {
