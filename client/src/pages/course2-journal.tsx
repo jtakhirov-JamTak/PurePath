@@ -120,7 +120,7 @@ export default function Course2JournalPage() {
   const eisenhowerByDate = useMemo(() => {
     const map = new Map<string, EisenhowerEntry[]>();
     [...q2Items, ...q1Items].forEach((e) => {
-      const d = e.deadline || "";
+      const d = e.scheduledDate || e.deadline || "";
       if (!d) return;
       if (!map.has(d)) map.set(d, []);
       map.get(d)!.push(e);
@@ -316,7 +316,8 @@ export default function Course2JournalPage() {
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {(() => {
                 const timingOrder = { morning: 0, daily: 1, evening: 2 };
-                const sorted = [...habits].sort((a, b) => {
+                const activeHabits = habits.filter(h => h.active !== false);
+                const sorted = [...activeHabits].sort((a, b) => {
                   const aT = timingOrder[(a.timing as keyof typeof timingOrder) || "daily"] ?? 1;
                   const bT = timingOrder[(b.timing as keyof typeof timingOrder) || "daily"] ?? 1;
                   return aT - bT;
