@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Check, ChevronLeft, ChevronRight, Pencil, Copy } from "lucide-react";
+import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Pencil, Copy } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Habit, HabitCompletion } from "@shared/schema";
+import type { Habit } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
 const DAYS = [
@@ -66,19 +66,6 @@ function formatDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function formatDisplayDate(d: Date): string {
-  const today = new Date();
-  const todayStr = formatDate(today);
-  const dateStr = formatDate(d);
-  if (dateStr === todayStr) return "Today";
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (dateStr === formatDate(yesterday)) return "Yesterday";
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dateStr === formatDate(tomorrow)) return "Tomorrow";
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   health: { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-500" },
@@ -126,8 +113,6 @@ export default function HabitsPage() {
   const qc = useQueryClient();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [trackerDate, setTrackerDate] = useState(new Date());
-
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
   const [newHabit, setNewHabit] = useState({
     name: "",
@@ -150,23 +135,7 @@ export default function HabitsPage() {
     queryKey: ["/api/habits"],
   });
 
-  const dateStr = formatDate(trackerDate);
-  const { data: completions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions", dateStr],
-  });
-
   const activeHabits = habits.filter(h => h.active);
-
-  const todayDayCode = DAY_CODE_MAP[trackerDate.getDay()];
-  const todaysHabits = activeHabits.filter(h => {
-    const codes = h.cadence.split(",");
-    if (!codes.includes(todayDayCode)) return false;
-    if (h.startDate && dateStr < h.startDate) return false;
-    if (h.endDate && dateStr > h.endDate) return false;
-    return true;
-  });
-
-  const completedHabitIds = new Set(completions.map(c => c.habitId));
 
   const toggleDay = (code: string) => {
     setSelectedDays(prev =>
@@ -300,28 +269,7 @@ export default function HabitsPage() {
     },
   });
 
-  const toggleCompletionMutation = useMutation({
-    mutationFn: async ({ habitId, completed }: { habitId: number; completed: boolean }) => {
-      if (completed) {
-        return apiRequest("DELETE", `/api/habit-completions/${habitId}/${dateStr}`);
-      } else {
-        return apiRequest("POST", "/api/habit-completions", { habitId, date: dateStr });
-      }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habit-completions", dateStr] });
-      qc.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
-    },
-  });
-
-  const navigateDate = (offset: number) => {
-    const d = new Date(trackerDate);
-    d.setDate(d.getDate() + offset);
-    setTrackerDate(d);
-  };
-
   const canSubmit = newHabit.name.trim() !== "" && newHabit.motivatingReason.trim() !== "" && selectedDays.length > 0 && parseInt(newHabit.duration) > 0;
-  const completedCount = todaysHabits.filter(h => completedHabitIds.has(h.id)).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -337,73 +285,6 @@ export default function HabitsPage() {
             <p className="text-muted-foreground">Build up to 5 recurring habits — we recommend starting with 3</p>
           </div>
         </div>
-
-        {todaysHabits.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between gap-4 mb-5">
-              <h2 className="text-lg font-semibold" data-testid="text-tracker-title">Daily Tracker</h2>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={() => navigateDate(-1)} data-testid="button-prev-day">
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium min-w-[100px] text-center" data-testid="text-tracker-date">
-                  {formatDisplayDate(trackerDate)}
-                </span>
-                <Button variant="ghost" size="icon" onClick={() => navigateDate(1)} data-testid="button-next-day">
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <Card>
-              <CardContent className="py-6">
-                <div className="flex items-center justify-between gap-4 mb-5">
-                  <p className="text-sm text-muted-foreground" data-testid="text-completion-count">
-                    {completedCount}/{todaysHabits.length} completed
-                  </p>
-                  {todaysHabits.length > 0 && (
-                    <div className="h-2 flex-1 max-w-[200px] bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${(completedCount / todaysHabits.length) * 100}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  {todaysHabits.map(habit => {
-                    const isCompleted = completedHabitIds.has(habit.id);
-                    const style = getCategoryStyle(habit.category);
-                    return (
-                      <button
-                        key={habit.id}
-                        type="button"
-                        onClick={() => toggleCompletionMutation.mutate({ habitId: habit.id, completed: isCompleted })}
-                        className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-colors ${
-                          isCompleted ? "border-primary/20 bg-primary/5" : "border-border/50 hover-elevate"
-                        }`}
-                        data-testid={`tracker-habit-${habit.id}`}
-                      >
-                        <div className={`h-6 w-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
-                          isCompleted ? "bg-primary border-primary" : "border-muted-foreground/30"
-                        }`}>
-                          {isCompleted && <Check className="h-4 w-4 text-primary-foreground" />}
-                        </div>
-                        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${style.dot}`} />
-                        <span className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
-                          {habit.name}
-                        </span>
-                        <Badge variant="outline" className={`ml-auto text-xs ${style.text} ${style.border}`}>
-                          {HABIT_CATEGORIES[(habit.category as HabitCategory) || "health"]?.label || "Health"}
-                        </Badge>
-                      </button>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">

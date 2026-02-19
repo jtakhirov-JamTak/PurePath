@@ -19,12 +19,12 @@ import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  health: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-  wealth: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-  relationships: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-  career: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-  mindfulness: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
-  learning: { bg: "bg-primary/[0.08]", text: "text-primary", border: "border-primary/30", dot: "bg-primary" },
+  health: { bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-500" },
+  wealth: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-500/30", dot: "bg-amber-500" },
+  relationships: { bg: "bg-rose-500/10", text: "text-rose-700 dark:text-rose-400", border: "border-rose-500/30", dot: "bg-rose-500" },
+  career: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  mindfulness: { bg: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-400", border: "border-violet-500/30", dot: "bg-violet-500" },
+  learning: { bg: "bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-500" },
 };
 
 function getCategoryStyle(category: string | null) {
@@ -609,7 +609,7 @@ export default function EisenhowerPage() {
 
         {/* Plan Week Wizard */}
         <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
-          <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" data-testid="modal-plan-wizard">
+          <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="modal-plan-wizard">
             <DialogHeader>
               <DialogTitle className="font-serif flex items-center gap-2">
                 <Wand2 className="h-5 w-5 text-primary" />
