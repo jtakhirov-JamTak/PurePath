@@ -420,7 +420,7 @@ export default function HabitsPage() {
                   Add Habit
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+              <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>{editingHabit ? "Edit Habit" : "Add Habit"}</DialogTitle>
                   <DialogDescription>
