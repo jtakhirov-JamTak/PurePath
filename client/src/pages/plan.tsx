@@ -1,9 +1,12 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { VoiceTextarea } from "@/components/voice-input";
 import {
   Target, Grid3X3, Repeat, ArrowRight, ArrowLeft, Pencil, ImagePlus, X, Eye,
   Check, Save, Trash2, RotateCcw, Copy, Clock, ChevronDown, ChevronUp, Lock
@@ -130,8 +133,89 @@ function VisionBoardSingle({
   );
 }
 
+function VisionStepContent({ identityDoc }: { identityDoc: IdentityDocument | undefined }) {
+  const queryClient = useQueryClient();
+  const [personStatement, setPersonStatement] = useState(identityDoc?.identity || "");
+  const [proofStatement, setProofStatement] = useState(identityDoc?.vision || "");
+  const [hasEdited, setHasEdited] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (identityDoc && !initialized) {
+      setPersonStatement(identityDoc.identity || "");
+      setProofStatement(identityDoc.vision || "");
+      setInitialized(true);
+    }
+  }, [identityDoc, initialized]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("PUT", "/api/identity-document", {
+        identity: personStatement,
+        vision: proofStatement,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+      setHasEdited(false);
+    },
+  });
+
+  const handleChange = (field: "person" | "proof", val: string) => {
+    if (field === "person") setPersonStatement(val);
+    else setProofStatement(val);
+    setHasEdited(true);
+  };
+
+  useEffect(() => {
+    if (!hasEdited) return;
+    const timer = setTimeout(() => {
+      saveMutation.mutate();
+    }, 1200);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [personStatement, proofStatement]);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">In one year, I'm the kind of person who's...</Label>
+          <VoiceTextarea
+            value={personStatement}
+            onChange={(val) => handleChange("person", val)}
+            placeholder="Describe who you want to become..."
+            className="min-h-[70px] text-sm"
+            data-testid="textarea-vision-person"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">The closest proof of that is...</Label>
+          <VoiceTextarea
+            value={proofStatement}
+            onChange={(val) => handleChange("proof", val)}
+            placeholder="What evidence would show you're on track?"
+            className="min-h-[70px] text-sm"
+            data-testid="textarea-vision-proof"
+          />
+        </div>
+        {saveMutation.isPending && (
+          <p className="text-xs text-muted-foreground text-center">Saving...</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground text-center">
+          Optionally upload an image that represents your vision
+        </p>
+        <VisionBoardSingle imageData={identityDoc?.visionBoardMain || ""} />
+      </div>
+    </div>
+  );
+}
+
 const WIZARD_STEPS = [
-  { key: "vision", label: "Vision", icon: Eye, description: "Upload your vision board image" },
+  { key: "vision", label: "Vision", icon: Eye, description: "Define who you want to become" },
   { key: "quarterly", label: "Quarterly Goal", icon: Target, description: "Define your quarterly focus" },
   { key: "monthly", label: "Monthly Goal", icon: Target, description: "Set your monthly goal" },
   { key: "habits", label: "Habits", icon: Repeat, description: "Set up recurring habits" },
@@ -404,7 +488,7 @@ export default function PlanPage() {
     enabled: !!user,
   });
 
-  const hasVision = !!(identityDoc?.visionBoardMain);
+  const hasVision = !!(identityDoc?.visionBoardMain || identityDoc?.identity?.trim() || identityDoc?.vision?.trim());
   const hasQuarterly = !!(quarterlyGoal?.quarterlyFocus?.trim());
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplay.length > 0;
@@ -426,12 +510,7 @@ export default function PlanPage() {
     switch (step.key) {
       case "vision":
         return (
-          <div className="space-y-4">
-            <VisionBoardSingle imageData={identityDoc?.visionBoardMain || ""} />
-            <p className="text-xs text-muted-foreground text-center">
-              Upload one image that represents your vision. This anchors everything that follows.
-            </p>
-          </div>
+          <VisionStepContent identityDoc={identityDoc} />
         );
 
       case "quarterly":
@@ -445,7 +524,7 @@ export default function PlanPage() {
                     <p className="text-xs text-muted-foreground mt-2">{quarterlyGoal.outcomeStatement}</p>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goals")} data-testid="button-edit-quarterly">
+                <Button variant="outline" size="sm" onClick={() => setLocation("/quarterly-goal")} data-testid="button-edit-quarterly">
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Edit Quarterly Goal
                 </Button>
@@ -455,7 +534,7 @@ export default function PlanPage() {
                 <p className="text-sm text-muted-foreground">
                   Define your quarterly focus to give structure to your monthly goals and weekly priorities.
                 </p>
-                <Button onClick={() => setLocation("/quarterly-goals")} data-testid="button-set-quarterly">
+                <Button onClick={() => setLocation("/quarterly-goal")} data-testid="button-set-quarterly">
                   <Target className="h-4 w-4 mr-2" />
                   Set Quarterly Goal
                 </Button>

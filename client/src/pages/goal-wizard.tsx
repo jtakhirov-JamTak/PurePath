@@ -67,6 +67,7 @@ const STEPS: WizardStep[] = [
     content: "Make your goal observable. If a stranger saw it, they\u2019d agree it\u2019s real. Vague outcomes feel good but produce nothing. Define proof that is undeniable, measurable, and tied to a weekly behavior you control.",
     fields: [
       { label: "The clearest proof of me achieving my goal is...", key: "successProof", placeholder: "Observable proof \u2014 if a stranger saw it, they\u2019d agree it\u2019s real" },
+      { label: "How will you know you\u2019ve succeeded?", key: "successMarker", placeholder: "The clearest sign that you\u2019ve made it" },
       { label: "Metric (how measured)", key: "proofMetric", placeholder: "How will you measure this?" },
       { label: "Weekly behavior that would cause it", key: "weeklyBehavior", placeholder: "What weekly action drives this result?" },
     ],
@@ -120,6 +121,7 @@ const STEPS: WizardStep[] = [
     content: "Happiness requires the fundamental layer of self-love. Self-love shows up in choices. You don\u2019t chase goals you don\u2019t believe you deserve. Avoiding pursuit of the life you want usually reflects low self-belief or an internal block. Self-honesty and discipline are the clearest expressions of self-love. Honest assessment of yourself hurts briefly, then unlocks clarity. Discipline is an act of service to yourself and proof that you care about yourself.",
     fields: [
       { label: "What do I value?", key: "value" },
+      { label: "Why does this goal matter to me?", key: "why", placeholder: "Connect your goal to something meaningful" },
     ],
   },
   {
@@ -140,6 +142,9 @@ const STEPS: WizardStep[] = [
     title: "A Journey of a Thousand Miles",
     part: 2,
     content: "Thinking delays momentum and disguises fear as intelligence. Once the goal is set, action beats planning. Progress is a chain of actions. Ask yourself: What\u2019s the next concrete step? Assign the step and execute it.",
+    fields: [
+      { label: "What\u2019s the next concrete step?", key: "nextConcreteStep", placeholder: "One small action you can take right now" },
+    ],
   },
   {
     title: "Habits: The Hidden Drivers",
@@ -240,6 +245,9 @@ export default function GoalWizardPage() {
   const [obstacleBehavior, setObstacleBehavior] = useState("");
   const [ifThenPlan1, setIfThenPlan1] = useState("");
   const [ifThenPlan2, setIfThenPlan2] = useState("");
+  const [successMarker, setSuccessMarker] = useState("");
+  const [why, setWhy] = useState("");
+  const [nextConcreteStep, setNextConcreteStep] = useState("");
 
   const fieldState: Record<string, { value: string; setter: (v: string) => void }> = {
     value: { value, setter: setValue },
@@ -265,6 +273,9 @@ export default function GoalWizardPage() {
     obstacleBehavior: { value: obstacleBehavior, setter: setObstacleBehavior },
     ifThenPlan1: { value: ifThenPlan1, setter: setIfThenPlan1 },
     ifThenPlan2: { value: ifThenPlan2, setter: setIfThenPlan2 },
+    successMarker: { value: successMarker, setter: setSuccessMarker },
+    why: { value: why, setter: setWhy },
+    nextConcreteStep: { value: nextConcreteStep, setter: setNextConcreteStep },
   };
 
   const { data: goal } = useQuery<MonthlyGoal>({
@@ -302,6 +313,9 @@ export default function GoalWizardPage() {
       setObstacleBehavior(goal.obstacleBehavior || "");
       setIfThenPlan1(goal.ifThenPlan1 || "");
       setIfThenPlan2(goal.ifThenPlan2 || "");
+      setSuccessMarker(goal.successMarker || "");
+      setWhy(goal.why || "");
+      setNextConcreteStep(goal.nextConcreteStep || "");
     }
   }, [goal]);
 
@@ -322,9 +336,9 @@ export default function GoalWizardPage() {
         fun: fun.trim(),
         deadline: deadline.trim(),
         goalStatement: goalWhat.trim(),
-        successMarker: "",
-        why: "",
-        nextConcreteStep: "",
+        successMarker: successMarker.trim(),
+        why: why.trim(),
+        nextConcreteStep: nextConcreteStep.trim(),
         successProof: successProof.trim(),
         proofMetric: proofMetric.trim(),
         weeklyBehavior: weeklyBehavior.trim(),

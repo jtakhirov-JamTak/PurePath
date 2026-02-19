@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useTimer, formatTime } from "@/hooks/use-timer";
 import {
   Sun, Moon, Check, ArrowRight,
@@ -534,7 +535,7 @@ function JournalQuickEntry({
 
 const CONTAINMENT_STEPS = [
   { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
-  { label: "LABEL", instruction: "Name the emotion using this sentence:", duration: 15 },
+  { label: "LABEL", instruction: "Name the emotion using this sentence:", duration: 0 },
   { label: "REGULATE", instruction: "Take slow breaths. In through your nose (4 counts), hold (4 counts), out through your mouth (6 counts).", duration: 20 },
   { label: "MOVE", instruction: "Choose one small action to shift your state: stand up, stretch, drink water, or write one sentence.", duration: 0 },
 ];
@@ -652,18 +653,28 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
 
             {step === 1 && (
               <div className="space-y-3 text-left">
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {["Angry", "Sad", "Anxious", "Frustrated", "Hurt", "Scared"].map(e => (
-                    <Badge
-                      key={e}
-                      variant={emotionName === e ? "default" : "outline"}
-                      className="cursor-pointer"
-                      onClick={() => setEmotionName(e)}
-                      data-testid={`badge-emotion-${e.toLowerCase()}`}
-                    >
-                      {e}
-                    </Badge>
-                  ))}
+                <div className="space-y-2">
+                  <Input
+                    value={emotionName}
+                    onChange={(e) => setEmotionName(e.target.value)}
+                    placeholder="Type your emotion..."
+                    className="text-center text-sm"
+                    data-testid="input-emotion-name"
+                  />
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {["Angry", "Sad", "Anxious", "Frustrated", "Hurt", "Scared"].map(e => (
+                      <Badge
+                        key={e}
+                        variant={emotionName.toLowerCase() === e.toLowerCase() ? "default" : "outline"}
+                        className="cursor-pointer text-xs"
+                        onClick={() => setEmotionName(e)}
+                        data-testid={`badge-emotion-${e.toLowerCase()}`}
+                      >
+                        {e}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">Tap a suggestion or type your own</p>
                 </div>
                 {emotionName && (
                   <div className="space-y-2 text-center">
@@ -678,19 +689,14 @@ function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => voi
                       className="text-sm resize-none"
                       data-testid="input-because-text"
                     />
-                    <div className="flex gap-2 justify-center">
-                      {["it's okay", "it makes sense"].map(chip => (
-                        <Badge
-                          key={chip}
-                          variant={validationChip === chip ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => setValidationChip(chip)}
-                          data-testid={`badge-validation-${chip.replace(/\s/g, "-")}`}
-                        >
-                          ...and {chip} to feel this way
-                        </Badge>
-                      ))}
-                    </div>
+                    <Badge
+                      variant={validationChip === "it makes sense" ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => setValidationChip(validationChip === "it makes sense" ? "" : "it makes sense")}
+                      data-testid="badge-validation-it-makes-sense"
+                    >
+                      ...and it makes sense to feel this way
+                    </Badge>
                   </div>
                 )}
               </div>
