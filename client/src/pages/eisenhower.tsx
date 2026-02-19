@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppHeader } from "@/components/app-header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { EisenhowerEntry } from "@shared/schema";
@@ -30,11 +30,12 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string
 function getCategoryStyle(category: string | null) {
   return CATEGORY_STYLES[category || "health"] || CATEGORY_STYLES.health;
 }
+
 const QUADRANTS = [
-  { id: "q1", name: "Q1 - Urgent & Important", description: "Do Now", color: "bg-red-500/20 text-red-700 dark:text-red-400" },
-  { id: "q2", name: "Q2 - Important, Not Urgent", description: "Schedule", color: "bg-green-500/20 text-green-700 dark:text-green-400" },
-  { id: "q3", name: "Q3 - Urgent, Not Important", description: "Delegate", color: "bg-amber-500/20 text-amber-700 dark:text-amber-400" },
-  { id: "q4", name: "Q4 - Not Urgent, Not Important", description: "Avoid", color: "bg-gray-500/20 text-gray-700 dark:text-gray-400" },
+  { id: "q1", name: "Q1 - Urgent & Important", shortName: "Q1", description: "Do Now", color: "bg-red-500/20 text-red-700 dark:text-red-400", dropColor: "border-red-500/50" },
+  { id: "q2", name: "Q2 - Important, Not Urgent", shortName: "Q2", description: "Schedule", color: "bg-green-500/20 text-green-700 dark:text-green-400", dropColor: "border-green-500/50" },
+  { id: "q3", name: "Q3 - Urgent, Not Important", shortName: "Q3", description: "Delegate", color: "bg-amber-500/20 text-amber-700 dark:text-amber-400", dropColor: "border-amber-500/50" },
+  { id: "q4", name: "Q4 - Not Urgent, Not Important", shortName: "Q4", description: "Avoid", color: "bg-gray-500/20 text-gray-700 dark:text-gray-400", dropColor: "border-gray-500/50" },
 ];
 
 function generateTimeSlots() {
@@ -91,6 +92,17 @@ function isSchedulableQuadrant(quadrant: string) {
   return quadrant === "q1" || quadrant === "q2";
 }
 
+interface WizardItem {
+  task: string;
+  quadrant: string;
+  role: HabitCategory;
+  deadline: string;
+  startTime: string;
+  endTime: string;
+  goalAlignment: string;
+  blocksGoal: boolean;
+}
+
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -122,10 +134,11 @@ export default function EisenhowerPage() {
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const [wizardRole, setWizardRole] = useState<HabitCategory>("health");
   const [brainDump, setBrainDump] = useState("");
-  const [wizardItems, setWizardItems] = useState<Array<{ task: string; quadrant: string; deadline: string; goalAlignment: string }>>([]);
+  const [wizardItems, setWizardItems] = useState<WizardItem[]>([]);
   const [wizardSaving, setWizardSaving] = useState(false);
+  const [dragItem, setDragItem] = useState<number | null>(null);
+  const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
 
@@ -153,6 +166,7 @@ export default function EisenhowerPage() {
         decision: entry.decision || null,
         timeEstimate: timeEstimate || null,
         scheduledTime: scheduledTime || null,
+        scheduledDate: isSchedulable ? (entry.deadline || null) : null,
         goalAlignment: entry.quadrant === "q2" ? (entry.goalAlignment || null) : null,
         blocksGoal: entry.blocksGoal || false,
         weekStart,
@@ -181,6 +195,7 @@ export default function EisenhowerPage() {
         deadline: isSchedulable ? (data.updates.deadline || null) : null,
         scheduledTime,
         timeEstimate,
+        scheduledDate: isSchedulable ? (data.updates.deadline || null) : null,
         goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
         blocksGoal: data.updates.blocksGoal || false,
       });
@@ -224,7 +239,7 @@ export default function EisenhowerPage() {
       role: (entry.role as HabitCategory) || "health",
       task: entry.task,
       quadrant: entry.quadrant,
-      deadline: entry.deadline || "",
+      deadline: entry.deadline || entry.scheduledDate || "",
       startTime: parsed.startTime,
       endTime: parsed.endTime,
       goalAlignment: entry.goalAlignment || "",
@@ -235,6 +250,14 @@ export default function EisenhowerPage() {
   };
 
   const getEntriesByQuadrant = (quadrant: string) => entries.filter(e => e.quadrant === quadrant);
+
+  const canSubmitEntry = (formState: { task: string; quadrant: string; deadline: string; startTime: string; endTime: string }) => {
+    if (!formState.task.trim()) return false;
+    if (isSchedulableQuadrant(formState.quadrant)) {
+      if (!formState.deadline || !formState.startTime || !formState.endTime) return false;
+    }
+    return true;
+  };
 
   const renderFormFields = (
     formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string; blocksGoal: boolean },
@@ -291,17 +314,22 @@ export default function EisenhowerPage() {
         {schedulable && (
           <>
             <div>
-              <Label>Date</Label>
+              <Label>
+                Date <span className="text-destructive">*</span>
+              </Label>
               <Input 
                 type="date" 
                 value={formState.deadline} 
                 onChange={(e) => setFormState({ ...formState, deadline: e.target.value })}
                 data-testid={`${prefix}input-deadline`}
+                required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Start Time</Label>
+                <Label>
+                  Start Time <span className="text-destructive">*</span>
+                </Label>
                 <Select value={formState.startTime} onValueChange={(v) => setFormState({ ...formState, startTime: v })}>
                   <SelectTrigger data-testid={`${prefix}select-start-time`}>
                     <SelectValue placeholder="Select" />
@@ -314,7 +342,9 @@ export default function EisenhowerPage() {
                 </Select>
               </div>
               <div>
-                <Label>End Time</Label>
+                <Label>
+                  End Time <span className="text-destructive">*</span>
+                </Label>
                 <Select value={formState.endTime} onValueChange={(v) => setFormState({ ...formState, endTime: v })}>
                   <SelectTrigger data-testid={`${prefix}select-end-time`}>
                     <SelectValue placeholder="Select" />
@@ -359,6 +389,34 @@ export default function EisenhowerPage() {
       </div>
     );
   };
+
+  const handleDragStart = (idx: number) => {
+    setDragItem(idx);
+  };
+
+  const handleDragOver = (e: React.DragEvent, quadrantId: string) => {
+    e.preventDefault();
+    setDragOverQuadrant(quadrantId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverQuadrant(null);
+  };
+
+  const handleDrop = (quadrantId: string) => {
+    if (dragItem !== null) {
+      const updated = [...wizardItems];
+      updated[dragItem] = { ...updated[dragItem], quadrant: quadrantId };
+      setWizardItems(updated);
+    }
+    setDragItem(null);
+    setDragOverQuadrant(null);
+  };
+
+  const wizardQ12Items = wizardItems.filter(i => isSchedulableQuadrant(i.quadrant));
+  const allQ12Complete = wizardQ12Items.every(i => i.deadline && i.startTime && i.endTime);
+
+  const wizardStepLabels = ["Brain Dump", "Classify", "Details"];
 
   return (
     <div className="min-h-screen bg-background">
@@ -417,7 +475,7 @@ export default function EisenhowerPage() {
               <DialogFooter>
                 <Button 
                   onClick={() => createMutation.mutate(newEntry)} 
-                  disabled={!newEntry.task || createMutation.isPending}
+                  disabled={!canSubmitEntry(newEntry) || createMutation.isPending}
                   data-testid="button-submit-entry"
                 >
                   Add Entry
@@ -433,17 +491,11 @@ export default function EisenhowerPage() {
               <DialogTitle>Edit Entry</DialogTitle>
               <DialogDescription>Update your Eisenhower Matrix entry</DialogDescription>
             </DialogHeader>
-            {editEntry && editEntry.scheduledTime && (
-              <p className="text-sm text-muted-foreground">
-                Current schedule: {editEntry.scheduledTime}
-                {editEntry.timeEstimate ? ` (${editEntry.timeEstimate})` : ""}
-              </p>
-            )}
             {renderFormFields(editForm, (val: any) => setEditForm(val), editDuration, "edit-")}
             <DialogFooter>
               <Button 
                 onClick={() => editEntry && editMutation.mutate({ id: editEntry.id, updates: editForm })} 
-                disabled={!editForm.task || editMutation.isPending}
+                disabled={!canSubmitEntry(editForm) || editMutation.isPending}
                 data-testid="edit-dialog-submit"
               >
                 Save Changes
@@ -456,7 +508,7 @@ export default function EisenhowerPage() {
           {QUADRANTS.map(quadrant => (
             <Card key={quadrant.id}>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CardTitle className="font-serif text-lg">{quadrant.name}</CardTitle>
                   <Badge variant="outline">{quadrant.description}</Badge>
                 </div>
@@ -494,15 +546,26 @@ export default function EisenhowerPage() {
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <Badge variant="outline" className={`text-xs ${getCategoryStyle(entry.role).text} ${getCategoryStyle(entry.role).border}`}>
                                 <span className={`h-2 w-2 rounded-full mr-1 ${getCategoryStyle(entry.role).dot}`} />
-                                {HABIT_CATEGORIES[(entry.role as HabitCategory)] ?.label || entry.role}
+                                {HABIT_CATEGORIES[(entry.role as HabitCategory)]?.label || entry.role}
                               </Badge>
                               {entry.blocksGoal && (
                                 <Badge variant="outline" className="text-xs text-primary border-primary/30" data-testid={`badge-blocks-goal-${entry.id}`}>
                                   Success Catalyst
                                 </Badge>
                               )}
-                              {entry.timeEstimate && <span className="text-xs text-muted-foreground">{entry.timeEstimate}</span>}
-                              {entry.scheduledTime && <span className="text-xs text-muted-foreground">{entry.scheduledTime}</span>}
+                              {isSchedulableQuadrant(entry.quadrant) && entry.deadline && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(entry.deadline + "T00:00:00"), "MMM d")}
+                                </span>
+                              )}
+                              {entry.scheduledTime && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {entry.scheduledTime}
+                                </span>
+                              )}
+                              {entry.timeEstimate && <span className="text-xs text-muted-foreground">({entry.timeEstimate})</span>}
                             </div>
                           </div>
                           <Button 
@@ -536,64 +599,55 @@ export default function EisenhowerPage() {
             <CardTitle className="font-serif">Quick Reference</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p><strong>Q1 (Urgent + Important):</strong> Crises, deadlines, pressing problems → Do now</p>
-            <p><strong>Q2 (Important + Not Urgent):</strong> Prevention, planning, growth, relationships → Schedule</p>
-            <p><strong>Q3 (Urgent + Not Important):</strong> Interruptions, other people's urgency → Delegate or decline</p>
-            <p><strong>Q4 (Not Urgent + Not Important):</strong> Time-wasters, avoidance — Avoid entirely. If done, it's a loss.</p>
+            <p><strong>Q1 (Urgent + Important):</strong> Crises, deadlines, pressing problems. Requires date & time.</p>
+            <p><strong>Q2 (Important + Not Urgent):</strong> Prevention, planning, growth, relationships. Requires date & time.</p>
+            <p><strong>Q3 (Urgent + Not Important):</strong> Interruptions, other people's urgency. Delegate or decline.</p>
+            <p><strong>Q4 (Not Urgent + Not Important):</strong> Time-wasters, avoidance. Avoid entirely. If done, it's a loss.</p>
             <p className="pt-2 border-t font-medium text-foreground">Goal: Reduce Q1 by investing in Q2. Your life gets calmer, clearer, and more intentional.</p>
           </CardContent>
         </Card>
 
+        {/* Plan Week Wizard */}
         <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
-          <DialogContent className="sm:max-w-lg" data-testid="modal-plan-wizard">
+          <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" data-testid="modal-plan-wizard">
             <DialogHeader>
               <DialogTitle className="font-serif flex items-center gap-2">
                 <Wand2 className="h-5 w-5 text-primary" />
                 Plan Your Week
               </DialogTitle>
               <DialogDescription>
-                {wizardStep === 0 && "Choose a focus area for this batch of tasks."}
-                {wizardStep === 1 && "Write all tasks on your mind — one per line."}
-                {wizardStep === 2 && "Classify each task into its quadrant."}
+                {wizardStep === 0 && "Write everything on your mind — one task per line. Don't filter, just dump."}
+                {wizardStep === 1 && "Drag each task into the right quadrant. Use the reference below to guide you."}
+                {wizardStep === 2 && "Set a date and time for your Q1 and Q2 items. Q3 and Q4 items are ready to go."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= wizardStep ? "bg-primary" : "bg-muted"}`} />
+                {wizardStepLabels.map((label, i) => (
+                  <div key={i} className="flex items-center gap-2 flex-1">
+                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
+                      i < wizardStep ? "bg-primary text-primary-foreground" : i === wizardStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {i < wizardStep ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    </div>
+                    <span className={`text-xs font-medium ${i <= wizardStep ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                    {i < wizardStepLabels.length - 1 && <div className={`h-0.5 flex-1 rounded-full ${i < wizardStep ? "bg-primary" : "bg-muted"}`} />}
+                  </div>
                 ))}
               </div>
 
+              {/* Step 1: Brain Dump */}
               {wizardStep === 0 && (
-                <div className="space-y-3">
-                  <Label>Focus Area</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {CATEGORY_KEYS.map(key => (
-                      <Button
-                        key={key}
-                        variant={wizardRole === key ? "default" : "outline"}
-                        className="justify-start gap-2"
-                        onClick={() => setWizardRole(key)}
-                        data-testid={`wizard-role-${key}`}
-                      >
-                        <div className={`h-2.5 w-2.5 rounded-full ${getCategoryStyle(key).dot}`} />
-                        {HABIT_CATEGORIES[key].label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {wizardStep === 1 && (
                 <div className="space-y-3">
                   <Label>Brain Dump — one task per line</Label>
                   <Textarea
                     value={brainDump}
                     onChange={(e) => setBrainDump(e.target.value)}
                     placeholder={"Finish quarterly report\nSchedule dentist\nReview investments\nCall mom\nClean garage"}
-                    rows={8}
+                    rows={10}
                     className="text-sm"
                     data-testid="textarea-brain-dump"
+                    autoFocus
                   />
                   <p className="text-xs text-muted-foreground">
                     {brainDump.split("\n").filter(l => l.trim()).length} tasks listed
@@ -601,86 +655,355 @@ export default function EisenhowerPage() {
                 </div>
               )}
 
-              {wizardStep === 2 && (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                  {wizardItems.map((item, idx) => (
-                    <div key={idx} className="p-3 border rounded-md space-y-2" data-testid={`wizard-item-${idx}`}>
-                      <p className="text-sm font-medium">{item.task}</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {QUADRANTS.map(q => (
-                          <Button
-                            key={q.id}
-                            variant={item.quadrant === q.id ? "default" : "outline"}
-                            size="sm"
-                            className="text-xs"
-                            onClick={() => {
-                              const updated = [...wizardItems];
-                              updated[idx] = { ...updated[idx], quadrant: q.id };
-                              setWizardItems(updated);
-                            }}
-                            data-testid={`wizard-classify-${idx}-${q.id}`}
-                          >
-                            {q.description}
-                          </Button>
+              {/* Step 2: Drag & Drop Classification */}
+              {wizardStep === 1 && (
+                <div className="space-y-4">
+                  {/* Unclassified items */}
+                  {wizardItems.some(i => !i.quadrant || i.quadrant === "unclassified") && (
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Drag tasks to a quadrant below</Label>
+                      <div className="space-y-1">
+                        {wizardItems.map((item, idx) => (
+                          (!item.quadrant || item.quadrant === "unclassified") && (
+                            <div
+                              key={idx}
+                              draggable
+                              onDragStart={() => handleDragStart(idx)}
+                              className="flex items-center gap-2 p-2 border rounded-md bg-card cursor-grab active:cursor-grabbing"
+                              data-testid={`wizard-drag-item-${idx}`}
+                            >
+                              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm">{item.task}</span>
+                            </div>
+                          )
                         ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Quadrant drop zones */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {QUADRANTS.map(q => {
+                      const itemsInQ = wizardItems.filter(i => i.quadrant === q.id);
+                      const isDragOver = dragOverQuadrant === q.id;
+                      return (
+                        <div
+                          key={q.id}
+                          className={`p-3 rounded-lg border-2 border-dashed min-h-[100px] transition-colors ${
+                            isDragOver ? `${q.dropColor} bg-muted/50` : "border-border"
+                          }`}
+                          onDragOver={(e) => handleDragOver(e, q.id)}
+                          onDragLeave={handleDragLeave}
+                          onDrop={() => handleDrop(q.id)}
+                          data-testid={`wizard-drop-${q.id}`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-2">
+                            <p className="text-xs font-semibold">{q.shortName}</p>
+                            <Badge variant="outline" className="text-[10px]">{q.description}</Badge>
+                          </div>
+                          <div className="space-y-1">
+                            {itemsInQ.map((item) => {
+                              const realIdx = wizardItems.indexOf(item);
+                              return (
+                                <div
+                                  key={realIdx}
+                                  draggable
+                                  onDragStart={() => handleDragStart(realIdx)}
+                                  className={`flex items-center gap-2 p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing ${q.color}`}
+                                  data-testid={`wizard-classified-${realIdx}`}
+                                >
+                                  <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  <span className="truncate">{item.task}</span>
+                                </div>
+                              );
+                            })}
+                            {itemsInQ.length === 0 && !isDragOver && (
+                              <p className="text-[10px] text-muted-foreground text-center py-2">Drop here</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Quick tap classification as fallback */}
+                  <div className="border-t pt-3">
+                    <p className="text-xs text-muted-foreground mb-2">Or tap to classify:</p>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {wizardItems.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2" data-testid={`wizard-tap-item-${idx}`}>
+                          <span className="text-xs flex-1 truncate">{item.task}</span>
+                          <div className="flex gap-1 shrink-0">
+                            {QUADRANTS.map(q => (
+                              <Button
+                                key={q.id}
+                                variant={item.quadrant === q.id ? "default" : "outline"}
+                                size="sm"
+                                className="text-[10px] h-6 px-2"
+                                onClick={() => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], quadrant: q.id };
+                                  setWizardItems(updated);
+                                }}
+                                data-testid={`wizard-classify-${idx}-${q.id}`}
+                              >
+                                {q.shortName}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quick Reference */}
+                  <div className="border-t pt-3">
+                    <p className="text-xs font-semibold mb-1">Quick Reference</p>
+                    <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground">
+                      <p><strong>Q1:</strong> Urgent + Important = Do now</p>
+                      <p><strong>Q2:</strong> Important, not urgent = Schedule</p>
+                      <p><strong>Q3:</strong> Urgent, not important = Delegate</p>
+                      <p><strong>Q4:</strong> Not urgent/important = Avoid</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Q1/Q2 Details */}
+              {wizardStep === 2 && (
+                <div className="space-y-4">
+                  {wizardQ12Items.length === 0 ? (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-muted-foreground">No Q1 or Q2 items need date & time details.</p>
+                      <p className="text-xs text-muted-foreground mt-1">You can save your tasks now.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                      {wizardItems.map((item, idx) => {
+                        if (!isSchedulableQuadrant(item.quadrant)) return null;
+                        const q = QUADRANTS.find(q => q.id === item.quadrant)!;
+                        const dur = item.startTime && item.endTime ? calcDuration(item.startTime, item.endTime) : "";
+                        const isMissing = !item.deadline || !item.startTime || !item.endTime;
+                        return (
+                          <div key={idx} className={`p-3 border rounded-md space-y-3 ${q.color}`} data-testid={`wizard-detail-${idx}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium">{item.task}</p>
+                              <Badge variant="outline" className="text-xs shrink-0">{q.shortName}</Badge>
+                            </div>
+                            <div>
+                              <Label className="text-xs">
+                                Category
+                              </Label>
+                              <Select value={item.role} onValueChange={(v) => {
+                                const updated = [...wizardItems];
+                                updated[idx] = { ...updated[idx], role: v as HabitCategory };
+                                setWizardItems(updated);
+                              }}>
+                                <SelectTrigger className="h-8 text-xs" data-testid={`wizard-detail-category-${idx}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CATEGORY_KEYS.map(key => (
+                                    <SelectItem key={key} value={key}>
+                                      <div className="flex items-center gap-2">
+                                        <div className={`h-2 w-2 rounded-full ${getCategoryStyle(key).dot}`} />
+                                        {HABIT_CATEGORIES[key].label}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">
+                                Date <span className="text-destructive">*</span>
+                              </Label>
+                              <Input
+                                type="date"
+                                value={item.deadline}
+                                onChange={(e) => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], deadline: e.target.value };
+                                  setWizardItems(updated);
+                                }}
+                                className="h-8 text-xs"
+                                data-testid={`wizard-detail-date-${idx}`}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <Label className="text-xs">
+                                  Start <span className="text-destructive">*</span>
+                                </Label>
+                                <Select value={item.startTime} onValueChange={(v) => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], startTime: v };
+                                  setWizardItems(updated);
+                                }}>
+                                  <SelectTrigger className="h-8 text-xs" data-testid={`wizard-detail-start-${idx}`}>
+                                    <SelectValue placeholder="Start" />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {TIME_SLOTS.map(t => (
+                                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div>
+                                <Label className="text-xs">
+                                  End <span className="text-destructive">*</span>
+                                </Label>
+                                <Select value={item.endTime} onValueChange={(v) => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], endTime: v };
+                                  setWizardItems(updated);
+                                }}>
+                                  <SelectTrigger className="h-8 text-xs" data-testid={`wizard-detail-end-${idx}`}>
+                                    <SelectValue placeholder="End" />
+                                  </SelectTrigger>
+                                  <SelectContent className="max-h-60">
+                                    {TIME_SLOTS.filter(t => !item.startTime || t > item.startTime).map(t => (
+                                      <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            {dur && <p className="text-xs text-muted-foreground">Duration: {dur}</p>}
+                            {item.quadrant === "q2" && (
+                              <div>
+                                <Label className="text-xs">Goal Alignment (optional)</Label>
+                                <Input
+                                  value={item.goalAlignment}
+                                  onChange={(e) => {
+                                    const updated = [...wizardItems];
+                                    updated[idx] = { ...updated[idx], goalAlignment: e.target.value };
+                                    setWizardItems(updated);
+                                  }}
+                                  placeholder="How does this support your monthly goal?"
+                                  className="h-8 text-xs"
+                                  data-testid={`wizard-detail-goal-${idx}`}
+                                />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`wizard-catalyst-${idx}`}
+                                checked={item.blocksGoal}
+                                onCheckedChange={(v) => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], blocksGoal: !!v };
+                                  setWizardItems(updated);
+                                }}
+                                data-testid={`wizard-detail-catalyst-${idx}`}
+                              />
+                              <Label htmlFor={`wizard-catalyst-${idx}`} className="text-xs cursor-pointer">Success Catalyst</Label>
+                            </div>
+                            {isMissing && (
+                              <p className="text-xs text-destructive">Date and time are required for {q.shortName} items</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Show Q3/Q4 summary */}
+                  {wizardItems.some(i => !isSchedulableQuadrant(i.quadrant)) && (
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Q3 & Q4 items (no additional details needed)</p>
+                      <div className="space-y-1">
+                        {wizardItems.filter(i => !isSchedulableQuadrant(i.quadrant)).map((item, i) => {
+                          const q = QUADRANTS.find(q => q.id === item.quadrant)!;
+                          return (
+                            <div key={i} className={`flex items-center gap-2 p-1.5 rounded-md text-xs ${q.color}`}>
+                              <Badge variant="outline" className="text-[10px] shrink-0">{q.shortName}</Badge>
+                              <span>{item.task}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-            <DialogFooter>
-              {wizardStep > 0 && (
-                <Button variant="ghost" size="sm" onClick={() => setWizardStep(s => s - 1)} data-testid="button-wizard-back">
-                  Back
-                </Button>
-              )}
-              {wizardStep < 2 && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (wizardStep === 1) {
-                      const lines = brainDump.split("\n").filter(l => l.trim());
-                      setWizardItems(lines.map(task => ({ task: task.trim(), quadrant: "q2", deadline: "", goalAlignment: "" })));
-                    }
-                    setWizardStep(s => s + 1);
-                  }}
-                  disabled={wizardStep === 1 && !brainDump.trim()}
-                  data-testid="button-wizard-next"
-                >
-                  Next
-                  <ArrowRight className="ml-1 h-3 w-3" />
-                </Button>
-              )}
-              {wizardStep === 2 && (
-                <Button
-                  size="sm"
-                  onClick={async () => {
-                    setWizardSaving(true);
-                    try {
-                      for (const item of wizardItems) {
-                        await apiRequest("POST", "/api/eisenhower", {
-                          role: wizardRole,
-                          task: item.task,
-                          quadrant: item.quadrant,
-                          deadline: item.deadline || null,
-                          goalAlignment: item.goalAlignment || null,
-                          weekStart,
-                        });
+            <DialogFooter className="flex-row justify-between gap-2">
+              <div>
+                {wizardStep > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setWizardStep(s => s - 1)} data-testid="button-wizard-back">
+                    Back
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {wizardStep < 2 && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (wizardStep === 0) {
+                        const lines = brainDump.split("\n").filter(l => l.trim());
+                        setWizardItems(lines.map(task => ({
+                          task: task.trim(),
+                          quadrant: "unclassified",
+                          role: "health" as HabitCategory,
+                          deadline: "",
+                          startTime: "",
+                          endTime: "",
+                          goalAlignment: "",
+                          blocksGoal: false,
+                        })));
                       }
-                      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
-                      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-                      setWizardOpen(false);
-                    } finally {
-                      setWizardSaving(false);
-                    }
-                  }}
-                  disabled={wizardItems.length === 0 || wizardSaving}
-                  data-testid="button-wizard-save"
-                >
-                  {wizardSaving ? "Saving..." : `Add ${wizardItems.length} Tasks`}
-                </Button>
-              )}
+                      setWizardStep(s => s + 1);
+                    }}
+                    disabled={wizardStep === 0 && !brainDump.trim()}
+                    data-testid="button-wizard-next"
+                  >
+                    Next
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                )}
+                {wizardStep === 2 && (
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      setWizardSaving(true);
+                      try {
+                        for (const item of wizardItems) {
+                          if (item.quadrant === "unclassified") continue;
+                          const isSchedulable = isSchedulableQuadrant(item.quadrant);
+                          const scheduledTime = isSchedulable && item.startTime && item.endTime
+                            ? `${formatTimeLabel(item.startTime)} - ${formatTimeLabel(item.endTime)}` : null;
+                          const timeEstimate = isSchedulable && item.startTime && item.endTime
+                            ? calcDuration(item.startTime, item.endTime) : null;
+                          await apiRequest("POST", "/api/eisenhower", {
+                            role: item.role,
+                            task: item.task,
+                            quadrant: item.quadrant,
+                            deadline: isSchedulable ? (item.deadline || null) : null,
+                            scheduledTime,
+                            timeEstimate,
+                            scheduledDate: isSchedulable ? (item.deadline || null) : null,
+                            goalAlignment: item.quadrant === "q2" ? (item.goalAlignment || null) : null,
+                            blocksGoal: item.blocksGoal || false,
+                            weekStart,
+                          });
+                        }
+                        queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+                        queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+                        setWizardOpen(false);
+                      } finally {
+                        setWizardSaving(false);
+                      }
+                    }}
+                    disabled={wizardItems.filter(i => i.quadrant !== "unclassified").length === 0 || wizardSaving || (wizardQ12Items.length > 0 && !allQ12Complete)}
+                    data-testid="button-wizard-save"
+                  >
+                    {wizardSaving ? "Saving..." : `Add ${wizardItems.filter(i => i.quadrant !== "unclassified").length} Tasks`}
+                  </Button>
+                )}
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
