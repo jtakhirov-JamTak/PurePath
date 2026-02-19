@@ -16,7 +16,7 @@ import {
   Sun, Moon, Check, ArrowRight,
   Heart, Activity, HandHeart,
   Target, Minus, Play, Pause, RotateCcw,
-  Pencil, Plus, Trash2, Footprints,
+  Pencil, Plus, Trash2, Footprints, X, SkipForward,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format, startOfWeek, endOfWeek } from "date-fns";
@@ -150,6 +150,25 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
+
+  const cycleEisenhowerMutation = useMutation({
+    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+      let nextStatus: string | null;
+      if (!currentStatus) {
+        nextStatus = "completed";
+      } else if (currentStatus === "completed") {
+        nextStatus = "skipped";
+      } else if (currentStatus === "skipped") {
+        nextStatus = "cancelled";
+      } else {
+        nextStatus = null;
+      }
+      return apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
     },
   });
 
@@ -360,18 +379,44 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="pb-4">
               <ul className="space-y-2">
-                {todayQ2Items.map((item) => (
-                  <li key={item.id} className="flex items-center gap-3" data-testid={`q2-block-${item.id}`}>
-                    <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
-                    <span className="text-sm flex-1">{item.task}</span>
-                    {item.scheduledTime && (
-                      <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
-                    )}
-                    {item.durationMinutes && (
-                      <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
-                    )}
-                  </li>
-                ))}
+                {todayQ2Items.map((item) => {
+                  const status = item.status || null;
+                  return (
+                    <li key={item.id} className="flex items-center gap-3" data-testid={`q2-block-${item.id}`}>
+                      <button
+                        role="checkbox"
+                        aria-checked={status === "completed" ? true : status ? "mixed" : false}
+                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                          status === "completed" ? "bg-primary border-primary"
+                          : status === "skipped" ? "bg-muted border-muted-foreground/30"
+                          : status === "cancelled" ? "bg-destructive/15 border-destructive/40"
+                          : "border-border"
+                        }`}
+                        onClick={() => cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: status })}
+                        data-testid={`q2-cycle-${item.id}`}
+                      >
+                        {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                        {status === "skipped" && <SkipForward className="h-3 w-3 text-muted-foreground" />}
+                        {status === "cancelled" && <X className="h-3 w-3 text-destructive" />}
+                      </button>
+                      <span className={`text-sm flex-1 ${
+                        status === "completed" ? "line-through text-muted-foreground"
+                        : status === "skipped" ? "text-muted-foreground italic"
+                        : status === "cancelled" ? "line-through text-muted-foreground/60"
+                        : ""
+                      }`}>{item.task}</span>
+                      {item.scheduledTime && (
+                        <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
+                      )}
+                      {item.durationMinutes && (
+                        <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
+                      )}
+                      {status && (
+                        <span className="text-xs text-muted-foreground">{status}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </CardContent>
           </Card>
