@@ -230,41 +230,6 @@ export default function Course2JournalPage() {
                 );
               })}
 
-              <SectionHeaderRow gridCols={gridCols} label="Journaling" days={days} todayStr={todayStr} />
-              <LabelCell icon={<Sun className="h-4 w-4 text-amber-500" />} label="Morning Journal" />
-              {days.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const done = journalsByDate.get(dateStr)?.morning || false;
-                return (
-                  <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
-                    <div
-                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
-                      onClick={() => setLocation(`/journal/${dateStr}/morning`)}
-                      data-testid={`row-morning-${dateStr}`}
-                    >
-                      {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
-                    </div>
-                  </DayCell>
-                );
-              })}
-
-              <LabelCell icon={<Moon className="h-4 w-4 text-indigo-500" />} label="Evening Journal" />
-              {days.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const done = journalsByDate.get(dateStr)?.evening || false;
-                return (
-                  <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
-                    <div
-                      className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
-                      onClick={() => setLocation(`/journal/${dateStr}/evening`)}
-                      data-testid={`row-evening-${dateStr}`}
-                    >
-                      {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
-                    </div>
-                  </DayCell>
-                );
-              })}
-
               <SectionHeaderRow gridCols={gridCols} label="Scheduled Items" days={days} todayStr={todayStr} />
               <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" badge />
               {days.map((day) => {
@@ -315,48 +280,85 @@ export default function Course2JournalPage() {
 
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {(() => {
-                const timingOrder = { morning: 0, daily: 1, evening: 2 };
                 const activeHabits = habits.filter(h => h.active !== false);
-                const sorted = [...activeHabits].sort((a, b) => {
-                  const aT = timingOrder[(a.timing as keyof typeof timingOrder) || "daily"] ?? 1;
-                  const bT = timingOrder[(b.timing as keyof typeof timingOrder) || "daily"] ?? 1;
-                  return aT - bT;
-                });
-                const timingLabels: Record<string, string> = { morning: "Morning", daily: "Daily", evening: "Evening" };
-                let lastTiming = "";
-                return sorted.map((habit) => {
-                  const timing = habit.timing || "daily";
-                  const showSubheader = timing !== lastTiming;
-                  lastTiming = timing;
+                const morningHabits = activeHabits.filter(h => (h.timing || "daily") === "morning");
+                const dailyHabits = activeHabits.filter(h => (h.timing || "daily") === "daily");
+                const eveningHabits = activeHabits.filter(h => (h.timing || "daily") === "evening");
+
+                const timingSubheader = (timing: string, label: string) => (
+                  <React.Fragment key={`subheader-${timing}`}>
+                    <div className="flex items-center px-3 py-0.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</p>
+                    </div>
+                    {days.map((day) => {
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      return <div key={dateStr} className={dateStr === todayStr ? "bg-primary/5" : ""} />;
+                    })}
+                  </React.Fragment>
+                );
+
+                const journalRow = (session: "morning" | "evening") => {
+                  const icon = session === "morning"
+                    ? <Sun className="h-4 w-4 text-amber-500" />
+                    : <Moon className="h-4 w-4 text-indigo-500" />;
+                  const label = session === "morning" ? "Morning Journal" : "Evening Journal";
+                  return (
+                    <React.Fragment key={`journal-${session}`}>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+                        <div className="shrink-0">{icon}</div>
+                        <p className="text-xs font-semibold leading-snug">{label}</p>
+                      </div>
+                      {days.map((day) => {
+                        const dateStr = format(day, "yyyy-MM-dd");
+                        const done = session === "morning"
+                          ? journalsByDate.get(dateStr)?.morning || false
+                          : journalsByDate.get(dateStr)?.evening || false;
+                        return (
+                          <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
+                            <div
+                              className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
+                              onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
+                              data-testid={`row-${session}-${dateStr}`}
+                            >
+                              {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+                            </div>
+                          </DayCell>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                };
+
+                const habitRow = (habit: Habit) => {
                   const scheduledDays = new Set(habit.cadence.split(","));
                   const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
                   return (
-                    <React.Fragment key={habit.id}>
-                      {showSubheader && (
-                        <>
-                          <div className="flex items-center px-3 py-0.5">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{timingLabels[timing] || "Daily"}</p>
-                          </div>
-                          {days.map((day) => {
-                            const dateStr = format(day, "yyyy-MM-dd");
-                            const isToday = dateStr === todayStr;
-                            return <div key={dateStr} className={isToday ? "bg-primary/5" : ""} />;
-                          })}
-                        </>
-                      )}
-                      <HabitRow
-                        habit={habit}
-                        catDot={catDot}
-                        scheduledDays={scheduledDays}
-                        days={days}
-                        todayStr={todayStr}
-                        cellH={cellH}
-                        completionsByDate={completionsByDate}
-                        onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
-                      />
-                    </React.Fragment>
+                    <HabitRow
+                      key={habit.id}
+                      habit={habit}
+                      catDot={catDot}
+                      scheduledDays={scheduledDays}
+                      days={days}
+                      todayStr={todayStr}
+                      cellH={cellH}
+                      completionsByDate={completionsByDate}
+                      onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
+                    />
                   );
-                });
+                };
+
+                return (
+                  <>
+                    {timingSubheader("morning", "Morning")}
+                    {journalRow("morning")}
+                    {morningHabits.map(habitRow)}
+                    {dailyHabits.length > 0 && timingSubheader("daily", "Daily")}
+                    {dailyHabits.map(habitRow)}
+                    {timingSubheader("evening", "Evening")}
+                    {eveningHabits.map(habitRow)}
+                    {journalRow("evening")}
+                  </>
+                );
               })()}
             </div>
           </div>
