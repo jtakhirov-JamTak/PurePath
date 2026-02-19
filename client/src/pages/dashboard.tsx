@@ -138,6 +138,7 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
     },
   });
 

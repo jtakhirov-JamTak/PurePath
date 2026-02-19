@@ -95,6 +95,7 @@ export default function Course2JournalPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
     },
   });
 
