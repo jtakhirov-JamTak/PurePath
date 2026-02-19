@@ -609,52 +609,58 @@ export default function PlanPage() {
     }
   };
 
+  const allComplete = stepCompletion.every(Boolean);
+  const isLastStep = wizardStep === WIZARD_STEPS.length - 1;
+
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-10 max-w-2xl">
-          <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-plan-title">Plan</h1>
-          <p className="text-muted-foreground text-lg">
+        <div className="mb-8 max-w-2xl">
+          <h1 className="font-serif text-3xl font-bold mb-2" data-testid="text-plan-title">Plan</h1>
+          <p className="text-muted-foreground">
             Build your plan step by step. Each step unlocks when the previous one is complete.
           </p>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-xs text-muted-foreground mt-1">
             Week of {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
           </p>
         </div>
 
         <div className="max-w-3xl space-y-6">
+          <div className="flex items-center justify-center gap-0 mb-2" data-testid="wizard-stepper">
+            {WIZARD_STEPS.map((step, idx) => {
+              const done = stepCompletion[idx];
+              const isActive = idx === wizardStep;
+              const locked = !canAccessStep(idx);
+              return (
+                <div key={step.key} className="flex items-center">
+                  <button
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                      isActive ? "bg-primary/[0.08]" : locked ? "opacity-40 cursor-not-allowed" : "hover-elevate cursor-pointer"
+                    }`}
+                    onClick={() => { if (!locked) setWizardStep(idx); }}
+                    disabled={locked}
+                    data-testid={`wizard-tab-${step.key}`}
+                  >
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 transition-colors ${
+                      done ? "bg-primary text-primary-foreground" : isActive ? "border-2 border-primary text-primary" : "border border-muted-foreground/30 text-muted-foreground"
+                    }`}>
+                      {done ? <Check className="h-3 w-3" /> : locked ? <Lock className="h-2.5 w-2.5" /> : idx + 1}
+                    </div>
+                    <span className={`text-xs font-medium hidden sm:inline ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                      {step.label}
+                    </span>
+                  </button>
+                  {idx < WIZARD_STEPS.length - 1 && (
+                    <div className={`w-6 h-px mx-0.5 ${stepCompletion[idx] ? "bg-primary" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           <Card className="overflow-visible" data-testid="card-plan-wizard">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2 mb-4">
-                {WIZARD_STEPS.map((step, idx) => {
-                  const done = stepCompletion[idx];
-                  const isActive = idx === wizardStep;
-                  const locked = !canAccessStep(idx);
-                  return (
-                    <button
-                      key={step.key}
-                      className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-md transition-colors ${
-                        isActive ? "bg-primary/[0.08]" : locked ? "opacity-40" : "hover-elevate"
-                      }`}
-                      onClick={() => { if (!locked) setWizardStep(idx); }}
-                      disabled={locked}
-                      data-testid={`wizard-tab-${step.key}`}
-                    >
-                      <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                        done ? "bg-primary text-primary-foreground" : isActive ? "border-2 border-primary text-primary" : "border border-muted-foreground/30 text-muted-foreground"
-                      }`}>
-                        {done ? <Check className="h-3.5 w-3.5" /> : locked ? <Lock className="h-3 w-3" /> : idx + 1}
-                      </div>
-                      <span className={`text-[11px] font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                        {step.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4">
+            <CardContent className="pt-6">
+              <div className="mb-5">
                 <div className="flex items-center gap-2 mb-1">
                   {(() => { const Icon = WIZARD_STEPS[wizardStep].icon; return <Icon className="h-5 w-5 text-primary" />; })()}
                   <h3 className="font-serif text-lg font-semibold">{WIZARD_STEPS[wizardStep].label}</h3>
@@ -679,15 +685,26 @@ export default function PlanPage() {
                 <span className="text-xs text-muted-foreground">
                   Step {wizardStep + 1} of {WIZARD_STEPS.length}
                 </span>
-                <Button
-                  size="sm"
-                  onClick={() => setWizardStep(Math.min(WIZARD_STEPS.length - 1, wizardStep + 1))}
-                  disabled={wizardStep === WIZARD_STEPS.length - 1 || !canAccessStep(wizardStep + 1)}
-                  data-testid="button-wizard-next"
-                >
-                  Next
-                  <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Button>
+                {isLastStep && allComplete ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setLocation("/")}
+                    data-testid="button-wizard-done"
+                  >
+                    Done
+                    <Check className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => setWizardStep(Math.min(WIZARD_STEPS.length - 1, wizardStep + 1))}
+                    disabled={isLastStep || !canAccessStep(wizardStep + 1)}
+                    data-testid="button-wizard-next"
+                  >
+                    Next
+                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
