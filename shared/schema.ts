@@ -397,3 +397,43 @@ export const insertPlanVersionSchema = createInsertSchema(planVersions).omit({
 
 export type PlanVersion = typeof planVersions.$inferSelect;
 export type InsertPlanVersion = z.infer<typeof insertPlanVersionSchema>;
+
+export const toolUsageLogs = pgTable("tool_usage_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  toolName: varchar("tool_name", { length: 100 }).notNull(),
+  moodBefore: integer("mood_before").notNull(),
+  emotionBefore: varchar("emotion_before", { length: 100 }).notNull(),
+  moodAfter: integer("mood_after"),
+  emotionAfter: varchar("emotion_after", { length: 100 }),
+  completed: boolean("completed").default(false),
+  date: date("date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertToolUsageLogSchema = createInsertSchema(toolUsageLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ToolUsageLog = typeof toolUsageLogs.$inferSelect;
+export type InsertToolUsageLog = z.infer<typeof insertToolUsageLogSchema>;
+
+export const customTools = pgTable("custom_tools", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  instructions: text("instructions"),
+  icon: varchar("icon", { length: 50 }).default("Sparkles"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCustomToolSchema = createInsertSchema(customTools).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CustomTool = typeof customTools.$inferSelect;
+export type InsertCustomTool = z.infer<typeof insertCustomToolSchema>;
