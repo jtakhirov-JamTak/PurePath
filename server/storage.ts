@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -12,7 +12,9 @@ import {
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
-  type PlanVersion, type InsertPlanVersion
+  type PlanVersion, type InsertPlanVersion,
+  type ToolUsageLog, type InsertToolUsageLog,
+  type CustomTool, type InsertCustomTool
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -84,6 +86,18 @@ export interface IStorage {
 
   // Bulk clear for plan versioning
   clearUserPlanData(userId: string, monthKey: string): Promise<void>;
+
+  // Tool Usage Logs
+  getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]>;
+  getToolUsageLogsForRange(userId: string, startDate: string, endDate: string): Promise<ToolUsageLog[]>;
+  createToolUsageLog(log: InsertToolUsageLog): Promise<ToolUsageLog>;
+  updateToolUsageLog(id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog>;
+
+  // Custom Tools
+  getCustomToolsByUser(userId: string): Promise<CustomTool[]>;
+  createCustomTool(tool: InsertCustomTool): Promise<CustomTool>;
+  updateCustomTool(id: number, updates: Partial<InsertCustomTool>): Promise<CustomTool>;
+  deleteCustomTool(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -431,6 +445,44 @@ export class DatabaseStorage implements IStorage {
       and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
     );
     await db.update(habits).set({ active: false }).where(eq(habits.userId, userId));
+  }
+
+  async getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]> {
+    return db.select().from(toolUsageLogs).where(eq(toolUsageLogs.userId, userId)).orderBy(desc(toolUsageLogs.createdAt));
+  }
+
+  async getToolUsageLogsForRange(userId: string, startDate: string, endDate: string): Promise<ToolUsageLog[]> {
+    return db.select().from(toolUsageLogs).where(
+      and(eq(toolUsageLogs.userId, userId), gte(toolUsageLogs.date, startDate), lte(toolUsageLogs.date, endDate))
+    ).orderBy(desc(toolUsageLogs.createdAt));
+  }
+
+  async createToolUsageLog(log: InsertToolUsageLog): Promise<ToolUsageLog> {
+    const [created] = await db.insert(toolUsageLogs).values(log).returning();
+    return created;
+  }
+
+  async updateToolUsageLog(id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog> {
+    const [updated] = await db.update(toolUsageLogs).set(updates).where(eq(toolUsageLogs.id, id)).returning();
+    return updated;
+  }
+
+  async getCustomToolsByUser(userId: string): Promise<CustomTool[]> {
+    return db.select().from(customTools).where(eq(customTools.userId, userId)).orderBy(desc(customTools.createdAt));
+  }
+
+  async createCustomTool(tool: InsertCustomTool): Promise<CustomTool> {
+    const [created] = await db.insert(customTools).values(tool).returning();
+    return created;
+  }
+
+  async updateCustomTool(id: number, updates: Partial<InsertCustomTool>): Promise<CustomTool> {
+    const [updated] = await db.update(customTools).set(updates).where(eq(customTools.id, id)).returning();
+    return updated;
+  }
+
+  async deleteCustomTool(id: number): Promise<void> {
+    await db.delete(customTools).where(eq(customTools.id, id));
   }
 }
 

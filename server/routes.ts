@@ -1064,6 +1064,121 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== TOOL USAGE LOGS ====================
+
+  app.get("/api/tool-usage", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { startDate, endDate } = req.query;
+      let logs;
+      if (startDate && endDate) {
+        logs = await storage.getToolUsageLogsForRange(userId, startDate as string, endDate as string);
+      } else {
+        logs = await storage.getToolUsageLogsByUser(userId);
+      }
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching tool usage logs:", error);
+      res.status(500).json({ error: "Failed to fetch tool usage logs" });
+    }
+  });
+
+  app.post("/api/tool-usage", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const log = await storage.createToolUsageLog({ ...req.body, userId });
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating tool usage log:", error);
+      res.status(500).json({ error: "Failed to create tool usage log" });
+    }
+  });
+
+  app.patch("/api/tool-usage/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateToolUsageLog(parseInt(id), req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating tool usage log:", error);
+      res.status(500).json({ error: "Failed to update tool usage log" });
+    }
+  });
+
+  app.get("/api/tool-usage/export", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { startDate, endDate } = req.query;
+      let logs;
+      if (startDate && endDate) {
+        logs = await storage.getToolUsageLogsForRange(userId, startDate as string, endDate as string);
+      } else {
+        logs = await storage.getToolUsageLogsByUser(userId);
+      }
+      const csvHeader = "Date,Tool,Mood Before,Emotion Before,Mood After,Emotion After,Completed\n";
+      const csvRows = logs.map(l =>
+        `${l.date},${l.toolName},${l.moodBefore},${l.emotionBefore},${l.moodAfter ?? ""},${l.emotionAfter ?? ""},${l.completed}`
+      ).join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=tool-usage.csv");
+      res.send(csvHeader + csvRows);
+    } catch (error) {
+      console.error("Error exporting tool usage logs:", error);
+      res.status(500).json({ error: "Failed to export tool usage logs" });
+    }
+  });
+
+  // ==================== CUSTOM TOOLS ====================
+
+  app.get("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tools = await storage.getCustomToolsByUser(userId);
+      res.json(tools);
+    } catch (error) {
+      console.error("Error fetching custom tools:", error);
+      res.status(500).json({ error: "Failed to fetch custom tools" });
+    }
+  });
+
+  app.post("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const existing = await storage.getCustomToolsByUser(userId);
+      const activeCount = existing.filter(t => t.active).length;
+      if (activeCount >= 3) {
+        return res.status(400).json({ error: "Maximum 3 active custom tools allowed. Deactivate one first." });
+      }
+      const tool = await storage.createCustomTool({ ...req.body, userId });
+      res.json(tool);
+    } catch (error) {
+      console.error("Error creating custom tool:", error);
+      res.status(500).json({ error: "Failed to create custom tool" });
+    }
+  });
+
+  app.patch("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      const updated = await storage.updateCustomTool(parseInt(id), req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating custom tool:", error);
+      res.status(500).json({ error: "Failed to update custom tool" });
+    }
+  });
+
+  app.delete("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCustomTool(parseInt(id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting custom tool:", error);
+      res.status(500).json({ error: "Failed to delete custom tool" });
+    }
+  });
+
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
   app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {
