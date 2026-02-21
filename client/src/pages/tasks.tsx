@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ListTodo, Plus, Trash2, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Task } from "@shared/schema";
 
 const QUADRANT_OPTIONS = [
@@ -23,6 +24,7 @@ const QUADRANT_OPTIONS = [
 
 export default function TasksPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
@@ -49,30 +51,52 @@ export default function TasksPage() {
       };
       if (task.quadrant) payload.quadrant = task.quadrant;
       if (task.scheduledTime) payload.scheduledTime = task.scheduledTime;
-      return apiRequest("POST", "/api/tasks", payload);
+      const res = await apiRequest("POST", "/api/tasks", payload);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create task");
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setTaskDialogOpen(false);
       setNewTask({ title: "", date: format(new Date(), "yyyy-MM-dd"), time: "09:00", quadrant: "", scheduledTime: "" });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not create task", description: error.message, variant: "destructive" });
+    },
   });
 
   const toggleTaskMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      return apiRequest("PATCH", `/api/tasks/${id}`, { completed });
+      const res = await apiRequest("PATCH", `/api/tasks/${id}`, { completed });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update task");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update task", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/tasks/${id}`);
+      const res = await apiRequest("DELETE", `/api/tasks/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete task");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete task", description: error.message, variant: "destructive" });
     },
   });
 

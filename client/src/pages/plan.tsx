@@ -35,21 +35,37 @@ function VisionBoardSingle({
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { toast } = useToast();
+
   const uploadMutation = useMutation({
     mutationFn: async (base64: string) => {
-      await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: base64 });
+      const res = await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: base64 });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to upload image");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not upload image", description: error.message, variant: "destructive" });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: "" });
+      const res = await apiRequest("PUT", "/api/vision-board", { slot: "main", imageData: "" });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to remove image");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not remove image", description: error.message, variant: "destructive" });
     },
   });
 
@@ -148,16 +164,25 @@ function VisionStepContent({ identityDoc }: { identityDoc: IdentityDocument | un
     }
   }, [identityDoc, initialized]);
 
+  const { toast: visionToast } = useToast();
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", "/api/identity-document", {
+      const res = await apiRequest("PUT", "/api/identity-document", {
         identity: personStatement,
         vision: proofStatement,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save vision");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       setHasEdited(false);
+    },
+    onError: (error: Error) => {
+      visionToast({ title: "Could not save vision", description: error.message, variant: "destructive" });
     },
   });
 
@@ -235,10 +260,15 @@ function PlanVersioningPanel() {
 
   const saveMutation = useMutation({
     mutationFn: async (mode: string) => {
-      return apiRequest("POST", "/api/plan-versions/save", {
+      const res = await apiRequest("POST", "/api/plan-versions/save", {
         mode,
         versionName: versionName || undefined,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save plan");
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
@@ -248,11 +278,18 @@ function PlanVersioningPanel() {
       setVersionName("");
       toast({ title: "Plan saved successfully" });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not save plan", description: error.message, variant: "destructive" });
+    },
   });
 
   const clearMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/plan-versions/clear", {});
+      const res = await apiRequest("POST", "/api/plan-versions/clear", {});
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to clear plan");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
@@ -261,11 +298,18 @@ function PlanVersioningPanel() {
       setConfirmClear(false);
       toast({ title: "Plan data cleared" });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not clear plan", description: error.message, variant: "destructive" });
+    },
   });
 
   const restoreMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("POST", `/api/plan-versions/${id}/restore`, {});
+      const res = await apiRequest("POST", `/api/plan-versions/${id}/restore`, {});
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to restore plan");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
@@ -274,15 +318,25 @@ function PlanVersioningPanel() {
       setConfirmRestore(null);
       toast({ title: "Plan restored from saved version" });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not restore plan", description: error.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/plan-versions/${id}`, undefined);
+      const res = await apiRequest("DELETE", `/api/plan-versions/${id}`, undefined);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete version");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
       toast({ title: "Version deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete version", description: error.message, variant: "destructive" });
     },
   });
 

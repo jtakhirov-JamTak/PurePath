@@ -11,6 +11,7 @@ import { LockedCourseModal } from "@/components/locked-course-modal";
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { ChatMessage, Purchase } from "@shared/schema";
 
 export default function Course1GPTPage() {
@@ -21,6 +22,7 @@ export default function Course1GPTPage() {
   const [showLockedModal, setShowLockedModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -93,6 +95,10 @@ export default function Course1GPTPage() {
     onSuccess: () => {
       setStreamingMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+    },
+    onError: (error: Error) => {
+      setStreamingMessage("");
+      toast({ title: "Could not send message", description: error.message, variant: "destructive" });
     },
   });
 

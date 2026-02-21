@@ -198,7 +198,7 @@ export default function HabitsPage() {
       }).join(",");
       const recurring = data.recurringType === "indefinite" ? "indefinite" : data.recurringCount;
       const time = data.startTime || "09:00";
-      return apiRequest("PATCH", `/api/habits/${id}`, {
+      const res = await apiRequest("PATCH", `/api/habits/${id}`, {
         name: data.name,
         motivatingReason: data.motivatingReason || null,
         category: data.category,
@@ -214,12 +214,19 @@ export default function HabitsPage() {
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
         intervalWeeks: parseInt(data.intervalWeeks) || 1,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       setEditingHabit(null);
       resetForm();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
     },
   });
 
@@ -248,10 +255,17 @@ export default function HabitsPage() {
 
   const deleteHabitMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/habits/${id}`);
+      const res = await apiRequest("DELETE", `/api/habits/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete habit");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete habit", description: error.message, variant: "destructive" });
     },
   });
 

@@ -1,0 +1,62 @@
+Prompt 1: "Security & Ownership Audit"
+"Audit every PATCH, PUT, and DELETE route in server/routes.ts. The following routes currently modify or delete records by ID without verifying the logged-in user owns that record:
+
+PATCH /api/eisenhower/:id
+DELETE /api/eisenhower/:id
+PATCH /api/empathy/:id
+DELETE /api/empathy/:id
+PATCH /api/habits/:id
+DELETE /api/habits/:id
+PATCH /api/habit-completions/:habitId/:date
+DELETE /api/meditation-insights/:id
+DELETE /api/plan-versions/:id
+PATCH /api/tasks/:id
+DELETE /api/tasks/:id
+For each one, add an ownership check: look up the record first, compare its userId to the logged-in user's ID, and return 403 if they don't match. The custom-tools and tool-usage routes already have this pattern — follow the same approach. Fix all of them."
+
+Prompt 2: "Silent Failure Audit"
+"The following frontend pages have mutations (saves, deletes, updates) that silently fail — no error toast, no feedback to the user if something goes wrong:
+
+eisenhower.tsx — creating, updating, deleting Eisenhower entries
+empathy.tsx — saving and deleting empathy exercises
+tasks.tsx — creating, updating, deleting tasks
+meditation.tsx — saving and deleting meditation insights
+plan.tsx — plan version save, restore, clear, delete
+course2-journal.tsx — habit completion toggles
+dashboard.tsx — habit completions, task toggles
+phase3.tsx — document analysis
+course1-gpt.tsx — chat messages
+containment-modal.tsx and compassion-modal.tsx — exercise completions
+For each mutation in these files, add an onError handler that shows a toast notification with the error message from the server. Check that the mutationFn inspects res.ok and throws on failure so the error handler actually fires. The pattern in habits.tsx (createHabitMutation and duplicateHabitMutation) is the reference — follow that exact approach."
+
+Prompt 3: "Duplicate Data & Orphan Cleanup"
+"Run these checks against the database and fix what you find:
+
+Duplicate habits: Find any user who has multiple active habits with the same name. Deduplicate, keeping the newest one.
+Orphaned habit completions: Find completions where the habit_id no longer exists in the habits table. Delete them.
+Orphaned records: Check journals, tasks, eisenhower_entries, habits, habit_completions, monthly_goals, quarterly_goals, identity_documents, custom_tools, tool_usage_logs, empathy_exercises, meditation_insights for rows where the user_id doesn't exist in the users table. Delete orphans.
+Duplicate eisenhower entries: Check if any user has duplicate entries with the same task name in the same week. Flag them.
+Stale sessions: Delete sessions that are older than 30 days.
+After cleanup, tell me what you found and how many records were affected per table."
+
+Prompt 4: "Duplicate Prevention Audit"
+"Check every 'create' endpoint in server/routes.ts and any bulk insert logic (especially POST /api/plan-versions/:id/restore and POST /api/plan-versions/save) for duplicate prevention. The following tables need uniqueness checks before insert:
+
+habits — already fixed, verify it's working
+custom_tools — already fixed, verify it's working
+eisenhower_entries — should prevent same task name in same week for same user
+tasks — should prevent same title on same date for same user
+journals — should prevent duplicate session (morning/evening) on same date for same user
+habit_completions — should prevent duplicate completion for same habit on same date
+For each one, add a check before insert. Return 409 with a clear message if a duplicate is detected. Make sure the frontend handles 409 responses with a toast."
+
+Prompt 5: "Full Pre-Launch Health Check"
+"Run a complete health check before I publish this app:
+
+Start the app and check logs — look at both server and browser console for any errors, warnings, or deprecation notices. Fix anything actionable.
+Test every page — navigate to each route (dashboard, plan, habits, eisenhower, journal entry, meditation, empathy, tools, regulation, course pages, goal wizard, phase 3) and verify it loads without errors.
+Check responsive layout — verify the dashboard and main pages don't have overflow or layout issues on mobile-width screens.
+Verify all forms save successfully — test creating and editing a habit, journal entry, task, eisenhower item, and custom tool. Verify the data round-trips correctly.
+Check loading states — make sure every page shows a skeleton or spinner while data loads, not a blank screen or flash of empty content.
+Check empty states — for a new user with no data, verify each page shows a helpful empty state message rather than a broken layout.
+Summarize what you found, what you fixed, and anything I should be aware of before publishing."

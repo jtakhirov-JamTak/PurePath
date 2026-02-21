@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { ExerciseModal } from "@/components/exercise-modal";
 import { useMoodTracking } from "@/hooks/use-mood-tracking";
 import { VoiceTextarea } from "@/components/voice-input";
@@ -30,6 +31,7 @@ export function CompassionModal({
   todayStr: string;
 }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [situation, setSituation] = useState("");
   const [lovedOneMsg, setLovedOneMsg] = useState("");
   const [selfMsg, setSelfMsg] = useState("");
@@ -48,31 +50,46 @@ export function CompassionModal({
         lovedOneMsg ? `To a loved one: ${lovedOneMsg}` : "",
         selfMsg ? `To myself: ${selfMsg}` : "",
       ].filter(Boolean).join("\n");
-      return apiRequest("PUT", "/api/journals", {
+      const res = await apiRequest("PUT", "/api/journals", {
         date: todayStr,
         session: "morning",
         reflections: content,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save to journal");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/journals"] });
       setSaved(true);
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not save to journal", description: error.message, variant: "destructive" });
+    },
   });
 
   const addTaskMutation = useMutation({
     mutationFn: async (title: string) => {
-      return apiRequest("POST", "/api/tasks", {
+      const res = await apiRequest("POST", "/api/tasks", {
         title,
         date: todayStr,
         time: "09:00",
         quadrant: "q2",
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to add task");
+      }
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/tasks"] });
       setTaskAdded(true);
       setShowNextStepPrompt(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not add task", description: error.message, variant: "destructive" });
     },
   });
 

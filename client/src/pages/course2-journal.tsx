@@ -14,6 +14,7 @@ import { useLocation } from "wouter";
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -30,6 +31,7 @@ export default function Course2JournalPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const weekEnd = addDays(weekStart, 6);
@@ -87,27 +89,42 @@ export default function Course2JournalPage() {
 
   const cycleHabitMutation = useMutation({
     mutationFn: async ({ habitId, currentStatus, date }: { habitId: number; currentStatus: string | null; date: string }) => {
+      let res;
       if (currentStatus === null) {
-        await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
+        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
       } else if (currentStatus === "completed") {
-        await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
       } else {
-        await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+      }
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit status");
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
+    },
   });
 
   const toggleEisenhowerMutation = useMutation({
     mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
       const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
-      await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update status");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
     },
   });
 

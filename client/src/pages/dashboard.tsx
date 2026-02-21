@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
@@ -124,26 +126,41 @@ export default function DashboardPage() {
 
   const cycleHabitMutation = useMutation({
     mutationFn: async ({ habitId, currentStatus }: { habitId: number; currentStatus: string | null }) => {
+      let res;
       if (currentStatus === null) {
-        await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed" });
+        res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed" });
       } else if (currentStatus === "completed") {
-        await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped" });
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped" });
       } else {
-        await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+      }
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit status");
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
+    },
   });
 
   const toggleTaskMutation = useMutation({
     mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      return apiRequest("PATCH", `/api/tasks/${id}`, { completed: !completed });
+      const res = await apiRequest("PATCH", `/api/tasks/${id}`, { completed: !completed });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update task");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update task", description: error.message, variant: "destructive" });
     },
   });
 
@@ -159,10 +176,17 @@ export default function DashboardPage() {
       } else {
         nextStatus = null;
       }
-      return apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update status");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
     },
   });
 
@@ -514,19 +538,29 @@ function JournalQuickEntry({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const { toast: journalToast } = useToast();
+
   const saveMutation = useMutation({
     mutationFn: async (note: string) => {
       const session = hasMorning ? "evening" : "morning";
-      return apiRequest("PUT", "/api/journals", {
+      const res = await apiRequest("PUT", "/api/journals", {
         date: todayStr,
         session,
         reflections: note,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save journal");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
+    },
+    onError: (error: Error) => {
+      setSaveStatus("idle");
+      journalToast({ title: "Could not save journal", description: error.message, variant: "destructive" });
     },
   });
 

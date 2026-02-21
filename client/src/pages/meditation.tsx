@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label";
 import { Brain, Clock, Headphones, Sofa, Trash2, Plus, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { MeditationInsight } from "@shared/schema";
 
 export default function MeditationPage() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [insightDate, setInsightDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [insightText, setInsightText] = useState("");
 
@@ -26,20 +28,34 @@ export default function MeditationPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: { date: string; insight: string }) => {
-      await apiRequest("POST", "/api/meditation-insights", data);
+      const res = await apiRequest("POST", "/api/meditation-insights", data);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save insight");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/meditation-insights"] });
       setInsightText("");
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not save insight", description: error.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/meditation-insights/${id}`);
+      const res = await apiRequest("DELETE", `/api/meditation-insights/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete insight");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/meditation-insights"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete insight", description: error.message, variant: "destructive" });
     },
   });
 

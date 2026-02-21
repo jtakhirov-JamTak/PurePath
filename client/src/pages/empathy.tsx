@@ -11,10 +11,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Users, Plus, Download, Trash2, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { EmpathyExercise } from "@shared/schema";
 
 export default function EmpathyPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newExercise, setNewExercise] = useState({
     date: format(new Date(), "yyyy-MM-dd"),
@@ -36,7 +38,12 @@ export default function EmpathyPage() {
 
   const createMutation = useMutation({
     mutationFn: async (exercise: typeof newExercise) => {
-      return apiRequest("POST", "/api/empathy", exercise);
+      const res = await apiRequest("POST", "/api/empathy", exercise);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to save exercise");
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/empathy"] });
@@ -55,14 +62,24 @@ export default function EmpathyPage() {
         nextAction: "",
       });
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not save exercise", description: error.message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/empathy/${id}`);
+      const res = await apiRequest("DELETE", `/api/empathy/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete exercise");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/empathy"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete exercise", description: error.message, variant: "destructive" });
     },
   });
 

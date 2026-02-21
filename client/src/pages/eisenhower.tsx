@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { EisenhowerEntry } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
@@ -105,6 +106,7 @@ interface WizardItem {
 
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [currentWeek, setCurrentWeek] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
@@ -158,7 +160,7 @@ export default function EisenhowerPage() {
       const timeEstimate = isSchedulable && entry.startTime && entry.endTime
         ? calcDuration(entry.startTime, entry.endTime)
         : null;
-      return apiRequest("POST", "/api/eisenhower", {
+      const res = await apiRequest("POST", "/api/eisenhower", {
         role: entry.role,
         task: entry.task,
         quadrant: entry.quadrant,
@@ -171,12 +173,20 @@ export default function EisenhowerPage() {
         blocksGoal: entry.blocksGoal || false,
         weekStart,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create entry");
+      }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
       setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "", blocksGoal: false });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not create entry", description: error.message, variant: "destructive" });
     },
   });
 
@@ -188,7 +198,7 @@ export default function EisenhowerPage() {
         ? `${formatTimeLabel(startTime)} - ${formatTimeLabel(endTime)}` : null;
       const timeEstimate = isSchedulable && startTime && endTime
         ? calcDuration(startTime, endTime) : null;
-      return apiRequest("PATCH", `/api/eisenhower/${data.id}`, {
+      const res = await apiRequest("PATCH", `/api/eisenhower/${data.id}`, {
         role: data.updates.role,
         task: data.updates.task,
         quadrant: data.updates.quadrant,
@@ -199,6 +209,10 @@ export default function EisenhowerPage() {
         goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
         blocksGoal: data.updates.blocksGoal || false,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update entry");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
@@ -206,26 +220,43 @@ export default function EisenhowerPage() {
       setEditDialogOpen(false);
       setEditEntry(null);
     },
+    onError: (error: Error) => {
+      toast({ title: "Could not update entry", description: error.message, variant: "destructive" });
+    },
   });
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
       const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
-      return apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update status");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest("DELETE", `/api/eisenhower/${id}`);
+      const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete entry");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete entry", description: error.message, variant: "destructive" });
     },
   });
 

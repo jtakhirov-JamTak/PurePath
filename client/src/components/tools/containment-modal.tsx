@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { ExerciseModal } from "@/components/exercise-modal";
 import { useMoodTracking } from "@/hooks/use-mood-tracking";
 import { useTimer, formatTime } from "@/hooks/use-timer";
@@ -69,16 +70,25 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
   const [validationChip, setValidationChip] = useState<string>("");
   const [moveAction, setMoveAction] = useState("");
   const qc = useQueryClient();
+  const { toast } = useToast();
   const mood = useMoodTracking("Containment");
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const addTaskMutation = useMutation({
     mutationFn: async (title: string) => {
-      return apiRequest("POST", "/api/tasks", {
+      const res = await apiRequest("POST", "/api/tasks", {
         title, date: todayStr, time: format(new Date(), "HH:mm"),
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to add task");
+      }
+      return res.json();
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/tasks"] }); },
+    onError: (error: Error) => {
+      toast({ title: "Could not add task", description: error.message, variant: "destructive" });
+    },
   });
 
   const currentStep = CONTAINMENT_STEPS[step];

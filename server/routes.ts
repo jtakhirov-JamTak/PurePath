@@ -501,6 +501,14 @@ export async function registerRoutes(
   app.post("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
+      const { task, weekStart } = req.body;
+      if (task && weekStart) {
+        const existing = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
+        const duplicate = existing.find(e => e.task.toLowerCase() === task.trim().toLowerCase());
+        if (duplicate) {
+          return res.status(409).json({ error: `You already have a task named "${duplicate.task}" this week` });
+        }
+      }
       const entry = await storage.createEisenhowerEntry({ userId, ...req.body });
       res.json(entry);
     } catch (error) {
@@ -511,7 +519,13 @@ export async function registerRoutes(
 
   app.patch("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getEisenhowerEntriesByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       const body = { ...req.body };
       if (body.status !== undefined) {
         body.completed = body.status === "completed";
@@ -528,7 +542,13 @@ export async function registerRoutes(
 
   app.delete("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getEisenhowerEntriesByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deleteEisenhowerEntry(parseInt(id));
       res.json({ success: true });
     } catch (error) {
@@ -582,7 +602,13 @@ export async function registerRoutes(
 
   app.patch("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getEmpathyExercisesByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       const exercise = await storage.updateEmpathyExercise(parseInt(id), req.body);
       res.json(exercise);
     } catch (error) {
@@ -593,7 +619,13 @@ export async function registerRoutes(
 
   app.delete("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getEmpathyExercisesByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deleteEmpathyExercise(parseInt(id));
       res.json({ success: true });
     } catch (error) {
@@ -666,7 +698,13 @@ export async function registerRoutes(
 
   app.patch("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getHabitsByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       const habit = await storage.updateHabit(parseInt(id), req.body);
       res.json(habit);
     } catch (error) {
@@ -677,7 +715,13 @@ export async function registerRoutes(
 
   app.delete("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getHabitsByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deleteHabit(parseInt(id));
       res.json({ success: true });
     } catch (error) {
@@ -791,7 +835,13 @@ export async function registerRoutes(
 
   app.delete("/api/meditation-insights/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getMeditationInsightsByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deleteMeditationInsight(parseInt(id));
       res.json({ success: true });
     } catch (error) {
@@ -1072,7 +1122,13 @@ export async function registerRoutes(
 
   app.delete("/api/plan-versions/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getPlanVersionsByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deletePlanVersion(parseInt(id));
       res.json({ success: true });
     } catch (error) {
@@ -1320,10 +1376,14 @@ Be compassionate but honest. Use evidence from their text to support your observ
       const userId = req.user.claims.sub;
       const { date } = req.body;
       
-      // Check task limit for that day (3 max)
       const existingTasks = await storage.getTasksForDate(userId, date);
       if (existingTasks.length >= 3) {
         return res.status(400).json({ error: "Maximum 3 tasks per day allowed" });
+      }
+
+      const title = (req.body.title || "").trim();
+      if (title && existingTasks.some(t => t.title.toLowerCase() === title.toLowerCase())) {
+        return res.status(409).json({ error: `You already have a task named "${title}" on this date` });
       }
 
       const task = await storage.createTask({ userId, ...req.body });
@@ -1336,7 +1396,13 @@ Be compassionate but honest. Use evidence from their text to support your observ
 
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getTasksByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       const task = await storage.updateTask(parseInt(id), req.body);
       res.json(task);
     } catch (error) {
@@ -1347,7 +1413,13 @@ Be compassionate but honest. Use evidence from their text to support your observ
 
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const existing = await storage.getTasksByUser(userId);
+      const record = existing.find(r => r.id === parseInt(id));
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
       await storage.deleteTask(parseInt(id));
       res.json({ success: true });
     } catch (error) {
