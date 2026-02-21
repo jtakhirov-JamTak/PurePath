@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Pencil, Copy } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Habit } from "@shared/schema";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 
@@ -111,6 +112,7 @@ function getNextOccurrences(habit: Habit, count: number = 3): string[] {
 
 export default function HabitsPage() {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
@@ -156,7 +158,7 @@ export default function HabitsPage() {
       }).join(",");
       const recurring = data.recurringType === "indefinite" ? "indefinite" : data.recurringCount;
       const time = data.startTime || "09:00";
-      return apiRequest("POST", "/api/habits", {
+      const res = await apiRequest("POST", "/api/habits", {
         name: data.name,
         motivatingReason: data.motivatingReason || null,
         category: data.category,
@@ -172,11 +174,19 @@ export default function HabitsPage() {
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
         intervalWeeks: parseInt(data.intervalWeeks) || 1,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create habit");
+      }
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       resetForm();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
     },
   });
 
@@ -247,7 +257,7 @@ export default function HabitsPage() {
 
   const duplicateHabitMutation = useMutation({
     mutationFn: async (habit: Habit) => {
-      return apiRequest("POST", "/api/habits", {
+      const res = await apiRequest("POST", "/api/habits", {
         name: `${habit.name} (copy)`,
         motivatingReason: habit.motivatingReason || null,
         category: habit.category,
@@ -263,9 +273,17 @@ export default function HabitsPage() {
         endDate: null,
         intervalWeeks: habit.intervalWeeks || 1,
       });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to duplicate habit");
+      }
+      return res.json();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not duplicate habit", description: error.message, variant: "destructive" });
     },
   });
 

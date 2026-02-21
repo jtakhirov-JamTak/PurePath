@@ -638,15 +638,25 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       
-      // Check habit limit (5 max)
       const existing = await storage.getHabitsByUser(userId);
-      if (existing.filter(h => h.active).length >= 5) {
+      const activeHabits = existing.filter(h => h.active);
+
+      if (activeHabits.length >= 5) {
         return res.status(400).json({ error: "Maximum 5 active habits allowed" });
+      }
+
+      const name = (req.body.name || "").trim();
+      if (!name) {
+        return res.status(400).json({ error: "Habit name is required" });
+      }
+      const duplicate = activeHabits.find(h => h.name.toLowerCase() === name.toLowerCase());
+      if (duplicate) {
+        return res.status(409).json({ error: `You already have an active habit named "${duplicate.name}"` });
       }
 
       const { category, ...rest } = req.body;
       const validCategory = category && category in HABIT_CATEGORIES ? category : "health";
-      const habit = await storage.createHabit({ userId, category: validCategory, ...rest });
+      const habit = await storage.createHabit({ userId, category: validCategory, ...rest, name });
       res.json(habit);
     } catch (error) {
       console.error("Error creating habit:", error);
@@ -1021,9 +1031,15 @@ export async function registerRoutes(
       }
 
       if (snapshot.habits && Array.isArray(snapshot.habits)) {
+        const currentHabits = await storage.getHabitsByUser(userId);
+        const activeNames = new Set(currentHabits.filter(h => h.active).map(h => h.name.toLowerCase()));
+
         for (const h of snapshot.habits) {
+          const name = (h.name || "").trim();
+          if (!name || activeNames.has(name.toLowerCase())) continue;
+
           await storage.createHabit({
-            userId, name: h.name, category: h.category || "health",
+            userId, name, category: h.category || "health",
             habitType: h.habitType || "maintenance", timing: h.timing || "daily",
             cadence: h.cadence, recurring: h.recurring || "indefinite",
             duration: h.duration, startTime: h.startTime, endTime: h.endTime,
@@ -1031,6 +1047,7 @@ export async function registerRoutes(
             intervalWeeks: h.intervalWeeks || 1, startDate: h.startDate, endDate: h.endDate,
             active: true,
           });
+          activeNames.add(name.toLowerCase());
         }
       }
 
