@@ -1,0 +1,149 @@
+Run a FULL CODEBASE HEALTH CHECK + HARDENING PASS across this repo and FIX what you find.
+
+IMPORTANT RULES (SAFETY + SCOPE)
+1) Do NOT delete or modify real user data silently. For any data cleanup:
+- First produce a DRY-RUN report (counts + sample IDs + why they’re bad).
+- Create a cleanup script that is safe + idempotent.
+- Only auto-fix data issues that are clearly safe (e.g., trimming whitespace, filling defaults). For deletions, quarantine rows or archive them to an audit table if possible.
+2) Prefer DB constraints/indexes (unique/FK/NOT NULL/CHECK) over “just code guards” whenever feasible.
+3) Keep changes minimal and targeted. No sweeping refactors unless required to fix health issues.
+4) At the end, provide a plain-language summary grouped by category + a list of files changed/added + commands to run + a smoke-test checklist.
+
+PHASE 0 — INVENTORY (DO THIS FIRST)
+- List all DB tables and their key columns/relationships (from schema).
+- List all API routes grouped by method: POST/PATCH/PUT/DELETE (and any “dangerous GETs” that return sensitive data).
+- Identify auth mechanism (session/cookies/JWT), entitlement checks/paywall gating, and where ownership is enforced (or not).
+- Identify shared request helpers (apiRequest), toast system, form validation patterns, and query layer (Drizzle/storage layer).
+
+PHASE 1 — DRY-RUN HEALTH REPORTS (NO DESTRUCTIVE CHANGES)
+A) DATA INTEGRITY (DB)
+For every table:
+- Detect duplicates by logical uniqueness (e.g., userId+date, userId+name, userId+weekStart+quadrant+title, etc.).
+- Detect orphan rows (FK references to deleted users/habits/goals/tasks/journals).
+- Detect missing required fields, invalid enums, empty strings, impossible dates, out-of-range numbers.
+Output a report: counts + SQL/Drizzle query logic + sample IDs.
+
+B) API SECURITY / OWNERSHIP / ENTITLEMENTS
+Audit every POST/PATCH/PUT/DELETE route:
+- Ensure isAuthenticated is present.
+- Ensure record ownership is enforced server-side (filter by userId in WHERE clause; never trust client-provided userId).
+- Ensure entitlement checks exist where required (paid course features, exports, transcription, etc.).
+- Ensure no route allows updating “userId”, “ownerId”, or purchase/entitlement fields.
+Output a report: missing checks + affected routes.
+
+C) INPUT VALIDATION
+For every mutation endpoint:
+- Add/verify Zod validation (types, required fields, trimmed strings, min/max lengths, allowed enums, numeric ranges).
+- Reject empty strings for required text fields.
+- Validate IDs as expected format.
+Output a report: routes lacking validation + what schema you will use.
+
+D) ERROR HANDLING / UX RELIABILITY (FRONTEND)
+For each frontend mutation:
+- Ensure response status is checked.
+- Parse and display server error messages via toast (consistent copy).
+- Ensure loading/disabled states on buttons during submission.
+- Ensure optimistic updates have rollback on error where used.
+Output a report: mutations missing toasts/loading/rollback.
+
+E) DUPLICATE PREVENTION / IDEMPOTENCY
+- Check “create” endpoints and bulk operations (restore/import/copy/duplicate) for double-insert risks.
+- Identify where DB unique constraints are missing and should be added.
+- Add idempotency keys where appropriate (especially for imports/restores, payment callbacks, etc.).
+Output a report: risks + proposed fixes.
+
+F) QUERY SAFETY & MULTI-TENANCY GUARANTEES
+- Search for raw SQL or unparameterized queries.
+- Verify all queries are scoped by userId where applicable.
+- Check for missing WHERE clauses that could leak other users’ data.
+- Identify N+1 query patterns; propose fixes (batching/joins) where it matters.
+Output a report.
+
+G) DEAD CODE / WARNINGS / CONSISTENCY
+- Remove unused imports/vars/components/routes not used.
+- Fix TypeScript errors, React key warnings, unhandled promise rejections.
+- Standardize modal/form patterns (loading spinners, disabled buttons, validation behavior).
+Output a report.
+
+H) DEPENDENCIES / SECRETS / SECURITY HARDENING
+- Run package vulnerability checks (npm audit) and patch safe upgrades.
+- Scan repo for hardcoded secrets, API keys, webhook secrets, private URLs.
+- Validate CORS configuration, cookie flags (HttpOnly/SameSite/Secure), and CSRF posture (if cookies are used for auth).
+- Add rate limiting to expensive endpoints (e.g., transcription, exports) and basic abuse protection.
+Output a report + proposed changes.
+
+PHASE 2 — APPLY FIXES (CODE + MIGRATIONS + HELPERS)
+Now implement fixes based on Phase 1 reports:
+
+1) DATA INTEGRITY FIXES
+- Add DB constraints and indexes:
+- Unique indexes where logical uniqueness exists.
+- FK constraints where appropriate, or enforce cascades if the product expects it.
+- NOT NULL and CHECK constraints where safe.
+- Create scripts:
+- scripts/healthcheck/report.ts (non-destructive)
+- scripts/healthcheck/cleanup.ts (safe & idempotent; archives questionable rows instead of hard delete when possible)
+- Add server-side guards to prevent recurrence (validation + conflict handling).
+NOTE: Do not run destructive cleanup automatically; provide the command and show what it will do.
+
+2) API SECURITY FIXES
+- Ensure every mutation route:
+- checks authentication
+- checks ownership (WHERE userId = currentUserId)
+- checks entitlements where needed
+- Centralize patterns with helper functions to avoid regressions.
+
+3) VALIDATION FIXES
+- Add Zod schemas for each endpoint input.
+- Normalize strings (trim), enforce min/max lengths.
+- Enforce enum validity.
+
+4) FRONTEND ERROR HANDLING FIXES
+- Implement a shared mutation helper (e.g., useMutationWithToast) or standardize apiRequest to throw typed errors with messages.
+- Ensure all mutations show toast on failure and disable buttons/spinners on submit.
+
+5) DUPLICATE PREVENTION
+- Enforce unique constraints at DB level.
+- Update create/bulk operations to upsert or gracefully handle conflicts.
+- Ensure restore/copy/duplicate logic is idempotent.
+
+6) QUERY SAFETY / PERFORMANCE
+- Remove raw SQL unless parameterized and justified.
+- Fix multi-tenant scoping risks.
+- Add pagination where large tables can grow (journals, logs, exports).
+- Address N+1 patterns in the hottest paths.
+
+7) CLEANUP / CONSISTENCY
+- Remove dead code & unused imports.
+- Fix React warnings and TS errors.
+- Standardize UI patterns across modals/forms.
+
+8) DEPENDENCY / SECRET / HARDENING
+- Patch vulnerable dependencies.
+- Ensure no secrets are committed.
+- Confirm cookie/CORS/CSRF stance; add rate limiting where appropriate.
+
+PHASE 3 — VERIFY (REQUIRED)
+- Run typecheck and tests (or add minimal tests if none exist):
+- npm run check (or equivalent)
+- npm test (if present)
+- Run lint if available.
+- Run the healthcheck report script and show output summary.
+- Ensure build succeeds and no obvious runtime errors.
+
+FINAL OUTPUT (MUST INCLUDE)
+1) Plain-language summary grouped by category:
+- Data integrity
+- API security/ownership/entitlements
+- Validation
+- Frontend error handling
+- Duplicate prevention/idempotency
+- Query safety/performance
+- Dead code/warnings/consistency
+- Dependencies/secrets/hardening
+2) List of files changed/added.
+3) Commands I should run (npm install, db push/migrate, healthcheck report, etc.).
+4) Smoke-test checklist (exact pages/flows to click).
+5) Anything you deliberately DID NOT change and why.
+
+Now execute Phase 0 → Phase 1 → Phase 2 → Phase 3 in that order.
