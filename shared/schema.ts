@@ -33,7 +33,7 @@ export const journals = pgTable("journals", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   date: date("date").notNull(),
-  session: varchar("session", { length: 20 }).notNull(), // 'morning', 'evening'
+  session: varchar("session", { length: 20 }).notNull(),
   gratitude: text("gratitude"),
   intentions: text("intentions"),
   reflections: text("reflections"),
@@ -44,8 +44,8 @@ export const journals = pgTable("journals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  // One entry per user per date per session (enables upsert pattern)
   uniqueIndex("journals_user_date_session_idx").on(table.userId, table.date, table.session),
+  check("journal_session_check", sql`${table.session} IN ('morning', 'evening')`),
 ]);
 
 export const insertJournalSchema = createInsertSchema(journals).omit({
@@ -61,10 +61,12 @@ export type InsertJournal = z.infer<typeof insertJournalSchema>;
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  role: varchar("role", { length: 20 }).notNull(), // 'user', 'assistant'
+  role: varchar("role", { length: 20 }).notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check("chat_role_check", sql`${table.role} IN ('user', 'assistant')`),
+]);
 
 export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
   id: true,
@@ -129,13 +131,13 @@ export type CourseType = keyof typeof COURSES;
 export const eisenhowerEntries = pgTable("eisenhower_entries", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  weekStart: date("week_start").notNull(), // Monday of the week
-  role: varchar("role", { length: 50 }).notNull(), // 'health', 'wealth', 'relationships'
+  weekStart: date("week_start").notNull(),
+  role: varchar("role", { length: 50 }).notNull(),
   task: text("task").notNull(),
-  quadrant: varchar("quadrant", { length: 10 }).notNull(), // 'q1', 'q2', 'q3', 'q4'
+  quadrant: varchar("quadrant", { length: 10 }).notNull(),
   deadline: date("deadline"),
-  timeEstimate: varchar("time_estimate", { length: 20 }), // e.g., "60m", "2h"
-  decision: varchar("decision", { length: 50 }), // 'do_today', 'schedule', 'delegate', 'delete'
+  timeEstimate: varchar("time_estimate", { length: 20 }),
+  decision: varchar("decision", { length: 50 }),
   scheduledTime: varchar("scheduled_time", { length: 50 }),
   scheduledDate: date("scheduled_date"),
   scheduledStartTime: varchar("scheduled_start_time", { length: 10 }),
@@ -145,7 +147,9 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   completed: boolean("completed").default(false),
   status: varchar("status", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check("eisenhower_quadrant_check", sql`${table.quadrant} IN ('q1', 'q2', 'q3', 'q4')`),
+]);
 
 export const insertEisenhowerEntrySchema = createInsertSchema(eisenhowerEntries).omit({
   id: true,
@@ -199,8 +203,8 @@ export const habits = pgTable("habits", {
   userId: varchar("user_id").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
   category: varchar("category", { length: 30 }).default("health"),
-  habitType: varchar("habit_type", { length: 30 }).default("maintenance"), // 'goal', 'learning', 'maintenance'
-  timing: varchar("timing", { length: 20 }).default("daily"), // 'morning', 'daily', 'evening'
+  habitType: varchar("habit_type", { length: 30 }).default("maintenance"),
+  timing: varchar("timing", { length: 20 }).default("daily"),
   cadence: varchar("cadence", { length: 50 }).notNull(),
   recurring: varchar("recurring", { length: 20 }).default("indefinite"),
   duration: integer("duration"),
@@ -214,7 +218,11 @@ export const habits = pgTable("habits", {
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'career', 'mindfulness', 'learning')`),
+  check("habit_type_check", sql`${table.habitType} IN ('goal', 'learning', 'maintenance')`),
+  check("habit_timing_check", sql`${table.timing} IN ('morning', 'daily', 'evening')`),
+]);
 
 export const insertHabitSchema = createInsertSchema(habits).omit({
   id: true,
@@ -234,6 +242,7 @@ export const habitCompletions = pgTable("habit_completions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("habit_completions_user_habit_date_idx").on(table.userId, table.habitId, table.date),
+  check("habit_completion_status_check", sql`${table.status} IN ('completed', 'skipped')`),
 ]);
 
 export const insertHabitCompletionSchema = createInsertSchema(habitCompletions).omit({
@@ -409,7 +418,10 @@ export const toolUsageLogs = pgTable("tool_usage_logs", {
   completed: boolean("completed").default(false),
   date: date("date").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  check("mood_before_range", sql`${table.moodBefore} BETWEEN 1 AND 5`),
+  check("mood_after_range", sql`${table.moodAfter} IS NULL OR ${table.moodAfter} BETWEEN 1 AND 5`),
+]);
 
 export const insertToolUsageLogSchema = createInsertSchema(toolUsageLogs).omit({
   id: true,

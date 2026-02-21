@@ -8,6 +8,47 @@ import OpenAI from "openai";
 import { format } from "date-fns";
 import multer from "multer";
 import fs from "fs";
+import rateLimit from "express-rate-limit";
+
+const aiRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many AI requests. Please wait a minute before trying again." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: any) => req.user?.claims?.sub || "anonymous",
+});
+
+const transcriptionRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { error: "Too many transcription requests. Please wait a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: any) => req.user?.claims?.sub || "anonymous",
+});
+
+const exportRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: "Too many export requests. Please wait a minute." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: any) => req.user?.claims?.sub || "anonymous",
+});
+import {
+  createEisenhowerSchema, updateEisenhowerSchema,
+  createEmpathySchema, updateEmpathySchema,
+  createHabitSchema, updateHabitSchema,
+  createHabitCompletionSchema,
+  createTaskSchema, updateTaskSchema,
+  createMeditationInsightSchema,
+  createJournalSchema,
+  createToolUsageSchema, updateToolUsageSchema,
+  createCustomToolSchema, updateCustomToolSchema,
+  chatMessageSchema, phase3AnalyzeSchema,
+  visionBoardSchema, checkoutSchema,
+} from "./validation";
 
 const upload = multer({ dest: "/tmp/audio-uploads", limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -50,9 +91,13 @@ export async function registerRoutes(
 
   app.post("/api/checkout", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = checkoutSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
       const userEmail = req.user.claims.email;
-      const { courseType } = req.body as { courseType: CourseType };
+      const { courseType } = parsed.data;
 
       if (!COURSES[courseType]) {
         return res.status(400).json({ error: "Invalid course type" });
@@ -183,6 +228,10 @@ export async function registerRoutes(
 
   app.post("/api/journals", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createJournalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
 
       const hasAccess = await storage.hasCourseAccess(userId, "course2");
@@ -192,7 +241,7 @@ export async function registerRoutes(
 
       const journal = await storage.createOrUpdateJournal({
         userId,
-        ...req.body,
+        ...parsed.data,
       });
       res.json(journal);
     } catch (error) {
@@ -201,7 +250,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/journals/export", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/journals/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const startDate = req.query.startDate as string | undefined;
@@ -337,10 +386,14 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/chat/messages", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/chat/messages", isAuthenticated, aiRateLimit, async (req: any, res: Response) => {
     try {
+      const parsed = chatMessageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { content } = req.body;
+      const { content } = parsed.data;
 
       const hasAccess = await storage.hasCourseAccess(userId, "course1");
       if (!hasAccess) {
@@ -500,8 +553,12 @@ export async function registerRoutes(
 
   app.post("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createEisenhowerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { task, weekStart } = req.body;
+      const { task, weekStart } = parsed.data;
       if (task && weekStart) {
         const existing = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
         const duplicate = existing.find(e => e.task.toLowerCase() === task.trim().toLowerCase());
@@ -509,7 +566,7 @@ export async function registerRoutes(
           return res.status(409).json({ error: `You already have a task named "${duplicate.task}" this week` });
         }
       }
-      const entry = await storage.createEisenhowerEntry({ userId, ...req.body });
+      const entry = await storage.createEisenhowerEntry({ userId, ...parsed.data });
       res.json(entry);
     } catch (error) {
       console.error("Error creating entry:", error);
@@ -519,6 +576,10 @@ export async function registerRoutes(
 
   app.patch("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = updateEisenhowerSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
       const { id } = req.params;
       const existing = await storage.getEisenhowerEntriesByUser(userId);
@@ -526,7 +587,7 @@ export async function registerRoutes(
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const body = { ...req.body };
+      const body = { ...parsed.data };
       if (body.status !== undefined) {
         body.completed = body.status === "completed";
       } else if (body.completed !== undefined) {
@@ -557,7 +618,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/eisenhower/export", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/eisenhower/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const entries = await storage.getEisenhowerEntriesByUser(userId);
@@ -591,8 +652,12 @@ export async function registerRoutes(
 
   app.post("/api/empathy", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createEmpathySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const exercise = await storage.createEmpathyExercise({ userId, ...req.body });
+      const exercise = await storage.createEmpathyExercise({ userId, ...parsed.data });
       res.json(exercise);
     } catch (error) {
       console.error("Error creating exercise:", error);
@@ -609,7 +674,11 @@ export async function registerRoutes(
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const exercise = await storage.updateEmpathyExercise(parseInt(id), req.body);
+      const parsedBody = updateEmpathySchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0].message });
+      }
+      const exercise = await storage.updateEmpathyExercise(parseInt(id), parsedBody.data);
       res.json(exercise);
     } catch (error) {
       console.error("Error updating exercise:", error);
@@ -634,7 +703,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/empathy/export", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/empathy/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const exercises = await storage.getEmpathyExercisesByUser(userId);
@@ -668,6 +737,10 @@ export async function registerRoutes(
 
   app.post("/api/habits", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createHabitSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
       
       const existing = await storage.getHabitsByUser(userId);
@@ -677,7 +750,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Maximum 5 active habits allowed" });
       }
 
-      const name = (req.body.name || "").trim();
+      const name = parsed.data.name;
       if (!name) {
         return res.status(400).json({ error: "Habit name is required" });
       }
@@ -686,7 +759,7 @@ export async function registerRoutes(
         return res.status(409).json({ error: `You already have an active habit named "${duplicate.name}"` });
       }
 
-      const { category, ...rest } = req.body;
+      const { category, ...rest } = parsed.data;
       const validCategory = category && category in HABIT_CATEGORIES ? category : "health";
       const habit = await storage.createHabit({ userId, category: validCategory, ...rest, name });
       res.json(habit);
@@ -705,7 +778,11 @@ export async function registerRoutes(
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const habit = await storage.updateHabit(parseInt(id), req.body);
+      const parsedBody = updateHabitSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0].message });
+      }
+      const habit = await storage.updateHabit(parseInt(id), parsedBody.data);
       res.json(habit);
     } catch (error) {
       console.error("Error updating habit:", error);
@@ -758,11 +835,12 @@ export async function registerRoutes(
 
   app.post("/api/habit-completions", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
-      const { habitId, date, status } = req.body;
-      if (!habitId || !date) {
-        return res.status(400).json({ error: "habitId and date are required" });
+      const parsed = createHabitCompletionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const userId = req.user.claims.sub;
+      const { habitId, date, status } = parsed.data;
       const validStatus = status === "skipped" ? "skipped" : "completed";
       const userHabits = await storage.getHabitsByUser(userId);
       if (!userHabits.some(h => h.id === habitId)) {
@@ -820,11 +898,12 @@ export async function registerRoutes(
 
   app.post("/api/meditation-insights", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
-      const { date, insight } = req.body;
-      if (!date || !insight) {
-        return res.status(400).json({ error: "date and insight are required" });
+      const parsed = createMeditationInsightSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const userId = req.user.claims.sub;
+      const { date, insight } = parsed.data;
       const newInsight = await storage.createMeditationInsight({ userId, date, insight });
       res.json(newInsight);
     } catch (error) {
@@ -891,11 +970,12 @@ export async function registerRoutes(
 
   app.put("/api/vision-board", isAuthenticated, async (req: any, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
-      const { slot, imageData } = req.body;
-      if (!["main", "left", "right"].includes(slot)) {
-        return res.status(400).json({ error: "Invalid slot. Use main, left, or right." });
+      const parsed = visionBoardSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const userId = req.user.claims.sub;
+      const { slot, imageData } = parsed.data;
       const existing = await storage.getIdentityDocument(userId);
       const updates: any = {
         userId,
@@ -1158,8 +1238,12 @@ export async function registerRoutes(
 
   app.post("/api/tool-usage", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createToolUsageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const log = await storage.createToolUsageLog({ ...req.body, userId });
+      const log = await storage.createToolUsageLog({ ...parsed.data, userId });
       res.json(log);
     } catch (error) {
       console.error("Error creating tool usage log:", error);
@@ -1176,7 +1260,11 @@ export async function registerRoutes(
       if (!log) {
         return res.status(404).json({ error: "Tool usage log not found" });
       }
-      const updated = await storage.updateToolUsageLog(parseInt(id), req.body);
+      const parsedBody = updateToolUsageSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0].message });
+      }
+      const updated = await storage.updateToolUsageLog(parseInt(id), parsedBody.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating tool usage log:", error);
@@ -1184,7 +1272,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/tool-usage/export", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/tool-usage/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { startDate, endDate } = req.query;
@@ -1222,8 +1310,12 @@ export async function registerRoutes(
 
   app.post("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createCustomToolSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { name } = req.body;
+      const { name } = parsed.data;
       if (!name || !name.trim()) {
         return res.status(400).json({ error: "Tool name is required" });
       }
@@ -1236,7 +1328,7 @@ export async function registerRoutes(
       if (duplicate) {
         return res.status(409).json({ error: "A tool with this name already exists" });
       }
-      const tool = await storage.createCustomTool({ ...req.body, userId });
+      const tool = await storage.createCustomTool({ ...parsed.data, userId });
       res.json(tool);
     } catch (error) {
       console.error("Error creating custom tool:", error);
@@ -1253,7 +1345,11 @@ export async function registerRoutes(
       if (!tool) {
         return res.status(404).json({ error: "Custom tool not found" });
       }
-      const updated = await storage.updateCustomTool(parseInt(id), req.body);
+      const parsedBody = updateCustomToolSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0].message });
+      }
+      const updated = await storage.updateCustomTool(parseInt(id), parsedBody.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating custom tool:", error);
@@ -1280,18 +1376,18 @@ export async function registerRoutes(
 
   // ==================== PHASE 3 - TRANSFORMATION AGENT ====================
   
-  app.post("/api/phase3/analyze", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/phase3/analyze", isAuthenticated, aiRateLimit, async (req: any, res: Response) => {
     try {
+      const parsed = phase3AnalyzeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { documentText } = req.body;
+      const { documentText } = parsed.data;
 
       const hasAccess = await storage.hasCourseAccess(userId, "phase3");
       if (!hasAccess) {
         return res.status(403).json({ error: "Phase 3 access required" });
-      }
-
-      if (!documentText || documentText.trim().length < 50) {
-        return res.status(400).json({ error: "Please provide at least 50 characters of text to analyze." });
       }
 
       res.setHeader("Content-Type", "text/event-stream");
@@ -1373,20 +1469,24 @@ Be compassionate but honest. Use evidence from their text to support your observ
 
   app.post("/api/tasks", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = createTaskSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { date } = req.body;
+      const { date } = parsed.data;
       
       const existingTasks = await storage.getTasksForDate(userId, date);
       if (existingTasks.length >= 3) {
         return res.status(400).json({ error: "Maximum 3 tasks per day allowed" });
       }
 
-      const title = (req.body.title || "").trim();
+      const title = parsed.data.title;
       if (title && existingTasks.some(t => t.title.toLowerCase() === title.toLowerCase())) {
         return res.status(409).json({ error: `You already have a task named "${title}" on this date` });
       }
 
-      const task = await storage.createTask({ userId, ...req.body });
+      const task = await storage.createTask({ userId, ...parsed.data });
       res.json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -1403,7 +1503,11 @@ Be compassionate but honest. Use evidence from their text to support your observ
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const task = await storage.updateTask(parseInt(id), req.body);
+      const parsedBody = updateTaskSchema.safeParse(req.body);
+      if (!parsedBody.success) {
+        return res.status(400).json({ error: parsedBody.error.issues[0].message });
+      }
+      const task = await storage.updateTask(parseInt(id), parsedBody.data);
       res.json(task);
     } catch (error) {
       console.error("Error updating task:", error);
@@ -1428,7 +1532,7 @@ Be compassionate but honest. Use evidence from their text to support your observ
     }
   });
 
-  app.post("/api/audio/transcribe", isAuthenticated, upload.single("audio"), async (req: any, res: Response) => {
+  app.post("/api/audio/transcribe", isAuthenticated, transcriptionRateLimit, upload.single("audio"), async (req: any, res: Response) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No audio file provided" });
