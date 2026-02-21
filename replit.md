@@ -45,6 +45,21 @@ Preferred communication style: Simple, everyday language.
   - **Navigation Framework**: Lightweight process navigation with two features:
     - **returnTo system** (`client/src/hooks/use-return-to.ts`): `useReturnTo(fallback)` hook reads `?returnTo=` query param from URL, validates it (must be internal path), provides `finish()` to navigate back. `buildProcessUrl(path, returnTo)` creates launch URLs. Used by goal-wizard, and launch links from dashboard/plan.
     - **Unsaved Changes Guard** (`client/src/hooks/use-unsaved-guard.tsx`): `UnsavedGuardProvider` wraps the app. Components call `useUnsavedGuard()` to get `register()/unregister()` for dirty state tracking, and `safeNavigate()` which shows Save/Discard/Cancel modal before navigating when dirty. Applied to goal-wizard and eisenhower wizard. All AppLayout nav links use `safeNavigate`. `beforeunload` handler fires when dirty.
+    - **Process Registry** (`client/src/lib/process-registry.ts`): Lean metadata for all process flows (id, title, path, defaultReturnTo, requiresDirtyGuard). No route generation — routes still in App.tsx.
+
+## Navigation Framework Rules
+
+When adding or modifying any process flow, follow this checklist:
+
+1. Register the process in `client/src/lib/process-registry.ts`
+2. Launch links must use `buildProcessUrl(path, currentPath)` to embed returnTo
+3. Completion must call `useReturnTo(fallback).finish()` to return to origin
+4. All AppLayout nav links must use `safeNavigate()` — never raw `<Link>` or `setLocation()`
+5. Full-page processes with data entry: register with `useUnsavedGuard()`
+6. Modal processes with data entry: intercept dialog close with confirmation dialog
+7. Run `npm run verify` after changes
+
+See `.local/skills/process-framework/SKILL.md` for code patterns and examples.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript and Node.js.

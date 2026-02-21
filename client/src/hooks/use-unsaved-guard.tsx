@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,8 @@ interface GuardState {
 }
 
 interface UnsavedGuardContextValue {
-  register: (guard: GuardState) => void;
-  unregister: () => void;
+  register: (id: string, guard: GuardState) => void;
+  unregister: (id: string) => void;
   isDirty: boolean;
   safeNavigate: (path: string) => void;
 }
@@ -36,39 +36,63 @@ export function useUnsavedGuard() {
 }
 
 export function UnsavedGuardProvider({ children }: { children: React.ReactNode }) {
-  const [guard, setGuard] = useState<GuardState | null>(null);
+  const guardsRef = useRef<Map<string, GuardState>>(new Map());
+  const [dirtyCount, setDirtyCount] = useState(0);
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [, setLocation] = useLocation();
 
-  const isDirty = guard?.isDirty ?? false;
-
-  const register = useCallback((g: GuardState) => {
-    setGuard(g);
+  const recalcDirty = useCallback(() => {
+    let count = 0;
+    const guards = Array.from(guardsRef.current.values());
+    for (const g of guards) {
+      if (g.isDirty) count++;
+    }
+    setDirtyCount(count);
   }, []);
 
-  const unregister = useCallback(() => {
-    setGuard(null);
-  }, []);
+  const isDirty = dirtyCount > 0;
+
+  const register = useCallback((id: string, g: GuardState) => {
+    guardsRef.current.set(id, g);
+    recalcDirty();
+  }, [recalcDirty]);
+
+  const unregister = useCallback((id: string) => {
+    guardsRef.current.delete(id);
+    recalcDirty();
+  }, [recalcDirty]);
 
   const safeNavigate = useCallback(
     (path: string) => {
-      if (isDirty) {
+      if (dirtyCount > 0) {
         setPendingPath(path);
         setModalOpen(true);
       } else {
         setLocation(path);
       }
     },
-    [isDirty, setLocation],
+    [dirtyCount, setLocation],
   );
 
+  const getActiveGuard = useCallback((): GuardState | null => {
+    const guards = Array.from(guardsRef.current.values());
+    for (const g of guards) {
+      if (g.isDirty) return g;
+    }
+    return null;
+  }, []);
+
   const handleSave = useCallback(async () => {
-    if (!guard?.onSave) return;
     setSaving(true);
     try {
-      await guard.onSave();
+      const guards = Array.from(guardsRef.current.values());
+      for (const g of guards) {
+        if (g.isDirty && g.onSave) {
+          await g.onSave();
+        }
+      }
       setModalOpen(false);
       if (pendingPath) {
         setLocation(pendingPath);
@@ -77,16 +101,19 @@ export function UnsavedGuardProvider({ children }: { children: React.ReactNode }
     } finally {
       setSaving(false);
     }
-  }, [guard, pendingPath, setLocation]);
+  }, [pendingPath, setLocation]);
 
   const handleDiscard = useCallback(() => {
-    guard?.onDiscard?.();
+    const guards = Array.from(guardsRef.current.values());
+    for (const g of guards) {
+      if (g.isDirty) g.onDiscard?.();
+    }
     setModalOpen(false);
     if (pendingPath) {
       setLocation(pendingPath);
       setPendingPath(null);
     }
-  }, [guard, pendingPath, setLocation]);
+  }, [pendingPath, setLocation]);
 
   const handleCancel = useCallback(() => {
     setModalOpen(false);
@@ -103,6 +130,8 @@ export function UnsavedGuardProvider({ children }: { children: React.ReactNode }
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
+  const activeGuard = getActiveGuard();
+
   return (
     <UnsavedGuardContext.Provider value={{ register, unregister, isDirty, safeNavigate }}>
       {children}
@@ -111,7 +140,7 @@ export function UnsavedGuardProvider({ children }: { children: React.ReactNode }
           <DialogHeader>
             <DialogTitle>Unsaved changes</DialogTitle>
             <DialogDescription>
-              {guard?.message || "You have unsaved changes. What would you like to do?"}
+              {activeGuard?.message || "You have unsaved changes. What would you like to do?"}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2 sm:gap-0">
@@ -121,7 +150,7 @@ export function UnsavedGuardProvider({ children }: { children: React.ReactNode }
             <Button variant="destructive" onClick={handleDiscard} data-testid="button-unsaved-discard">
               Discard
             </Button>
-            {guard?.onSave && (
+            {activeGuard?.onSave && (
               <Button onClick={handleSave} disabled={saving} data-testid="button-unsaved-save">
                 {saving ? "Saving..." : "Save"}
               </Button>

@@ -371,7 +371,7 @@ export default function GoalWizardPage() {
   });
 
   useEffect(() => {
-    register({
+    register("goal-wizard", {
       isDirty,
       onSave: async () => {
         await saveMutation.mutateAsync();
@@ -379,7 +379,7 @@ export default function GoalWizardPage() {
       onDiscard: () => {},
       message: "You have unsaved goal progress. Save before leaving?",
     });
-    return () => unregister();
+    return () => unregister("goal-wizard");
   }, [isDirty, register, unregister, saveMutation]);
 
   const currentStep = STEPS[step];
