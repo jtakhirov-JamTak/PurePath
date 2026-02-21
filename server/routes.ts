@@ -1096,7 +1096,13 @@ export async function registerRoutes(
 
   app.patch("/api/tool-usage/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const logs = await storage.getToolUsageLogsByUser(userId);
+      const log = logs.find(l => l.id === parseInt(id));
+      if (!log) {
+        return res.status(404).json({ error: "Tool usage log not found" });
+      }
       const updated = await storage.updateToolUsageLog(parseInt(id), req.body);
       res.json(updated);
     } catch (error) {
@@ -1144,10 +1150,18 @@ export async function registerRoutes(
   app.post("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
+      const { name } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Tool name is required" });
+      }
       const existing = await storage.getCustomToolsByUser(userId);
       const activeCount = existing.filter(t => t.active).length;
       if (activeCount >= 3) {
         return res.status(400).json({ error: "Maximum 3 active custom tools allowed. Deactivate one first." });
+      }
+      const duplicate = existing.find(t => t.active && t.name.toLowerCase() === name.trim().toLowerCase());
+      if (duplicate) {
+        return res.status(409).json({ error: "A tool with this name already exists" });
       }
       const tool = await storage.createCustomTool({ ...req.body, userId });
       res.json(tool);
@@ -1159,7 +1173,13 @@ export async function registerRoutes(
 
   app.patch("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const tools = await storage.getCustomToolsByUser(userId);
+      const tool = tools.find(t => t.id === parseInt(id));
+      if (!tool) {
+        return res.status(404).json({ error: "Custom tool not found" });
+      }
       const updated = await storage.updateCustomTool(parseInt(id), req.body);
       res.json(updated);
     } catch (error) {
@@ -1170,7 +1190,13 @@ export async function registerRoutes(
 
   app.delete("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const userId = req.user.claims.sub;
       const { id } = req.params;
+      const tools = await storage.getCustomToolsByUser(userId);
+      const tool = tools.find(t => t.id === parseInt(id));
+      if (!tool) {
+        return res.status(404).json({ error: "Custom tool not found" });
+      }
       await storage.deleteCustomTool(parseInt(id));
       res.json({ success: true });
     } catch (error) {

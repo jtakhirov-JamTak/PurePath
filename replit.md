@@ -31,7 +31,9 @@ Preferred communication style: Simple, everyday language.
   - **Eisenhower Matrix**: Weekly priority planning with categories and goal alignment field for Q2 items. "Success Catalyst" flagging (formerly blocksGoal). Includes "Plan Week" wizard with 3-step guided flow: role selection, brain dump, and task classification into quadrants.
   - **Self-Development Tools**: Meditation, Emotional Processing, and Empathy modules.
   - **Regulation Now Page** (`/regulation`): Three quick regulation tools with expandable cards, circular timers, play/pause/reset.
-  - **Quick Tools (Dashboard)**: Emotional Containment (4-step FEEL→LABEL→REGULATE→MOVE flow with "I feel ___ because ___" sentence builder, validation chips, +15s timer increments), Micro-Movement (5 fixed options: 5min walk, 20 squats, 20 jumping jacks, make bed, 5min errand with timer/counter modes), Self-Compassion Break (3-step Mindfulness→Common Humanity→Kindness structured flow with per-step timers, voice input, +15s increments, save-to-journal).
+  - **Quick Tools (Dashboard)**: All tool modals use a shared `ExerciseModal` shell (`client/src/components/exercise-modal.tsx`) that standardizes the flow: mood-before → exercise → mood-after → done. Each tool only defines its unique exercise content. Mood tracking hook in `client/src/hooks/use-mood-tracking.ts`. Tool modals extracted to `client/src/components/tools/`. Includes Emotional Containment (4-step FEEL→LABEL→REGULATE→MOVE), Micro-Movement (5 fixed options with timer/counter modes), Self-Compassion Break (Loved One Mirror with voice input, save-to-journal).
+  - **Custom Tools**: Users can add up to 3 custom tools from their GPT course. Stored in `custom_tools` table. Duplicate name prevention server-side. Components in `client/src/components/tools/custom-tool-modal.tsx`.
+  - **Mood Tracking**: 5-level mood scale (1-5) with emotion text captured before and after each exercise. Stored in `tool_usage_logs` table with CSV export. All tool usage is trackable via `/api/tool-usage` and exportable via `/api/tool-usage/export`.
   - **Journal Calendar**: Week view with horizontal grid. Habits sorted by timing (morning → daily → evening). Export with date range filters. Habits and scheduled items have 3-state tracking (completed/skipped/blank).
   - **Dashboard (Today)**: Redesigned vertical flow: 1-Year Vision → Q1-Q4 quarterly goals row → Monthly Promise → North Star (identity/values/intention with voice input) → Daily Habits (journals + habits with cycling status) → Weekly Items (Q2 focus + mini calendar) → Evening Reflection → Regulation Now link → Library link.
   - **Vision Board** (`/plan`): Single image upload stored as base64 in identity_documents table (visionBoardMain). Upload, replace, and remove functionality.
@@ -50,7 +52,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM.
-- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`, `plan_versions`.
+- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`, `plan_versions`, `tool_usage_logs`, `custom_tools`.
 - **Shared Types**: TypeScript types and Zod schemas shared between client and server.
 
 ### Key Design Patterns
