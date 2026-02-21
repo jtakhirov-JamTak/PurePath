@@ -1,0 +1,139 @@
+Implement a PROCESS-BASED NAVIGATION FRAMEWORK in this repo so the app is built from reusable “process blocks.”
+
+GOAL UX
+- From any page (Home/Today/Plan/History/etc.), user can click “Start Process X”
+- Process X runs inside the normal AppShell (top tabs always visible)
+- When the user finishes Process X, the DEFAULT action returns them to the page they started from (returnTo)
+- Optional secondary action: “View details / go to Process X page”
+- If the user tries to navigate away while a process has unsaved changes, prompt:
+  Save / Discard / Cancel
+- At any time, user can click any of the top tabs. If the current process is dirty, show the guard modal.
+
+CONSTRAINTS
+- Keep existing stack (React + TS + Wouter, React Query, shadcn/Radix, Express + TS).
+- Minimal disruption. Prefer adding a framework layer + migrating processes gradually.
+- No breaking changes to existing routes; keep old links working.
+- Use shadcn/ui dialogs for confirmation modals.
+
+DELIVERABLES
+A) A universal way to START any process with returnTo captured
+B) A ProcessShell / ProcessRoutes that keeps AppShell visible
+C) A global UnsavedChangesGuard (Save / Discard / Cancel) that intercepts navigation
+D) Update existing processes to use the new framework:
+   - Plan Wizard
+   - Eisenhower Wizard
+   - Quick Tools (containment/movement/self-compassion) if they are implemented as routes; if modals, still support returnTo for any “finish” action that navigates.
+E) A final summary with files changed + commands + smoke tests
+
+---
+
+PART 1 — STANDARD PROCESS LAUNCHING (returnTo)
+1) Implement a helper startProcess(processId, options):
+   - options.returnTo defaults to currentPath
+   - navigate to /process/<processId>?returnTo=<encodedPath>
+   - validate returnTo: must be an internal path starting with “/” and not contain protocol/host
+2) Add a helper finishProcess({ returnTo, fallback="/today", viewPath? }):
+   - primary completion navigates to returnTo or fallback
+   - secondary CTA navigates to viewPath (optional)
+
+Implementation detail (Wouter):
+- Create a utility to get current location/path reliably.
+- Use querystring parsing for returnTo.
+
+Fallback rule:
+- If returnTo is missing (deep link) or invalid, use /today (or existing home route).
+
+---
+
+PART 2 — PROCESS ROUTES INSIDE APPSHELL (persistent tabs)
+1) Ensure AppShell (top nav tabs) wraps all main routes and process routes.
+2) Create routes:
+   - /process/:processId
+   - optionally /process/:processId/:step (if step URLs exist)
+3) Render processes in one of two acceptable ways:
+   Preferred: fullscreen overlay inside AppShell (modal route pattern)
+   Acceptable: normal page inside AppShell (tabs visible)
+
+If you implement overlay routing:
+- Keep the underlying page visible in the background.
+- Browser back closes the overlay.
+- Still respect unsaved guard before closing.
+
+---
+
+PART 3 — UNSAVED CHANGES GUARD (global)
+Implement a global navigation guard system:
+
+1) Create a provider/context (UnsavedChangesProvider) that holds:
+   - isDirty: boolean
+   - isSaving: boolean (optional)
+   - onSave: async function
+   - onDiscard: function
+   - message/title override (optional)
+2) Create a hook useUnsavedChangesGuard() for processes/forms to register:
+   - registerGuard({ isDirty, onSave, onDiscard, ... })
+   - unregister on unmount
+3) Create a ConfirmLeaveModal (shadcn Dialog):
+   - Title: “Unsaved changes”
+   - Body: “Do you want to save before leaving?”
+   - Buttons: Save / Discard / Cancel
+   - Save: await onSave(), then navigate
+   - Discard: onDiscard(), then navigate
+   - Cancel: do nothing
+
+4) Intercept navigation:
+   - Implement safeNavigate(path) which:
+     - if not dirty => navigate
+     - if dirty => open modal, store pending destination
+   - Update top nav tabs to use safeNavigate
+   - Provide a GuardedLink component and replace internal links in key areas (at least in AppShell nav and process UIs) so they respect the guard
+
+5) Add beforeunload protection:
+   - If isDirty, register window.beforeunload to warn on refresh/close
+   - Remove handler when not dirty
+
+---
+
+PART 4 — PROCESS UX STANDARDIZATION
+For every process screen:
+1) Add a consistent header:
+   - Left: “Close” (goes to returnTo; if dirty triggers guard)
+   - Right: optional “View details” (secondary destination)
+2) After completion:
+   - Show success toast
+   - Primary button: “Back” (returnTo)
+   - Secondary: “View details”
+3) If process is opened directly (no returnTo), “Back” returns to /today
+
+---
+
+PART 5 — UPDATE EXISTING PROCESSES TO USE THIS FRAMEWORK
+1) Identify current “process-like flows” (wizards/tools) and ensure they launch via startProcess().
+2) Ensure they finish via finishProcess() and default back to origin.
+
+At minimum implement:
+- Plan Wizard uses /process/plan (and internal steps if needed)
+- Eisenhower weekly setup uses /process/eisenhower (and returns to origin by default)
+- Any “setup” process that currently routes to feature pages should now return to origin by default.
+
+---
+
+ACCEPTANCE CRITERIA (MUST PASS)
+1) Start Process X from Today → finish → returns to Today by default.
+2) Start Process X from Plan → finish → returns to Plan by default.
+3) Deep link /process/X (no returnTo) → finish → returns to /today.
+4) While in Process X with dirty changes:
+   - Clicking any top tab triggers Save/Discard/Cancel modal.
+   - Cancel keeps user in place.
+   - Save saves and then navigates.
+   - Discard discards and navigates.
+5) beforeunload warning appears only when dirty.
+6) returnTo is sanitized to prevent open redirects.
+
+FINAL OUTPUT REQUIRED
+- List of files changed/added
+- Any new helpers/components and how to use them
+- Commands to run (install/build/typecheck)
+- Smoke-test checklist for the behaviors above
+
+Now implement this end-to-end in the repo.
