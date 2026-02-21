@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useReturnTo } from "@/hooks/use-return-to";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { ArrowRight, ArrowLeft, Check, Sparkles, Crosshair, Eye, Timer } from "lucide-react";
 import type { MonthlyGoal } from "@shared/schema";
 
@@ -218,7 +219,7 @@ export default function GoalWizardPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const { finish: finishProcess } = useReturnTo("/dashboard");
   const [step, setStep] = useState(0);
   const monthKey = getCurrentMonthKey();
 
@@ -248,6 +249,13 @@ export default function GoalWizardPage() {
   const [successMarker, setSuccessMarker] = useState("");
   const [why, setWhy] = useState("");
   const [nextConcreteStep, setNextConcreteStep] = useState("");
+
+  const { register, unregister } = useUnsavedGuard();
+
+  const isDirty = useMemo(() => {
+    const fields = [value, strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, prize, fun, deadline, successProof, proofMetric, weeklyBehavior, bestResult, innerObstacle, obstacleTrigger, obstacleThought, obstacleEmotion, obstacleBehavior, ifThenPlan1, ifThenPlan2, successMarker, why, nextConcreteStep];
+    return fields.some(f => f.trim().length > 0);
+  }, [value, strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, prize, fun, deadline, successProof, proofMetric, weeklyBehavior, bestResult, innerObstacle, obstacleTrigger, obstacleThought, obstacleEmotion, obstacleBehavior, ifThenPlan1, ifThenPlan2, successMarker, why, nextConcreteStep]);
 
   const fieldState: Record<string, { value: string; setter: (v: string) => void }> = {
     value: { value, setter: setValue },
@@ -355,12 +363,24 @@ export default function GoalWizardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal", monthKey] });
       toast({ title: "Goal saved", description: "Your goal has been saved successfully." });
-      setLocation("/dashboard");
+      finishProcess();
     },
     onError: () => {
       toast({ title: "Error", description: "Could not save. Please try again.", variant: "destructive" });
     },
   });
+
+  useEffect(() => {
+    register({
+      isDirty,
+      onSave: async () => {
+        await saveMutation.mutateAsync();
+      },
+      onDiscard: () => {},
+      message: "You have unsaved goal progress. Save before leaving?",
+    });
+    return () => unregister();
+  }, [isDirty, register, unregister, saveMutation]);
 
   const currentStep = STEPS[step];
   const isLastStep = step === TOTAL_STEPS - 1;

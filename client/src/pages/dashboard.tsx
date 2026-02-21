@@ -15,6 +15,7 @@ import {
   Target, Minus, Pencil, Plus, SkipForward, X,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek } from "date-fns";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, Task, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
@@ -200,7 +201,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (monthlyGoalLoaded && !isGoalComplete(monthlyGoal) && !redirectedRef.current) {
       redirectedRef.current = true;
-      setLocation("/goal-wizard");
+      setLocation(buildProcessUrl("/goal-wizard", "/dashboard"));
     }
   }, [monthlyGoalLoaded, monthlyGoal, setLocation]);
 
@@ -352,7 +353,7 @@ export default function DashboardPage() {
           <Card className="overflow-visible" data-testid="card-no-habits">
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground" data-testid="text-no-habits">No habits due today.</p>
-              <Button variant="ghost" size="sm" className="mt-2" onClick={() => setLocation("/habits")} data-testid="button-add-habits">
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => setLocation(buildProcessUrl("/habits", "/dashboard"))} data-testid="button-add-habits">
                 <Plus className="h-4 w-4 mr-1" />
                 Set up habits
               </Button>

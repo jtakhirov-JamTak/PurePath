@@ -37,6 +37,7 @@ import RegulationPage from "@/pages/regulation";
 import GoalWizardPage from "@/pages/goal-wizard";
 import HistoryPage from "@/pages/history";
 import { Loader2 } from "lucide-react";
+import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -168,8 +169,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="inner-journey-theme">
         <TooltipProvider>
-          <Toaster />
-          <Router />
+          <UnsavedGuardProvider>
+            <Toaster />
+            <Router />
+          </UnsavedGuardProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

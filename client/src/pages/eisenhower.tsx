@@ -142,6 +142,25 @@ export default function EisenhowerPage() {
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
 
+  const wizardHasContent = brainDump.trim().length > 0 || wizardItems.length > 0;
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const handleWizardOpenChange = useCallback((open: boolean) => {
+    if (!open && wizardHasContent) {
+      setConfirmClose(true);
+    } else {
+      setWizardOpen(open);
+    }
+  }, [wizardHasContent]);
+
+  const confirmDiscardWizard = useCallback(() => {
+    setConfirmClose(false);
+    setWizardOpen(false);
+    setBrainDump("");
+    setWizardItems([]);
+    setWizardStep(0);
+  }, []);
+
   const weekStart = format(currentWeek, "yyyy-MM-dd");
 
   const { data: entries = [], isLoading } = useQuery<EisenhowerEntry[]>({
@@ -639,7 +658,7 @@ export default function EisenhowerPage() {
         </Card>
 
         {/* Plan Week Wizard */}
-        <Dialog open={wizardOpen} onOpenChange={setWizardOpen}>
+        <Dialog open={wizardOpen} onOpenChange={handleWizardOpenChange}>
           <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="modal-plan-wizard">
             <DialogHeader>
               <DialogTitle className="font-serif flex items-center gap-2">
@@ -1035,6 +1054,25 @@ export default function EisenhowerPage() {
                   </Button>
                 )}
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={confirmClose} onOpenChange={setConfirmClose}>
+          <DialogContent data-testid="modal-confirm-close-wizard">
+            <DialogHeader>
+              <DialogTitle>Discard planner items?</DialogTitle>
+              <DialogDescription>
+                You have unsaved items in the weekly planner. Closing will discard them.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:gap-0">
+              <Button variant="ghost" onClick={() => setConfirmClose(false)} data-testid="button-confirm-close-cancel">
+                Keep Planning
+              </Button>
+              <Button variant="destructive" onClick={confirmDiscardWizard} data-testid="button-confirm-close-discard">
+                Discard
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

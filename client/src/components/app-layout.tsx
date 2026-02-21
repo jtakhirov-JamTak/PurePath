@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import type { LucideIcon } from "lucide-react";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 
 interface NavItem {
   label: string;
@@ -41,7 +42,8 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout, isAuthenticated } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
+  const { safeNavigate } = useUnsavedGuard();
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -64,23 +66,23 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/95 border-b" data-testid="top-nav">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Link
-            href="/"
+          <button
+            onClick={() => safeNavigate("/")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             data-testid="link-home-logo"
           >
             <Compass className="h-7 w-7 text-primary" />
             <span className="font-serif text-xl font-semibold hidden sm:inline">Inner Journey</span>
-          </Link>
+          </button>
 
           <nav className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
             {navItems.map((item) => {
               const active = isActive(item.path);
               const Icon = item.icon;
               return (
-                <Link
+                <button
                   key={item.path}
-                  href={item.path}
+                  onClick={() => safeNavigate(item.path)}
                   className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                     active
                       ? "text-primary bg-primary/[0.08]"
@@ -90,7 +92,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
-                </Link>
+                </button>
               );
             })}
           </nav>
@@ -113,11 +115,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setLocation("/dashboard")} data-testid="menu-dashboard">
+                  <DropdownMenuItem onClick={() => safeNavigate("/dashboard")} data-testid="menu-dashboard">
                     <Sun className="h-4 w-4 mr-2" />
                     Today
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setLocation("/billing")} data-testid="menu-billing">
+                  <DropdownMenuItem onClick={() => safeNavigate("/billing")} data-testid="menu-billing">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Billing
                   </DropdownMenuItem>
@@ -150,9 +152,9 @@ export function AppLayout({ children }: AppLayoutProps) {
             const active = isActive(item.path);
             const Icon = item.icon;
             return (
-              <Link
+              <button
                 key={item.path}
-                href={item.path}
+                onClick={() => safeNavigate(item.path)}
                 className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full text-xs transition-colors ${
                   active ? "text-primary" : "text-muted-foreground"
                 }`}
@@ -160,7 +162,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               >
                 <Icon className="h-5 w-5" />
                 <span className="truncate max-w-[60px]">{item.label}</span>
-              </Link>
+              </button>
             );
           })}
         </div>

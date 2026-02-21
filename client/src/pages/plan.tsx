@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, PlanVersion } from "@shared/schema";
 import {
@@ -565,7 +566,7 @@ export default function PlanPage() {
                     </p>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-edit-goal">
+                <Button variant="outline" size="sm" onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="button-plan-edit-goal">
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Edit Monthly Goal
                 </Button>
@@ -575,7 +576,7 @@ export default function PlanPage() {
                 <p className="text-sm text-muted-foreground">
                   A monthly goal gives direction to your weekly priorities and daily habits.
                 </p>
-                <Button onClick={() => setLocation("/monthly-goal")} data-testid="button-plan-set-goal">
+                <Button onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="button-plan-set-goal">
                   <Target className="h-4 w-4 mr-2" />
                   Set Monthly Goal
                 </Button>
@@ -599,7 +600,7 @@ export default function PlanPage() {
                 {activeHabits.length > 5 && (
                   <p className="text-xs text-muted-foreground">+{activeHabits.length - 5} more</p>
                 )}
-                <Button variant="outline" size="sm" onClick={() => setLocation("/habits")} data-testid="button-open-habits">
+                <Button variant="outline" size="sm" onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))} data-testid="button-open-habits">
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Manage Habits
                 </Button>
@@ -609,7 +610,7 @@ export default function PlanPage() {
                 <p className="text-sm text-muted-foreground">
                   Set up the daily and weekly habits that will move you toward your goal.
                 </p>
-                <Button onClick={() => setLocation("/habits")} data-testid="button-create-habits">
+                <Button onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))} data-testid="button-create-habits">
                   <Repeat className="h-4 w-4 mr-2" />
                   Create Habits
                 </Button>
@@ -638,7 +639,7 @@ export default function PlanPage() {
                 )}
                 <Badge variant="outline">{thisWeekEntries.length} items planned</Badge>
                 <div className="mt-2">
-                  <Button variant="outline" size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-open-eisenhower">
+                  <Button variant="outline" size="sm" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-open-eisenhower">
                     <Grid3X3 className="h-3.5 w-3.5 mr-1.5" />
                     Open Matrix
                   </Button>
@@ -649,7 +650,7 @@ export default function PlanPage() {
                 <p className="text-sm text-muted-foreground">
                   Use the Eisenhower Matrix to plan your week's priorities and focus on what matters most.
                 </p>
-                <Button onClick={() => setLocation("/eisenhower")} data-testid="button-plan-eisenhower">
+                <Button onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
                   <Grid3X3 className="h-4 w-4 mr-2" />
                   Plan This Week
                 </Button>

@@ -42,6 +42,9 @@ Preferred communication style: Simple, everyday language.
   - **Journaling as Habits**: AM/PM journal entries appear as system habits in dashboard's "Due Today" card with click-to-navigate and auto-complete status based on journal existence.
   - **Course Curriculum**: Collapsible phases with lesson overviews and video placeholders.
   - **Phase 3 Transformation**: Document upload for AI pattern analysis and downloadable reports.
+  - **Navigation Framework**: Lightweight process navigation with two features:
+    - **returnTo system** (`client/src/hooks/use-return-to.ts`): `useReturnTo(fallback)` hook reads `?returnTo=` query param from URL, validates it (must be internal path), provides `finish()` to navigate back. `buildProcessUrl(path, returnTo)` creates launch URLs. Used by goal-wizard, and launch links from dashboard/plan.
+    - **Unsaved Changes Guard** (`client/src/hooks/use-unsaved-guard.tsx`): `UnsavedGuardProvider` wraps the app. Components call `useUnsavedGuard()` to get `register()/unregister()` for dirty state tracking, and `safeNavigate()` which shows Save/Discard/Cancel modal before navigating when dirty. Applied to goal-wizard and eisenhower wizard. All AppLayout nav links use `safeNavigate`. `beforeunload` handler fires when dirty.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript and Node.js.
