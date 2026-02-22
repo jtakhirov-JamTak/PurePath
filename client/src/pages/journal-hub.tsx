@@ -1055,7 +1055,7 @@ function HabitTimingSection({
 
   return (
     <SortableContext items={habitIds} strategy={verticalListSortingStrategy}>
-      <div ref={setNodeRef} style={{ display: "contents" }}>
+      <div ref={setNodeRef} style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "subgrid" }}>
         {habits.map((habit) => (
           <SortableHabitRow
             key={habit.id}
@@ -1160,14 +1160,17 @@ function SortableHabitRow({
   const scheduledDays = useMemo(() => new Set(habit.cadence.split(",")), [habit.cadence]);
   const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.3 : 1,
+    gridColumn: "1 / -1",
+    display: "grid",
+    gridTemplateColumns: "subgrid",
   };
 
   return (
-    <div ref={setNodeRef} style={{ ...style, display: "contents" }}>
+    <div ref={setNodeRef} style={style}>
       <div className="flex items-center gap-1 px-1 py-2 bg-muted/30 border-t group/hrow">
         <button
           className="cursor-grab active:cursor-grabbing shrink-0 touch-none"
