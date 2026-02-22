@@ -817,9 +817,12 @@ export async function registerRoutes(
       const existing = await storage.getHabitsByUser(userId);
       const existingIds = new Set(existing.map(h => h.id));
       for (const item of items) {
+        if (typeof item.id !== "number" || typeof item.sortOrder !== "number") continue;
         if (!existingIds.has(item.id)) continue;
         const updates: any = { sortOrder: item.sortOrder };
-        if (item.timing) updates.timing = item.timing;
+        if (item.timing && ["morning", "afternoon", "evening"].includes(item.timing)) {
+          updates.timing = item.timing;
+        }
         await storage.updateHabit(item.id, updates);
       }
       res.json({ success: true });
@@ -839,10 +842,15 @@ export async function registerRoutes(
       const existing = await storage.getEisenhowerEntriesByUser(userId);
       const existingIds = new Set(existing.map(e => e.id));
       for (const item of items) {
+        if (typeof item.id !== "number" || typeof item.sortOrder !== "number") continue;
         if (!existingIds.has(item.id)) continue;
         const updates: any = { sortOrder: item.sortOrder };
-        if (item.timeRange) updates.timeRange = item.timeRange;
-        if (item.scheduledDate) updates.scheduledDate = item.scheduledDate;
+        if (item.timeRange && ["morning", "afternoon", "evening"].includes(item.timeRange)) {
+          updates.timeRange = item.timeRange;
+        }
+        if (item.scheduledDate && typeof item.scheduledDate === "string") {
+          updates.scheduledDate = item.scheduledDate;
+        }
         await storage.updateEisenhowerEntry(item.id, updates);
       }
       res.json({ success: true });
