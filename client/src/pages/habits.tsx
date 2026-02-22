@@ -183,6 +183,14 @@ export default function HabitsPage() {
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
+  const navigateBack = () => {
+    if (returnTo.current) {
+      const rt = returnTo.current;
+      returnTo.current = null;
+      setLocation(rt);
+    }
+  };
+
   const createHabitMutation = useMutation({
     mutationFn: async (data: typeof newHabit) => {
       const cadence = selectedDays.sort((a, b) => {
@@ -217,6 +225,7 @@ export default function HabitsPage() {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       resetForm();
+      navigateBack();
     },
     onError: (error: Error) => {
       toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
@@ -257,6 +266,7 @@ export default function HabitsPage() {
       setHabitDialogOpen(false);
       setEditingHabit(null);
       resetForm();
+      navigateBack();
     },
     onError: (error: Error) => {
       toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
@@ -361,11 +371,7 @@ export default function HabitsPage() {
               if (!open) {
                 setEditingHabit(null);
                 resetForm();
-                if (returnTo.current) {
-                  const rt = returnTo.current;
-                  returnTo.current = null;
-                  setLocation(rt);
-                }
+                navigateBack();
               }
             }}>
               <DialogTrigger asChild>
