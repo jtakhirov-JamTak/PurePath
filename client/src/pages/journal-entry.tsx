@@ -542,7 +542,7 @@ export default function JournalEntryPage() {
                   </div>
                   <Separator />
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 30%?</Label>
+                    <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 50%?</Label>
                     <VoiceTextarea
                       value={morningData.perspectiveShift}
                       onChange={(val) => updateMorning("perspectiveShift", val)}
