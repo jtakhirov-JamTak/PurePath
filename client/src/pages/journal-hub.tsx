@@ -1,27 +1,75 @@
+import React, { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Sun, Moon, Calendar, ArrowRight, Lock, BarChart3, Wrench } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sun, Moon, ArrowRight, Lock, BarChart3, Wrench,
+  ChevronLeft, ChevronRight, Download, Check, Minus,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format } from "date-fns";
-import type { Purchase, Journal } from "@shared/schema";
+import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Purchase, Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+
+const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-amber-500",
+  relationships: "bg-rose-500",
+  career: "bg-blue-500",
+  mindfulness: "bg-violet-500",
+  learning: "bg-cyan-500",
+};
 
 export default function JournalHubPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const today = format(new Date(), "yyyy-MM-dd");
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+
+  const weekEnd = addDays(weekStart, 6);
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+
+  const days = useMemo(() => {
+    const result: Date[] = [];
+    for (let i = 0; i < 7; i++) result.push(addDays(weekStart, i));
+    return result;
+  }, [weekStart]);
 
   const { data: purchases = [] } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
     enabled: !!user,
   });
 
-  const { data: journals = [] } = useQuery<Journal[]>({
+  const { data: journals = [], isLoading: journalsLoading } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
     enabled: !!user,
+  });
+
+  const { data: habits = [] } = useQuery<Habit[]>({
+    queryKey: ["/api/habits"],
+    enabled: !!user,
+  });
+
+  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
+    queryKey: ["/api/eisenhower"],
+    enabled: !!user,
+  });
+
+  const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+    enabled: !!user,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const hasAccess = purchases.some(p =>
@@ -33,17 +81,323 @@ export default function JournalHubPage() {
   const hasMorning = todayJournals.some(j => j.session === "morning");
   const hasEvening = todayJournals.some(j => j.session === "evening");
 
+  const journalsByDate = useMemo(() => {
+    const map = new Map<string, { morning: boolean; evening: boolean }>();
+    journals.forEach((j) => {
+      if (!map.has(j.date)) map.set(j.date, { morning: false, evening: false });
+      const d = map.get(j.date)!;
+      if (j.session === "morning") d.morning = true;
+      if (j.session === "evening") d.evening = true;
+    });
+    return map;
+  }, [journals]);
+
+  const completionsByDate = useMemo(() => {
+    const map = new Map<string, Map<number, string>>();
+    habitCompletions.forEach((hc) => {
+      if (!map.has(hc.date)) map.set(hc.date, new Map());
+      map.get(hc.date)!.set(hc.habitId, hc.status || "completed");
+    });
+    return map;
+  }, [habitCompletions]);
+
+  const cycleHabitMutation = useMutation({
+    mutationFn: async ({ habitId, currentStatus, date }: { habitId: number; currentStatus: string | null; date: string }) => {
+      let res;
+      if (currentStatus === null) {
+        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
+      } else if (currentStatus === "completed") {
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
+      } else {
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+      }
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit status");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleEisenhowerMutation = useMutation({
+    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update status");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const q2Items = useMemo(
+    () => eisenhowerEntries.filter((e) => e.quadrant === "q2" && e.weekStart === weekStartStr),
+    [eisenhowerEntries, weekStartStr]
+  );
+  const q1Items = useMemo(
+    () => eisenhowerEntries.filter((e) => e.quadrant === "q1" && e.weekStart === weekStartStr),
+    [eisenhowerEntries, weekStartStr]
+  );
+
+  const eisenhowerByDate = useMemo(() => {
+    const map = new Map<string, EisenhowerEntry[]>();
+    [...q2Items, ...q1Items].forEach((e) => {
+      const d = e.scheduledDate || e.deadline || "";
+      if (!d) return;
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(e);
+    });
+    return map;
+  }, [q2Items, q1Items]);
+
+  const [showExport, setShowExport] = useState(false);
+  const [exportStart, setExportStart] = useState("");
+  const [exportEnd, setExportEnd] = useState("");
+
+  const handleExport = async () => {
+    const params = new URLSearchParams();
+    if (exportStart) params.set("startDate", exportStart);
+    if (exportEnd) params.set("endDate", exportEnd);
+    const response = await fetch(`/api/journals/export?${params.toString()}`, { credentials: "include" });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `journal-export${exportStart ? `-${exportStart}` : ""}${exportEnd ? `-to-${exportEnd}` : ""}.txt`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  if (journalsLoading) {
+    return (
+      <AppLayout>
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-[500px] w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const gridCols = "grid-cols-[minmax(180px,auto)_repeat(7,1fr)]";
+  const cellH = "min-h-[36px]";
+
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-12">
-        <div className="mb-10 max-w-2xl">
-          <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-journal-title">Journal</h1>
-          <p className="text-muted-foreground text-lg">
-            Morning and evening reflection sessions for self-awareness and growth.
-          </p>
+      <div className="p-4 lg:p-6 flex flex-col">
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
+          <div className="flex items-center gap-3">
+            <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => subWeeks(w, 1))} data-testid="button-prev-week">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="font-serif text-xl font-bold" data-testid="text-week-label">
+              {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
+            </h1>
+            <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => addWeeks(w, 1))} data-testid="button-next-week">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowExport(!showExport)} data-testid="button-toggle-export">
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Export
+          </Button>
         </div>
 
-        <div className="max-w-3xl space-y-6">
+        {showExport && (
+          <div className="flex items-end gap-3 mb-4 flex-wrap p-3 border rounded-md bg-muted/30" data-testid="export-panel">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">From</label>
+              <input
+                type="date"
+                value={exportStart}
+                onChange={(e) => setExportStart(e.target.value)}
+                className="block border rounded-md px-2 py-1.5 text-sm bg-background"
+                data-testid="input-export-start"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground font-medium">To</label>
+              <input
+                type="date"
+                value={exportEnd}
+                onChange={(e) => setExportEnd(e.target.value)}
+                className="block border rounded-md px-2 py-1.5 text-sm bg-background"
+                data-testid="input-export-end"
+              />
+            </div>
+            <Button size="sm" onClick={handleExport} data-testid="button-export-download">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Download
+            </Button>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[960px]">
+            <div className={`grid ${gridCols} border rounded-md overflow-hidden`}>
+              <div className="bg-muted/40 p-2" />
+              {days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const isToday = dateStr === today;
+                return (
+                  <div key={dateStr} className={`text-center py-2 border-l ${isToday ? "bg-primary/[0.06]" : "bg-muted/40"}`}>
+                    <p className={`text-xs uppercase tracking-wide ${isToday ? "text-primary font-bold" : "text-muted-foreground font-medium"}`}>
+                      {format(day, "EEE")}
+                    </p>
+                    <p className={`text-lg font-bold leading-tight ${isToday ? "text-primary" : ""}`}>
+                      {format(day, "d")}
+                    </p>
+                  </div>
+                );
+              })}
+
+              <SectionHeaderRow gridCols={gridCols} label="Scheduled Items" days={days} todayStr={today} />
+              <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" />
+              {days.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const items = eisenhowerByDate.get(dateStr) || [];
+                return (
+                  <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={items.length > 0 ? "" : cellH}>
+                    {items.length > 0 ? (
+                      <div className="space-y-1.5 py-2 w-full">
+                        {items.map((entry) => (
+                          <div key={entry.id} className="flex items-start gap-1.5 px-1" data-testid={`eisenhower-${entry.id}`}>
+                            <button
+                              role="checkbox"
+                              aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
+                              aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+                              className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                                entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                              }`}
+                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+                              data-testid={`eisenhower-cycle-${entry.id}`}
+                            >
+                              {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                              {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-[11px] leading-tight ${entry.status === "completed" ? "line-through text-muted-foreground" : entry.status === "skipped" ? "text-muted-foreground italic" : ""}`}>
+                                {entry.task}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span className={`text-[10px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
+                                  {entry.quadrant}
+                                </span>
+                                {entry.scheduledTime && (
+                                  <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
+                                )}
+                                {entry.blocksGoal && (
+                                  <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </DayCell>
+                );
+              })}
+
+              <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={today} />
+              {(() => {
+                const activeHabits = habits.filter(h => h.active !== false);
+                const morningHabits = activeHabits.filter(h => (h.timing || "daily") === "morning");
+                const dailyHabits = activeHabits.filter(h => (h.timing || "daily") === "daily");
+                const eveningHabits = activeHabits.filter(h => (h.timing || "daily") === "evening");
+
+                const timingSubheader = (timing: string, label: string) => (
+                  <React.Fragment key={`subheader-${timing}`}>
+                    <div className="flex items-center px-3 py-0.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</p>
+                    </div>
+                    {days.map((day) => {
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      return <div key={dateStr} className={dateStr === today ? "bg-primary/5" : ""} />;
+                    })}
+                  </React.Fragment>
+                );
+
+                const journalRow = (session: "morning" | "evening") => {
+                  const icon = session === "morning"
+                    ? <Sun className="h-4 w-4 text-amber-500" />
+                    : <Moon className="h-4 w-4 text-indigo-500" />;
+                  const rowLabel = session === "morning" ? "Morning Journal" : "Evening Journal";
+                  return (
+                    <React.Fragment key={`journal-${session}`}>
+                      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+                        <div className="shrink-0">{icon}</div>
+                        <p className="text-xs font-semibold leading-snug">{rowLabel}</p>
+                      </div>
+                      {days.map((day) => {
+                        const dateStr = format(day, "yyyy-MM-dd");
+                        const done = session === "morning"
+                          ? journalsByDate.get(dateStr)?.morning || false
+                          : journalsByDate.get(dateStr)?.evening || false;
+                        return (
+                          <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={cellH}>
+                            <div
+                              className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
+                              onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
+                              data-testid={`row-${session}-${dateStr}`}
+                            >
+                              {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+                            </div>
+                          </DayCell>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                };
+
+                const habitRow = (habit: Habit) => {
+                  const scheduledDays = new Set(habit.cadence.split(","));
+                  const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
+                  return (
+                    <HabitRow
+                      key={habit.id}
+                      habit={habit}
+                      catDot={catDot}
+                      scheduledDays={scheduledDays}
+                      days={days}
+                      todayStr={today}
+                      cellH={cellH}
+                      completionsByDate={completionsByDate}
+                      onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
+                    />
+                  );
+                };
+
+                return (
+                  <>
+                    {timingSubheader("morning", "Morning")}
+                    {journalRow("morning")}
+                    {morningHabits.map(habitRow)}
+                    {dailyHabits.length > 0 && timingSubheader("daily", "Daily")}
+                    {dailyHabits.map(habitRow)}
+                    {timingSubheader("evening", "Evening")}
+                    {eveningHabits.map(habitRow)}
+                    {journalRow("evening")}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto w-full mt-10 space-y-6">
           <div className="grid sm:grid-cols-2 gap-4">
             <Card
               className={`overflow-visible ${hasAccess ? "hover-elevate cursor-pointer" : "opacity-60"}`}
@@ -96,23 +450,6 @@ export default function JournalHubPage() {
             </Card>
           </div>
 
-          <Card
-            className={`overflow-visible ${hasAccess ? "hover-elevate cursor-pointer" : "opacity-60"}`}
-            onClick={() => hasAccess && setLocation("/course2")}
-            data-testid="card-journal-calendar"
-          >
-            <CardHeader className="flex flex-row items-center gap-4">
-              <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                <Calendar className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <CardTitle className="font-serif text-base">Journal Calendar</CardTitle>
-                <CardDescription className="text-sm">View your full journaling history</CardDescription>
-              </div>
-              <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
-            </CardHeader>
-          </Card>
-
           {!hasAccess && (
             <div className="text-center py-4">
               <Button onClick={() => setLocation("/checkout/phase12")} data-testid="button-unlock-journal">
@@ -160,5 +497,100 @@ export default function JournalHubPage() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function SectionHeaderRow({ gridCols, label, days, todayStr }: { gridCols: string; label: string; days: Date[]; todayStr: string }) {
+  return (
+    <>
+      <div className="flex items-center px-3 py-1.5 bg-muted/50 border-t">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const isToday = dateStr === todayStr;
+        return (
+          <div key={dateStr} className={`border-l border-t ${isToday ? "bg-primary/[0.03]" : "bg-muted/50"}`} />
+        );
+      })}
+    </>
+  );
+}
+
+function LabelCell({ icon, label, sublabel }: { icon?: React.ReactNode; label: string; sublabel?: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+      {icon && <div className="shrink-0">{icon}</div>}
+      <div>
+        <p className="text-xs font-semibold leading-snug">{label}</p>
+        {sublabel && <p className="text-[10px] text-muted-foreground leading-snug">{sublabel}</p>}
+      </div>
+    </div>
+  );
+}
+
+function DayCell({ dateStr, todayStr, cellH, children }: { dateStr: string; todayStr: string; cellH: string; children: React.ReactNode }) {
+  const isToday = dateStr === todayStr;
+  return (
+    <div className={`border-l border-t px-1.5 flex items-center justify-center ${cellH} ${isToday ? "bg-primary/[0.03]" : ""}`}>
+      {children}
+    </div>
+  );
+}
+
+function HabitRow({
+  habit,
+  catDot,
+  scheduledDays,
+  days,
+  todayStr,
+  cellH,
+  completionsByDate,
+  onCycle,
+}: {
+  habit: Habit;
+  catDot: string;
+  scheduledDays: Set<string>;
+  days: Date[];
+  todayStr: string;
+  cellH: string;
+  completionsByDate: Map<string, Map<number, string>>;
+  onCycle: (currentStatus: string | null, date: string) => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+        <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catDot}`} />
+        <p className="text-xs leading-snug">{habit.name}</p>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const dayCode = DAY_CODES[day.getDay()];
+        const inRange = (!habit.startDate || dateStr >= habit.startDate) && (!habit.endDate || dateStr <= habit.endDate);
+        const isScheduled = scheduledDays.has(dayCode) && inRange;
+        const dateMap = completionsByDate.get(dateStr);
+        const status = dateMap?.get(habit.id) || null;
+
+        return (
+          <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
+            {isScheduled ? (
+              <button
+                role="checkbox"
+                aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
+                aria-label={`${habit.name} - ${status || "not tracked"}`}
+                className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
+                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                }`}
+                onClick={() => onCycle(status, dateStr)}
+                data-testid={`habit-status-${habit.id}-${dateStr}`}
+              >
+                {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
+                {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+              </button>
+            ) : null}
+          </DayCell>
+        );
+      })}
+    </>
   );
 }
