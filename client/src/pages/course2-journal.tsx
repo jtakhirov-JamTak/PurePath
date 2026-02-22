@@ -300,7 +300,12 @@ export default function Course2JournalPage() {
 
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {(() => {
-                const activeHabits = habits.filter(h => h.active !== false);
+                const activeHabits = habits.filter(h => {
+                  if (h.active === false) return false;
+                  if (h.startDate && h.startDate > weekEndStr) return false;
+                  if (h.endDate && h.endDate < weekStartStr) return false;
+                  return true;
+                });
                 const morningHabits = activeHabits.filter(h => (h.timing || "daily") === "morning");
                 const dailyHabits = activeHabits.filter(h => (h.timing || "daily") === "daily");
                 const eveningHabits = activeHabits.filter(h => (h.timing || "daily") === "evening");
