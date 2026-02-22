@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import { AppHeader } from "@/components/app-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,8 @@ function getNextOccurrences(habit: Habit, count: number = 3): string[] {
 export default function HabitsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const search = useSearch();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
@@ -138,6 +141,36 @@ export default function HabitsPage() {
   });
 
   const activeHabits = habits.filter(h => h.active);
+
+  const urlParamsHandled = useRef(false);
+  const returnTo = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (urlParamsHandled.current) return;
+    const params = new URLSearchParams(search);
+    const action = params.get("action");
+    if (!action) return;
+
+    const rt = params.get("returnTo");
+    if (rt) returnTo.current = rt;
+
+    if (action === "add") {
+      urlParamsHandled.current = true;
+      const timing = params.get("timing") || "afternoon";
+      resetForm();
+      setNewHabit(prev => ({ ...prev, timing }));
+      setHabitDialogOpen(true);
+      window.history.replaceState({}, "", "/habits");
+    } else if (action === "edit" && habits.length > 0) {
+      urlParamsHandled.current = true;
+      const id = parseInt(params.get("id") || "");
+      const habit = habits.find(h => h.id === id);
+      if (habit) {
+        openEdit(habit);
+      }
+      window.history.replaceState({}, "", "/habits");
+    }
+  }, [habits, search]);
 
   const toggleDay = (code: string) => {
     setSelectedDays(prev =>
@@ -184,6 +217,11 @@ export default function HabitsPage() {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       resetForm();
+      if (returnTo.current) {
+        const rt = returnTo.current;
+        returnTo.current = null;
+        setLocation(rt);
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
@@ -224,6 +262,11 @@ export default function HabitsPage() {
       setHabitDialogOpen(false);
       setEditingHabit(null);
       resetForm();
+      if (returnTo.current) {
+        const rt = returnTo.current;
+        returnTo.current = null;
+        setLocation(rt);
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Could not update habit", description: error.message, variant: "destructive" });

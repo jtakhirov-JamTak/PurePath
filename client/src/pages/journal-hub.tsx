@@ -192,44 +192,6 @@ export default function JournalHubPage() {
     },
   });
 
-  const createHabitMutation = useMutation({
-    mutationFn: async (data: { name: string; timing: string }) => {
-      const res = await apiRequest("POST", "/api/habits", {
-        name: data.name,
-        cadence: "mon,tue,wed,thu,fri",
-        time: "09:00",
-        timing: data.timing,
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to create habit");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-      toast({ title: "Habit created" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not create habit", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateHabitMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const res = await apiRequest("PATCH", `/api/habits/${id}`, { name });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update habit");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
-    },
-  });
-
   const deleteHabitMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("DELETE", `/api/habits/${id}`);
@@ -331,9 +293,9 @@ export default function JournalHubPage() {
       if (ampm === "AM" && h === 12) h = 0;
       return h * 60 + m;
     };
-    for (const [, arr] of map) {
-      arr.sort((a, b) => parseTime(a.scheduledTime) - parseTime(b.scheduledTime));
-    }
+    map.forEach((arr) => {
+      arr.sort((a: EisenhowerEntry, b: EisenhowerEntry) => parseTime(a.scheduledTime) - parseTime(b.scheduledTime));
+    });
     return map;
   }, [q2Items, q1Items]);
 
@@ -367,8 +329,8 @@ export default function JournalHubPage() {
   const habitsByTiming = useMemo(() => {
     const map: Record<TimeRange, Habit[]> = { morning: [], afternoon: [], evening: [] };
     activeHabits.forEach(h => {
-      const t = (h.timing || "afternoon") as TimeRange;
-      const bucket = t === "daily" ? "afternoon" : (map[t] ? t : "afternoon");
+      const raw = h.timing || "afternoon";
+      const bucket: TimeRange = (raw === "daily" || !map[raw as TimeRange]) ? "afternoon" : (raw as TimeRange);
       map[bucket].push(h);
     });
     for (const key of TIME_RANGES) {
@@ -622,10 +584,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "morning" })}
-                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  isCreating={createHabitMutation.isPending}
+                  onAddHabit={() => setLocation(`/habits?action=add&timing=morning&returnTo=/journal`)}
                 />
 
                 {timingSubheader("afternoon", "Afternoon (12\u20136pm)")}
@@ -637,10 +598,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "afternoon" })}
-                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  isCreating={createHabitMutation.isPending}
+                  onAddHabit={() => setLocation(`/habits?action=add&timing=afternoon&returnTo=/journal`)}
                 />
 
                 {timingSubheader("evening", "Evening (6\u20139pm)")}
@@ -652,10 +612,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "evening" })}
-                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  isCreating={createHabitMutation.isPending}
+                  onAddHabit={() => setLocation(`/habits?action=add&timing=evening&returnTo=/journal`)}
                 />
                 {journalRow("evening")}
 
@@ -1033,10 +992,9 @@ function HabitTimingSection({
   cellH,
   completionsByDate,
   onCycle,
-  onCreateHabit,
-  onUpdateHabit,
+  onEditHabit,
   onDeleteHabit,
-  isCreating,
+  onAddHabit,
 }: {
   timing: TimeRange;
   habits: Habit[];
@@ -1045,22 +1003,11 @@ function HabitTimingSection({
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
   onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
-  onCreateHabit: (name: string) => void;
-  onUpdateHabit: (id: number, name: string) => void;
+  onEditHabit: (id: number) => void;
   onDeleteHabit: (id: number) => void;
-  isCreating: boolean;
+  onAddHabit: () => void;
 }) {
   const { setNodeRef } = useDroppable({ id: `timing-${timing}` });
-  const [showAdd, setShowAdd] = useState(false);
-  const [addValue, setAddValue] = useState("");
-
-  const handleAddSubmit = () => {
-    const val = addValue.trim();
-    if (!val) return;
-    onCreateHabit(val);
-    setAddValue("");
-    setShowAdd(false);
-  };
 
   const habitIds = useMemo(() => habits.map(h => h.id), [habits]);
 
@@ -1076,44 +1023,20 @@ function HabitTimingSection({
             cellH={cellH}
             completionsByDate={completionsByDate}
             onCycle={onCycle}
-            onUpdateHabit={onUpdateHabit}
+            onEditHabit={onEditHabit}
             onDeleteHabit={onDeleteHabit}
           />
         ))}
 
         <div className="flex items-center gap-2 px-3 py-1 bg-muted/30 border-t">
-          {showAdd ? (
-            <div className="flex items-center gap-1 flex-1">
-              <Input
-                value={addValue}
-                onChange={(e) => setAddValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddSubmit();
-                  if (e.key === "Escape") { setShowAdd(false); setAddValue(""); }
-                }}
-                placeholder="Habit name..."
-                className="h-7 text-xs flex-1"
-                autoFocus
-                disabled={isCreating}
-                data-testid={`input-add-habit-${timing}`}
-              />
-              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={handleAddSubmit} disabled={isCreating} data-testid={`button-submit-habit-${timing}`}>
-                <Check className="h-3 w-3" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => { setShowAdd(false); setAddValue(""); }}>
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <button
-              className="flex items-center gap-1.5 text-muted-foreground/60 text-xs cursor-pointer"
-              onClick={() => setShowAdd(true)}
-              data-testid={`button-add-habit-${timing}`}
-            >
-              <Plus className="h-3 w-3" />
-              <span>Add habit</span>
-            </button>
-          )}
+          <button
+            className="flex items-center gap-1.5 text-muted-foreground/60 text-xs cursor-pointer"
+            onClick={onAddHabit}
+            data-testid={`button-add-habit-${timing}`}
+          >
+            <Plus className="h-3 w-3" />
+            <span>Add habit</span>
+          </button>
         </div>
         {days.map((day) => {
           const dateStr = format(day, "yyyy-MM-dd");
@@ -1131,7 +1054,7 @@ function SortableHabitRow({
   cellH,
   completionsByDate,
   onCycle,
-  onUpdateHabit,
+  onEditHabit,
   onDeleteHabit,
 }: {
   habit: Habit;
@@ -1140,7 +1063,7 @@ function SortableHabitRow({
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
   onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
-  onUpdateHabit: (id: number, name: string) => void;
+  onEditHabit: (id: number) => void;
   onDeleteHabit: (id: number) => void;
 }) {
   const {
@@ -1151,16 +1074,6 @@ function SortableHabitRow({
     transition,
     isDragging,
   } = useSortable({ id: habit.id });
-
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(habit.name);
-
-  const handleEditSubmit = () => {
-    const val = editValue.trim();
-    if (!val || val === habit.name) { setEditing(false); return; }
-    onUpdateHabit(habit.id, val);
-    setEditing(false);
-  };
 
   const handleDelete = () => {
     if (window.confirm(`Delete "${habit.name}"?`)) {
@@ -1192,36 +1105,15 @@ function SortableHabitRow({
           <GripVertical className="h-3 w-3 text-muted-foreground/50" />
         </button>
         <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catDot}`} />
-        {editing ? (
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            <Input
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleEditSubmit();
-                if (e.key === "Escape") setEditing(false);
-              }}
-              className="h-6 text-xs flex-1"
-              autoFocus
-              data-testid={`input-edit-habit-${habit.id}`}
-            />
-            <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={handleEditSubmit}>
-              <Check className="h-3 w-3" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs leading-snug flex-1 min-w-0 truncate">{habit.name}</p>
-            <div className="invisible group-hover/hrow:visible flex items-center gap-0.5 shrink-0">
-              <button className="cursor-pointer" onClick={() => { setEditValue(habit.name); setEditing(true); }} data-testid={`button-edit-habit-${habit.id}`}>
-                <Pencil className="h-3 w-3 text-muted-foreground" />
-              </button>
-              <button className="cursor-pointer" onClick={handleDelete} data-testid={`button-delete-habit-${habit.id}`}>
-                <Trash2 className="h-3 w-3 text-muted-foreground" />
-              </button>
-            </div>
-          </>
-        )}
+        <p className="text-xs leading-snug flex-1 min-w-0 truncate">{habit.name}</p>
+        <div className="invisible group-hover/hrow:visible flex items-center gap-0.5 shrink-0">
+          <button className="cursor-pointer" onClick={() => onEditHabit(habit.id)} data-testid={`button-edit-habit-${habit.id}`}>
+            <Pencil className="h-3 w-3 text-muted-foreground" />
+          </button>
+          <button className="cursor-pointer" onClick={handleDelete} data-testid={`button-delete-habit-${habit.id}`}>
+            <Trash2 className="h-3 w-3 text-muted-foreground" />
+          </button>
+        </div>
       </div>
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
