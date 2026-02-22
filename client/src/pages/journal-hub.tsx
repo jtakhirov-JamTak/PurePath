@@ -320,8 +320,19 @@ export default function JournalHubPage() {
       if (!map.has(d)) map.set(d, []);
       map.get(d)!.push(e);
     });
+    const parseTime = (t: string | null): number => {
+      if (!t) return 9999;
+      const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return 9999;
+      let h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const ampm = match[3].toUpperCase();
+      if (ampm === "PM" && h !== 12) h += 12;
+      if (ampm === "AM" && h === 12) h = 0;
+      return h * 60 + m;
+    };
     for (const [, arr] of map) {
-      arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      arr.sort((a, b) => parseTime(a.scheduledTime) - parseTime(b.scheduledTime));
     }
     return map;
   }, [q2Items, q1Items]);
