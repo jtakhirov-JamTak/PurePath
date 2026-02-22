@@ -204,7 +204,7 @@ export const habits = pgTable("habits", {
   name: varchar("name", { length: 200 }).notNull(),
   category: varchar("category", { length: 30 }).default("health"),
   habitType: varchar("habit_type", { length: 30 }).default("maintenance"),
-  timing: varchar("timing", { length: 20 }).default("daily"),
+  timing: varchar("timing", { length: 20 }).default("afternoon"),
   cadence: varchar("cadence", { length: 50 }).notNull(),
   recurring: varchar("recurring", { length: 20 }).default("indefinite"),
   duration: integer("duration"),
@@ -221,7 +221,7 @@ export const habits = pgTable("habits", {
 }, (table) => [
   check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'career', 'mindfulness', 'learning')`),
   check("habit_type_check", sql`${table.habitType} IN ('goal', 'learning', 'maintenance')`),
-  check("habit_timing_check", sql`${table.timing} IN ('morning', 'daily', 'evening')`),
+  check("habit_timing_check", sql`${table.timing} IN ('morning', 'afternoon', 'evening')`),
 ]);
 
 export const insertHabitSchema = createInsertSchema(habits).omit({

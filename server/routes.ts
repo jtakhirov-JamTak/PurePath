@@ -1170,7 +1170,7 @@ export async function registerRoutes(
 
           await storage.createHabit({
             userId, name, category: h.category || "health",
-            habitType: h.habitType || "maintenance", timing: h.timing || "daily",
+            habitType: h.habitType || "maintenance", timing: h.timing || "afternoon",
             cadence: h.cadence, recurring: h.recurring || "indefinite",
             duration: h.duration, startTime: h.startTime, endTime: h.endTime,
             time: h.time, motivatingReason: h.motivatingReason,

@@ -306,9 +306,12 @@ export default function Course2JournalPage() {
                   if (h.endDate && h.endDate < weekStartStr) return false;
                   return true;
                 });
-                const morningHabits = activeHabits.filter(h => (h.timing || "daily") === "morning");
-                const dailyHabits = activeHabits.filter(h => (h.timing || "daily") === "daily");
-                const eveningHabits = activeHabits.filter(h => (h.timing || "daily") === "evening");
+                const morningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "morning");
+                const afternoonHabits = activeHabits.filter(h => {
+                  const t = h.timing || "afternoon";
+                  return t === "afternoon" || t === "daily";
+                });
+                const eveningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "evening");
 
                 const timingSubheader = (timing: string, label: string) => (
                   <React.Fragment key={`subheader-${timing}`}>
@@ -374,12 +377,12 @@ export default function Course2JournalPage() {
 
                 return (
                   <>
-                    {timingSubheader("morning", "Morning")}
+                    {timingSubheader("morning", "Morning (6am–12pm)")}
                     {journalRow("morning")}
                     {morningHabits.map(habitRow)}
-                    {dailyHabits.length > 0 && timingSubheader("daily", "Daily")}
-                    {dailyHabits.map(habitRow)}
-                    {timingSubheader("evening", "Evening")}
+                    {afternoonHabits.length > 0 && timingSubheader("afternoon", "Afternoon (12–6pm)")}
+                    {afternoonHabits.map(habitRow)}
+                    {timingSubheader("evening", "Evening (6–9pm)")}
                     {eveningHabits.map(habitRow)}
                     {journalRow("evening")}
                   </>

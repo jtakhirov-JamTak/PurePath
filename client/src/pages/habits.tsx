@@ -121,7 +121,7 @@ export default function HabitsPage() {
     motivatingReason: "",
     category: "health" as string,
     habitType: "maintenance" as string,
-    timing: "daily" as string,
+    timing: "afternoon" as string,
     recurringType: "indefinite" as "indefinite" | "count",
     recurringCount: "4",
     duration: "15",
@@ -146,7 +146,7 @@ export default function HabitsPage() {
   };
 
   const resetForm = () => {
-    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "daily", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "", intervalWeeks: "1" });
+    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "afternoon", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "", intervalWeeks: "1" });
     setSelectedDays(["mon", "wed", "fri"]);
   };
 
@@ -237,7 +237,7 @@ export default function HabitsPage() {
       motivatingReason: habit.motivatingReason || "",
       category: habit.category || "health",
       habitType: habit.habitType || "maintenance",
-      timing: habit.timing || "daily",
+      timing: habit.timing === "daily" ? "afternoon" : (habit.timing || "afternoon"),
       recurringType: isCount ? "count" : "indefinite",
       recurringCount: isCount ? habit.recurring! : "4",
       duration: habit.duration?.toString() || "15",
@@ -419,9 +419,9 @@ export default function HabitsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="morning">Morning</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="evening">Evening</SelectItem>
+                          <SelectItem value="morning">Morning (6am–12pm)</SelectItem>
+                          <SelectItem value="afternoon">Afternoon (12–6pm)</SelectItem>
+                          <SelectItem value="evening">Evening (6–9pm)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -594,9 +594,9 @@ export default function HabitsPage() {
                                   {habit.habitType === "goal" ? "Goal" : "Learning"}
                                 </Badge>
                               )}
-                              {habit.timing && habit.timing !== "daily" && (
+                              {habit.timing && (
                                 <Badge variant="outline" className="text-xs" data-testid={`badge-timing-${habit.id}`}>
-                                  {habit.timing === "morning" ? "Morning" : "Evening"}
+                                  {habit.timing === "morning" ? "Morning" : habit.timing === "afternoon" ? "Afternoon" : "Evening"}
                                 </Badge>
                               )}
                             </div>
