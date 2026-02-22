@@ -217,11 +217,6 @@ export default function HabitsPage() {
       qc.invalidateQueries({ queryKey: ["/api/habits"] });
       setHabitDialogOpen(false);
       resetForm();
-      if (returnTo.current) {
-        const rt = returnTo.current;
-        returnTo.current = null;
-        setLocation(rt);
-      }
     },
     onError: (error: Error) => {
       toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
@@ -262,11 +257,6 @@ export default function HabitsPage() {
       setHabitDialogOpen(false);
       setEditingHabit(null);
       resetForm();
-      if (returnTo.current) {
-        const rt = returnTo.current;
-        returnTo.current = null;
-        setLocation(rt);
-      }
     },
     onError: (error: Error) => {
       toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
@@ -368,7 +358,15 @@ export default function HabitsPage() {
             </p>
             <Dialog open={habitDialogOpen} onOpenChange={(open) => {
               setHabitDialogOpen(open);
-              if (!open) { setEditingHabit(null); resetForm(); }
+              if (!open) {
+                setEditingHabit(null);
+                resetForm();
+                if (returnTo.current) {
+                  const rt = returnTo.current;
+                  returnTo.current = null;
+                  setLocation(rt);
+                }
+              }
             }}>
               <DialogTrigger asChild>
                 <Button disabled={activeHabits.length >= 5} data-testid="button-add-habit">
