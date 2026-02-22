@@ -807,6 +807,51 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/habits/reorder", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "items must be an array" });
+      }
+      const existing = await storage.getHabitsByUser(userId);
+      const existingIds = new Set(existing.map(h => h.id));
+      for (const item of items) {
+        if (!existingIds.has(item.id)) continue;
+        const updates: any = { sortOrder: item.sortOrder };
+        if (item.timing) updates.timing = item.timing;
+        await storage.updateHabit(item.id, updates);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering habits:", error);
+      res.status(500).json({ error: "Failed to reorder habits" });
+    }
+  });
+
+  app.post("/api/eisenhower/reorder", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { items } = req.body;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: "items must be an array" });
+      }
+      const existing = await storage.getEisenhowerEntriesByUser(userId);
+      const existingIds = new Set(existing.map(e => e.id));
+      for (const item of items) {
+        if (!existingIds.has(item.id)) continue;
+        const updates: any = { sortOrder: item.sortOrder };
+        if (item.timeRange) updates.timeRange = item.timeRange;
+        if (item.scheduledDate) updates.scheduledDate = item.scheduledDate;
+        await storage.updateEisenhowerEntry(item.id, updates);
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error reordering entries:", error);
+      res.status(500).json({ error: "Failed to reorder entries" });
+    }
+  });
+
   // ==================== HABIT COMPLETIONS ====================
 
   app.get("/api/habit-completions/range/:startDate/:endDate", isAuthenticated, async (req: any, res: Response) => {

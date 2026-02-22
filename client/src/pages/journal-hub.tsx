@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import {
   Sun, Moon, ArrowRight, Lock, BarChart3, Wrench,
   ChevronLeft, ChevronRight, Download, Check, Minus,
+  GripVertical, Pencil, Trash2, Plus, X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +17,25 @@ import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Purchase, Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+  type DragOverEvent,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -26,6 +47,9 @@ const CATEGORY_DOTS: Record<string, string> = {
   mindfulness: "bg-violet-500",
   learning: "bg-cyan-500",
 };
+
+const TIME_RANGES = ["morning", "afternoon", "evening"] as const;
+type TimeRange = (typeof TIME_RANGES)[number];
 
 export default function JournalHubPage() {
   const { user } = useAuth();
@@ -142,6 +166,143 @@ export default function JournalHubPage() {
     },
   });
 
+  const reorderHabitsMutation = useMutation({
+    mutationFn: async (items: Array<{ id: number; sortOrder: number; timing?: string }>) => {
+      const res = await apiRequest("POST", "/api/habits/reorder", { items });
+      if (!res.ok) throw new Error("Failed to reorder");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not reorder habits", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const reorderEisenhowerMutation = useMutation({
+    mutationFn: async (items: Array<{ id: number; sortOrder: number; timeRange?: string }>) => {
+      const res = await apiRequest("POST", "/api/eisenhower/reorder", { items });
+      if (!res.ok) throw new Error("Failed to reorder");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not reorder items", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const createHabitMutation = useMutation({
+    mutationFn: async (data: { name: string; timing: string }) => {
+      const res = await apiRequest("POST", "/api/habits", {
+        name: data.name,
+        cadence: "mon,tue,wed,thu,fri",
+        time: "09:00",
+        timing: data.timing,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create habit");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      toast({ title: "Habit created" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not create habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateHabitMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      const res = await apiRequest("PATCH", `/api/habits/${id}`, { name });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteHabitMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/habits/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete habit");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
+      toast({ title: "Habit deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const createEisenhowerMutation = useMutation({
+    mutationFn: async (data: { task: string; scheduledDate: string }) => {
+      const res = await apiRequest("POST", "/api/eisenhower", {
+        task: data.task,
+        weekStart: weekStartStr,
+        role: "",
+        quadrant: "q2",
+        scheduledDate: data.scheduledDate,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create item");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+      toast({ title: "Item created" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not create item", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateEisenhowerMutation = useMutation({
+    mutationFn: async ({ id, task }: { id: number; task: string }) => {
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { task });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update item");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update item", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteEisenhowerMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to delete item");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+      toast({ title: "Item deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not delete item", description: error.message, variant: "destructive" });
+    },
+  });
+
   const q2Items = useMemo(
     () => eisenhowerEntries.filter((e) => e.quadrant === "q2" && e.weekStart === weekStartStr),
     [eisenhowerEntries, weekStartStr]
@@ -159,6 +320,9 @@ export default function JournalHubPage() {
       if (!map.has(d)) map.set(d, []);
       map.get(d)!.push(e);
     });
+    for (const [, arr] of map) {
+      arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    }
     return map;
   }, [q2Items, q1Items]);
 
@@ -180,6 +344,115 @@ export default function JournalHubPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const activeHabits = useMemo(() => {
+    return habits.filter(h => {
+      if (h.active === false) return false;
+      if (h.startDate && h.startDate > weekEndStr) return false;
+      if (h.endDate && h.endDate < weekStartStr) return false;
+      return true;
+    });
+  }, [habits, weekStartStr, weekEndStr]);
+
+  const habitsByTiming = useMemo(() => {
+    const map: Record<TimeRange, Habit[]> = { morning: [], afternoon: [], evening: [] };
+    activeHabits.forEach(h => {
+      const t = (h.timing || "afternoon") as TimeRange;
+      const bucket = t === "daily" ? "afternoon" : (map[t] ? t : "afternoon");
+      map[bucket].push(h);
+    });
+    for (const key of TIME_RANGES) {
+      map[key].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    }
+    return map;
+  }, [activeHabits]);
+
+  const [activeHabitDragId, setActiveHabitDragId] = useState<number | null>(null);
+  const [overContainer, setOverContainer] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleHabitDragStart = useCallback((event: DragStartEvent) => {
+    const id = Number(event.active.id);
+    setActiveHabitDragId(id);
+  }, []);
+
+  const handleHabitDragOver = useCallback((event: DragOverEvent) => {
+    const { over } = event;
+    if (over) {
+      const overId = String(over.id);
+      if (overId.startsWith("timing-")) {
+        setOverContainer(overId.replace("timing-", ""));
+      } else {
+        const overHabit = activeHabits.find(h => h.id === Number(overId));
+        if (overHabit) {
+          const t = (overHabit.timing || "afternoon") as string;
+          setOverContainer(t === "daily" ? "afternoon" : t);
+        }
+      }
+    }
+  }, [activeHabits]);
+
+  const handleHabitDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveHabitDragId(null);
+    setOverContainer(null);
+
+    if (!over) return;
+
+    const activeId = Number(active.id);
+    const activeHabit = activeHabits.find(h => h.id === activeId);
+    if (!activeHabit) return;
+
+    const sourceTiming = ((activeHabit.timing || "afternoon") === "daily" ? "afternoon" : (activeHabit.timing || "afternoon")) as TimeRange;
+
+    let targetTiming: TimeRange = sourceTiming;
+    const overId = String(over.id);
+    if (overId.startsWith("timing-")) {
+      targetTiming = overId.replace("timing-", "") as TimeRange;
+    } else {
+      const overHabit = activeHabits.find(h => h.id === Number(overId));
+      if (overHabit) {
+        const t = (overHabit.timing || "afternoon") as string;
+        targetTiming = (t === "daily" ? "afternoon" : t) as TimeRange;
+      }
+    }
+
+    const sourceList = [...habitsByTiming[sourceTiming]];
+    const targetList = sourceTiming === targetTiming ? sourceList : [...habitsByTiming[targetTiming]];
+
+    if (sourceTiming === targetTiming) {
+      const oldIndex = sourceList.findIndex(h => h.id === activeId);
+      const overHabitId = Number(overId);
+      let newIndex = sourceList.findIndex(h => h.id === overHabitId);
+      if (newIndex === -1) newIndex = sourceList.length - 1;
+      if (oldIndex === newIndex) return;
+
+      const reordered = arrayMove(sourceList, oldIndex, newIndex);
+      const items = reordered.map((h, i) => ({ id: h.id, sortOrder: i }));
+      reorderHabitsMutation.mutate(items);
+    } else {
+      const oldIndex = sourceList.findIndex(h => h.id === activeId);
+      if (oldIndex !== -1) sourceList.splice(oldIndex, 1);
+
+      let insertIndex = targetList.length;
+      const overHabitId = Number(overId);
+      const overIdx = targetList.findIndex(h => h.id === overHabitId);
+      if (overIdx !== -1) insertIndex = overIdx;
+
+      targetList.splice(insertIndex, 0, activeHabit);
+
+      const items = [
+        ...sourceList.map((h, i) => ({ id: h.id, sortOrder: i })),
+        ...targetList.map((h, i) => ({ id: h.id, sortOrder: i, timing: targetTiming })),
+      ];
+      reorderHabitsMutation.mutate(items);
+    }
+  }, [activeHabits, habitsByTiming, reorderHabitsMutation]);
+
+  const draggedHabit = activeHabitDragId ? activeHabits.find(h => h.id === activeHabitDragId) : null;
+
   if (journalsLoading) {
     return (
       <AppLayout>
@@ -193,6 +466,50 @@ export default function JournalHubPage() {
 
   const gridCols = "grid-cols-[minmax(180px,auto)_repeat(7,1fr)]";
   const cellH = "min-h-[36px]";
+
+  const timingSubheader = (timing: string, label: string) => (
+    <>
+      <div className="flex items-center px-3 py-0.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</p>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        return <div key={dateStr} className={dateStr === today ? "bg-primary/5" : ""} />;
+      })}
+    </>
+  );
+
+  const journalRow = (session: "morning" | "evening") => {
+    const icon = session === "morning"
+      ? <Sun className="h-4 w-4 text-amber-500" />
+      : <Moon className="h-4 w-4 text-indigo-500" />;
+    const rowLabel = session === "morning" ? "Morning Journal" : "Evening Journal";
+    return (
+      <>
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+          <div className="shrink-0">{icon}</div>
+          <p className="text-xs font-semibold leading-snug">{rowLabel}</p>
+        </div>
+        {days.map((day) => {
+          const dateStr = format(day, "yyyy-MM-dd");
+          const done = session === "morning"
+            ? journalsByDate.get(dateStr)?.morning || false
+            : journalsByDate.get(dateStr)?.evening || false;
+          return (
+            <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={cellH}>
+              <div
+                className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
+                onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
+                data-testid={`row-${session}-${dateStr}`}
+              >
+                {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+              </div>
+            </DayCell>
+          );
+        })}
+      </>
+    );
+  };
 
   return (
     <AppLayout>
@@ -263,144 +580,84 @@ export default function JournalHubPage() {
                 );
               })}
 
-              <SectionHeaderRow gridCols={gridCols} label="Scheduled Items" days={days} todayStr={today} />
-              <LabelCell label="Scheduled Items" sublabel="Q1 & Q2" />
-              {days.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const items = eisenhowerByDate.get(dateStr) || [];
-                return (
-                  <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={items.length > 0 ? "" : cellH}>
-                    {items.length > 0 ? (
-                      <div className="space-y-1.5 py-2 w-full">
-                        {items.map((entry) => (
-                          <div key={entry.id} className="flex items-start gap-1.5 px-1" data-testid={`eisenhower-${entry.id}`}>
-                            <button
-                              role="checkbox"
-                              aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
-                              aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
-                              className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                                entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
-                              }`}
-                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
-                              data-testid={`eisenhower-cycle-${entry.id}`}
-                            >
-                              {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                              {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-[11px] leading-tight ${entry.status === "completed" ? "line-through text-muted-foreground" : entry.status === "skipped" ? "text-muted-foreground italic" : ""}`}>
-                                {entry.task}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span className={`text-[10px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
-                                  {entry.quadrant}
-                                </span>
-                                {entry.scheduledTime && (
-                                  <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
-                                )}
-                                {entry.blocksGoal && (
-                                  <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </DayCell>
-                );
-              })}
+              <SectionHeaderRow label="Scheduled Items" days={days} todayStr={today} />
+              <ScheduledItemsSection
+                days={days}
+                todayStr={today}
+                cellH={cellH}
+                eisenhowerByDate={eisenhowerByDate}
+                toggleEisenhowerMutation={toggleEisenhowerMutation}
+                createEisenhowerMutation={createEisenhowerMutation}
+                updateEisenhowerMutation={updateEisenhowerMutation}
+                deleteEisenhowerMutation={deleteEisenhowerMutation}
+              />
 
-              <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={today} />
-              {(() => {
-                const activeHabits = habits.filter(h => {
-                  if (h.active === false) return false;
-                  if (h.startDate && h.startDate > weekEndStr) return false;
-                  if (h.endDate && h.endDate < weekStartStr) return false;
-                  return true;
-                });
-                const morningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "morning");
-                const afternoonHabits = activeHabits.filter(h => {
-                  const t = h.timing || "afternoon";
-                  return t === "afternoon" || t === "daily";
-                });
-                const eveningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "evening");
+              <SectionHeaderRow label="Habits" days={days} todayStr={today} />
 
-                const timingSubheader = (timing: string, label: string) => (
-                  <React.Fragment key={`subheader-${timing}`}>
-                    <div className="flex items-center px-3 py-0.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">{label}</p>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleHabitDragStart}
+                onDragOver={handleHabitDragOver}
+                onDragEnd={handleHabitDragEnd}
+              >
+                {timingSubheader("morning", "Morning (6am\u201312pm)")}
+                {journalRow("morning")}
+                <HabitTimingSection
+                  timing="morning"
+                  habits={habitsByTiming.morning}
+                  days={days}
+                  todayStr={today}
+                  cellH={cellH}
+                  completionsByDate={completionsByDate}
+                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "morning" })}
+                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
+                  isCreating={createHabitMutation.isPending}
+                />
+
+                {timingSubheader("afternoon", "Afternoon (12\u20136pm)")}
+                <HabitTimingSection
+                  timing="afternoon"
+                  habits={habitsByTiming.afternoon}
+                  days={days}
+                  todayStr={today}
+                  cellH={cellH}
+                  completionsByDate={completionsByDate}
+                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "afternoon" })}
+                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
+                  isCreating={createHabitMutation.isPending}
+                />
+
+                {timingSubheader("evening", "Evening (6\u20139pm)")}
+                <HabitTimingSection
+                  timing="evening"
+                  habits={habitsByTiming.evening}
+                  days={days}
+                  todayStr={today}
+                  cellH={cellH}
+                  completionsByDate={completionsByDate}
+                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCreateHabit={(name) => createHabitMutation.mutate({ name, timing: "evening" })}
+                  onUpdateHabit={(id, name) => updateHabitMutation.mutate({ id, name })}
+                  onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
+                  isCreating={createHabitMutation.isPending}
+                />
+                {journalRow("evening")}
+
+                <DragOverlay>
+                  {draggedHabit ? (
+                    <div className="bg-background border rounded-md px-3 py-2 shadow-md flex items-center gap-2 text-xs">
+                      <GripVertical className="h-3 w-3 text-muted-foreground" />
+                      <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${CATEGORY_DOTS[draggedHabit.category || "health"] || "bg-muted"}`} />
+                      {draggedHabit.name}
                     </div>
-                    {days.map((day) => {
-                      const dateStr = format(day, "yyyy-MM-dd");
-                      return <div key={dateStr} className={dateStr === today ? "bg-primary/5" : ""} />;
-                    })}
-                  </React.Fragment>
-                );
-
-                const journalRow = (session: "morning" | "evening") => {
-                  const icon = session === "morning"
-                    ? <Sun className="h-4 w-4 text-amber-500" />
-                    : <Moon className="h-4 w-4 text-indigo-500" />;
-                  const rowLabel = session === "morning" ? "Morning Journal" : "Evening Journal";
-                  return (
-                    <React.Fragment key={`journal-${session}`}>
-                      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
-                        <div className="shrink-0">{icon}</div>
-                        <p className="text-xs font-semibold leading-snug">{rowLabel}</p>
-                      </div>
-                      {days.map((day) => {
-                        const dateStr = format(day, "yyyy-MM-dd");
-                        const done = session === "morning"
-                          ? journalsByDate.get(dateStr)?.morning || false
-                          : journalsByDate.get(dateStr)?.evening || false;
-                        return (
-                          <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={cellH}>
-                            <div
-                              className="flex items-center justify-center h-full cursor-pointer hover-elevate rounded-md"
-                              onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
-                              data-testid={`row-${session}-${dateStr}`}
-                            >
-                              {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
-                            </div>
-                          </DayCell>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                };
-
-                const habitRow = (habit: Habit) => {
-                  const scheduledDays = new Set(habit.cadence.split(","));
-                  const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
-                  return (
-                    <HabitRow
-                      key={habit.id}
-                      habit={habit}
-                      catDot={catDot}
-                      scheduledDays={scheduledDays}
-                      days={days}
-                      todayStr={today}
-                      cellH={cellH}
-                      completionsByDate={completionsByDate}
-                      onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
-                    />
-                  );
-                };
-
-                return (
-                  <>
-                    {timingSubheader("morning", "Morning (6am–12pm)")}
-                    {journalRow("morning")}
-                    {morningHabits.map(habitRow)}
-                    {afternoonHabits.length > 0 && timingSubheader("afternoon", "Afternoon (12–6pm)")}
-                    {afternoonHabits.map(habitRow)}
-                    {timingSubheader("evening", "Evening (6–9pm)")}
-                    {eveningHabits.map(habitRow)}
-                    {journalRow("evening")}
-                  </>
-                );
-              })()}
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </div>
           </div>
         </div>
@@ -508,7 +765,7 @@ export default function JournalHubPage() {
   );
 }
 
-function SectionHeaderRow({ gridCols, label, days, todayStr }: { gridCols: string; label: string; days: Date[]; todayStr: string }) {
+function SectionHeaderRow({ label, days, todayStr }: { label: string; days: Date[]; todayStr: string }) {
   return (
     <>
       <div className="flex items-center px-3 py-1.5 bg-muted/50 border-t">
@@ -525,18 +782,6 @@ function SectionHeaderRow({ gridCols, label, days, todayStr }: { gridCols: strin
   );
 }
 
-function LabelCell({ icon, label, sublabel }: { icon?: React.ReactNode; label: string; sublabel?: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
-      {icon && <div className="shrink-0">{icon}</div>}
-      <div>
-        <p className="text-xs font-semibold leading-snug">{label}</p>
-        {sublabel && <p className="text-[10px] text-muted-foreground leading-snug">{sublabel}</p>}
-      </div>
-    </div>
-  );
-}
-
 function DayCell({ dateStr, todayStr, cellH, children }: { dateStr: string; todayStr: string; cellH: string; children: React.ReactNode }) {
   const isToday = dateStr === todayStr;
   return (
@@ -546,30 +791,423 @@ function DayCell({ dateStr, todayStr, cellH, children }: { dateStr: string; toda
   );
 }
 
-function HabitRow({
-  habit,
-  catDot,
-  scheduledDays,
+function ScheduledItemsSection({
+  days,
+  todayStr,
+  cellH,
+  eisenhowerByDate,
+  toggleEisenhowerMutation,
+  createEisenhowerMutation,
+  updateEisenhowerMutation,
+  deleteEisenhowerMutation,
+}: {
+  days: Date[];
+  todayStr: string;
+  cellH: string;
+  eisenhowerByDate: Map<string, EisenhowerEntry[]>;
+  toggleEisenhowerMutation: any;
+  createEisenhowerMutation: any;
+  updateEisenhowerMutation: any;
+  deleteEisenhowerMutation: any;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+        <div>
+          <p className="text-xs font-semibold leading-snug">Scheduled Items</p>
+          <p className="text-[10px] text-muted-foreground leading-snug">Q1 & Q2</p>
+        </div>
+      </div>
+      {days.map((day) => {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const items = eisenhowerByDate.get(dateStr) || [];
+        return (
+          <ScheduledDayCell
+            key={dateStr}
+            dateStr={dateStr}
+            todayStr={todayStr}
+            cellH={items.length > 0 ? "" : cellH}
+            items={items}
+            toggleEisenhowerMutation={toggleEisenhowerMutation}
+            createEisenhowerMutation={createEisenhowerMutation}
+            updateEisenhowerMutation={updateEisenhowerMutation}
+            deleteEisenhowerMutation={deleteEisenhowerMutation}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function ScheduledDayCell({
+  dateStr,
+  todayStr,
+  cellH,
+  items,
+  toggleEisenhowerMutation,
+  createEisenhowerMutation,
+  updateEisenhowerMutation,
+  deleteEisenhowerMutation,
+}: {
+  dateStr: string;
+  todayStr: string;
+  cellH: string;
+  items: EisenhowerEntry[];
+  toggleEisenhowerMutation: any;
+  createEisenhowerMutation: any;
+  updateEisenhowerMutation: any;
+  deleteEisenhowerMutation: any;
+}) {
+  const isToday = dateStr === todayStr;
+  const [showAdd, setShowAdd] = useState(false);
+  const [addValue, setAddValue] = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAddSubmit = () => {
+    const val = addValue.trim();
+    if (!val) return;
+    createEisenhowerMutation.mutate({ task: val, scheduledDate: dateStr });
+    setAddValue("");
+    setShowAdd(false);
+  };
+
+  return (
+    <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.03]" : ""} group/daycell relative`}>
+      {items.length > 0 && (
+        <div className="space-y-1.5 py-2 w-full">
+          {items.map((entry) => (
+            <EisenhowerItemRow
+              key={entry.id}
+              entry={entry}
+              toggleEisenhowerMutation={toggleEisenhowerMutation}
+              updateEisenhowerMutation={updateEisenhowerMutation}
+              deleteEisenhowerMutation={deleteEisenhowerMutation}
+            />
+          ))}
+        </div>
+      )}
+      {showAdd ? (
+        <div className="flex items-center gap-1 py-1 w-full">
+          <Input
+            ref={addInputRef}
+            value={addValue}
+            onChange={(e) => setAddValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddSubmit();
+              if (e.key === "Escape") { setShowAdd(false); setAddValue(""); }
+            }}
+            placeholder="New item..."
+            className="h-6 text-[11px] px-1.5 flex-1"
+            autoFocus
+            data-testid={`input-add-eisenhower-${dateStr}`}
+          />
+          <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={handleAddSubmit} data-testid={`button-submit-eisenhower-${dateStr}`}>
+            <Check className="h-3 w-3" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={() => { setShowAdd(false); setAddValue(""); }}>
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : (
+        <button
+          className="invisible group-hover/daycell:visible flex items-center justify-center w-full py-0.5 text-muted-foreground/50 cursor-pointer"
+          onClick={() => setShowAdd(true)}
+          data-testid={`button-add-eisenhower-${dateStr}`}
+        >
+          <Plus className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EisenhowerItemRow({
+  entry,
+  toggleEisenhowerMutation,
+  updateEisenhowerMutation,
+  deleteEisenhowerMutation,
+}: {
+  entry: EisenhowerEntry;
+  toggleEisenhowerMutation: any;
+  updateEisenhowerMutation: any;
+  deleteEisenhowerMutation: any;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(entry.task);
+
+  const handleEditSubmit = () => {
+    const val = editValue.trim();
+    if (!val || val === entry.task) { setEditing(false); return; }
+    updateEisenhowerMutation.mutate({ id: entry.id, task: val });
+    setEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${entry.task}"?`)) {
+      deleteEisenhowerMutation.mutate(entry.id);
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-1.5 px-1 group/eitem" data-testid={`eisenhower-${entry.id}`}>
+      <button
+        role="checkbox"
+        aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
+        aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+        className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+        }`}
+        onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+        data-testid={`eisenhower-cycle-${entry.id}`}
+      >
+        {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+        {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          <div className="flex items-center gap-1">
+            <Input
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleEditSubmit();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              className="h-5 text-[11px] px-1 flex-1"
+              autoFocus
+              data-testid={`input-edit-eisenhower-${entry.id}`}
+            />
+            <Button size="icon" variant="ghost" className="h-4 w-4 shrink-0" onClick={handleEditSubmit}>
+              <Check className="h-2.5 w-2.5" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <p className={`text-[11px] leading-tight ${entry.status === "completed" ? "line-through text-muted-foreground" : entry.status === "skipped" ? "text-muted-foreground italic" : ""}`}>
+              {entry.task}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className={`text-[10px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
+                {entry.quadrant}
+              </span>
+              {entry.scheduledTime && (
+                <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
+              )}
+              {entry.blocksGoal && (
+                <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      {!editing && (
+        <div className="invisible group-hover/eitem:visible flex items-center gap-0.5 shrink-0 mt-0.5">
+          <button className="cursor-pointer" onClick={() => { setEditValue(entry.task); setEditing(true); }} data-testid={`button-edit-eisenhower-${entry.id}`}>
+            <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
+          </button>
+          <button className="cursor-pointer" onClick={handleDelete} data-testid={`button-delete-eisenhower-${entry.id}`}>
+            <Trash2 className="h-2.5 w-2.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HabitTimingSection({
+  timing,
+  habits,
   days,
   todayStr,
   cellH,
   completionsByDate,
   onCycle,
+  onCreateHabit,
+  onUpdateHabit,
+  onDeleteHabit,
+  isCreating,
 }: {
-  habit: Habit;
-  catDot: string;
-  scheduledDays: Set<string>;
+  timing: TimeRange;
+  habits: Habit[];
   days: Date[];
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
-  onCycle: (currentStatus: string | null, date: string) => void;
+  onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
+  onCreateHabit: (name: string) => void;
+  onUpdateHabit: (id: number, name: string) => void;
+  onDeleteHabit: (id: number) => void;
+  isCreating: boolean;
 }) {
+  const { setNodeRef } = useDroppable({ id: `timing-${timing}` });
+  const [showAdd, setShowAdd] = useState(false);
+  const [addValue, setAddValue] = useState("");
+
+  const handleAddSubmit = () => {
+    const val = addValue.trim();
+    if (!val) return;
+    onCreateHabit(val);
+    setAddValue("");
+    setShowAdd(false);
+  };
+
+  const habitIds = useMemo(() => habits.map(h => h.id), [habits]);
+
   return (
-    <>
-      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+    <SortableContext items={habitIds} strategy={verticalListSortingStrategy}>
+      <div ref={setNodeRef} style={{ display: "contents" }}>
+        {habits.map((habit) => (
+          <SortableHabitRow
+            key={habit.id}
+            habit={habit}
+            days={days}
+            todayStr={todayStr}
+            cellH={cellH}
+            completionsByDate={completionsByDate}
+            onCycle={onCycle}
+            onUpdateHabit={onUpdateHabit}
+            onDeleteHabit={onDeleteHabit}
+          />
+        ))}
+
+        <div className="flex items-center gap-2 px-3 py-1 bg-muted/30 border-t">
+          {showAdd ? (
+            <div className="flex items-center gap-1 flex-1">
+              <Input
+                value={addValue}
+                onChange={(e) => setAddValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddSubmit();
+                  if (e.key === "Escape") { setShowAdd(false); setAddValue(""); }
+                }}
+                placeholder="Habit name..."
+                className="h-7 text-xs flex-1"
+                autoFocus
+                disabled={isCreating}
+                data-testid={`input-add-habit-${timing}`}
+              />
+              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={handleAddSubmit} disabled={isCreating} data-testid={`button-submit-habit-${timing}`}>
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={() => { setShowAdd(false); setAddValue(""); }}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              className="flex items-center gap-1.5 text-muted-foreground/60 text-xs cursor-pointer"
+              onClick={() => setShowAdd(true)}
+              data-testid={`button-add-habit-${timing}`}
+            >
+              <Plus className="h-3 w-3" />
+              <span>Add habit</span>
+            </button>
+          )}
+        </div>
+        {days.map((day) => {
+          const dateStr = format(day, "yyyy-MM-dd");
+          return <div key={`add-${dateStr}`} className={`border-l border-t ${dateStr === todayStr ? "bg-primary/[0.03]" : ""}`} />;
+        })}
+      </div>
+    </SortableContext>
+  );
+}
+
+function SortableHabitRow({
+  habit,
+  days,
+  todayStr,
+  cellH,
+  completionsByDate,
+  onCycle,
+  onUpdateHabit,
+  onDeleteHabit,
+}: {
+  habit: Habit;
+  days: Date[];
+  todayStr: string;
+  cellH: string;
+  completionsByDate: Map<string, Map<number, string>>;
+  onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
+  onUpdateHabit: (id: number, name: string) => void;
+  onDeleteHabit: (id: number) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: habit.id });
+
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(habit.name);
+
+  const handleEditSubmit = () => {
+    const val = editValue.trim();
+    if (!val || val === habit.name) { setEditing(false); return; }
+    onUpdateHabit(habit.id, val);
+    setEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Delete "${habit.name}"?`)) {
+      onDeleteHabit(habit.id);
+    }
+  };
+
+  const scheduledDays = useMemo(() => new Set(habit.cadence.split(",")), [habit.cadence]);
+  const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={{ ...style, display: "contents" }}>
+      <div className="flex items-center gap-1 px-1 py-2 bg-muted/30 border-t group/hrow">
+        <button
+          className="cursor-grab active:cursor-grabbing shrink-0 touch-none"
+          {...attributes}
+          {...listeners}
+          data-testid={`drag-handle-habit-${habit.id}`}
+        >
+          <GripVertical className="h-3 w-3 text-muted-foreground/50" />
+        </button>
         <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${catDot}`} />
-        <p className="text-xs leading-snug">{habit.name}</p>
+        {editing ? (
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <Input
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleEditSubmit();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              className="h-6 text-xs flex-1"
+              autoFocus
+              data-testid={`input-edit-habit-${habit.id}`}
+            />
+            <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={handleEditSubmit}>
+              <Check className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs leading-snug flex-1 min-w-0 truncate">{habit.name}</p>
+            <div className="invisible group-hover/hrow:visible flex items-center gap-0.5 shrink-0">
+              <button className="cursor-pointer" onClick={() => { setEditValue(habit.name); setEditing(true); }} data-testid={`button-edit-habit-${habit.id}`}>
+                <Pencil className="h-3 w-3 text-muted-foreground" />
+              </button>
+              <button className="cursor-pointer" onClick={handleDelete} data-testid={`button-delete-habit-${habit.id}`}>
+                <Trash2 className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          </>
+        )}
       </div>
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
@@ -589,7 +1227,7 @@ function HabitRow({
                 className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
                   status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
                 }`}
-                onClick={() => onCycle(status, dateStr)}
+                onClick={() => onCycle(habit.id, status, dateStr)}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
                 {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
@@ -599,6 +1237,6 @@ function HabitRow({
           </DayCell>
         );
       })}
-    </>
+    </div>
   );
 }

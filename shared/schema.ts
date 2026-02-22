@@ -146,6 +146,8 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
   status: varchar("status", { length: 20 }),
+  timeRange: varchar("time_range", { length: 20 }),
+  sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   check("eisenhower_quadrant_check", sql`${table.quadrant} IN ('q1', 'q2', 'q3', 'q4')`),
@@ -215,6 +217,7 @@ export const habits = pgTable("habits", {
   intervalWeeks: integer("interval_weeks").default(1),
   startDate: varchar("start_date", { length: 10 }),
   endDate: varchar("end_date", { length: 10 }),
+  sortOrder: integer("sort_order").default(0),
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),

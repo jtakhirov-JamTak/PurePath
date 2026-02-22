@@ -31,6 +31,8 @@ export const createEisenhowerSchema = z.object({
   blocksGoal: z.boolean().optional().nullable(),
   completed: z.boolean().optional().nullable(),
   status: optionalString(20),
+  timeRange: z.enum(["morning", "afternoon", "evening"]).optional().nullable(),
+  sortOrder: z.number().int().min(0).optional().nullable(),
 });
 
 export const updateEisenhowerSchema = createEisenhowerSchema.partial();
@@ -66,6 +68,7 @@ export const createHabitSchema = z.object({
   endTime: optionalString(10),
   startDate: optionalString(10),
   endDate: optionalString(10),
+  sortOrder: z.number().int().min(0).optional().nullable(),
   active: z.boolean().optional().nullable(),
   googleCalendarEventId: optionalString(100),
 });
