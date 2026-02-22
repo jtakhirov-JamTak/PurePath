@@ -1,16 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useSearch } from "wouter";
+import { HabitDialog } from "@/components/habit-dialog";
 import { AppHeader } from "@/components/app-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { VoiceTextarea } from "@/components/voice-input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Repeat, Plus, Trash2, Clock, Timer, Calendar, Pencil, Copy } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -114,27 +108,9 @@ function getNextOccurrences(habit: Habit, count: number = 3): string[] {
 export default function HabitsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const search = useSearch();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [selectedDays, setSelectedDays] = useState<string[]>(["mon", "wed", "fri"]);
-  const [newHabit, setNewHabit] = useState({
-    name: "",
-    motivatingReason: "",
-    category: "health" as string,
-    habitType: "maintenance" as string,
-    timing: "afternoon" as string,
-    recurringType: "indefinite" as "indefinite" | "count",
-    recurringCount: "4",
-    duration: "15",
-    startTime: "",
-    endTime: "",
-    startDate: formatDate(new Date()),
-    hasEndDate: false as boolean,
-    endDate: "",
-    intervalWeeks: "1",
-  });
+  const [defaultTiming, setDefaultTiming] = useState("afternoon");
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
@@ -142,156 +118,7 @@ export default function HabitsPage() {
 
   const activeHabits = habits.filter(h => h.active);
 
-  const urlParamsHandled = useRef(false);
-  const returnTo = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (urlParamsHandled.current) return;
-    const params = new URLSearchParams(search);
-    const action = params.get("action");
-    if (!action) return;
-
-    const rt = params.get("returnTo");
-    if (rt) returnTo.current = rt;
-
-    if (action === "add") {
-      urlParamsHandled.current = true;
-      const timing = params.get("timing") || "afternoon";
-      resetForm();
-      setNewHabit(prev => ({ ...prev, timing }));
-      setHabitDialogOpen(true);
-      window.history.replaceState({}, "", "/habits");
-    } else if (action === "edit" && habits.length > 0) {
-      urlParamsHandled.current = true;
-      const id = parseInt(params.get("id") || "");
-      const habit = habits.find(h => h.id === id);
-      if (habit) {
-        openEdit(habit);
-      }
-      window.history.replaceState({}, "", "/habits");
-    }
-  }, [habits, search]);
-
-  const toggleDay = (code: string) => {
-    setSelectedDays(prev =>
-      prev.includes(code) ? prev.filter(d => d !== code) : [...prev, code]
-    );
-  };
-
-  const resetForm = () => {
-    setNewHabit({ name: "", motivatingReason: "", category: "health", habitType: "maintenance", timing: "afternoon", recurringType: "indefinite", recurringCount: "4", duration: "15", startTime: "", endTime: "", startDate: formatDate(new Date()), hasEndDate: false, endDate: "", intervalWeeks: "1" });
-    setSelectedDays(["mon", "wed", "fri"]);
-  };
-
-  const navigateBack = () => {
-    if (returnTo.current) {
-      const rt = returnTo.current;
-      returnTo.current = null;
-      setLocation(rt);
-    }
-  };
-
-  const createHabitMutation = useMutation({
-    mutationFn: async (data: typeof newHabit) => {
-      const cadence = selectedDays.sort((a, b) => {
-        const order = DAYS.map(d => d.code);
-        return order.indexOf(a) - order.indexOf(b);
-      }).join(",");
-      const recurring = data.recurringType === "indefinite" ? "indefinite" : data.recurringCount;
-      const time = data.startTime || "09:00";
-      const res = await apiRequest("POST", "/api/habits", {
-        name: data.name,
-        motivatingReason: data.motivatingReason || null,
-        category: data.category,
-        habitType: data.habitType,
-        timing: data.timing,
-        cadence,
-        recurring,
-        duration: parseInt(data.duration) || null,
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        time,
-        startDate: data.startDate || null,
-        endDate: data.hasEndDate && data.endDate ? data.endDate : null,
-        intervalWeeks: parseInt(data.intervalWeeks) || 1,
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to create habit");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
-      setHabitDialogOpen(false);
-      resetForm();
-      navigateBack();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const updateHabitMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: typeof newHabit }) => {
-      const cadence = selectedDays.sort((a, b) => {
-        const order = DAYS.map(d => d.code);
-        return order.indexOf(a) - order.indexOf(b);
-      }).join(",");
-      const recurring = data.recurringType === "indefinite" ? "indefinite" : data.recurringCount;
-      const time = data.startTime || "09:00";
-      const res = await apiRequest("PATCH", `/api/habits/${id}`, {
-        name: data.name,
-        motivatingReason: data.motivatingReason || null,
-        category: data.category,
-        habitType: data.habitType,
-        timing: data.timing,
-        cadence,
-        recurring,
-        duration: parseInt(data.duration) || null,
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        time,
-        startDate: data.startDate || null,
-        endDate: data.hasEndDate && data.endDate ? data.endDate : null,
-        intervalWeeks: parseInt(data.intervalWeeks) || 1,
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update habit");
-      }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
-      setHabitDialogOpen(false);
-      setEditingHabit(null);
-      resetForm();
-      navigateBack();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
-    },
-  });
-
   const openEdit = (habit: Habit) => {
-    const isCount = habit.recurring && habit.recurring !== "indefinite";
-    setNewHabit({
-      name: habit.name,
-      motivatingReason: habit.motivatingReason || "",
-      category: habit.category || "health",
-      habitType: habit.habitType || "maintenance",
-      timing: habit.timing === "daily" ? "afternoon" : (habit.timing || "afternoon"),
-      recurringType: isCount ? "count" : "indefinite",
-      recurringCount: isCount ? habit.recurring! : "4",
-      duration: habit.duration?.toString() || "15",
-      startTime: habit.startTime || "",
-      endTime: habit.endTime || "",
-      startDate: habit.startDate || formatDate(new Date()),
-      hasEndDate: !!habit.endDate,
-      endDate: habit.endDate || "",
-      intervalWeeks: (habit.intervalWeeks || 1).toString(),
-    });
-    setSelectedDays(habit.cadence.split(","));
     setEditingHabit(habit);
     setHabitDialogOpen(true);
   };
@@ -344,8 +171,6 @@ export default function HabitsPage() {
     },
   });
 
-  const canSubmit = newHabit.name.trim() !== "" && newHabit.motivatingReason.trim() !== "" && selectedDays.length > 0 && parseInt(newHabit.duration) > 0;
-
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -366,248 +191,23 @@ export default function HabitsPage() {
             <p className="text-sm text-muted-foreground" data-testid="text-habit-count">
               {activeHabits.length}/5 habits
             </p>
-            <Dialog open={habitDialogOpen} onOpenChange={(open) => {
-              setHabitDialogOpen(open);
-              if (!open) {
-                setEditingHabit(null);
-                resetForm();
-                navigateBack();
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button disabled={activeHabits.length >= 5} data-testid="button-add-habit">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Habit
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-xl max-h-[85vh] flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>{editingHabit ? "Edit Habit" : "Add Habit"}</DialogTitle>
-                  <DialogDescription>
-                    {editingHabit ? "Update your habit details." : "Create a recurring habit. We recommend starting with 3."}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-                  <div>
-                    <Label>Habit</Label>
-                    <Input
-                      placeholder="e.g., Morning meditation, Exercise, Read"
-                      value={newHabit.name}
-                      onChange={(e) => setNewHabit({ ...newHabit, name: e.target.value })}
-                      data-testid="input-habit-name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>
-                      Why does this matter to you? <span className="text-destructive">*</span>
-                    </Label>
-                    <VoiceTextarea
-                      placeholder="Your personal reason — this keeps you going when motivation dips"
-                      value={newHabit.motivatingReason}
-                      onChange={(val) => setNewHabit({ ...newHabit, motivatingReason: val })}
-                      className="resize-none text-sm"
-                      rows={2}
-                      data-testid="input-motivating-reason"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Category</Label>
-                      <Select
-                        value={newHabit.category}
-                        onValueChange={(v) => setNewHabit({ ...newHabit, category: v })}
-                      >
-                        <SelectTrigger data-testid="select-category">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(HABIT_CATEGORIES).map(([key, cat]) => {
-                            const style = getCategoryStyle(key);
-                            return (
-                              <SelectItem key={key} value={key}>
-                                <span className="flex items-center gap-2">
-                                  <span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />
-                                  {cat.label}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Purpose</Label>
-                      <Select
-                        value={newHabit.habitType}
-                        onValueChange={(v) => setNewHabit({ ...newHabit, habitType: v })}
-                      >
-                        <SelectTrigger data-testid="select-habit-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="goal">Goal Habit</SelectItem>
-                          <SelectItem value="learning">Learning Habit</SelectItem>
-                          <SelectItem value="maintenance">Maintenance Habit</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Timing</Label>
-                      <Select
-                        value={newHabit.timing}
-                        onValueChange={(v) => setNewHabit({ ...newHabit, timing: v })}
-                      >
-                        <SelectTrigger data-testid="select-habit-timing">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="morning">Morning (6am–12pm)</SelectItem>
-                          <SelectItem value="afternoon">Afternoon (12–6pm)</SelectItem>
-                          <SelectItem value="evening">Evening (6–9pm)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Duration (min)</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="480"
-                        value={newHabit.duration}
-                        onChange={(e) => setNewHabit({ ...newHabit, duration: e.target.value })}
-                        data-testid="input-duration"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="mb-2 block">Cadence (select days)</Label>
-                    <div className="flex gap-1.5">
-                      {DAYS.map(day => (
-                        <button
-                          key={day.code}
-                          type="button"
-                          onClick={() => toggleDay(day.code)}
-                          className={`flex-1 py-2 text-xs font-medium rounded-md border transition-colors ${
-                            selectedDays.includes(day.code)
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-background text-muted-foreground border-border hover-elevate"
-                          }`}
-                          data-testid={`toggle-day-${day.code}`}
-                        >
-                          {day.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="mb-1 block">Repeat Every</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        max="12"
-                        value={newHabit.intervalWeeks}
-                        onChange={(e) => setNewHabit({ ...newHabit, intervalWeeks: e.target.value })}
-                        className="w-20"
-                        data-testid="input-interval-weeks"
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {parseInt(newHabit.intervalWeeks) === 1 ? "week" : "weeks"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="mb-1 block">Start Date</Label>
-                      <Input
-                        type="date"
-                        value={newHabit.startDate}
-                        onChange={(e) => setNewHabit({ ...newHabit, startDate: e.target.value })}
-                        data-testid="input-start-date"
-                      />
-                    </div>
-                    <div>
-                      <Label className="mb-1 block">End Date</Label>
-                      <Select
-                        value={newHabit.hasEndDate ? "date" : "none"}
-                        onValueChange={(v) => setNewHabit({ ...newHabit, hasEndDate: v === "date" })}
-                      >
-                        <SelectTrigger data-testid="select-end-date-type">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No End Date</SelectItem>
-                          <SelectItem value="date">Set End Date</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  {newHabit.hasEndDate && (
-                    <Input
-                      type="date"
-                      value={newHabit.endDate}
-                      min={newHabit.startDate}
-                      onChange={(e) => setNewHabit({ ...newHabit, endDate: e.target.value })}
-                      data-testid="input-end-date"
-                    />
-                  )}
-
-                  <div>
-                    <Label className="mb-1 block">
-                      Time of day
-                      <span className="text-muted-foreground font-normal ml-1">(optional)</span>
-                    </Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Select value={newHabit.startTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, startTime: v === "none" ? "" : v })}>
-                        <SelectTrigger data-testid="select-start-time">
-                          <SelectValue placeholder="Start" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          <SelectItem value="none">No start time</SelectItem>
-                          {TIME_SLOTS.map(t => (
-                            <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={newHabit.endTime || "none"} onValueChange={(v) => setNewHabit({ ...newHabit, endTime: v === "none" ? "" : v })}>
-                        <SelectTrigger data-testid="select-end-time">
-                          <SelectValue placeholder="End" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          <SelectItem value="none">No end time</SelectItem>
-                          {TIME_SLOTS.filter(t => !newHabit.startTime || t > newHabit.startTime).map(t => (
-                            <SelectItem key={t} value={t}>{formatTimeLabel(t)}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={() => {
-                      if (editingHabit) {
-                        updateHabitMutation.mutate({ id: editingHabit.id, data: newHabit });
-                      } else {
-                        createHabitMutation.mutate(newHabit);
-                      }
-                    }}
-                    disabled={!canSubmit || createHabitMutation.isPending || updateHabitMutation.isPending}
-                    data-testid="button-submit-habit"
-                  >
-                    {editingHabit ? "Save Changes" : "Add Habit"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button
+              disabled={activeHabits.length >= 5}
+              onClick={() => { setEditingHabit(null); setHabitDialogOpen(true); }}
+              data-testid="button-add-habit"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Habit
+            </Button>
+            <HabitDialog
+              open={habitDialogOpen}
+              onOpenChange={(open) => {
+                setHabitDialogOpen(open);
+                if (!open) setEditingHabit(null);
+              }}
+              editingHabit={editingHabit}
+              defaultTiming={defaultTiming}
+            />
           </div>
 
           {activeHabits.length === 0 ? (

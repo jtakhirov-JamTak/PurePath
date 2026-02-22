@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
+import { HabitDialog } from "@/components/habit-dialog";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,9 @@ export default function JournalHubPage() {
   const { toast } = useToast();
   const today = format(new Date(), "yyyy-MM-dd");
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [habitDialogOpen, setHabitDialogOpen] = useState(false);
+  const [habitDialogTiming, setHabitDialogTiming] = useState("afternoon");
+  const [habitDialogEditing, setHabitDialogEditing] = useState<Habit | null>(null);
 
   const weekEnd = addDays(weekStart, 6);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
@@ -584,9 +588,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
+                  onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  onAddHabit={() => setLocation(`/habits?action=add&timing=morning&returnTo=/journal`)}
+                  onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("morning"); setHabitDialogOpen(true); }}
                 />
 
                 {timingSubheader("afternoon", "Afternoon (12\u20136pm)")}
@@ -598,9 +602,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
+                  onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  onAddHabit={() => setLocation(`/habits?action=add&timing=afternoon&returnTo=/journal`)}
+                  onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("afternoon"); setHabitDialogOpen(true); }}
                 />
 
                 {timingSubheader("evening", "Evening (6\u20139pm)")}
@@ -612,9 +616,9 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
-                  onEditHabit={(id) => setLocation(`/habits?action=edit&id=${id}&returnTo=/journal`)}
+                  onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
-                  onAddHabit={() => setLocation(`/habits?action=add&timing=evening&returnTo=/journal`)}
+                  onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("evening"); setHabitDialogOpen(true); }}
                 />
                 {journalRow("evening")}
 
@@ -731,6 +735,15 @@ export default function JournalHubPage() {
           </div>
         </div>
       </div>
+      <HabitDialog
+        open={habitDialogOpen}
+        onOpenChange={(open) => {
+          setHabitDialogOpen(open);
+          if (!open) setHabitDialogEditing(null);
+        }}
+        editingHabit={habitDialogEditing}
+        defaultTiming={habitDialogTiming}
+      />
     </AppLayout>
   );
 }
