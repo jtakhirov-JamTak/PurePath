@@ -16,8 +16,7 @@ import {
   ChevronDown,
   Sun,
   Map,
-  Clock,
-  Wrench,
+  Calendar,
 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import type { LucideIcon } from "lucide-react";
@@ -32,8 +31,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Today", path: "/dashboard", icon: Sun },
   { label: "Plan", path: "/plan", icon: Map },
-  { label: "History", path: "/history", icon: Clock },
-  { label: "Tools", path: "/tools", icon: Wrench },
+  { label: "Calendar", path: "/journal", icon: Calendar },
 ];
 
 interface AppLayoutProps {

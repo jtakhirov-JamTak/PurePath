@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Sun, Moon, Calendar, ArrowRight, Lock } from "lucide-react";
+import { BookOpen, Sun, Moon, Calendar, ArrowRight, Lock, BarChart3, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -121,6 +121,42 @@ export default function JournalHubPage() {
               </Button>
             </div>
           )}
+
+          <div className="pt-6 border-t space-y-3">
+            <Card
+              className="overflow-visible hover-elevate cursor-pointer"
+              onClick={() => setLocation("/progress")}
+              data-testid="card-link-progress"
+            >
+              <CardHeader className="flex flex-row items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-base">Progress</CardTitle>
+                  <CardDescription className="text-sm">Track your habits, goals, and overall growth</CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="overflow-visible hover-elevate cursor-pointer"
+              onClick={() => setLocation("/tools")}
+              data-testid="card-link-tools"
+            >
+              <CardHeader className="flex flex-row items-center gap-4">
+                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Wrench className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <CardTitle className="font-serif text-base">Tools</CardTitle>
+                  <CardDescription className="text-sm">Meditation, emotional processing, empathy, and regulation</CardDescription>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              </CardHeader>
+            </Card>
+          </div>
         </div>
       </div>
     </AppLayout>

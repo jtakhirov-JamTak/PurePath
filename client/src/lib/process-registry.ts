@@ -53,7 +53,7 @@ export const processRegistry: Record<string, ProcessEntry> = {
     title: "Journal Entry",
     path: "/journal",
     defaultReturnTo: "/dashboard",
-    viewPath: "/history",
+    viewPath: "/journal",
     requiresDirtyGuard: false,
   },
 };

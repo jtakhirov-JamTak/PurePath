@@ -16,11 +16,10 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state.
 - **UI Components**: shadcn/ui built on Radix UI, styled with Tailwind CSS and CSS variables for theming.
 - **Design System**: Single slate-blue accent, Inter for body, Plus Jakarta Sans for headings, 16px base font, 1.6 line-height, 12px border radius, unified icon palette.
-- **Navigation Structure**: Four main items:
+- **Navigation Structure**: Three main tabs:
   - **Today** (default landing): Daily-focused dashboard with due habits, top 3 tasks, Q2 blocks, journal quick entry, quick tools
   - **Plan**: Vision board, monthly goal, habits overview, Eisenhower matrix links with inline planning wizard stepper
-  - **History**: Hub for journal calendar, course 2 journal, progress tracking
-  - **Tools**: Self-development tools (meditation, emotional processing, empathy, regulation)
+  - **Calendar** (`/journal`): Journal hub with morning/evening check-ins, journal calendar, plus links to Progress and Tools at the bottom
 - **Key Features**:
   - **Goal Hierarchy System**: Integrates Quarterly, Monthly, and Daily goals. Includes a dedicated page for Monthly Goals and Quarterly Goals, and a dashboard card showing the hierarchical flow. Monthly goals have a required deadline date field displayed on Today and Plan pages.
   - **Goal-Setting Wizard** (`/goal-wizard`): 15-step self-guided "How to Set a Real Goal" exercise. Part 1 covers goal setting (strengths, precise goal definition, time horizon/deadline, success proof with metric/weekly behavior, best result with 15s visualization timer, inner obstacle with trigger/thought/emotion/behavior analysis, IF-THEN implementation plans). Part 2 covers mindset (values, prizes, fun). All fields required. Users without a complete monthly goal are automatically redirected here from the dashboard.
