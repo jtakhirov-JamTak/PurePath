@@ -16,7 +16,7 @@ import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Win
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, Purchase, MonthlyGoal } from "@shared/schema";
+import type { Journal, Purchase, MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 interface MorningContent {
   intention: string;
@@ -141,6 +141,13 @@ export default function JournalEntryPage() {
   });
   const goalDisplayText = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const hasGoal = goalDisplayText.length > 0;
+
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+  const othersWillSeeItems = identityDoc?.othersWillSee?.split("|||").filter(s => s.trim()) || [];
+  const beYourselfItems = identityDoc?.beYourself?.split(",").map(s => s.trim()).filter(Boolean) || [];
 
   useEffect(() => {
     if (existingJournal) {
@@ -342,6 +349,31 @@ export default function JournalEntryPage() {
           </div>
         ) : isMorning ? (
           <div className="space-y-10">
+            {(othersWillSeeItems.length > 0 || beYourselfItems.length > 0) && (
+              <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2" data-testid="identity-reminder">
+                {othersWillSeeItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {othersWillSeeItems.map((item, i) => (
+                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {beYourselfItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Be Yourself</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {beYourselfItems.map((item, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs font-normal" data-testid={`badge-beyourself-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <Card data-testid="card-self-awareness">
               <CardHeader>
                 <div className="flex items-center gap-3">
