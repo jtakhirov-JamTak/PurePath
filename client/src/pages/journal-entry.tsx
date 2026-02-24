@@ -146,6 +146,7 @@ export default function JournalEntryPage() {
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
+  const valuesItems = identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
   const othersWillSeeItems = identityDoc?.othersWillSee?.split("|||").filter(s => s.trim()) || [];
   const beYourselfItems = identityDoc?.beYourself?.split(",").map(s => s.trim()).filter(Boolean) || [];
 
@@ -349,8 +350,18 @@ export default function JournalEntryPage() {
           </div>
         ) : isMorning ? (
           <div className="space-y-10">
-            {(othersWillSeeItems.length > 0 || beYourselfItems.length > 0) && (
+            {(valuesItems.length > 0 || othersWillSeeItems.length > 0 || beYourselfItems.length > 0) && (
               <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2" data-testid="identity-reminder">
+                {valuesItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Values</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {valuesItems.map((item, i) => (
+                        <Badge key={i} variant="default" className="text-xs font-normal" data-testid={`badge-value-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {othersWillSeeItems.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
