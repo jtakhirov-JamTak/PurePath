@@ -356,6 +356,8 @@ export const identityDocuments = pgTable("identity_documents", {
   todayValue: varchar("today_value", { length: 200 }).default(""),
   todayIntention: text("today_intention").default(""),
   todayReflection: text("today_reflection").default(""),
+  othersWillSee: text("others_will_see").default(""),
+  beYourself: text("be_yourself").default(""),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

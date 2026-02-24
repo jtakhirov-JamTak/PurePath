@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, User, Eye, Compass } from "lucide-react";
+import { Save, User, Eye, Compass, Users, Heart, X } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
 
 export default function IdentityDocPage() {
@@ -29,12 +29,17 @@ export default function IdentityDocPage() {
   const [identity, setIdentity] = useState("");
   const [vision, setVision] = useState("");
   const [values, setValues] = useState("");
+  const [othersWillSee, setOthersWillSee] = useState<string[]>(["", "", ""]);
+  const [beYourself, setBeYourself] = useState("");
 
   useEffect(() => {
     if (doc) {
       setIdentity(doc.identity || "");
       setVision(doc.vision || "");
       setValues(doc.values || "");
+      const parsed = doc.othersWillSee ? doc.othersWillSee.split("|||") : ["", "", ""];
+      setOthersWillSee(parsed.length === 3 ? parsed : [parsed[0] || "", parsed[1] || "", parsed[2] || ""]);
+      setBeYourself(doc.beYourself || "");
     }
   }, [doc]);
 
@@ -44,6 +49,8 @@ export default function IdentityDocPage() {
         identity: identity.trim(),
         vision: vision.trim(),
         values: values.trim(),
+        othersWillSee: othersWillSee.map(s => s.trim()).join("|||"),
+        beYourself: beYourself.trim(),
         todayValue: doc?.todayValue || "",
       });
     },
@@ -57,10 +64,14 @@ export default function IdentityDocPage() {
   });
 
   const valuesArray = values.split(",").map(v => v.trim()).filter(Boolean);
+  const beYourselfArray = beYourself.split(",").map(v => v.trim()).filter(Boolean);
+
   const hasChanges =
     identity !== (doc?.identity || "") ||
     vision !== (doc?.vision || "") ||
-    values !== (doc?.values || "");
+    values !== (doc?.values || "") ||
+    othersWillSee.map(s => s.trim()).join("|||") !== (doc?.othersWillSee || "||") ||
+    beYourself !== (doc?.beYourself || "");
 
   if (isLoading) {
     return (
@@ -154,6 +165,73 @@ export default function IdentityDocPage() {
                 <div className="flex flex-wrap gap-2">
                   {valuesArray.map((v, i) => (
                     <Badge key={i} variant="secondary" data-testid={`badge-value-${i}`}>
+                      {v}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-others-will-see">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Users className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">How Others Will See Me</CardTitle>
+                  <CardDescription>Three qualities you want others to notice about you.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {othersWillSee.map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-muted-foreground w-5 shrink-0">{i + 1}.</span>
+                  <Input
+                    value={item}
+                    onChange={(e) => {
+                      const updated = [...othersWillSee];
+                      updated[i] = e.target.value;
+                      setOthersWillSee(updated);
+                    }}
+                    placeholder={
+                      i === 0 ? "e.g. Confident and grounded" :
+                      i === 1 ? "e.g. Warm and approachable" :
+                      "e.g. Someone who follows through"
+                    }
+                    data-testid={`input-others-will-see-${i}`}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-visible" data-testid="card-be-yourself">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Heart className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">Be Yourself</CardTitle>
+                  <CardDescription>What makes you uniquely you? Separated by commas — add as many as you like.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <VoiceTextarea
+                value={beYourself}
+                onChange={(val) => setBeYourself(val)}
+                placeholder="authentic, curious, playful, resilient, creative, empathetic"
+                className="min-h-[80px] resize-none"
+                data-testid="input-be-yourself"
+              />
+              {beYourselfArray.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {beYourselfArray.map((v, i) => (
+                    <Badge key={i} variant="secondary" data-testid={`badge-be-yourself-${i}`}>
                       {v}
                     </Badge>
                   ))}
