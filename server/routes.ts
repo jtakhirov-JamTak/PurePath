@@ -998,7 +998,7 @@ export async function registerRoutes(
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight } = req.body;
+      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight, othersWillSee, beYourself } = req.body;
       const doc = await storage.upsertIdentityDocument({
         userId,
         identity: identity || "",
@@ -1013,6 +1013,8 @@ export async function registerRoutes(
         visionBoardMain: visionBoardMain ?? "",
         visionBoardLeft: visionBoardLeft ?? "",
         visionBoardRight: visionBoardRight ?? "",
+        othersWillSee: othersWillSee ?? "",
+        beYourself: beYourself ?? "",
       });
       res.json(doc);
     } catch (error) {
@@ -1044,6 +1046,8 @@ export async function registerRoutes(
         visionBoardMain: existing?.visionBoardMain ?? "",
         visionBoardLeft: existing?.visionBoardLeft ?? "",
         visionBoardRight: existing?.visionBoardRight ?? "",
+        othersWillSee: existing?.othersWillSee ?? "",
+        beYourself: existing?.beYourself ?? "",
       };
       if (slot === "main") updates.visionBoardMain = imageData || "";
       if (slot === "left") updates.visionBoardLeft = imageData || "";
@@ -1193,6 +1197,8 @@ export async function registerRoutes(
           todayValue: snapshot.identityDoc.todayValue || "",
           todayIntention: snapshot.identityDoc.todayIntention || "",
           todayReflection: snapshot.identityDoc.todayReflection || "",
+          othersWillSee: snapshot.identityDoc.othersWillSee || "",
+          beYourself: snapshot.identityDoc.beYourself || "",
         });
       }
 
