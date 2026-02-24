@@ -368,6 +368,8 @@ export class DatabaseStorage implements IStorage {
           todayValue: doc.todayValue,
           todayIntention: doc.todayIntention,
           todayReflection: doc.todayReflection,
+          othersWillSee: doc.othersWillSee,
+          beYourself: doc.beYourself,
           updatedAt: new Date(),
         },
       })
