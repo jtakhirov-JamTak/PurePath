@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -164,6 +165,20 @@ function Router() {
   );
 }
 
+function RedirectToHome() {
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    const alreadyRedirected = sessionStorage.getItem("ij-session-started");
+    if (!alreadyRedirected && location !== "/" && location !== "/checkout/success" && location !== "/checkout/cancel" && !location.startsWith("/checkout/")) {
+      sessionStorage.setItem("ij-session-started", "1");
+      setLocation("/");
+    } else {
+      sessionStorage.setItem("ij-session-started", "1");
+    }
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -171,6 +186,7 @@ function App() {
         <TooltipProvider>
           <UnsavedGuardProvider>
             <Toaster />
+            <RedirectToHome />
             <Router />
           </UnsavedGuardProvider>
         </TooltipProvider>
