@@ -32,6 +32,7 @@ const CATEGORY_STYLES: Record<string, string> = {
   career: "bg-blue-500",
   mindfulness: "bg-violet-500",
   learning: "bg-cyan-500",
+  leisure: "bg-orange-500",
 };
 
 export default function DashboardPage() {

@@ -195,6 +195,7 @@ export const HABIT_CATEGORIES = {
   career: { label: "Career", color: "blue" },
   mindfulness: { label: "Mindfulness", color: "violet" },
   learning: { label: "Learning", color: "cyan" },
+  leisure: { label: "Leisure", color: "orange" },
 } as const;
 
 export type HabitCategory = keyof typeof HABIT_CATEGORIES;

@@ -860,6 +860,66 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/eisenhower/parse-tasks", isAuthenticated, aiRateLimit, async (req: any, res: Response) => {
+    try {
+      const { tasks, weekStart } = req.body;
+      if (!Array.isArray(tasks) || tasks.length === 0) {
+        return res.status(400).json({ error: "tasks must be a non-empty array" });
+      }
+      if (tasks.length > 20) {
+        return res.status(400).json({ error: "Maximum 20 tasks at a time" });
+      }
+
+      const weekDate = new Date(weekStart + "T00:00:00");
+      const weekDays: Record<string, string> = {};
+      const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekDate);
+        d.setDate(d.getDate() + i);
+        weekDays[dayNames[d.getDay()]] = format(d, "yyyy-MM-dd");
+      }
+
+      const systemPrompt = `You are a task parsing assistant. The user will give you a list of tasks from a weekly brain dump. For each task, extract structured data.
+
+The current week starts on ${weekStart}. The days of this week are:
+${Object.entries(weekDays).map(([day, date]) => `${day}: ${date}`).join("\n")}
+
+For each task, return a JSON object with these fields:
+- "task": the cleaned-up task name (concise, action-oriented)
+- "quadrant": one of "q1" (urgent & important - do now), "q2" (important, not urgent - schedule), "q3" (urgent, not important - delegate), "q4" (not urgent, not important - avoid). Default to "q2" if unclear.
+- "role": one of "health", "wealth", "relationships", "career", "mindfulness", "learning", "leisure". Pick the best fit.
+- "scheduledDate": the date in YYYY-MM-DD format if mentioned (e.g., "Tuesday" → the Tuesday of this week). Leave empty string if not mentioned.
+- "startTime": suggested start time in HH:MM 24h format if time context is given (e.g., "night" → "18:00", "morning" → "09:00"). Leave empty string if not clear.
+- "endTime": suggested end time in HH:MM 24h format. Estimate a reasonable duration. Leave empty string if not clear.
+
+Time context hints: "morning" = 09:00-10:00, "afternoon" = 14:00-15:00, "evening" = 17:00-18:00, "night" = 19:00-20:00, "lunch" = 12:00-13:00.
+
+Return a JSON object with a single key "items" containing an array of parsed task objects, one per input task, in the same order.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-5.2",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: tasks.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n") },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_tokens: 2000,
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return res.status(500).json({ error: "No response from AI" });
+      }
+
+      const parsed = JSON.parse(content);
+      res.json(parsed);
+    } catch (error) {
+      console.error("Error parsing tasks with AI:", error);
+      res.status(500).json({ error: "Failed to parse tasks" });
+    }
+  });
+
   // ==================== HABIT COMPLETIONS ====================
 
   app.get("/api/habit-completions/range/:startDate/:endDate", isAuthenticated, async (req: any, res: Response) => {

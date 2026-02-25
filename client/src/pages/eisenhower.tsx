@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string
   career: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
   mindfulness: { bg: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-400", border: "border-violet-500/30", dot: "bg-violet-500" },
   learning: { bg: "bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-500" },
+  leisure: { bg: "bg-orange-500/10", text: "text-orange-700 dark:text-orange-400", border: "border-orange-500/30", dot: "bg-orange-500" },
 };
 
 function getCategoryStyle(category: string | null) {
@@ -141,6 +142,7 @@ export default function EisenhowerPage() {
   const [wizardSaving, setWizardSaving] = useState(false);
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
+  const [aiParsing, setAiParsing] = useState(false);
 
   const wizardHasContent = brainDump.trim().length > 0 || wizardItems.length > 0;
   const [confirmClose, setConfirmClose] = useState(false);
@@ -160,6 +162,43 @@ export default function EisenhowerPage() {
     setWizardItems([]);
     setWizardStep(0);
   }, []);
+
+  const handleAiParse = useCallback(async () => {
+    const lines = brainDump.split("\n").filter(l => l.trim());
+    if (lines.length === 0) return;
+    setAiParsing(true);
+    try {
+      const res = await apiRequest("POST", "/api/eisenhower/parse-tasks", {
+        tasks: lines.map(l => l.trim()),
+        weekStart: format(currentWeek, "yyyy-MM-dd"),
+      });
+      if (!res.ok) throw new Error("AI parsing failed");
+      const data = await res.json();
+      const items: WizardItem[] = (data.items || []).map((item: any, i: number) => {
+        const validRoles = Object.keys(HABIT_CATEGORIES);
+        const role = validRoles.includes(item.role) ? item.role as HabitCategory : "health" as HabitCategory;
+        const validQuadrants = ["q1", "q2", "q3", "q4"];
+        const quadrant = validQuadrants.includes(item.quadrant) ? item.quadrant : "unclassified";
+        return {
+          task: item.task || lines[i]?.trim() || "",
+          quadrant,
+          role,
+          deadline: item.scheduledDate || "",
+          startTime: item.startTime || "",
+          endTime: item.endTime || "",
+          goalAlignment: "",
+          blocksGoal: false,
+        };
+      });
+      setWizardItems(items);
+      setWizardStep(1);
+      toast({ title: "AI parsed your tasks", description: `${items.length} tasks categorized. Review and adjust as needed.` });
+    } catch (error) {
+      toast({ title: "AI parsing failed", description: "Falling back to manual mode.", variant: "destructive" });
+    } finally {
+      setAiParsing(false);
+    }
+  }, [brainDump, currentWeek, toast]);
 
   const weekStart = format(currentWeek, "yyyy-MM-dd");
 
@@ -693,14 +732,40 @@ export default function EisenhowerPage() {
                   <Textarea
                     value={brainDump}
                     onChange={(e) => setBrainDump(e.target.value)}
-                    placeholder={"Finish quarterly report\nSchedule dentist\nReview investments\nCall mom\nClean garage"}
+                    placeholder={"Finish PPT by Tuesday night for Work\nSchedule dentist Thursday morning\nReview investments\nCall mom\nClean garage Saturday afternoon"}
                     rows={10}
                     className="text-sm"
                     data-testid="textarea-brain-dump"
                     autoFocus
+                    disabled={aiParsing}
                   />
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      {brainDump.split("\n").filter(l => l.trim()).length} tasks listed
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAiParse}
+                      disabled={!brainDump.trim() || aiParsing}
+                      className="gap-1.5"
+                      data-testid="button-ai-parse"
+                    >
+                      {aiParsing ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Parsing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Auto-fill with AI
+                        </>
+                      )}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {brainDump.split("\n").filter(l => l.trim()).length} tasks listed
+                    Include dates, times, and categories for best AI results (e.g., "Finish PPT by Tuesday night for Work")
                   </p>
                 </div>
               )}
