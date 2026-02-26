@@ -50,7 +50,9 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        const jsonStr = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${jsonStr.length > 500 ? jsonStr.slice(0, 500) + "...[truncated]" : jsonStr}`;
+        capturedJsonResponse = undefined;
       }
 
       log(logLine);
@@ -58,6 +60,14 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
 });
 
 (async () => {
