@@ -173,6 +173,38 @@ export default function IdentityDocPage() {
             </CardContent>
           </Card>
 
+          <Card className="overflow-visible" data-testid="card-be-yourself">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Heart className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">Be Yourself</CardTitle>
+                  <CardDescription>What makes you uniquely you? Separated by commas — add as many as you like.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <VoiceTextarea
+                value={beYourself}
+                onChange={(val) => setBeYourself(val)}
+                placeholder="authentic, curious, playful, resilient, creative, empathetic"
+                className="min-h-[80px] resize-none"
+                data-testid="input-be-yourself"
+              />
+              {beYourselfArray.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {beYourselfArray.map((v, i) => (
+                    <Badge key={i} variant="secondary" data-testid={`badge-be-yourself-${i}`}>
+                      {v}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="overflow-visible" data-testid="card-others-will-see">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -205,38 +237,6 @@ export default function IdentityDocPage() {
                   />
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-be-yourself">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Heart className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-serif text-lg">Be Yourself</CardTitle>
-                  <CardDescription>What makes you uniquely you? Separated by commas — add as many as you like.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <VoiceTextarea
-                value={beYourself}
-                onChange={(val) => setBeYourself(val)}
-                placeholder="authentic, curious, playful, resilient, creative, empathetic"
-                className="min-h-[80px] resize-none"
-                data-testid="input-be-yourself"
-              />
-              {beYourselfArray.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {beYourselfArray.map((v, i) => (
-                    <Badge key={i} variant="secondary" data-testid={`badge-be-yourself-${i}`}>
-                      {v}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
 
