@@ -300,10 +300,10 @@ export default function DashboardPage() {
                 {journalHabitItems.map((jh) => (
                   <li key={jh.id} className="flex items-center gap-3" data-testid={`journal-habit-${jh.isMorning ? "morning" : "evening"}`}>
                     <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
-                      jh.done ? "bg-primary border-primary" : jh.skipped ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40" : "border-border"
+                      jh.done ? "bg-primary border-primary" : jh.skipped ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
                     }`}>
                       {jh.done && <Check className="h-3 w-3 text-primary-foreground" />}
-                      {jh.skipped && <Minus className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
+                      {jh.skipped && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
                     </div>
                     <span className="h-2 w-2 rounded-full shrink-0 bg-violet-400" />
                     <button
@@ -330,13 +330,13 @@ export default function DashboardPage() {
                         role="checkbox"
                         aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
                         className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40" : "border-border"
+                          status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
                         }`}
                         onClick={() => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })}
                         data-testid={`habit-cycle-${habit.id}`}
                       >
                         {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                        {status === "skipped" && <Minus className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
+                        {status === "skipped" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
                       </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
                       <span className={`text-sm flex-1 ${
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                         aria-checked={status === "completed" ? true : status ? "mixed" : false}
                         className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                           status === "completed" ? "bg-primary border-primary"
-                          : status === "skipped" ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40"
+                          : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50"
                           : status === "cancelled" ? "bg-destructive/15 border-destructive/40"
                           : "border-border"
                         }`}
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                         data-testid={`q2-cycle-${item.id}`}
                       >
                         {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                        {status === "skipped" && <SkipForward className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
+                        {status === "skipped" && <SkipForward className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
                         {status === "cancelled" && <X className="h-3 w-3 text-destructive" />}
                       </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
