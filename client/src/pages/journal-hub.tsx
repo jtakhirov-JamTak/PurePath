@@ -945,13 +945,13 @@ function EisenhowerItemRow({
         aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
         aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
         className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40" : "border-border"
         }`}
         onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
         data-testid={`eisenhower-cycle-${entry.id}`}
       >
         {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-        {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-muted-foreground" />}
+        {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-yellow-600 dark:text-yellow-400" />}
       </button>
       <div className="flex-1 min-w-0">
         {editing ? (
@@ -1151,13 +1151,13 @@ function SortableHabitRow({
                 aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
                 aria-label={`${habit.name} - ${status || "not tracked"}`}
                 className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
-                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40" : "border-border"
                 }`}
                 onClick={() => onCycle(habit.id, status, dateStr)}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
                 {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                {status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                {status === "skipped" && <Minus className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
               </button>
             ) : null}
           </DayCell>

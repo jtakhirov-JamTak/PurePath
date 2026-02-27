@@ -619,13 +619,13 @@ export default function EisenhowerPage() {
                             aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
                             aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
                             className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                              entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-muted border-muted-foreground/30" : "border-border"
+                              entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-100 border-yellow-300 dark:bg-yellow-500/20 dark:border-yellow-500/40" : "border-border"
                             }`}
                             onClick={() => toggleMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
                             data-testid={`eisenhower-cycle-${entry.id}`}
                           >
                             {entry.status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                            {entry.status === "skipped" && <Minus className="h-3 w-3 text-muted-foreground" />}
+                            {entry.status === "skipped" && <Minus className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
                           </button>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm ${isQ4Loss ? "text-red-500 dark:text-red-400" : entry.status === "completed" ? "line-through opacity-60" : entry.status === "skipped" ? "text-muted-foreground italic opacity-60" : ""}`}>
