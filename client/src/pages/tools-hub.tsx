@@ -212,14 +212,14 @@ export default function ToolsHubPage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-10 max-w-2xl">
+        <div className="mb-10 max-w-2xl mx-auto">
           <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-tools-title">Tools</h1>
           <p className="text-muted-foreground text-lg">
             Self-development tools and reference guides to support your daily practice.
           </p>
         </div>
 
-        <div className="max-w-4xl space-y-10">
+        <div className="max-w-4xl mx-auto space-y-10">
           <div>
             <h2 className="text-sm uppercase tracking-wider text-muted-foreground font-semibold mb-4">Guides</h2>
             <div className="grid sm:grid-cols-2 gap-4">

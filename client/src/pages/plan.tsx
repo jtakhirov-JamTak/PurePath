@@ -670,7 +670,7 @@ export default function PlanPage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
-        <div className="mb-8 max-w-2xl">
+        <div className="mb-8 max-w-2xl mx-auto">
           <h1 className="font-serif text-3xl font-bold mb-2" data-testid="text-plan-title">Plan</h1>
           <p className="text-muted-foreground">
             Build your plan step by step. Each step unlocks when the previous one is complete.
@@ -680,7 +680,7 @@ export default function PlanPage() {
           </p>
         </div>
 
-        <div className="max-w-3xl space-y-6">
+        <div className="max-w-3xl mx-auto space-y-6">
           <div className="flex items-center justify-center gap-0 mb-2" data-testid="wizard-stepper">
             {WIZARD_STEPS.map((step, idx) => {
               const done = stepCompletion[idx];
