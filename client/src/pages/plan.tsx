@@ -590,13 +590,24 @@ export default function PlanPage() {
           <div className="space-y-4">
             {hasHabits ? (
               <div className="space-y-2">
-                {activeHabits.slice(0, 5).map(habit => (
-                  <div key={habit.id} className="flex items-center gap-3 py-1.5" data-testid={`habit-plan-${habit.id}`}>
-                    <div className="h-2 w-2 rounded-full shrink-0 bg-primary" />
-                    <span className="text-sm flex-1">{habit.name}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{habit.category}</span>
-                  </div>
-                ))}
+                {activeHabits.slice(0, 5).map(habit => {
+                  const dotColor = ({
+                    health: "bg-emerald-500",
+                    wealth: "bg-amber-500",
+                    relationships: "bg-rose-500",
+                    career: "bg-blue-500",
+                    mindfulness: "bg-violet-500",
+                    learning: "bg-cyan-500",
+                    leisure: "bg-orange-500",
+                  } as Record<string, string>)[(habit.category as string) || "health"] || "bg-emerald-500";
+                  return (
+                    <div key={habit.id} className="flex items-center gap-3 py-1.5" data-testid={`habit-plan-${habit.id}`}>
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                      <span className="text-sm flex-1">{habit.name}</span>
+                      <span className="text-xs text-muted-foreground capitalize">{habit.category}</span>
+                    </div>
+                  );
+                })}
                 {activeHabits.length > 5 && (
                   <p className="text-xs text-muted-foreground">+{activeHabits.length - 5} more</p>
                 )}
@@ -627,14 +638,25 @@ export default function PlanPage() {
                 {q2Items.length > 0 && (
                   <div className="space-y-1.5 mb-3">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Q2 Focus Items</p>
-                    {q2Items.map(item => (
-                      <div key={item.id} className="flex items-center gap-3 py-1" data-testid={`q2-item-${item.id}`}>
-                        <div className={`h-2 w-2 rounded-full shrink-0 ${item.completed ? "bg-green-500" : "bg-primary"}`} />
-                        <span className={`text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                          {item.task}
-                        </span>
-                      </div>
-                    ))}
+                    {q2Items.map(item => {
+                      const roleDot = ({
+                        health: "bg-emerald-500",
+                        wealth: "bg-amber-500",
+                        relationships: "bg-rose-500",
+                        career: "bg-blue-500",
+                        mindfulness: "bg-violet-500",
+                        learning: "bg-cyan-500",
+                        leisure: "bg-orange-500",
+                      } as Record<string, string>)[(item.role as string) || "health"] || "bg-emerald-500";
+                      return (
+                        <div key={item.id} className="flex items-center gap-3 py-1" data-testid={`q2-item-${item.id}`}>
+                          <div className={`h-2 w-2 rounded-full shrink-0 ${item.completed ? "bg-green-500" : roleDot}`} />
+                          <span className={`text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {item.task}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <Badge variant="outline">{thisWeekEntries.length} items planned</Badge>

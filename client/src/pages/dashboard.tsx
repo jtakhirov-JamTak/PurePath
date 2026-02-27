@@ -416,6 +416,7 @@ export default function DashboardPage() {
               <ul className="space-y-2">
                 {todayQ2Items.map((item) => {
                   const status = item.status || null;
+                  const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
                   return (
                     <li key={item.id} className="flex items-center gap-3" data-testid={`q2-block-${item.id}`}>
                       <button
@@ -434,6 +435,7 @@ export default function DashboardPage() {
                         {status === "skipped" && <SkipForward className="h-3 w-3 text-muted-foreground" />}
                         {status === "cancelled" && <X className="h-3 w-3 text-destructive" />}
                       </button>
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground"
                         : status === "skipped" ? "text-muted-foreground italic"
