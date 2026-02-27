@@ -362,22 +362,22 @@ export default function JournalEntryPage() {
                     </div>
                   </div>
                 )}
-                {othersWillSeeItems.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {othersWillSeeItems.map((item, i) => (
-                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 {beYourselfItems.length > 0 && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Be Yourself</p>
                     <div className="flex flex-wrap gap-1.5">
                       {beYourselfItems.map((item, i) => (
                         <Badge key={i} variant="secondary" className="text-xs font-normal" data-testid={`badge-beyourself-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {othersWillSeeItems.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {othersWillSeeItems.map((item, i) => (
+                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
                       ))}
                     </div>
                   </div>
