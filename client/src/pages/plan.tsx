@@ -593,12 +593,14 @@ export default function PlanPage() {
                 {activeHabits.slice(0, 5).map(habit => {
                   const dotColor = ({
                     health: "bg-emerald-500",
-                    wealth: "bg-amber-500",
+                    wealth: "bg-yellow-400",
                     relationships: "bg-rose-500",
+                    "self-development": "bg-blue-500",
+                    happiness: "bg-slate-300 dark:bg-slate-400",
                     career: "bg-blue-500",
-                    mindfulness: "bg-violet-500",
-                    learning: "bg-cyan-500",
-                    leisure: "bg-orange-500",
+                    mindfulness: "bg-blue-500",
+                    learning: "bg-blue-500",
+                    leisure: "bg-slate-300 dark:bg-slate-400",
                   } as Record<string, string>)[(habit.category as string) || "health"] || "bg-emerald-500";
                   return (
                     <div key={habit.id} className="flex items-center gap-3 py-1.5" data-testid={`habit-plan-${habit.id}`}>
@@ -641,12 +643,14 @@ export default function PlanPage() {
                     {q2Items.map(item => {
                       const roleDot = ({
                         health: "bg-emerald-500",
-                        wealth: "bg-amber-500",
+                        wealth: "bg-yellow-400",
                         relationships: "bg-rose-500",
+                        "self-development": "bg-blue-500",
+                        happiness: "bg-slate-300 dark:bg-slate-400",
                         career: "bg-blue-500",
-                        mindfulness: "bg-violet-500",
-                        learning: "bg-cyan-500",
-                        leisure: "bg-orange-500",
+                        mindfulness: "bg-blue-500",
+                        learning: "bg-blue-500",
+                        leisure: "bg-slate-300 dark:bg-slate-400",
                       } as Record<string, string>)[(item.role as string) || "health"] || "bg-emerald-500";
                       return (
                         <div key={item.id} className="flex items-center gap-3 py-1" data-testid={`q2-item-${item.id}`}>

@@ -52,11 +52,10 @@ function formatDate(d: Date): string {
 
 const CATEGORY_STYLES: Record<string, { dot: string }> = {
   health: { dot: "bg-emerald-500" },
-  wealth: { dot: "bg-amber-500" },
+  wealth: { dot: "bg-yellow-400" },
   relationships: { dot: "bg-rose-500" },
-  career: { dot: "bg-blue-500" },
-  mindfulness: { dot: "bg-violet-500" },
-  learning: { dot: "bg-cyan-500" },
+  "self-development": { dot: "bg-blue-500" },
+  happiness: { dot: "bg-slate-300 dark:bg-slate-400" },
 };
 
 function getCategoryDot(category: string | null) {

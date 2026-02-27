@@ -190,12 +190,10 @@ export type InsertEmpathyExercise = z.infer<typeof insertEmpathyExerciseSchema>;
 // Habit categories with colors
 export const HABIT_CATEGORIES = {
   health: { label: "Health", color: "emerald" },
-  wealth: { label: "Wealth", color: "amber" },
+  wealth: { label: "Wealth", color: "yellow" },
   relationships: { label: "Relationships", color: "rose" },
-  career: { label: "Career", color: "blue" },
-  mindfulness: { label: "Mindfulness", color: "violet" },
-  learning: { label: "Learning", color: "cyan" },
-  leisure: { label: "Leisure", color: "orange" },
+  "self-development": { label: "Self-Development", color: "blue" },
+  happiness: { label: "Happiness", color: "slate" },
 } as const;
 
 export type HabitCategory = keyof typeof HABIT_CATEGORIES;
@@ -223,7 +221,7 @@ export const habits = pgTable("habits", {
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
-  check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'career', 'mindfulness', 'learning')`),
+  check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'self-development', 'happiness', 'career', 'mindfulness', 'learning', 'leisure')`),
   check("habit_type_check", sql`${table.habitType} IN ('goal', 'learning', 'maintenance')`),
   check("habit_timing_check", sql`${table.timing} IN ('morning', 'afternoon', 'evening')`),
 ]);

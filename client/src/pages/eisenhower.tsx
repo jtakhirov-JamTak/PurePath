@@ -21,12 +21,14 @@ const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
 
 const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   health: { bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-400", border: "border-emerald-500/30", dot: "bg-emerald-500" },
-  wealth: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", border: "border-amber-500/30", dot: "bg-amber-500" },
+  wealth: { bg: "bg-yellow-400/10", text: "text-yellow-700 dark:text-yellow-400", border: "border-yellow-400/30", dot: "bg-yellow-400" },
   relationships: { bg: "bg-rose-500/10", text: "text-rose-700 dark:text-rose-400", border: "border-rose-500/30", dot: "bg-rose-500" },
+  "self-development": { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  happiness: { bg: "bg-slate-300/10", text: "text-slate-700 dark:text-slate-300", border: "border-slate-300/30", dot: "bg-slate-300 dark:bg-slate-400" },
   career: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
-  mindfulness: { bg: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-400", border: "border-violet-500/30", dot: "bg-violet-500" },
-  learning: { bg: "bg-cyan-500/10", text: "text-cyan-700 dark:text-cyan-400", border: "border-cyan-500/30", dot: "bg-cyan-500" },
-  leisure: { bg: "bg-orange-500/10", text: "text-orange-700 dark:text-orange-400", border: "border-orange-500/30", dot: "bg-orange-500" },
+  mindfulness: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  learning: { bg: "bg-blue-500/10", text: "text-blue-700 dark:text-blue-400", border: "border-blue-500/30", dot: "bg-blue-500" },
+  leisure: { bg: "bg-slate-300/10", text: "text-slate-700 dark:text-slate-300", border: "border-slate-300/30", dot: "bg-slate-300 dark:bg-slate-400" },
 };
 
 function getCategoryStyle(category: string | null) {

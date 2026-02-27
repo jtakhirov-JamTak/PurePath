@@ -27,12 +27,14 @@ const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 const CATEGORY_STYLES: Record<string, string> = {
   health: "bg-emerald-500",
-  wealth: "bg-amber-500",
+  wealth: "bg-yellow-400",
   relationships: "bg-rose-500",
+  "self-development": "bg-blue-500",
+  happiness: "bg-slate-300 dark:bg-slate-400",
   career: "bg-blue-500",
-  mindfulness: "bg-violet-500",
-  learning: "bg-cyan-500",
-  leisure: "bg-orange-500",
+  mindfulness: "bg-blue-500",
+  learning: "bg-blue-500",
+  leisure: "bg-slate-300 dark:bg-slate-400",
 };
 
 export default function DashboardPage() {

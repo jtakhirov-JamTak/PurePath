@@ -887,7 +887,7 @@ ${Object.entries(weekDays).map(([day, date]) => `${day}: ${date}`).join("\n")}
 For each task, return a JSON object with these fields:
 - "task": the cleaned-up task name (concise, action-oriented)
 - "quadrant": one of "q1" (urgent & important - do now), "q2" (important, not urgent - schedule), "q3" (urgent, not important - delegate), "q4" (not urgent, not important - avoid). Default to "q2" if unclear.
-- "role": one of "health", "wealth", "relationships", "career", "mindfulness", "learning", "leisure". Pick the best fit.
+- "role": one of "health", "wealth", "relationships", "self-development", "happiness". Pick the best fit. "self-development" covers mindfulness, learning, career growth, and personal skills. "happiness" covers career satisfaction, leisure, hobbies, and fun.
 - "scheduledDate": the date in YYYY-MM-DD format if mentioned (e.g., "Tuesday" → the Tuesday of this week). Leave empty string if not mentioned.
 - "startTime": suggested start time in HH:MM 24h format if time context is given (e.g., "night" → "18:00", "morning" → "09:00"). Leave empty string if not clear.
 - "endTime": suggested end time in HH:MM 24h format. Estimate a reasonable duration. Leave empty string if not clear.
