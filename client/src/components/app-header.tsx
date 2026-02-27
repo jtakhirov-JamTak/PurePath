@@ -9,7 +9,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Compass, LogOut, CreditCard, LayoutDashboard, ChevronDown } from "lucide-react";
+import { LogOut, CreditCard, LayoutDashboard, ChevronDown } from "lucide-react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation, Link } from "wouter";
 
 interface AppHeaderProps {
@@ -41,8 +42,8 @@ export function AppHeader({ showBackButton, backTo, backLabel, rightContent }: A
           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           data-testid="link-home"
         >
-          <Compass className="h-7 w-7 text-primary" />
-          <span className="font-serif text-xl font-semibold">Inner Journey</span>
+          <LeafLogo size={28} />
+          <span className="font-serif text-xl font-semibold text-primary">Leaf</span>
         </Link>
 
         <div className="flex items-center gap-3">

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, User, Eye, Compass, Users, Heart, X } from "lucide-react";
+import { Save, User, Eye, Leaf, Users, Heart, X } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
 
 export default function IdentityDocPage() {
@@ -145,7 +145,7 @@ export default function IdentityDocPage() {
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Compass className="h-4 w-4 text-primary" />
+                  <Leaf className="h-4 w-4 text-primary" />
                 </div>
                 <div>
                   <CardTitle className="font-serif text-lg">Values</CardTitle>

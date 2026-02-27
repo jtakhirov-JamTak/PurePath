@@ -1,8 +1,8 @@
-# Inner Journey - Self-Discovery Course Platform
+# Leaf - Self-Discovery Course Platform
 
 ## Overview
 
-Inner Journey is a 3-phase self-discovery and personal growth course platform that integrates AI-powered features. It offers courses focused on self-reflection, personal structure, and transformation, available individually or as a bundle. The platform aims to guide users through a structured journey using tools like AI chat, journaling, goal setting, habit tracking, and analytical agents, ultimately fostering personal growth and self-discovery.
+Leaf is a 3-phase self-discovery and personal growth course platform that integrates AI-powered features. It offers courses focused on self-reflection, personal structure, and transformation, available individually or as a bundle. The platform uses a natural, organic theme with green/leaf tones throughout (primary color: HSL 142 50% 40%) and nature-inspired iconography (Leaf, Sprout, TreePine from lucide-react). The custom LeafLogo component (`client/src/components/leaf-logo.tsx`) renders an SVG leaf with white vein details and green stems. Brand text uses light green (`text-primary`).
 
 ## User Preferences
 
@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: Wouter for client-side routing.
 - **State Management**: TanStack React Query for server state.
 - **UI Components**: shadcn/ui built on Radix UI, styled with Tailwind CSS and CSS variables for theming.
-- **Design System**: Single slate-blue accent, Inter for body, Plus Jakarta Sans for headings, 16px base font, 1.6 line-height, 12px border radius, unified icon palette.
+- **Design System**: Natural green leaf theme (HSL 142), Inter for body, Plus Jakarta Sans for headings, 16px base font, 1.6 line-height, 12px border radius, nature-inspired icon palette (Sprout, TreePine, CalendarDays, Leaf).
 - **Navigation Structure**: Three main tabs:
   - **Today** (default landing): Daily-focused dashboard with due habits, top 3 tasks, Q2 blocks, journal quick entry, quick tools
   - **Plan**: Vision board, monthly goal, habits overview, Eisenhower matrix links with inline planning wizard stepper

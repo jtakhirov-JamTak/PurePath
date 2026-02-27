@@ -10,14 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Compass,
   LogOut,
   CreditCard,
   ChevronDown,
-  Sun,
-  Map,
-  Calendar,
+  Sprout,
+  TreePine,
+  CalendarDays,
 } from "lucide-react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation, Link } from "wouter";
 import type { LucideIcon } from "lucide-react";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -29,9 +29,9 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Today", path: "/dashboard", icon: Sun },
-  { label: "Plan", path: "/plan", icon: Map },
-  { label: "Calendar", path: "/journal", icon: Calendar },
+  { label: "Today", path: "/dashboard", icon: Sprout },
+  { label: "Plan", path: "/plan", icon: TreePine },
+  { label: "Calendar", path: "/journal", icon: CalendarDays },
 ];
 
 interface AppLayoutProps {
@@ -69,8 +69,8 @@ export function AppLayout({ children }: AppLayoutProps) {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             data-testid="link-home-logo"
           >
-            <Compass className="h-7 w-7 text-primary" />
-            <span className="font-serif text-xl font-semibold hidden sm:inline">Inner Journey</span>
+            <LeafLogo size={28} />
+            <span className="font-serif text-xl font-semibold hidden sm:inline text-primary">Leaf</span>
           </button>
 
           <nav className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
@@ -114,7 +114,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => safeNavigate("/dashboard")} data-testid="menu-dashboard">
-                    <Sun className="h-4 w-4 mr-2" />
+                    <Sprout className="h-4 w-4 mr-2" />
                     Today
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => safeNavigate("/billing")} data-testid="menu-billing">

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Compass, CreditCard, RefreshCw, CheckCircle, ArrowLeft, AlertCircle } from "lucide-react";
+import { CreditCard, RefreshCw, CheckCircle, ArrowLeft, AlertCircle } from "lucide-react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -94,8 +95,8 @@ export default function BillingPage() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <Compass className="h-7 w-7 text-primary" />
-            <span className="font-serif text-xl font-semibold">Inner Journey</span>
+            <LeafLogo size={28} />
+            <span className="font-serif text-xl font-semibold text-primary">Leaf</span>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />

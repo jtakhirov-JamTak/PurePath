@@ -111,7 +111,7 @@ export const COURSES = {
   },
   allinone: {
     id: "allinone",
-    name: "Complete Inner Journey",
+    name: "Complete Leaf Program",
     description: "All 3 phases: the complete self-discovery and transformation experience",
     price: 49900, // $499 (save $199)
     stripePriceEnvVar: "STRIPE_PRICE_ALLINONE",

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { COURSES, type CourseType } from "@shared/schema";
-import { ArrowLeft, Check, Loader2, Lock, Layers, Zap, Package, Compass } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Lock, Layers, Zap, Package } from "lucide-react";
+import { LeafLogo } from "@/components/leaf-logo";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -86,8 +87,8 @@ export default function CheckoutPage() {
             Back
           </Button>
           <div className="flex items-center gap-2">
-            <Compass className="h-6 w-6 text-primary" />
-            <span className="font-serif text-lg font-medium">Inner Journey</span>
+            <LeafLogo size={24} />
+            <span className="font-serif text-lg font-medium text-primary">Leaf</span>
           </div>
           <ThemeToggle />
         </div>

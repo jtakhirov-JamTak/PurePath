@@ -61,7 +61,7 @@ export default function CoursePage() {
       <main className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-12">
           <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">
-            Your Inner Journey
+            Your Growth Path
           </h1>
           <p className="text-lg text-muted-foreground">
             A structured path through self-discovery, building systems, and lasting transformation.
