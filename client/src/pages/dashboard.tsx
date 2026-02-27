@@ -344,6 +344,9 @@ export default function DashboardPage() {
                       }`}>
                         {habit.name}
                       </span>
+                      {status === "completed" && (
+                        <span className="text-xs text-muted-foreground">done</span>
+                      )}
                       {status === "skipped" && (
                         <span className="text-xs text-muted-foreground">skipped</span>
                       )}
