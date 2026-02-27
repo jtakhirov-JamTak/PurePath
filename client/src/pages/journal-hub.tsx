@@ -473,6 +473,8 @@ export default function JournalHubPage() {
           const done = session === "morning"
             ? journalsByDate.get(dateStr)?.morning || false
             : journalsByDate.get(dateStr)?.evening || false;
+          const isPast = dateStr < today;
+          const skipped = !done && isPast;
           return (
             <DayCell key={dateStr} dateStr={dateStr} todayStr={today} cellH={cellH}>
               <div
@@ -480,7 +482,11 @@ export default function JournalHubPage() {
                 onClick={() => setLocation(`/journal/${dateStr}/${session}`)}
                 data-testid={`row-${session}-${dateStr}`}
               >
-                {done ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+                {done
+                  ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  : skipped
+                    ? <Minus className="h-3 w-3 text-amber-500/70" />
+                    : <Minus className="h-3 w-3 text-muted-foreground/40" />}
               </div>
             </DayCell>
           );

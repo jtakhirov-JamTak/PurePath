@@ -227,9 +227,12 @@ export default function DashboardPage() {
     );
   }
 
+  const currentHour = new Date().getHours();
+  const morningSkipped = !hasMorning && currentHour >= 12;
+
   const journalHabitItems = hasPhase12 ? [
-    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning },
-    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening },
+    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
+    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening, skipped: false },
   ] : [];
 
   const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
@@ -297,13 +300,14 @@ export default function DashboardPage() {
                 {journalHabitItems.map((jh) => (
                   <li key={jh.id} className="flex items-center gap-3" data-testid={`journal-habit-${jh.isMorning ? "morning" : "evening"}`}>
                     <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
-                      jh.done ? "bg-primary border-primary" : "border-border"
+                      jh.done ? "bg-primary border-primary" : jh.skipped ? "bg-muted border-muted-foreground/30" : "border-border"
                     }`}>
                       {jh.done && <Check className="h-3 w-3 text-primary-foreground" />}
+                      {jh.skipped && <Minus className="h-3 w-3 text-muted-foreground" />}
                     </div>
                     <span className="h-2 w-2 rounded-full shrink-0 bg-violet-400" />
                     <button
-                      className={`text-sm flex-1 text-left hover:underline ${jh.done ? "line-through text-muted-foreground" : ""}`}
+                      className={`text-sm flex-1 text-left hover:underline ${jh.done ? "line-through text-muted-foreground" : jh.skipped ? "text-muted-foreground italic" : ""}`}
                       onClick={() => {
                         const session = jh.isMorning ? "morning" : "evening";
                         setLocation(`/journal/${todayStr}/${session}`);
@@ -314,6 +318,7 @@ export default function DashboardPage() {
                       {jh.name}
                     </button>
                     {jh.done && <span className="text-xs text-muted-foreground">done</span>}
+                    {jh.skipped && <span className="text-xs text-muted-foreground">skipped</span>}
                   </li>
                 ))}
                 {todaysHabits.map((habit) => {
