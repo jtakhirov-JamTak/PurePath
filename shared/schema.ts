@@ -165,6 +165,7 @@ export type InsertEisenhowerEntry = z.infer<typeof insertEisenhowerEntrySchema>;
 export const empathyExercises = pgTable("empathy_exercises", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
+  exerciseType: varchar("exercise_type", { length: 20 }).default("debrief").notNull(),
   date: date("date").notNull(),
   who: varchar("who", { length: 100 }).notNull(),
   context: text("context"),
@@ -176,6 +177,13 @@ export const empathyExercises = pgTable("empathy_exercises", {
   whatMattersToThem: text("what_matters_to_them"),
   whatTheyNeed: text("what_they_need"),
   nextAction: text("next_action"),
+  didConfirm: text("did_confirm"),
+  intention: text("intention"),
+  leaveThemFeeling: text("leave_them_feeling"),
+  triggerRiskIfThen: text("trigger_risk_if_then"),
+  themHypothesis: text("them_hypothesis"),
+  realityCheckQuestion: text("reality_check_question"),
+  reflectionValidation: text("reflection_validation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

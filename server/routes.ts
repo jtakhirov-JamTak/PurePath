@@ -708,9 +708,9 @@ export async function registerRoutes(
       const userId = req.user.claims.sub;
       const exercises = await storage.getEmpathyExercisesByUser(userId);
       
-      let csv = "Date,Who,Context,Their Emotional State,My Emotional State,Facts Observed,How I Came Across,How They Likely Felt,What Matters to Them,What They Need,Next Action\n";
+      let csv = "Type,Date,Who,Context,Their Emotional State,My Emotional State,Facts Observed,How I Came Across,How They Likely Felt,What Matters to Them,What They Need,Next Action,Did Confirm,Intention,Leave Them Feeling,Trigger Risk IF-THEN,Them Hypothesis,Reality Check Question,Reflection Validation\n";
       exercises.forEach(e => {
-        csv += `${e.date},"${e.who}","${e.context || ""}","${e.theirEmotionalState || ""}","${e.myEmotionalState || ""}","${e.factsObserved || ""}","${e.howICameAcross || ""}","${e.howTheyLikelyFelt || ""}","${e.whatMattersToThem || ""}","${e.whatTheyNeed || ""}","${e.nextAction || ""}"\n`;
+        csv += `"${e.exerciseType || "debrief"}",${e.date},"${e.who}","${e.context || ""}","${e.theirEmotionalState || ""}","${e.myEmotionalState || ""}","${e.factsObserved || ""}","${e.howICameAcross || ""}","${e.howTheyLikelyFelt || ""}","${e.whatMattersToThem || ""}","${e.whatTheyNeed || ""}","${e.nextAction || ""}","${e.didConfirm || ""}","${e.intention || ""}","${e.leaveThemFeeling || ""}","${e.triggerRiskIfThen || ""}","${e.themHypothesis || ""}","${e.realityCheckQuestion || ""}","${e.reflectionValidation || ""}"\n`;
       });
 
       res.setHeader("Content-Type", "text/csv");

@@ -38,6 +38,7 @@ export const createEisenhowerSchema = z.object({
 export const updateEisenhowerSchema = createEisenhowerSchema.partial();
 
 export const createEmpathySchema = z.object({
+  exerciseType: z.enum(["prep", "debrief"]).default("debrief"),
   date: dateString,
   who: trimmedString(1, 100),
   context: optionalString(2000),
@@ -49,6 +50,13 @@ export const createEmpathySchema = z.object({
   whatMattersToThem: optionalString(2000),
   whatTheyNeed: optionalString(2000),
   nextAction: optionalString(2000),
+  didConfirm: optionalString(2000),
+  intention: optionalString(2000),
+  leaveThemFeeling: optionalString(2000),
+  triggerRiskIfThen: optionalString(2000),
+  themHypothesis: optionalString(2000),
+  realityCheckQuestion: optionalString(2000),
+  reflectionValidation: optionalString(2000),
 });
 
 export const updateEmpathySchema = createEmpathySchema.partial();
