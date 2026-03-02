@@ -185,17 +185,17 @@ export default function HabitsPage() {
           </div>
           <div>
             <h1 className="font-serif text-3xl font-bold" data-testid="text-page-title">Habits</h1>
-            <p className="text-muted-foreground">Build up to 5 recurring habits — we recommend starting with 3</p>
+            <p className="text-muted-foreground">Build up to 6 recurring habits — we recommend starting with 3</p>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground" data-testid="text-habit-count">
-              {activeHabits.length}/5 habits
+              {activeHabits.length}/6 habits
             </p>
             <Button
-              disabled={activeHabits.length >= 5}
+              disabled={activeHabits.length >= 6}
               onClick={() => { setEditingHabit(null); setHabitDialogOpen(true); }}
               data-testid="button-add-habit"
             >
@@ -305,7 +305,7 @@ export default function HabitsPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => duplicateHabitMutation.mutate(habit)}
-                            disabled={activeHabits.length >= 5}
+                            disabled={activeHabits.length >= 6}
                             data-testid={`button-duplicate-habit-${habit.id}`}
                           >
                             <Copy className="h-4 w-4" />

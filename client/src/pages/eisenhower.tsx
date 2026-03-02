@@ -258,24 +258,39 @@ export default function EisenhowerPage() {
         ? `${formatTimeLabel(startTime)} - ${formatTimeLabel(endTime)}` : null;
       const timeEstimate = isSchedulable && startTime && endTime
         ? calcDuration(startTime, endTime) : null;
+      const deadlineVal = isSchedulable ? (data.updates.deadline || null) : null;
+      let newWeekStart = weekStart;
+      if (deadlineVal) {
+        const deadlineDate = new Date(deadlineVal + "T00:00:00");
+        newWeekStart = format(startOfWeek(deadlineDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+      }
       const res = await apiRequest("PATCH", `/api/eisenhower/${data.id}`, {
         role: data.updates.role,
         task: data.updates.task,
         quadrant: data.updates.quadrant,
-        deadline: isSchedulable ? (data.updates.deadline || null) : null,
+        deadline: deadlineVal,
         scheduledTime,
         timeEstimate,
-        scheduledDate: isSchedulable ? (data.updates.deadline || null) : null,
+        scheduledDate: deadlineVal,
         goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
         blocksGoal: data.updates.blocksGoal || false,
+        weekStart: newWeekStart,
       });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to update entry");
       }
     },
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
+      const deadlineVal = isSchedulableQuadrant(variables.updates.quadrant) ? (variables.updates.deadline || null) : null;
+      if (deadlineVal) {
+        const deadlineDate = new Date(deadlineVal + "T00:00:00");
+        const targetWeek = format(startOfWeek(deadlineDate, { weekStartsOn: 1 }), "yyyy-MM-dd");
+        if (targetWeek !== weekStart) {
+          queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", targetWeek] });
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setEditDialogOpen(false);
       setEditEntry(null);
