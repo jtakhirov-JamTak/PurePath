@@ -485,10 +485,10 @@ export default function JournalHubPage() {
                 data-testid={`row-${session}-${dateStr}`}
               >
                 {done
-                  ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  ? <div className="h-7 w-7 rounded-md bg-primary border-2 border-primary flex items-center justify-center"><Check className="h-4 w-4 text-primary-foreground" /></div>
                   : skipped
-                    ? <Minus className="h-3 w-3 text-amber-500/70" />
-                    : <Minus className="h-3 w-3 text-muted-foreground/40" />}
+                    ? <div className="h-7 w-7 rounded-md bg-yellow-300 border-2 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50 flex items-center justify-center"><Minus className="h-4 w-4 text-yellow-700 dark:text-yellow-300" /></div>
+                    : <div className="h-7 w-7 rounded-md border-2 border-muted-foreground/30 flex items-center justify-center"><Minus className="h-3 w-3 text-muted-foreground/30" /></div>}
               </div>
             </DayCell>
           );
@@ -760,8 +760,8 @@ export default function JournalHubPage() {
 function SectionHeaderRow({ label, days, todayStr }: { label: string; days: Date[]; todayStr: string }) {
   return (
     <>
-      <div className="flex items-center px-3 py-1.5 bg-muted/50 border-t">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="flex items-center px-3 py-2 bg-muted/50 border-t-2 border-t-primary/20">
+        <p className="text-xs font-bold uppercase tracking-wider text-foreground/70">{label}</p>
       </div>
       {days.map((day) => {
         const dateStr = format(day, "yyyy-MM-dd");
@@ -804,9 +804,9 @@ function ScheduledItemsSection({
 }) {
   return (
     <>
-      <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-t">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/50 border-t-2 border-t-primary/20">
         <div>
-          <p className="text-xs font-semibold leading-snug">Scheduled Items</p>
+          <p className="text-sm font-bold leading-snug">Scheduled Items</p>
           <p className="text-[10px] text-muted-foreground leading-snug">Q1 & Q2</p>
         </div>
       </div>
@@ -864,7 +864,7 @@ function ScheduledDayCell({
   };
 
   return (
-    <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.03]" : ""} group/daycell relative`}>
+    <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.05]" : "bg-muted/20"} group/daycell relative`}>
       {items.length > 0 && (
         <div className="space-y-1.5 py-2 w-full">
           {items.map((entry) => (
@@ -946,8 +946,8 @@ function EisenhowerItemRow({
         role="checkbox"
         aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
         aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
-        className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
+        className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-muted-foreground/30"
         }`}
         onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
         data-testid={`eisenhower-cycle-${entry.id}`}
@@ -1152,14 +1152,14 @@ function SortableHabitRow({
                 role="checkbox"
                 aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
                 aria-label={`${habit.name} - ${status || "not tracked"}`}
-                className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
-                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
+                className={`h-7 w-7 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-muted-foreground/30"
                 }`}
                 onClick={() => onCycle(habit.id, status, dateStr)}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
-                {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                {status === "skipped" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
+                {status === "completed" && <Check className="h-4 w-4 text-primary-foreground" />}
+                {status === "skipped" && <Minus className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />}
               </button>
             ) : null}
           </DayCell>
