@@ -12,7 +12,7 @@ import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Check, ArrowRight,
   Heart, Activity, HandHeart,
-  Target, Minus, Pencil, Plus, SkipForward, X,
+  Target, Minus, Pencil, Plus, SkipForward, X, AlertTriangle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -125,6 +125,37 @@ export default function DashboardPage() {
     if (e.quadrant !== "q2") return false;
     if (e.scheduledDate) return e.scheduledDate === todayStr;
     if (e.deadline) return e.deadline === todayStr;
+    return false;
+  });
+
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const overdueItems = eisenhowerEntries.filter((e) => {
+    if (e.status === "completed" || e.status === "skipped" || e.completed) return false;
+    if (e.quadrant !== "q1" && e.quadrant !== "q2") return false;
+    const itemDate = e.scheduledDate || e.deadline;
+    if (!itemDate) return false;
+    if (itemDate > todayStr) return false;
+    if (itemDate < todayStr) return true;
+    if (e.scheduledStartTime) {
+      const [h, m] = e.scheduledStartTime.split(":").map(Number);
+      const scheduledTime = new Date(today);
+      scheduledTime.setHours(h, m, 0, 0);
+      return scheduledTime < oneHourAgo;
+    }
+    if (e.scheduledTime) {
+      const match = e.scheduledTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (match) {
+        let h = parseInt(match[1]);
+        const m = parseInt(match[2]);
+        const ampm = match[3].toUpperCase();
+        if (ampm === "PM" && h !== 12) h += 12;
+        if (ampm === "AM" && h === 12) h = 0;
+        const scheduledTime = new Date(today);
+        scheduledTime.setHours(h, m, 0, 0);
+        return scheduledTime < oneHourAgo;
+      }
+    }
     return false;
   });
 
@@ -404,6 +435,46 @@ export default function DashboardPage() {
                     )}
                   </li>
                 ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {overdueItems.length > 0 && (
+          <Card className="overflow-visible border-red-300 dark:border-red-500/50 bg-red-50/50 dark:bg-red-950/20" data-testid="card-overdue">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                <CardTitle className="text-base font-serif text-red-700 dark:text-red-400">Overdue</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4">
+              <ul className="space-y-2">
+                {overdueItems.map((item) => {
+                  const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
+                  return (
+                    <li key={item.id} className="flex items-center gap-3" data-testid={`overdue-item-${item.id}`}>
+                      <button
+                        role="checkbox"
+                        aria-checked={false}
+                        className="h-5 w-5 rounded-md border-2 border-red-300 dark:border-red-500/50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                        onClick={() => cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: item.status || null })}
+                        data-testid={`overdue-cycle-${item.id}`}
+                      />
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
+                      <span className="text-sm flex-1">{item.task}</span>
+                      <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 dark:text-red-400">{item.quadrant?.toUpperCase()}</Badge>
+                      {(item.scheduledDate || item.deadline) && (
+                        <span className="text-xs text-red-500 dark:text-red-400">
+                          {item.scheduledDate || item.deadline}
+                        </span>
+                      )}
+                      {item.scheduledTime && (
+                        <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </CardContent>
           </Card>
