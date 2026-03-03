@@ -11,17 +11,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Check, ArrowRight,
-  Heart, Activity, HandHeart,
-  Target, Minus, Pencil, Plus, SkipForward, X, AlertTriangle,
+  Heart, Shield,
+  Target, Minus, Pencil, Plus, X, AlertTriangle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek } from "date-fns";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, Task, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
-import { MovementModal } from "@/components/tools/movement-modal";
-import { CompassionModal } from "@/components/tools/compassion-modal";
+import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
+import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { CustomToolsCard, AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+const SKIP_REASONS = [
+  "Low Capacity (sleep / fatigue / depleted)",
+  "High System Load",
+  "Avoidance (emotion-driven)",
+  "Forgot / No Cue",
+  "Unclear Next Step",
+  "Overcommitted / Too Many Tasks",
+  "Distraction / Poor Environment",
+  "Unexpected Interruption",
+  "Low Motivation / Value Disconnect",
+  "Intentional Deprioritization",
+];
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -131,7 +145,7 @@ export default function DashboardPage() {
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const overdueItems = eisenhowerEntries.filter((e) => {
-    if (e.status === "completed" || e.status === "skipped" || e.completed) return false;
+    if (e.status === "completed" || e.status === "minimum" || e.status === "skipped" || e.completed) return false;
     if (e.quadrant !== "q1" && e.quadrant !== "q2") return false;
     const itemDate = e.scheduledDate || e.deadline;
     if (!itemDate) return false;
@@ -160,12 +174,14 @@ export default function DashboardPage() {
   });
 
   const cycleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, currentStatus }: { habitId: number; currentStatus: string | null }) => {
+    mutationFn: async ({ habitId, currentStatus, skipReason }: { habitId: number; currentStatus: string | null; skipReason?: string }) => {
       let res;
       if (currentStatus === null) {
-        res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed" });
+        res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed", completionLevel: 2 });
       } else if (currentStatus === "completed") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped" });
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "minimum", completionLevel: 1 });
+      } else if (currentStatus === "minimum") {
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped", completionLevel: 0, skipReason });
       } else {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
       }
@@ -200,21 +216,24 @@ export default function DashboardPage() {
   });
 
   const cycleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+    mutationFn: async ({ id, currentStatus, skipReason }: { id: number; currentStatus: string | null; skipReason?: string }) => {
       let nextStatus: string | null;
+      let nextLevel: number | null = null;
       if (!currentStatus) {
-        nextStatus = "completed";
+        nextStatus = "completed"; nextLevel = 2;
       } else if (currentStatus === "completed") {
-        nextStatus = "skipped";
-      } else if (currentStatus === "skipped") {
-        nextStatus = "cancelled";
+        nextStatus = "minimum"; nextLevel = 1;
+      } else if (currentStatus === "minimum") {
+        nextStatus = "skipped"; nextLevel = 0;
       } else {
-        nextStatus = null;
+        nextStatus = null; nextLevel = null;
       }
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      const body: Record<string, unknown> = { status: nextStatus, completionLevel: nextLevel };
+      if (skipReason) body.skipReason = skipReason;
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update status");
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Failed to update status");
       }
     },
     onSuccess: () => {
@@ -242,6 +261,8 @@ export default function DashboardPage() {
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
+  const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
 
   const { data: customTools = [] } = useQuery<CustomTool[]>({
     queryKey: ["/api/custom-tools"],
@@ -361,15 +382,25 @@ export default function DashboardPage() {
                     <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
                       <button
                         role="checkbox"
-                        aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
-                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
+                        aria-checked={status === "completed" ? true : status ? "mixed" : false}
+                        className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                          status === "completed" ? "bg-emerald-500 border-emerald-600"
+                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
+                          : status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
+                          : "border-border"
                         }`}
-                        onClick={() => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status })}
+                        onClick={() => {
+                          if (status === "minimum") {
+                            setHabitSkipDialog({ habitId: habit.id });
+                          } else {
+                            cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status });
+                          }
+                        }}
                         data-testid={`habit-cycle-${habit.id}`}
                       >
-                        {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                        {status === "skipped" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
+                        {status === "completed" && <Check className="h-3 w-3 text-white" />}
+                        {status === "minimum" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
+                        {status === "skipped" && <X className="h-2.5 w-2.5 text-white dark:text-red-200" />}
                       </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
                       <span className={`text-sm flex-1 ${
@@ -378,7 +409,10 @@ export default function DashboardPage() {
                         {habit.name}
                       </span>
                       {status === "completed" && (
-                        <span className="text-xs text-muted-foreground">done</span>
+                        <span className="text-xs text-muted-foreground">full</span>
+                      )}
+                      {status === "minimum" && (
+                        <span className="text-xs text-muted-foreground">min</span>
                       )}
                       {status === "skipped" && (
                         <span className="text-xs text-muted-foreground">skipped</span>
@@ -495,24 +529,29 @@ export default function DashboardPage() {
                       <button
                         role="checkbox"
                         aria-checked={status === "completed" ? true : status ? "mixed" : false}
-                        className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          status === "completed" ? "bg-primary border-primary"
-                          : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50"
-                          : status === "cancelled" ? "bg-destructive/15 border-destructive/40"
+                        className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
+                          status === "completed" ? "bg-emerald-500 border-emerald-600"
+                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
+                          : status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
                           : "border-border"
                         }`}
-                        onClick={() => cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: status })}
+                        onClick={() => {
+                          if (status === "minimum") {
+                            setEisenhowerSkipDialog({ id: item.id });
+                          } else {
+                            cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: status });
+                          }
+                        }}
                         data-testid={`q2-cycle-${item.id}`}
                       >
-                        {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                        {status === "skipped" && <SkipForward className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
-                        {status === "cancelled" && <X className="h-3 w-3 text-destructive" />}
+                        {status === "completed" && <Check className="h-3 w-3 text-white" />}
+                        {status === "minimum" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
+                        {status === "skipped" && <X className="h-2.5 w-2.5 text-white dark:text-red-200" />}
                       </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground"
                         : status === "skipped" ? "text-muted-foreground italic"
-                        : status === "cancelled" ? "line-through text-muted-foreground/60"
                         : ""
                       }`}>{item.task}</span>
                       {item.scheduledTime && (
@@ -558,20 +597,20 @@ export default function DashboardPage() {
               <Button
                 variant="outline"
                 className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("movement")}
-                data-testid="button-tool-movement"
+                onClick={() => setQuickToolOpen("trigger")}
+                data-testid="button-tool-trigger"
               >
-                <Activity className="h-5 w-5 text-emerald-500" />
-                <span className="text-xs">Movement</span>
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <span className="text-xs">Trigger Log</span>
               </Button>
               <Button
                 variant="outline"
                 className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("compassion")}
-                data-testid="button-tool-compassion"
+                onClick={() => setQuickToolOpen("avoidance")}
+                data-testid="button-tool-avoidance"
               >
-                <HandHeart className="h-5 w-5 text-violet-500" />
-                <span className="text-xs">Loved One</span>
+                <Shield className="h-5 w-5 text-blue-500" />
+                <span className="text-xs">Avoidance</span>
               </Button>
             </div>
           </CardContent>
@@ -585,12 +624,8 @@ export default function DashboardPage() {
       </div>
 
       <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
-      <MovementModal open={quickToolOpen === "movement"} onClose={() => setQuickToolOpen(null)} />
-      <CompassionModal
-        open={quickToolOpen === "compassion"}
-        onClose={() => setQuickToolOpen(null)}
-        todayStr={todayStr}
-      />
+      <TriggerLogModal open={quickToolOpen === "trigger"} onClose={() => setQuickToolOpen(null)} />
+      <AvoidanceToolModal open={quickToolOpen === "avoidance"} onClose={() => setQuickToolOpen(null)} />
       <AddCustomToolModal
         open={showAddCustomTool}
         onClose={() => setShowAddCustomTool(false)}
@@ -601,6 +636,56 @@ export default function DashboardPage() {
         onClose={() => setCustomToolExercise(null)}
         tool={customToolExercise}
       />
+
+      <Dialog open={!!habitSkipDialog} onOpenChange={(open) => { if (!open) setHabitSkipDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {SKIP_REASONS.map((reason, i) => (
+              <button
+                key={i}
+                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                onClick={() => {
+                  if (habitSkipDialog) {
+                    cycleHabitMutation.mutate({ habitId: habitSkipDialog.habitId, currentStatus: "minimum", skipReason: reason });
+                    setHabitSkipDialog(null);
+                  }
+                }}
+                data-testid={`habit-skip-reason-${i}`}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!eisenhowerSkipDialog} onOpenChange={(open) => { if (!open) setEisenhowerSkipDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {SKIP_REASONS.map((reason, i) => (
+              <button
+                key={i}
+                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                onClick={() => {
+                  if (eisenhowerSkipDialog) {
+                    cycleEisenhowerMutation.mutate({ id: eisenhowerSkipDialog.id, currentStatus: "minimum", skipReason: reason });
+                    setEisenhowerSkipDialog(null);
+                  }
+                }}
+                data-testid={`eisenhower-skip-reason-${i}`}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

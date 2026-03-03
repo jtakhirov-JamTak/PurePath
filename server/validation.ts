@@ -31,6 +31,10 @@ export const createEisenhowerSchema = z.object({
   blocksGoal: z.boolean().optional().nullable(),
   completed: z.boolean().optional().nullable(),
   status: optionalString(20),
+  completionLevel: z.number().int().min(0).max(2).optional().nullable(),
+  skipReason: optionalString(100),
+  actualStartTime: optionalString(10),
+  actualDuration: z.number().int().positive().optional().nullable(),
   timeRange: z.enum(["morning", "afternoon", "evening"]).optional().nullable(),
   sortOrder: z.number().int().min(0).optional().nullable(),
 });
@@ -86,7 +90,9 @@ export const updateHabitSchema = createHabitSchema.partial();
 export const createHabitCompletionSchema = z.object({
   habitId: z.number().int().positive("habitId must be a positive integer"),
   date: dateString,
-  status: completionStatusEnum.optional().nullable(),
+  status: z.enum(["completed", "skipped", "minimum"]).optional().nullable(),
+  completionLevel: z.number().int().min(0).max(2).optional().nullable(),
+  skipReason: optionalString(100),
 });
 
 export const createTaskSchema = z.object({
@@ -155,4 +161,27 @@ export const visionBoardSchema = z.object({
 
 export const checkoutSchema = z.object({
   courseType: z.enum(["phase12", "phase3", "allinone"]),
+});
+
+export const createTriggerLogSchema = z.object({
+  date: dateString,
+  timeOfDay: z.enum(["morning", "afternoon", "evening"]),
+  context: z.enum(["Work", "Partner", "Family", "Friends", "Self"]),
+  triggerText: trimmedString(1, 2000),
+  emotion: trimmedString(1, 50),
+  emotionIntensity: z.number().int().min(1).max(5),
+  urge: trimmedString(1, 50),
+  urgeIntensity: z.number().int().min(1).max(5),
+  whatIDid: optionalString(2000),
+  outcome: optionalString(2000),
+  recoveryMinutes: z.number().int().min(0).optional().nullable(),
+});
+
+export const createAvoidanceLogSchema = z.object({
+  date: dateString,
+  avoidingWhat: trimmedString(1, 2000),
+  avoidanceDelay: optionalString(50),
+  discomfort: z.number().int().min(1).max(5),
+  smallestExposure: optionalString(2000),
+  startedNow: z.boolean().optional().nullable(),
 });

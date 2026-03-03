@@ -146,6 +146,10 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
   status: varchar("status", { length: 20 }),
+  completionLevel: integer("completion_level"),
+  skipReason: varchar("skip_reason", { length: 100 }),
+  actualStartTime: varchar("actual_start_time", { length: 10 }),
+  actualDuration: integer("actual_duration"),
   timeRange: varchar("time_range", { length: 20 }),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -249,10 +253,12 @@ export const habitCompletions = pgTable("habit_completions", {
   habitId: integer("habit_id").notNull(),
   date: date("date").notNull(),
   status: varchar("status", { length: 20 }).default("completed").notNull(),
+  completionLevel: integer("completion_level"),
+  skipReason: varchar("skip_reason", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("habit_completions_user_habit_date_idx").on(table.userId, table.habitId, table.date),
-  check("habit_completion_status_check", sql`${table.status} IN ('completed', 'skipped')`),
+  check("habit_completion_status_check", sql`${table.status} IN ('completed', 'skipped', 'minimum')`),
 ]);
 
 export const insertHabitCompletionSchema = createInsertSchema(habitCompletions).omit({
@@ -442,6 +448,51 @@ export const insertToolUsageLogSchema = createInsertSchema(toolUsageLogs).omit({
 
 export type ToolUsageLog = typeof toolUsageLogs.$inferSelect;
 export type InsertToolUsageLog = z.infer<typeof insertToolUsageLogSchema>;
+
+export const triggerLogs = pgTable("trigger_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  timeOfDay: varchar("time_of_day", { length: 20 }).notNull(),
+  context: varchar("context", { length: 50 }).notNull(),
+  triggerText: text("trigger_text").notNull(),
+  emotion: varchar("emotion", { length: 50 }).notNull(),
+  emotionIntensity: integer("emotion_intensity").notNull(),
+  urge: varchar("urge", { length: 50 }).notNull(),
+  urgeIntensity: integer("urge_intensity").notNull(),
+  whatIDid: text("what_i_did"),
+  outcome: text("outcome"),
+  recoveryMinutes: integer("recovery_minutes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertTriggerLogSchema = createInsertSchema(triggerLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type TriggerLog = typeof triggerLogs.$inferSelect;
+export type InsertTriggerLog = z.infer<typeof insertTriggerLogSchema>;
+
+export const avoidanceLogs = pgTable("avoidance_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  avoidingWhat: text("avoiding_what").notNull(),
+  avoidanceDelay: varchar("avoidance_delay", { length: 50 }),
+  discomfort: integer("discomfort").notNull(),
+  smallestExposure: text("smallest_exposure"),
+  startedNow: boolean("started_now").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AvoidanceLog = typeof avoidanceLogs.$inferSelect;
+export type InsertAvoidanceLog = z.infer<typeof insertAvoidanceLogSchema>;
 
 export const customTools = pgTable("custom_tools", {
   id: serial("id").primaryKey(),

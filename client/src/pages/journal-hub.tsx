@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Sun, Moon, ArrowRight, Lock, BarChart3, Wrench,
   ChevronLeft, ChevronRight, Download, Check, Minus,
@@ -53,6 +54,19 @@ const CATEGORY_DOTS: Record<string, string> = {
 };
 
 const TIME_RANGES = ["morning", "afternoon", "evening"] as const;
+
+const SKIP_REASONS = [
+  "Low Capacity (sleep / fatigue / depleted)",
+  "High System Load",
+  "Avoidance (emotion-driven)",
+  "Forgot / No Cue",
+  "Unclear Next Step",
+  "Overcommitted / Too Many Tasks",
+  "Distraction / Poor Environment",
+  "Unexpected Interruption",
+  "Low Motivation / Value Disconnect",
+  "Intentional Deprioritization",
+];
 type TimeRange = (typeof TIME_RANGES)[number];
 
 export default function JournalHubPage() {
@@ -132,13 +146,17 @@ export default function JournalHubPage() {
     return map;
   }, [habitCompletions]);
 
+  const [skipReasonDialog, setSkipReasonDialog] = useState<{ habitId: number; date: string } | null>(null);
+
   const cycleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, currentStatus, date }: { habitId: number; currentStatus: string | null; date: string }) => {
+    mutationFn: async ({ habitId, currentStatus, date, skipReason }: { habitId: number; currentStatus: string | null; date: string; skipReason?: string }) => {
       let res;
       if (currentStatus === null) {
-        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
+        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed", completionLevel: 2 });
       } else if (currentStatus === "completed") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "minimum", completionLevel: 1 });
+      } else if (currentStatus === "minimum") {
+        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped", completionLevel: 0, skipReason: skipReason || null });
       } else {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
       }
@@ -156,10 +174,23 @@ export default function JournalHubPage() {
     },
   });
 
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
+
   const toggleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
-      const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+    mutationFn: async ({ id, currentStatus, completionLevel, skipReason }: { id: number; currentStatus: string | null; completionLevel?: number; skipReason?: string }) => {
+      let nextStatus: string | null;
+      let nextLevel: number | null = null;
+      if (currentStatus === null || currentStatus === undefined) {
+        nextStatus = "completed"; nextLevel = 2;
+      } else if (currentStatus === "completed") {
+        nextStatus = "minimum"; nextLevel = 1;
+      } else if (currentStatus === "minimum") {
+        nextStatus = "skipped"; nextLevel = 0;
+      } else {
+        nextStatus = null; nextLevel = null;
+      }
+      if (completionLevel !== undefined) nextLevel = completionLevel;
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus, completionLevel: nextLevel, skipReason: skipReason || null });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to update status");
@@ -576,6 +607,7 @@ export default function JournalHubPage() {
                 createEisenhowerMutation={createEisenhowerMutation}
                 updateEisenhowerMutation={updateEisenhowerMutation}
                 deleteEisenhowerMutation={deleteEisenhowerMutation}
+                onSkipRequest={(id) => setEisenhowerSkipDialog({ id })}
               />
 
               <SectionHeaderRow label="Habits" days={days} todayStr={today} />
@@ -596,7 +628,10 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCycle={(habitId, status, date) => {
+                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
+                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
                   onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("morning"); setHabitDialogOpen(true); }}
@@ -610,7 +645,10 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCycle={(habitId, status, date) => {
+                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
+                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
                   onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("afternoon"); setHabitDialogOpen(true); }}
@@ -624,7 +662,10 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => cycleHabitMutation.mutate({ habitId, currentStatus: status, date })}
+                  onCycle={(habitId, status, date) => {
+                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
+                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
                   onAddHabit={() => { setHabitDialogEditing(null); setHabitDialogTiming("evening"); setHabitDialogOpen(true); }}
@@ -753,6 +794,56 @@ export default function JournalHubPage() {
         editingHabit={habitDialogEditing}
         defaultTiming={habitDialogTiming}
       />
+
+      <Dialog open={!!skipReasonDialog} onOpenChange={(open) => { if (!open) setSkipReasonDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {SKIP_REASONS.map((reason, i) => (
+              <button
+                key={i}
+                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                onClick={() => {
+                  if (skipReasonDialog) {
+                    cycleHabitMutation.mutate({ habitId: skipReasonDialog.habitId, currentStatus: "minimum", date: skipReasonDialog.date, skipReason: reason });
+                    setSkipReasonDialog(null);
+                  }
+                }}
+                data-testid={`skip-reason-${i}`}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!eisenhowerSkipDialog} onOpenChange={(open) => { if (!open) setEisenhowerSkipDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {SKIP_REASONS.map((reason, i) => (
+              <button
+                key={i}
+                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                onClick={() => {
+                  if (eisenhowerSkipDialog) {
+                    toggleEisenhowerMutation.mutate({ id: eisenhowerSkipDialog.id, currentStatus: "minimum", skipReason: reason });
+                    setEisenhowerSkipDialog(null);
+                  }
+                }}
+                data-testid={`eisenhower-skip-reason-${i}`}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
@@ -792,6 +883,7 @@ function ScheduledItemsSection({
   createEisenhowerMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
+  onSkipRequest,
 }: {
   days: Date[];
   todayStr: string;
@@ -801,6 +893,7 @@ function ScheduledItemsSection({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
+  onSkipRequest: (id: number) => void;
 }) {
   return (
     <>
@@ -824,6 +917,7 @@ function ScheduledItemsSection({
             createEisenhowerMutation={createEisenhowerMutation}
             updateEisenhowerMutation={updateEisenhowerMutation}
             deleteEisenhowerMutation={deleteEisenhowerMutation}
+            onSkipRequest={onSkipRequest}
           />
         );
       })}
@@ -840,6 +934,7 @@ function ScheduledDayCell({
   createEisenhowerMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
+  onSkipRequest,
 }: {
   dateStr: string;
   todayStr: string;
@@ -849,6 +944,7 @@ function ScheduledDayCell({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
+  onSkipRequest: (id: number) => void;
 }) {
   const isToday = dateStr === todayStr;
   const [showAdd, setShowAdd] = useState(false);
@@ -874,6 +970,7 @@ function ScheduledDayCell({
               toggleEisenhowerMutation={toggleEisenhowerMutation}
               updateEisenhowerMutation={updateEisenhowerMutation}
               deleteEisenhowerMutation={deleteEisenhowerMutation}
+              onSkipRequest={onSkipRequest}
             />
           ))}
         </div>
@@ -918,11 +1015,13 @@ function EisenhowerItemRow({
   toggleEisenhowerMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
+  onSkipRequest,
 }: {
   entry: EisenhowerEntry;
   toggleEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
+  onSkipRequest?: (id: number) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(entry.task);
@@ -944,16 +1043,23 @@ function EisenhowerItemRow({
     <div className="flex items-start gap-1.5 px-1 group/eitem" data-testid={`eisenhower-${entry.id}`}>
       <button
         role="checkbox"
-        aria-checked={entry.status === "completed" ? true : entry.status === "skipped" ? "mixed" : false}
-        aria-label={`${entry.task} - ${entry.status === "completed" ? "completed" : entry.status === "skipped" ? "skipped" : "not tracked"}. Click to cycle.`}
+        aria-checked={entry.status === "completed" ? true : entry.status ? "mixed" : false}
+        aria-label={`${entry.task} - ${entry.status === "completed" ? "Full" : entry.status === "minimum" ? "Minimum" : entry.status === "skipped" ? "Skipped" : "Not done"}. Click to cycle.`}
         className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-          entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-muted-foreground/30"
+          entry.status === "completed" ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500"
+          : entry.status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
+          : entry.status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
+          : "border-muted-foreground/30"
         }`}
-        onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+        onClick={() => {
+          if (entry.status === "minimum" && onSkipRequest) { onSkipRequest(entry.id); return; }
+          toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null });
+        }}
         data-testid={`eisenhower-cycle-${entry.id}`}
       >
-        {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-        {entry.status === "skipped" && <Minus className="h-2.5 w-2.5 text-yellow-700 dark:text-yellow-300" />}
+        {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
+        {entry.status === "minimum" && <Minus className="h-2.5 w-2.5 text-yellow-700 dark:text-yellow-300" />}
+        {entry.status === "skipped" && <X className="h-2 w-2 text-white dark:text-red-200" />}
       </button>
       <div className="flex-1 min-w-0">
         {editing ? (
@@ -1145,21 +1251,29 @@ function SortableHabitRow({
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
 
+        const statusLabel = status === "completed" ? "Full" : status === "minimum" ? "Minimum" : status === "skipped" ? "Skipped" : "Not done";
+        const boxClass = status === "completed"
+          ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500"
+          : status === "minimum"
+          ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
+          : status === "skipped"
+          ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
+          : "border-muted-foreground/30";
+
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
               <button
                 role="checkbox"
-                aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
-                aria-label={`${habit.name} - ${status || "not tracked"}`}
-                className={`h-7 w-7 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer ${
-                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-muted-foreground/30"
-                }`}
+                aria-checked={status === "completed" ? true : status ? "mixed" : false}
+                aria-label={`${habit.name} - ${statusLabel}`}
+                className={`h-7 w-7 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer ${boxClass}`}
                 onClick={() => onCycle(habit.id, status, dateStr)}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
-                {status === "completed" && <Check className="h-4 w-4 text-primary-foreground" />}
-                {status === "skipped" && <Minus className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />}
+                {status === "completed" && <Check className="h-4 w-4 text-white" />}
+                {status === "minimum" && <Minus className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />}
+                {status === "skipped" && <X className="h-3.5 w-3.5 text-white dark:text-red-200" />}
               </button>
             ) : null}
           </DayCell>

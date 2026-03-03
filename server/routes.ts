@@ -48,6 +48,7 @@ import {
   createCustomToolSchema, updateCustomToolSchema,
   chatMessageSchema, phase3AnalyzeSchema,
   visionBoardSchema, checkoutSchema,
+  createTriggerLogSchema, createAvoidanceLogSchema,
 } from "./validation";
 
 const upload = multer({ dest: "/tmp/audio-uploads", limits: { fileSize: 10 * 1024 * 1024 } });
@@ -243,6 +244,37 @@ export async function registerRoutes(
         userId,
         ...parsed.data,
       });
+
+      if (parsed.data.session === "evening" && parsed.data.tomorrowGoals) {
+        try {
+          const content = parsed.data.content ? JSON.parse(parsed.data.content) : {};
+          const tomorrowStep = parsed.data.tomorrowGoals.trim();
+          if (tomorrowStep) {
+            const journalDate = new Date(parsed.data.date + "T12:00:00");
+            const tomorrow = new Date(journalDate);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
+            const dayOfWeek = tomorrow.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const weekStartDate = new Date(tomorrow);
+            weekStartDate.setDate(weekStartDate.getDate() + mondayOffset);
+            const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+            const scheduledTime = content.tomorrowStepTime || "08:00";
+            await storage.createEisenhowerEntry({
+              userId,
+              task: tomorrowStep,
+              weekStart: weekStartStr,
+              role: "self-development",
+              quadrant: "q1",
+              scheduledDate: tomorrowStr,
+              scheduledStartTime: scheduledTime,
+            });
+          }
+        } catch (e) {
+          console.error("Error auto-creating Q1 from evening journal:", e);
+        }
+      }
+
       res.json(journal);
     } catch (error) {
       console.error("Error saving journal:", error);
@@ -953,13 +985,13 @@ Return a JSON object with a single key "items" containing an array of parsed tas
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
       const userId = req.user.claims.sub;
-      const { habitId, date, status } = parsed.data;
-      const validStatus = status === "skipped" ? "skipped" : "completed";
+      const { habitId, date, status, completionLevel, skipReason } = parsed.data;
+      const validStatus = status === "skipped" ? "skipped" : status === "minimum" ? "minimum" : "completed";
       const userHabits = await storage.getHabitsByUser(userId);
       if (!userHabits.some(h => h.id === habitId)) {
         return res.status(403).json({ error: "Habit not found" });
       }
-      const completion = await storage.createHabitCompletion({ userId, habitId, date, status: validStatus });
+      const completion = await storage.createHabitCompletion({ userId, habitId, date, status: validStatus, completionLevel: completionLevel ?? null, skipReason: skipReason ?? null });
       res.json(completion);
     } catch (error: any) {
       if (error?.code === "23505") {
@@ -974,9 +1006,13 @@ Return a JSON object with a single key "items" containing an array of parsed tas
     try {
       const userId = req.user.claims.sub;
       const { habitId, date } = req.params;
-      const { status } = req.body;
-      const validStatus = status === "skipped" ? "skipped" : "completed";
-      await storage.updateHabitCompletionStatus(userId, parseInt(habitId), date, validStatus);
+      const { status, completionLevel, skipReason } = req.body;
+      const validStatus = status === "skipped" ? "skipped" : status === "minimum" ? "minimum" : "completed";
+      await storage.updateHabitCompletionFull(userId, parseInt(habitId), date, {
+        status: validStatus,
+        completionLevel: completionLevel ?? null,
+        skipReason: skipReason ?? null,
+      });
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating habit completion:", error);
@@ -1648,6 +1684,62 @@ Be compassionate but honest. Use evidence from their text to support your observ
     } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  // ==================== TRIGGER LOGS ====================
+
+  app.get("/api/trigger-logs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const logs = await storage.getTriggerLogsByUser(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching trigger logs:", error);
+      res.status(500).json({ error: "Failed to fetch trigger logs" });
+    }
+  });
+
+  app.post("/api/trigger-logs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const parsed = createTriggerLogSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const log = await storage.createTriggerLog({ userId, ...parsed.data });
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating trigger log:", error);
+      res.status(500).json({ error: "Failed to create trigger log" });
+    }
+  });
+
+  // ==================== AVOIDANCE LOGS ====================
+
+  app.get("/api/avoidance-logs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const logs = await storage.getAvoidanceLogsByUser(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching avoidance logs:", error);
+      res.status(500).json({ error: "Failed to fetch avoidance logs" });
+    }
+  });
+
+  app.post("/api/avoidance-logs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const parsed = createAvoidanceLogSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const log = await storage.createAvoidanceLog({ userId, ...parsed.data });
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating avoidance log:", error);
+      res.status(500).json({ error: "Failed to create avoidance log" });
     }
   });
 

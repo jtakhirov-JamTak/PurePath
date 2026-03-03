@@ -12,13 +12,16 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, AlertTriangle, BarChart3, Power } from "lucide-react";
+import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, AlertTriangle, BarChart3, Power, BatteryFull, BatteryMedium, BatteryLow, Battery, BedDouble, Signal, SignalLow, SignalMedium, SignalHigh } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { Journal, Purchase, MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 interface MorningContent {
+  sleepHours: string;
+  energyLevel: string;
+  stressLevel: string;
   intention: string;
   gratitude: string;
   joy: string;
@@ -52,11 +55,19 @@ interface EveningContent {
   triggerNextTime: string;
   satisfied: string;
   dissatisfied: string;
+  winOfTheDay: string;
   shutdownEnough: string;
   shutdownTomorrow: string;
+  tomorrowStepTime: string;
 }
 
+const energyLabels = ["Depleted", "Low", "Enough", "Good", "Strong", "Fully Charged"];
+const stressLabels = ["Calm", "Light", "Noticeable", "Moderate", "Heavy", "Overloaded"];
+
 const emptyMorning: MorningContent = {
+  sleepHours: "",
+  energyLevel: "",
+  stressLevel: "",
   intention: "",
   gratitude: "",
   joy: "",
@@ -90,8 +101,10 @@ const emptyEvening: EveningContent = {
   triggerNextTime: "",
   satisfied: "",
   dissatisfied: "",
+  winOfTheDay: "",
   shutdownEnough: "",
   shutdownTomorrow: "",
+  tomorrowStepTime: "08:00",
 };
 
 const emotionOptions = ["fear", "anger", "sadness", "shame", "guilt", "anxiety", "disgust", "jealousy", "frustration", "other"];
@@ -384,6 +397,112 @@ export default function JournalEntryPage() {
                 )}
               </div>
             )}
+
+            <Card data-testid="card-check-in">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <BedDouble className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Check-In</CardTitle>
+                    <CardDescription>How are you starting today? <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Sleep — Approximate hours slept</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="14"
+                    step="0.5"
+                    value={morningData.sleepHours}
+                    onChange={(e) => updateMorning("sleepHours", e.target.value)}
+                    placeholder="Hours slept (0–14)"
+                    className="w-40"
+                    data-testid="input-sleep-hours"
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Energy — How charged do you feel?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {energyLabels.map((label, i) => {
+                      const selected = morningData.energyLevel === String(i);
+                      const filledBars = i;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => updateMorning("energyLevel", String(i))}
+                          className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
+                            selected
+                              ? "border-primary bg-primary/[0.08] text-foreground"
+                              : "border-border bg-background text-muted-foreground hover-elevate"
+                          }`}
+                          data-testid={`button-energy-${i}`}
+                        >
+                          <div className="flex items-end gap-px h-5">
+                            {[0, 1, 2, 3, 4].map((bar) => (
+                              <div
+                                key={bar}
+                                className={`w-1.5 rounded-sm ${
+                                  bar <= filledBars - 1
+                                    ? selected ? "bg-primary" : "bg-muted-foreground/60"
+                                    : "bg-muted-foreground/20"
+                                }`}
+                                style={{ height: `${8 + bar * 3}px` }}
+                              />
+                            ))}
+                          </div>
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Stress — How much pressure do you feel?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {stressLabels.map((label, i) => {
+                      const selected = morningData.stressLevel === String(i);
+                      const filledBars = i;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => updateMorning("stressLevel", String(i))}
+                          className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
+                            selected
+                              ? "border-primary bg-primary/[0.08] text-foreground"
+                              : "border-border bg-background text-muted-foreground hover-elevate"
+                          }`}
+                          data-testid={`button-stress-${i}`}
+                        >
+                          <div className="flex items-end gap-px h-5">
+                            {[0, 1, 2, 3, 4].map((bar) => (
+                              <div
+                                key={bar}
+                                className={`w-1.5 rounded-sm ${
+                                  bar <= filledBars - 1
+                                    ? selected ? "bg-destructive" : "bg-muted-foreground/60"
+                                    : "bg-muted-foreground/20"
+                                }`}
+                                style={{ height: `${8 + bar * 3}px` }}
+                              />
+                            ))}
+                          </div>
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card data-testid="card-self-awareness">
               <CardHeader>
@@ -859,6 +978,31 @@ export default function JournalEntryPage() {
               </CardContent>
             </Card>
 
+            <Card data-testid="card-win-of-the-day">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Star className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Win of the Day</CardTitle>
+                    <CardDescription>One small observable win <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <VoiceTextarea
+                    value={eveningData.winOfTheDay}
+                    onChange={(val) => updateEvening("winOfTheDay", val)}
+                    placeholder="My win today was..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="input-win-of-the-day"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card data-testid="card-shutdown">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -884,7 +1028,17 @@ export default function JournalEntryPage() {
                 </div>
                 <Separator />
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
+                    <span className="text-sm text-muted-foreground">at</span>
+                    <Input
+                      type="time"
+                      value={eveningData.tomorrowStepTime}
+                      onChange={(e) => updateEvening("tomorrowStepTime", e.target.value)}
+                      className="w-28"
+                      data-testid="input-tomorrow-step-time"
+                    />
+                  </div>
                   <VoiceTextarea
                     value={eveningData.shutdownTomorrow}
                     onChange={(val) => updateEvening("shutdownTomorrow", val)}

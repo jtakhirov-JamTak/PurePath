@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -14,7 +14,9 @@ import {
   type MonthlyGoal, type InsertMonthlyGoal,
   type PlanVersion, type InsertPlanVersion,
   type ToolUsageLog, type InsertToolUsageLog,
-  type CustomTool, type InsertCustomTool
+  type CustomTool, type InsertCustomTool,
+  type TriggerLog, type InsertTriggerLog,
+  type AvoidanceLog, type InsertAvoidanceLog,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
@@ -98,6 +100,17 @@ export interface IStorage {
   createCustomTool(tool: InsertCustomTool): Promise<CustomTool>;
   updateCustomTool(id: number, updates: Partial<InsertCustomTool>): Promise<CustomTool>;
   deleteCustomTool(id: number): Promise<void>;
+
+  // Trigger Logs
+  getTriggerLogsByUser(userId: string): Promise<TriggerLog[]>;
+  createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog>;
+
+  // Avoidance Logs
+  getAvoidanceLogsByUser(userId: string): Promise<AvoidanceLog[]>;
+  createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog>;
+
+  // Habit completion level updates
+  updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -485,6 +498,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomTool(id: number): Promise<void> {
     await db.delete(customTools).where(eq(customTools.id, id));
+  }
+
+  async getTriggerLogsByUser(userId: string): Promise<TriggerLog[]> {
+    return db.select().from(triggerLogs).where(eq(triggerLogs.userId, userId)).orderBy(desc(triggerLogs.createdAt));
+  }
+
+  async createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog> {
+    const [created] = await db.insert(triggerLogs).values(log).returning();
+    return created;
+  }
+
+  async getAvoidanceLogsByUser(userId: string): Promise<AvoidanceLog[]> {
+    return db.select().from(avoidanceLogs).where(eq(avoidanceLogs.userId, userId)).orderBy(desc(avoidanceLogs.createdAt));
+  }
+
+  async createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog> {
+    const [created] = await db.insert(avoidanceLogs).values(log).returning();
+    return created;
+  }
+
+  async updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void> {
+    await db.update(habitCompletions).set(updates).where(
+      and(eq(habitCompletions.userId, userId), eq(habitCompletions.habitId, habitId), eq(habitCompletions.date, date))
+    );
   }
 }
 
