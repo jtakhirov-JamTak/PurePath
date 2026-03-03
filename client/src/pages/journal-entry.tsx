@@ -430,7 +430,7 @@ export default function JournalEntryPage() {
                     {energyLabels.map((label, i) => {
                       const selected = morningData.energyLevel === String(i);
                       const totalBars = i === 4 ? 5 : 4;
-                      const filledBars = i === 0 ? 0 : i;
+                      const filledBars = i + 1;
                       return (
                         <button
                           key={i}
@@ -475,7 +475,7 @@ export default function JournalEntryPage() {
                     {stressLabels.map((label, i) => {
                       const selected = morningData.stressLevel === String(i);
                       const totalBars = i === 4 ? 5 : 4;
-                      const filledBars = i === 0 ? 0 : i;
+                      const filledBars = i + 1;
                       return (
                         <button
                           key={i}
