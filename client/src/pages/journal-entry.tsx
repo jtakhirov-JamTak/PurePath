@@ -12,7 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, AlertTriangle, BarChart3, Power, BatteryFull, BatteryMedium, BatteryLow, Battery, BedDouble, Signal, SignalLow, SignalMedium, SignalHigh } from "lucide-react";
+import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, Power, BedDouble } from "lucide-react";
+import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -61,8 +62,8 @@ interface EveningContent {
   tomorrowStepTime: string;
 }
 
-const energyLabels = ["Depleted", "Low", "Enough", "Good", "Strong", "Fully Charged"];
-const stressLabels = ["Calm", "Light", "Noticeable", "Moderate", "Heavy", "Overloaded"];
+const energyLabels = ["Depleted", "Enough", "Good", "Strong", "Supercharged"];
+const stressLabels = ["Calm", "Noticeable", "Moderate", "Heavy", "Overloaded"];
 
 const emptyMorning: MorningContent = {
   sleepHours: "",
@@ -107,10 +108,6 @@ const emptyEvening: EveningContent = {
   tomorrowStepTime: "08:00",
 };
 
-const emotionOptions = ["fear", "anger", "sadness", "shame", "guilt", "anxiety", "disgust", "jealousy", "frustration", "other"];
-const triggerEmotionOptions = ["fear", "anger", "sadness", "shame", "guilt", "anxiety", "disgust", "jealousy", "frustration", "other"];
-const triggerUrgeOptions = ["defend", "withdraw", "attack", "freeze", "avoid", "people-please", "control", "numb", "overthink", "other"];
-
 export default function JournalEntryPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -126,6 +123,7 @@ export default function JournalEntryPage() {
   const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
   const [journalMode, setJournalMode] = useState<"quick" | "deep">("deep");
+  const [avoidanceToolOpen, setAvoidanceToolOpen] = useState(false);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -431,7 +429,8 @@ export default function JournalEntryPage() {
                   <div className="flex flex-wrap gap-2">
                     {energyLabels.map((label, i) => {
                       const selected = morningData.energyLevel === String(i);
-                      const filledBars = i;
+                      const totalBars = i === 4 ? 5 : 4;
+                      const filledBars = i === 0 ? 0 : i;
                       return (
                         <button
                           key={i}
@@ -445,17 +444,23 @@ export default function JournalEntryPage() {
                           data-testid={`button-energy-${i}`}
                         >
                           <div className="flex items-end gap-px h-5">
-                            {[0, 1, 2, 3, 4].map((bar) => (
-                              <div
-                                key={bar}
-                                className={`w-1.5 rounded-sm ${
-                                  bar <= filledBars - 1
-                                    ? selected ? "bg-primary" : "bg-muted-foreground/60"
-                                    : "bg-muted-foreground/20"
-                                }`}
-                                style={{ height: `${8 + bar * 3}px` }}
-                              />
-                            ))}
+                            {Array.from({ length: totalBars }, (_, bar) => {
+                              const isBonusBar = i === 4 && bar === 4;
+                              const filled = bar < filledBars;
+                              return (
+                                <div
+                                  key={bar}
+                                  className={`w-1.5 rounded-sm ${
+                                    isBonusBar
+                                      ? selected ? "bg-yellow-400" : "bg-yellow-400/40"
+                                      : filled
+                                        ? selected ? "bg-emerald-500" : "bg-muted-foreground/60"
+                                        : "bg-muted-foreground/20"
+                                  }`}
+                                  style={{ height: `${8 + bar * 3}px` }}
+                                />
+                              );
+                            })}
                           </div>
                           <span>{label}</span>
                         </button>
@@ -469,7 +474,8 @@ export default function JournalEntryPage() {
                   <div className="flex flex-wrap gap-2">
                     {stressLabels.map((label, i) => {
                       const selected = morningData.stressLevel === String(i);
-                      const filledBars = i;
+                      const totalBars = i === 4 ? 5 : 4;
+                      const filledBars = i === 0 ? 0 : i;
                       return (
                         <button
                           key={i}
@@ -477,23 +483,29 @@ export default function JournalEntryPage() {
                           onClick={() => updateMorning("stressLevel", String(i))}
                           className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
                             selected
-                              ? "border-primary bg-primary/[0.08] text-foreground"
+                              ? "border-orange-400 bg-orange-50 dark:bg-orange-950/30 text-foreground"
                               : "border-border bg-background text-muted-foreground hover-elevate"
                           }`}
                           data-testid={`button-stress-${i}`}
                         >
                           <div className="flex items-end gap-px h-5">
-                            {[0, 1, 2, 3, 4].map((bar) => (
-                              <div
-                                key={bar}
-                                className={`w-1.5 rounded-sm ${
-                                  bar <= filledBars - 1
-                                    ? selected ? "bg-destructive" : "bg-muted-foreground/60"
-                                    : "bg-muted-foreground/20"
-                                }`}
-                                style={{ height: `${8 + bar * 3}px` }}
-                              />
-                            ))}
+                            {Array.from({ length: totalBars }, (_, bar) => {
+                              const isBonusBar = i === 4 && bar === 4;
+                              const filled = bar < filledBars;
+                              return (
+                                <div
+                                  key={bar}
+                                  className={`w-1.5 rounded-sm ${
+                                    isBonusBar
+                                      ? selected ? "bg-red-500" : "bg-red-500/40"
+                                      : filled
+                                        ? selected ? "bg-orange-400" : "bg-muted-foreground/60"
+                                        : "bg-muted-foreground/20"
+                                  }`}
+                                  style={{ height: `${8 + bar * 3}px` }}
+                                />
+                              );
+                            })}
                           </div>
                           <span>{label}</span>
                         </button>
@@ -550,7 +562,7 @@ export default function JournalEntryPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Gratitude — Who am I grateful for? Do one small action.</Label>
+                  <Label className="text-sm font-medium">Gratitude — Who or what am I grateful for today?</Label>
                   <VoiceTextarea
                     value={morningData.gratitude}
                     onChange={(val) => updateMorning("gratitude", val)}
@@ -561,30 +573,15 @@ export default function JournalEntryPage() {
                 </div>
                 <Separator />
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Joy — What's one thing I'm excited about?</Label>
+                  <Label className="text-sm font-medium">Joy — What's one thing I'm looking forward to today?</Label>
                   <VoiceTextarea
                     value={morningData.joy}
                     onChange={(val) => updateMorning("joy", val)}
-                    placeholder="I'm excited about..."
+                    placeholder="I'm looking forward to..."
                     className="min-h-[60px] resize-none"
                     data-testid="input-joy"
                   />
                 </div>
-                {journalMode === "deep" && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Enjoy — Make an exciting plan!</Label>
-                      <VoiceTextarea
-                        value={morningData.enjoy}
-                        onChange={(val) => updateMorning("enjoy", val)}
-                        placeholder="My exciting plan for today..."
-                        className="min-h-[60px] resize-none"
-                        data-testid="input-enjoy"
-                      />
-                    </div>
-                  </>
-                )}
               </CardContent>
             </Card>
 
@@ -602,7 +599,7 @@ export default function JournalEntryPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Avoidance — What's the one thing I'm avoiding?</Label>
+                  <Label className="text-sm font-medium">What am I avoiding?</Label>
                   <VoiceTextarea
                     value={morningData.avoidance}
                     onChange={(val) => updateMorning("avoidance", val)}
@@ -611,62 +608,9 @@ export default function JournalEntryPage() {
                     data-testid="input-avoidance"
                   />
                 </div>
-                {journalMode === "deep" && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Understanding — What belief or emotion is under the avoidance?</Label>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Select
-                          value={morningData.understandingEmotion}
-                          onValueChange={(v) => updateMorning("understandingEmotion", v)}
-                        >
-                          <SelectTrigger className="sm:w-[180px]" data-testid="select-understanding-emotion">
-                            <SelectValue placeholder="Select emotion..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {emotionOptions.map(e => (
-                              <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {morningData.understandingEmotion === "other" && (
-                          <Input
-                            value={morningData.understandingEmotionOther}
-                            onChange={(e) => updateMorning("understandingEmotionOther", e.target.value)}
-                            placeholder="Specify emotion..."
-                            className="sm:w-[180px]"
-                            data-testid="input-understanding-emotion-other"
-                          />
-                        )}
-                        <VoiceTextarea
-                          value={morningData.understanding}
-                          onChange={(val) => updateMorning("understanding", val)}
-                          placeholder="The belief underneath is..."
-                          className="min-h-[60px] resize-none flex-1"
-                          data-testid="input-understanding"
-                        />
-                      </div>
-                    </div>
-                    <div className="rounded-md bg-primary/[0.04] p-3">
-                      <p className="text-sm text-muted-foreground italic">Containment — Do Emotional Containment exercise</p>
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Counter-evidence — One real example that contradicts this belief</Label>
-                      <VoiceTextarea
-                        value={morningData.counterEvidence}
-                        onChange={(val) => updateMorning("counterEvidence", val)}
-                        placeholder="A real example that contradicts this..."
-                        className="min-h-[60px] resize-none"
-                        data-testid="input-counter-evidence"
-                      />
-                    </div>
-                  </>
-                )}
                 <Separator />
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Action — One small exposure rep to begin</Label>
+                  <Label className="text-sm font-medium">What is the smallest exposure rep?</Label>
                   <VoiceTextarea
                     value={morningData.courageAction}
                     onChange={(val) => updateMorning("courageAction", val)}
@@ -675,50 +619,45 @@ export default function JournalEntryPage() {
                     data-testid="input-courage-action"
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setAvoidanceToolOpen(true)}
+                  className="mt-2"
+                  data-testid="button-open-avoidance-tool"
+                >
+                  <Shield className="mr-2 h-3.5 w-3.5" />
+                  Go to Avoidance Tool
+                </Button>
               </CardContent>
             </Card>
 
-            {journalMode === "deep" && (
-              <Card data-testid="card-release">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                      <Wind className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="font-serif text-lg">Release</CardTitle>
-                      <CardDescription>Let go of what's weighing on you <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
-                    </div>
+            <Card data-testid="card-release">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <Wind className="h-4 w-4 text-primary" />
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Stress — What's the one thing I'm overly fixated on?</Label>
-                    <VoiceTextarea
-                      value={morningData.stress}
-                      onChange={(val) => updateMorning("stress", val)}
-                      placeholder="I'm overly fixated on..."
-                      className="min-h-[60px] resize-none"
-                      data-testid="input-stress"
-                    />
+                  <div>
+                    <CardTitle className="font-serif text-lg">Release</CardTitle>
+                    <CardDescription>Let go of what's weighing on you <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
                   </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Perspective Shift — What would it look like to loosen by 50%?</Label>
-                    <VoiceTextarea
-                      value={morningData.perspectiveShift}
-                      onChange={(val) => updateMorning("perspectiveShift", val)}
-                      placeholder="If I loosened my grip, it would look like..."
-                      className="min-h-[60px] resize-none"
-                      data-testid="input-perspective-shift"
-                    />
-                  </div>
-                  <div className="rounded-md bg-primary/[0.04] p-3">
-                    <p className="text-sm text-muted-foreground italic">Release — Loosen your grip</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
+                  <VoiceTextarea
+                    value={morningData.stress}
+                    onChange={(val) => updateMorning("stress", val)}
+                    placeholder="Today I'm letting go of..."
+                    className="min-h-[60px] resize-none"
+                    data-testid="input-stress"
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <div className="space-y-10">
@@ -782,201 +721,6 @@ export default function JournalEntryPage() {
               </CardContent>
             </Card>
             )}
-
-            {journalMode === "deep" && (
-            <Card data-testid="card-trigger-log">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <AlertTriangle className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Trigger Log</CardTitle>
-                    <CardDescription>Track and understand your emotional triggers <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Trigger (observable — a camera/mic would capture this)</Label>
-                  <VoiceTextarea
-                    value={eveningData.trigger}
-                    onChange={(val) => updateEvening("trigger", val)}
-                    placeholder="What happened..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-trigger"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Story I told myself (1 sentence)</Label>
-                  <VoiceTextarea
-                    value={eveningData.triggerStory}
-                    onChange={(val) => updateEvening("triggerStory", val)}
-                    placeholder="The story I told myself was..."
-                    className="min-h-[50px] resize-none"
-                    data-testid="input-trigger-story"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">My first impulse/urge</Label>
-                  <VoiceTextarea
-                    value={eveningData.triggerImpulse}
-                    onChange={(val) => updateEvening("triggerImpulse", val)}
-                    placeholder="My first impulse was to..."
-                    className="min-h-[50px] resize-none"
-                    data-testid="input-trigger-impulse"
-                  />
-                </div>
-                <Separator />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Emotion (0–10)</Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={eveningData.triggerEmotion}
-                        onValueChange={(v) => updateEvening("triggerEmotion", v)}
-                      >
-                        <SelectTrigger className="flex-1" data-testid="select-trigger-emotion">
-                          <SelectValue placeholder="Emotion..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {triggerEmotionOptions.map(e => (
-                            <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="10"
-                        value={eveningData.triggerEmotionLevel}
-                        onChange={(e) => updateEvening("triggerEmotionLevel", e.target.value)}
-                        placeholder="0-10"
-                        className="w-20"
-                        data-testid="input-trigger-emotion-level"
-                      />
-                    </div>
-                    {eveningData.triggerEmotion === "other" && (
-                      <Input
-                        value={eveningData.triggerEmotionOther}
-                        onChange={(e) => updateEvening("triggerEmotionOther", e.target.value)}
-                        placeholder="Specify emotion..."
-                        data-testid="input-trigger-emotion-other"
-                      />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Urge (0–10)</Label>
-                    <div className="flex gap-2">
-                      <Select
-                        value={eveningData.triggerUrge}
-                        onValueChange={(v) => updateEvening("triggerUrge", v)}
-                      >
-                        <SelectTrigger className="flex-1" data-testid="select-trigger-urge">
-                          <SelectValue placeholder="Urge..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {triggerUrgeOptions.map(e => (
-                            <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="10"
-                        value={eveningData.triggerUrgeLevel}
-                        onChange={(e) => updateEvening("triggerUrgeLevel", e.target.value)}
-                        placeholder="0-10"
-                        className="w-20"
-                        data-testid="input-trigger-urge-level"
-                      />
-                    </div>
-                    {eveningData.triggerUrge === "other" && (
-                      <Input
-                        value={eveningData.triggerUrgeOther}
-                        onChange={(e) => updateEvening("triggerUrgeOther", e.target.value)}
-                        placeholder="Specify urge..."
-                        data-testid="input-trigger-urge-other"
-                      />
-                    )}
-                  </div>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">What I did (behavior)</Label>
-                  <VoiceTextarea
-                    value={eveningData.triggerBehavior}
-                    onChange={(val) => updateEvening("triggerBehavior", val)}
-                    placeholder="What I actually did..."
-                    className="min-h-[50px] resize-none"
-                    data-testid="input-trigger-behavior"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Outcome (what happened)</Label>
-                  <VoiceTextarea
-                    value={eveningData.triggerOutcome}
-                    onChange={(val) => updateEvening("triggerOutcome", val)}
-                    placeholder="What happened as a result..."
-                    className="min-h-[50px] resize-none"
-                    data-testid="input-trigger-outcome"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Next Time — "If X happens, I will do Y."</Label>
-                  <VoiceTextarea
-                    value={eveningData.triggerNextTime}
-                    onChange={(val) => updateEvening("triggerNextTime", val)}
-                    placeholder="If this happens again, I will..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-trigger-next-time"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            )}
-
-            <Card data-testid="card-8020-tracker">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">80/20 Tracker</CardTitle>
-                    <CardDescription>What's working and what isn't <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">What am I satisfied with?</Label>
-                  <VoiceTextarea
-                    value={eveningData.satisfied}
-                    onChange={(val) => updateEvening("satisfied", val)}
-                    placeholder="I'm satisfied with..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-satisfied"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">What am I dissatisfied with?</Label>
-                  <VoiceTextarea
-                    value={eveningData.dissatisfied}
-                    onChange={(val) => updateEvening("dissatisfied", val)}
-                    placeholder="I'm dissatisfied with..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-dissatisfied"
-                  />
-                </div>
-              </CardContent>
-            </Card>
 
             <Card data-testid="card-win-of-the-day">
               <CardHeader>
@@ -1073,6 +817,9 @@ export default function JournalEntryPage() {
           </Button>
         </div>
       </main>
+      {session === "morning" && (
+        <AvoidanceToolModal open={avoidanceToolOpen} onClose={() => setAvoidanceToolOpen(false)} />
+      )}
     </div>
   );
 }

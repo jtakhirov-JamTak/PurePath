@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -90,15 +91,20 @@ export default function Course2JournalPage() {
     return map;
   }, [habitCompletions]);
 
-  const cycleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, currentStatus, date }: { habitId: number; currentStatus: string | null; date: string }) => {
+  const setHabitLevelMutation = useMutation({
+    mutationFn: async ({ habitId, level, date }: { habitId: number; level: number | null; date: string }) => {
       let res;
-      if (currentStatus === null) {
-        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed" });
-      } else if (currentStatus === "completed") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped" });
-      } else {
+      if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+      } else {
+        const status = level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
+        const existing = habitCompletions.some(hc => hc.habitId === habitId && hc.date === date);
+        const payload: Record<string, unknown> = { status, completionLevel: level };
+        if (existing) {
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, payload);
+        } else {
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date, ...payload });
+        }
       }
       if (!res.ok) {
         const body = await res.json();
@@ -373,7 +379,7 @@ export default function Course2JournalPage() {
                       todayStr={todayStr}
                       cellH={cellH}
                       completionsByDate={completionsByDate}
-                      onCycle={(currentStatus, date) => cycleHabitMutation.mutate({ habitId: habit.id, currentStatus, date })}
+                      onSetLevel={(level, date) => setHabitLevelMutation.mutate({ habitId: habit.id, level, date })}
                     />
                   );
                 };
@@ -445,7 +451,7 @@ function HabitRow({
   todayStr,
   cellH,
   completionsByDate,
-  onCycle,
+  onSetLevel,
 }: {
   habit: Habit;
   catDot: string;
@@ -454,7 +460,7 @@ function HabitRow({
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
-  onCycle: (currentStatus: string | null, date: string) => void;
+  onSetLevel: (level: number | null, date: string) => void;
 }) {
   return (
     <>
@@ -469,23 +475,38 @@ function HabitRow({
         const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
+        const currentLevel = status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value";
+        const boxClass = status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
+          : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+          : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+          : "border-muted-foreground/30";
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
-              <button
-                role="checkbox"
-                aria-checked={status === "completed" ? true : status === "skipped" ? "mixed" : false}
-                aria-label={`${habit.name} - ${status || "not tracked"}`}
-                className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer ${
-                  status === "completed" ? "bg-primary border-primary" : status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
-                }`}
-                onClick={() => onCycle(status, dateStr)}
-                data-testid={`habit-status-${habit.id}-${dateStr}`}
+              <Select
+                value={currentLevel}
+                onValueChange={(v) => {
+                  if (v === "clear_value") {
+                    onSetLevel(null, dateStr);
+                  } else {
+                    onSetLevel(Number(v), dateStr);
+                  }
+                }}
               >
-                {status === "completed" && <Check className="h-3 w-3 text-primary-foreground" />}
-                {status === "skipped" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
-              </button>
+                <SelectTrigger
+                  className={`h-5 w-8 text-[10px] px-0.5 rounded-md border ${boxClass}`}
+                  data-testid={`habit-status-${habit.id}-${dateStr}`}
+                >
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clear_value">—</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="0">0</SelectItem>
+                </SelectContent>
+              </Select>
             ) : null}
           </DayCell>
         );

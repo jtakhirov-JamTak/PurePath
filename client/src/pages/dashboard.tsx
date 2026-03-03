@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +24,7 @@ import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { CustomToolsCard, AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SKIP_REASONS = [
   "Low Capacity (sleep / fatigue / depleted)",
@@ -50,6 +52,53 @@ const CATEGORY_STYLES: Record<string, string> = {
   learning: "bg-blue-500",
   leisure: "bg-slate-300 dark:bg-slate-400",
 };
+
+function Q2TimeTracker({ item, onSave }: {
+  item: EisenhowerEntry;
+  onSave: (fields: { scheduledStartTime?: string | null; actualStartTime?: string | null; durationMinutes?: number | null; actualDuration?: number | null }) => void;
+}) {
+  const [sched, setSched] = useState(item.scheduledStartTime || "");
+  const [actual, setActual] = useState(item.actualStartTime || "");
+  const [planned, setPlanned] = useState(item.durationMinutes ? String(item.durationMinutes) : "");
+  const [actualDur, setActualDur] = useState(item.actualDuration ? String(item.actualDuration) : "");
+  const [dirty, setDirty] = useState(false);
+
+  return (
+    <div className="ml-14 grid grid-cols-2 gap-2 py-1" data-testid={`q2-time-${item.id}`}>
+      <div>
+        <label className="text-[10px] text-muted-foreground">Scheduled Start</label>
+        <Input type="time" value={sched} onChange={(e) => { setSched(e.target.value); setDirty(true); }} className="h-7 text-xs" data-testid={`q2-sched-start-${item.id}`} />
+      </div>
+      <div>
+        <label className="text-[10px] text-muted-foreground">Actual Start</label>
+        <Input type="time" value={actual} onChange={(e) => { setActual(e.target.value); setDirty(true); }} className="h-7 text-xs" data-testid={`q2-actual-start-${item.id}`} />
+      </div>
+      <div>
+        <label className="text-[10px] text-muted-foreground">Planned (min)</label>
+        <Input type="number" value={planned} onChange={(e) => { setPlanned(e.target.value); setDirty(true); }} className="h-7 text-xs" min="1" data-testid={`q2-planned-dur-${item.id}`} />
+      </div>
+      <div>
+        <label className="text-[10px] text-muted-foreground">Actual (min)</label>
+        <Input type="number" value={actualDur} onChange={(e) => { setActualDur(e.target.value); setDirty(true); }} className="h-7 text-xs" min="1" data-testid={`q2-actual-dur-${item.id}`} />
+      </div>
+      {dirty && (
+        <div className="col-span-2 flex justify-end">
+          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => {
+            onSave({
+              scheduledStartTime: sched || null,
+              actualStartTime: actual || null,
+              durationMinutes: planned ? parseInt(planned) : null,
+              actualDuration: actualDur ? parseInt(actualDur) : null,
+            });
+            setDirty(false);
+          }} data-testid={`q2-time-save-${item.id}`}>
+            Save Times
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -173,17 +222,21 @@ export default function DashboardPage() {
     return false;
   });
 
-  const cycleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, currentStatus, skipReason }: { habitId: number; currentStatus: string | null; skipReason?: string }) => {
+  const setHabitLevelMutation = useMutation({
+    mutationFn: async ({ habitId, level, skipReason }: { habitId: number; level: number | null; skipReason?: string }) => {
       let res;
-      if (currentStatus === null) {
-        res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, status: "completed", completionLevel: 2 });
-      } else if (currentStatus === "completed") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "minimum", completionLevel: 1 });
-      } else if (currentStatus === "minimum") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, { status: "skipped", completionLevel: 0, skipReason });
-      } else {
+      if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+      } else {
+        const status = level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
+        const existing = habitCompletions.some(hc => hc.habitId === habitId);
+        const payload: Record<string, unknown> = { status, completionLevel: level };
+        if (skipReason) payload.skipReason = skipReason;
+        if (existing) {
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, payload);
+        } else {
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, ...payload });
+        }
       }
       if (!res.ok) {
         const body = await res.json();
@@ -215,21 +268,23 @@ export default function DashboardPage() {
     },
   });
 
-  const cycleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus, skipReason }: { id: number; currentStatus: string | null; skipReason?: string }) => {
-      let nextStatus: string | null;
-      let nextLevel: number | null = null;
-      if (!currentStatus) {
-        nextStatus = "completed"; nextLevel = 2;
-      } else if (currentStatus === "completed") {
-        nextStatus = "minimum"; nextLevel = 1;
-      } else if (currentStatus === "minimum") {
-        nextStatus = "skipped"; nextLevel = 0;
-      } else {
-        nextStatus = null; nextLevel = null;
-      }
-      const body: Record<string, unknown> = { status: nextStatus, completionLevel: nextLevel };
+  const setEisenhowerLevelMutation = useMutation({
+    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration }: {
+      id: number; level: number | null; skipReason?: string;
+      scheduledStartTime?: string | null; actualStartTime?: string | null;
+      durationMinutes?: number | null; actualDuration?: number | null;
+    }) => {
+      let status: string | null;
+      if (level === null) { status = null; }
+      else if (level === 0) { status = "skipped"; }
+      else if (level === 1) { status = "minimum"; }
+      else { status = "completed"; }
+      const body: Record<string, unknown> = { status, completionLevel: level };
       if (skipReason) body.skipReason = skipReason;
+      if (scheduledStartTime !== undefined) body.scheduledStartTime = scheduledStartTime;
+      if (actualStartTime !== undefined) body.actualStartTime = actualStartTime;
+      if (durationMinutes !== undefined) body.durationMinutes = durationMinutes;
+      if (actualDuration !== undefined) body.actualDuration = actualDuration;
       const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
         const errBody = await res.json();
@@ -380,40 +435,42 @@ export default function DashboardPage() {
                   const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
                   return (
                     <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
-                      <button
-                        role="checkbox"
-                        aria-checked={status === "completed" ? true : status ? "mixed" : false}
-                        className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          status === "completed" ? "bg-emerald-500 border-emerald-600"
-                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
-                          : status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
-                          : "border-border"
-                        }`}
-                        onClick={() => {
-                          if (status === "minimum") {
+                      <Select
+                        value={status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value"}
+                        onValueChange={(v) => {
+                          if (v === "clear_value") {
+                            setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
+                          } else if (v === "0") {
                             setHabitSkipDialog({ habitId: habit.id });
                           } else {
-                            cycleHabitMutation.mutate({ habitId: habit.id, currentStatus: status });
+                            setHabitLevelMutation.mutate({ habitId: habit.id, level: Number(v) });
                           }
                         }}
-                        data-testid={`habit-cycle-${habit.id}`}
                       >
-                        {status === "completed" && <Check className="h-3 w-3 text-white" />}
-                        {status === "minimum" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
-                        {status === "skipped" && <X className="h-2.5 w-2.5 text-white dark:text-red-200" />}
-                      </button>
+                        <SelectTrigger
+                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
+                            status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
+                            : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                            : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                            : "border-border"
+                          }`}
+                          data-testid={`habit-level-${habit.id}`}
+                        >
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clear_value">—</SelectItem>
+                          <SelectItem value="2">2 – Full</SelectItem>
+                          <SelectItem value="1">1 – Min</SelectItem>
+                          <SelectItem value="0">0 – Skip</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
                       }`}>
                         {habit.name}
                       </span>
-                      {status === "completed" && (
-                        <span className="text-xs text-muted-foreground">full</span>
-                      )}
-                      {status === "minimum" && (
-                        <span className="text-xs text-muted-foreground">min</span>
-                      )}
                       {status === "skipped" && (
                         <span className="text-xs text-muted-foreground">skipped</span>
                       )}
@@ -488,13 +545,36 @@ export default function DashboardPage() {
                   const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
                   return (
                     <li key={item.id} className="flex items-center gap-3" data-testid={`overdue-item-${item.id}`}>
-                      <button
-                        role="checkbox"
-                        aria-checked={false}
-                        className="h-5 w-5 rounded-md border-2 border-red-300 dark:border-red-500/50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                        onClick={() => cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: item.status || null })}
-                        data-testid={`overdue-cycle-${item.id}`}
-                      />
+                      <Select
+                        value={item.completionLevel != null ? String(item.completionLevel) : "clear_value"}
+                        onValueChange={(v) => {
+                          if (v === "clear_value") {
+                            setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                          } else if (v === "0") {
+                            setEisenhowerSkipDialog({ id: item.id });
+                          } else {
+                            setEisenhowerLevelMutation.mutate({ id: item.id, level: Number(v) });
+                          }
+                        }}
+                      >
+                        <SelectTrigger
+                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
+                            item.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
+                            : item.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800"
+                            : item.completionLevel === 0 ? "bg-red-400 border-red-500 text-white"
+                            : "border-red-300 dark:border-red-500/50"
+                          }`}
+                          data-testid={`overdue-level-${item.id}`}
+                        >
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clear_value">—</SelectItem>
+                          <SelectItem value="2">2 – Full</SelectItem>
+                          <SelectItem value="1">1 – Min</SelectItem>
+                          <SelectItem value="0">0 – Skip</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className="text-sm flex-1">{item.task}</span>
                       <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 dark:text-red-400">{item.quadrant?.toUpperCase()}</Badge>
@@ -525,29 +605,38 @@ export default function DashboardPage() {
                   const status = item.status || null;
                   const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
                   return (
-                    <li key={item.id} className="flex items-center gap-3" data-testid={`q2-block-${item.id}`}>
-                      <button
-                        role="checkbox"
-                        aria-checked={status === "completed" ? true : status ? "mixed" : false}
-                        className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                          status === "completed" ? "bg-emerald-500 border-emerald-600"
-                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
-                          : status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
-                          : "border-border"
-                        }`}
-                        onClick={() => {
-                          if (status === "minimum") {
+                    <li key={item.id} className="flex flex-col gap-1" data-testid={`q2-block-${item.id}`}>
+                      <div className="flex items-center gap-3">
+                      <Select
+                        value={item.completionLevel != null ? String(item.completionLevel) : "clear_value"}
+                        onValueChange={(v) => {
+                          if (v === "clear_value") {
+                            setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                          } else if (v === "0") {
                             setEisenhowerSkipDialog({ id: item.id });
                           } else {
-                            cycleEisenhowerMutation.mutate({ id: item.id, currentStatus: status });
+                            setEisenhowerLevelMutation.mutate({ id: item.id, level: Number(v) });
                           }
                         }}
-                        data-testid={`q2-cycle-${item.id}`}
                       >
-                        {status === "completed" && <Check className="h-3 w-3 text-white" />}
-                        {status === "minimum" && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
-                        {status === "skipped" && <X className="h-2.5 w-2.5 text-white dark:text-red-200" />}
-                      </button>
+                        <SelectTrigger
+                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
+                            item.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
+                            : item.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                            : item.completionLevel === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                            : "border-border"
+                          }`}
+                          data-testid={`q2-level-${item.id}`}
+                        >
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clear_value">—</SelectItem>
+                          <SelectItem value="2">2 – Full</SelectItem>
+                          <SelectItem value="1">1 – Min</SelectItem>
+                          <SelectItem value="0">0 – Skip</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground"
@@ -562,6 +651,12 @@ export default function DashboardPage() {
                       )}
                       {status && (
                         <span className="text-xs text-muted-foreground">{status}</span>
+                      )}
+                      </div>
+                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
+                        <Q2TimeTracker item={item} onSave={(fields) => {
+                          setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
+                        }} />
                       )}
                     </li>
                   );
@@ -649,7 +744,7 @@ export default function DashboardPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (habitSkipDialog) {
-                    cycleHabitMutation.mutate({ habitId: habitSkipDialog.habitId, currentStatus: "minimum", skipReason: reason });
+                    setHabitLevelMutation.mutate({ habitId: habitSkipDialog.habitId, level: 0, skipReason: reason });
                     setHabitSkipDialog(null);
                   }
                 }}
@@ -674,7 +769,7 @@ export default function DashboardPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    cycleEisenhowerMutation.mutate({ id: eisenhowerSkipDialog.id, currentStatus: "minimum", skipReason: reason });
+                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
                     setEisenhowerSkipDialog(null);
                   }
                 }}

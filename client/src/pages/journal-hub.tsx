@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Sun, Moon, ArrowRight, Lock, BarChart3, Wrench,
@@ -148,17 +149,26 @@ export default function JournalHubPage() {
 
   const [skipReasonDialog, setSkipReasonDialog] = useState<{ habitId: number; date: string } | null>(null);
 
-  const cycleHabitMutation = useMutation({
-    mutationFn: async ({ habitId, currentStatus, date, skipReason }: { habitId: number; currentStatus: string | null; date: string; skipReason?: string }) => {
+  const setHabitLevelMutation = useMutation({
+    mutationFn: async ({ habitId, date, level, skipReason }: { habitId: number; date: string; level: number | null; skipReason?: string }) => {
       let res;
-      if (currentStatus === null) {
-        res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "completed", completionLevel: 2 });
-      } else if (currentStatus === "completed") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "minimum", completionLevel: 1 });
-      } else if (currentStatus === "minimum") {
-        res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped", completionLevel: 0, skipReason: skipReason || null });
-      } else {
+      if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+      } else if (level === 0) {
+        const existing = habitCompletions.some(hc => hc.habitId === habitId && hc.date === date);
+        if (existing) {
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status: "skipped", completionLevel: 0, skipReason: skipReason || null });
+        } else {
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "skipped", completionLevel: 0, skipReason: skipReason || null });
+        }
+      } else {
+        const status = level === 2 ? "completed" : "minimum";
+        const existing = habitCompletions.some(hc => hc.habitId === habitId && hc.date === date);
+        if (existing) {
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status, completionLevel: level });
+        } else {
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status, completionLevel: level });
+        }
       }
       if (!res.ok) {
         const body = await res.json();
@@ -176,24 +186,27 @@ export default function JournalHubPage() {
 
   const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
 
-  const toggleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus, completionLevel, skipReason }: { id: number; currentStatus: string | null; completionLevel?: number; skipReason?: string }) => {
-      let nextStatus: string | null;
-      let nextLevel: number | null = null;
-      if (currentStatus === null || currentStatus === undefined) {
-        nextStatus = "completed"; nextLevel = 2;
-      } else if (currentStatus === "completed") {
-        nextStatus = "minimum"; nextLevel = 1;
-      } else if (currentStatus === "minimum") {
-        nextStatus = "skipped"; nextLevel = 0;
-      } else {
-        nextStatus = null; nextLevel = null;
-      }
-      if (completionLevel !== undefined) nextLevel = completionLevel;
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus, completionLevel: nextLevel, skipReason: skipReason || null });
+  const setEisenhowerLevelMutation = useMutation({
+    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration }: {
+      id: number; level: number | null; skipReason?: string;
+      scheduledStartTime?: string | null; actualStartTime?: string | null;
+      durationMinutes?: number | null; actualDuration?: number | null;
+    }) => {
+      let status: string | null;
+      if (level === null) { status = null; }
+      else if (level === 0) { status = "skipped"; }
+      else if (level === 1) { status = "minimum"; }
+      else { status = "completed"; }
+      const body: Record<string, unknown> = { status, completionLevel: level };
+      if (skipReason) body.skipReason = skipReason;
+      if (scheduledStartTime !== undefined) body.scheduledStartTime = scheduledStartTime;
+      if (actualStartTime !== undefined) body.actualStartTime = actualStartTime;
+      if (durationMinutes !== undefined) body.durationMinutes = durationMinutes;
+      if (actualDuration !== undefined) body.actualDuration = actualDuration;
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update status");
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Failed to update status");
       }
     },
     onSuccess: () => {
@@ -603,7 +616,7 @@ export default function JournalHubPage() {
                 todayStr={today}
                 cellH={cellH}
                 eisenhowerByDate={eisenhowerByDate}
-                toggleEisenhowerMutation={toggleEisenhowerMutation}
+                setEisenhowerLevelMutation={setEisenhowerLevelMutation}
                 createEisenhowerMutation={createEisenhowerMutation}
                 updateEisenhowerMutation={updateEisenhowerMutation}
                 deleteEisenhowerMutation={deleteEisenhowerMutation}
@@ -628,9 +641,9 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => {
-                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
-                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  onSetLevel={(habitId, level, date) => {
+                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
+                    setHabitLevelMutation.mutate({ habitId, date, level });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -645,9 +658,9 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => {
-                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
-                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  onSetLevel={(habitId, level, date) => {
+                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
+                    setHabitLevelMutation.mutate({ habitId, date, level });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -662,9 +675,9 @@ export default function JournalHubPage() {
                   todayStr={today}
                   cellH={cellH}
                   completionsByDate={completionsByDate}
-                  onCycle={(habitId, status, date) => {
-                    if (status === "minimum") { setSkipReasonDialog({ habitId, date }); return; }
-                    cycleHabitMutation.mutate({ habitId, currentStatus: status, date });
+                  onSetLevel={(habitId, level, date) => {
+                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
+                    setHabitLevelMutation.mutate({ habitId, date, level });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -807,7 +820,7 @@ export default function JournalHubPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (skipReasonDialog) {
-                    cycleHabitMutation.mutate({ habitId: skipReasonDialog.habitId, currentStatus: "minimum", date: skipReasonDialog.date, skipReason: reason });
+                    setHabitLevelMutation.mutate({ habitId: skipReasonDialog.habitId, date: skipReasonDialog.date, level: 0, skipReason: reason });
                     setSkipReasonDialog(null);
                   }
                 }}
@@ -832,7 +845,7 @@ export default function JournalHubPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    toggleEisenhowerMutation.mutate({ id: eisenhowerSkipDialog.id, currentStatus: "minimum", skipReason: reason });
+                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
                     setEisenhowerSkipDialog(null);
                   }
                 }}
@@ -879,7 +892,7 @@ function ScheduledItemsSection({
   todayStr,
   cellH,
   eisenhowerByDate,
-  toggleEisenhowerMutation,
+  setEisenhowerLevelMutation,
   createEisenhowerMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
@@ -889,7 +902,7 @@ function ScheduledItemsSection({
   todayStr: string;
   cellH: string;
   eisenhowerByDate: Map<string, EisenhowerEntry[]>;
-  toggleEisenhowerMutation: any;
+  setEisenhowerLevelMutation: any;
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
@@ -913,7 +926,7 @@ function ScheduledItemsSection({
             todayStr={todayStr}
             cellH={items.length > 0 ? "" : cellH}
             items={items}
-            toggleEisenhowerMutation={toggleEisenhowerMutation}
+            setEisenhowerLevelMutation={setEisenhowerLevelMutation}
             createEisenhowerMutation={createEisenhowerMutation}
             updateEisenhowerMutation={updateEisenhowerMutation}
             deleteEisenhowerMutation={deleteEisenhowerMutation}
@@ -930,7 +943,7 @@ function ScheduledDayCell({
   todayStr,
   cellH,
   items,
-  toggleEisenhowerMutation,
+  setEisenhowerLevelMutation,
   createEisenhowerMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
@@ -940,7 +953,7 @@ function ScheduledDayCell({
   todayStr: string;
   cellH: string;
   items: EisenhowerEntry[];
-  toggleEisenhowerMutation: any;
+  setEisenhowerLevelMutation: any;
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
@@ -967,7 +980,7 @@ function ScheduledDayCell({
             <EisenhowerItemRow
               key={entry.id}
               entry={entry}
-              toggleEisenhowerMutation={toggleEisenhowerMutation}
+              setEisenhowerLevelMutation={setEisenhowerLevelMutation}
               updateEisenhowerMutation={updateEisenhowerMutation}
               deleteEisenhowerMutation={deleteEisenhowerMutation}
               onSkipRequest={onSkipRequest}
@@ -1010,15 +1023,61 @@ function ScheduledDayCell({
   );
 }
 
+function Q2TimeTrackerInline({ entry, setEisenhowerLevelMutation }: { entry: EisenhowerEntry; setEisenhowerLevelMutation: any }) {
+  const [sched, setSched] = useState(entry.scheduledStartTime || "");
+  const [actual, setActual] = useState(entry.actualStartTime || "");
+  const [planned, setPlanned] = useState(entry.durationMinutes ? String(entry.durationMinutes) : "");
+  const [actualDur, setActualDur] = useState(entry.actualDuration ? String(entry.actualDuration) : "");
+  const [dirty, setDirty] = useState(false);
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5 mt-1 pt-1 border-t border-dashed border-muted" data-testid={`q2-time-${entry.id}`}>
+      <div>
+        <label className="text-[9px] text-muted-foreground">Sched Start</label>
+        <Input type="time" value={sched} onChange={(e) => { setSched(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" data-testid={`q2-sched-start-${entry.id}`} />
+      </div>
+      <div>
+        <label className="text-[9px] text-muted-foreground">Actual Start</label>
+        <Input type="time" value={actual} onChange={(e) => { setActual(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" data-testid={`q2-actual-start-${entry.id}`} />
+      </div>
+      <div>
+        <label className="text-[9px] text-muted-foreground">Planned (min)</label>
+        <Input type="number" value={planned} onChange={(e) => { setPlanned(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" min="1" data-testid={`q2-planned-dur-${entry.id}`} />
+      </div>
+      <div>
+        <label className="text-[9px] text-muted-foreground">Actual (min)</label>
+        <Input type="number" value={actualDur} onChange={(e) => { setActualDur(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" min="1" data-testid={`q2-actual-dur-${entry.id}`} />
+      </div>
+      {dirty && (
+        <div className="col-span-2 flex justify-end">
+          <Button size="sm" variant="outline" className="h-5 text-[10px] px-2" onClick={() => {
+            setEisenhowerLevelMutation.mutate({
+              id: entry.id,
+              level: entry.completionLevel,
+              scheduledStartTime: sched || null,
+              actualStartTime: actual || null,
+              durationMinutes: planned ? parseInt(planned) : null,
+              actualDuration: actualDur ? parseInt(actualDur) : null,
+            });
+            setDirty(false);
+          }} data-testid={`q2-time-save-${entry.id}`}>
+            Save
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EisenhowerItemRow({
   entry,
-  toggleEisenhowerMutation,
+  setEisenhowerLevelMutation,
   updateEisenhowerMutation,
   deleteEisenhowerMutation,
   onSkipRequest,
 }: {
   entry: EisenhowerEntry;
-  toggleEisenhowerMutation: any;
+  setEisenhowerLevelMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
   onSkipRequest?: (id: number) => void;
@@ -1041,26 +1100,36 @@ function EisenhowerItemRow({
 
   return (
     <div className="flex items-start gap-1.5 px-1 group/eitem" data-testid={`eisenhower-${entry.id}`}>
-      <button
-        role="checkbox"
-        aria-checked={entry.status === "completed" ? true : entry.status ? "mixed" : false}
-        aria-label={`${entry.task} - ${entry.status === "completed" ? "Full" : entry.status === "minimum" ? "Minimum" : entry.status === "skipped" ? "Skipped" : "Not done"}. Click to cycle.`}
-        className={`mt-0.5 h-4 w-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-          entry.status === "completed" ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500"
-          : entry.status === "minimum" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
-          : entry.status === "skipped" ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
-          : "border-muted-foreground/30"
-        }`}
-        onClick={() => {
-          if (entry.status === "minimum" && onSkipRequest) { onSkipRequest(entry.id); return; }
-          toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null });
+      <Select
+        value={entry.completionLevel != null ? String(entry.completionLevel) : "clear_value"}
+        onValueChange={(v) => {
+          if (v === "clear_value") {
+            setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
+          } else if (v === "0") {
+            if (onSkipRequest) { onSkipRequest(entry.id); } else { setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+          } else {
+            setEisenhowerLevelMutation.mutate({ id: entry.id, level: Number(v) });
+          }
         }}
-        data-testid={`eisenhower-cycle-${entry.id}`}
       >
-        {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
-        {entry.status === "minimum" && <Minus className="h-2.5 w-2.5 text-yellow-700 dark:text-yellow-300" />}
-        {entry.status === "skipped" && <X className="h-2 w-2 text-white dark:text-red-200" />}
-      </button>
+        <SelectTrigger
+          className={`mt-0.5 h-5 w-12 text-[10px] px-1 shrink-0 rounded border-2 ${
+            entry.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
+            : entry.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+            : entry.completionLevel === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+            : "border-muted-foreground/30"
+          }`}
+          data-testid={`eisenhower-level-${entry.id}`}
+        >
+          <SelectValue placeholder="—" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="clear_value">—</SelectItem>
+          <SelectItem value="2">2 – Full</SelectItem>
+          <SelectItem value="1">1 – Min</SelectItem>
+          <SelectItem value="0">0 – Skip</SelectItem>
+        </SelectContent>
+      </Select>
       <div className="flex-1 min-w-0">
         {editing ? (
           <div className="flex items-center gap-1">
@@ -1095,6 +1164,9 @@ function EisenhowerItemRow({
                 <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
               )}
             </div>
+            {entry.quadrant === "q2" && (entry.completionLevel === 1 || entry.completionLevel === 2) && (
+              <Q2TimeTrackerInline entry={entry} setEisenhowerLevelMutation={setEisenhowerLevelMutation} />
+            )}
           </>
         )}
       </div>
@@ -1119,7 +1191,7 @@ function HabitTimingSection({
   todayStr,
   cellH,
   completionsByDate,
-  onCycle,
+  onSetLevel,
   onEditHabit,
   onDeleteHabit,
   onAddHabit,
@@ -1130,7 +1202,7 @@ function HabitTimingSection({
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
-  onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
+  onSetLevel: (habitId: number, level: number | null, date: string) => void;
   onEditHabit: (id: number) => void;
   onDeleteHabit: (id: number) => void;
   onAddHabit: () => void;
@@ -1150,7 +1222,7 @@ function HabitTimingSection({
             todayStr={todayStr}
             cellH={cellH}
             completionsByDate={completionsByDate}
-            onCycle={onCycle}
+            onSetLevel={onSetLevel}
             onEditHabit={onEditHabit}
             onDeleteHabit={onDeleteHabit}
           />
@@ -1181,7 +1253,7 @@ function SortableHabitRow({
   todayStr,
   cellH,
   completionsByDate,
-  onCycle,
+  onSetLevel,
   onEditHabit,
   onDeleteHabit,
 }: {
@@ -1190,7 +1262,7 @@ function SortableHabitRow({
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
-  onCycle: (habitId: number, currentStatus: string | null, date: string) => void;
+  onSetLevel: (habitId: number, level: number | null, date: string) => void;
   onEditHabit: (id: number) => void;
   onDeleteHabit: (id: number) => void;
 }) {
@@ -1260,21 +1332,34 @@ function SortableHabitRow({
           ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
           : "border-muted-foreground/30";
 
+        const currentLevel = status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value";
+
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
-              <button
-                role="checkbox"
-                aria-checked={status === "completed" ? true : status ? "mixed" : false}
-                aria-label={`${habit.name} - ${statusLabel}`}
-                className={`h-7 w-7 rounded-md border-2 flex items-center justify-center transition-colors cursor-pointer ${boxClass}`}
-                onClick={() => onCycle(habit.id, status, dateStr)}
-                data-testid={`habit-status-${habit.id}-${dateStr}`}
+              <Select
+                value={currentLevel}
+                onValueChange={(v) => {
+                  if (v === "clear_value") {
+                    onSetLevel(habit.id, null, dateStr);
+                  } else {
+                    onSetLevel(habit.id, Number(v), dateStr);
+                  }
+                }}
               >
-                {status === "completed" && <Check className="h-4 w-4 text-white" />}
-                {status === "minimum" && <Minus className="h-4 w-4 text-yellow-700 dark:text-yellow-300" />}
-                {status === "skipped" && <X className="h-3.5 w-3.5 text-white dark:text-red-200" />}
-              </button>
+                <SelectTrigger
+                  className={`h-7 w-10 text-[10px] px-0.5 rounded-md border-2 ${boxClass}`}
+                  data-testid={`habit-status-${habit.id}-${dateStr}`}
+                >
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="clear_value">—</SelectItem>
+                  <SelectItem value="2">2</SelectItem>
+                  <SelectItem value="1">1</SelectItem>
+                  <SelectItem value="0">0</SelectItem>
+                </SelectContent>
+              </Select>
             ) : null}
           </DayCell>
         );
