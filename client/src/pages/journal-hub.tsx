@@ -150,7 +150,7 @@ export default function JournalHubPage() {
   const [skipReasonDialog, setSkipReasonDialog] = useState<{ habitId: number; date: string } | null>(null);
 
   const setHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, date, level, skipReason }: { habitId: number; date: string; level: number | null; skipReason?: string }) => {
+    mutationFn: async ({ habitId, date, level, skipReason, isBinary }: { habitId: number; date: string; level: number | null; skipReason?: string; isBinary?: boolean }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
@@ -162,7 +162,7 @@ export default function JournalHubPage() {
           res = await apiRequest("POST", "/api/habit-completions", { habitId, date, status: "skipped", completionLevel: 0, skipReason: skipReason || null });
         }
       } else {
-        const status = level === 2 ? "completed" : "minimum";
+        const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : "minimum";
         const existing = habitCompletions.some(hc => hc.habitId === habitId && hc.date === date);
         if (existing) {
           res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, { status, completionLevel: level });
@@ -643,7 +643,8 @@ export default function JournalHubPage() {
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
                     if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
-                    setHabitLevelMutation.mutate({ habitId, date, level });
+                    const h = habits.find(hb => hb.id === habitId);
+                    setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -660,7 +661,8 @@ export default function JournalHubPage() {
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
                     if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
-                    setHabitLevelMutation.mutate({ habitId, date, level });
+                    const h = habits.find(hb => hb.id === habitId);
+                    setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -677,7 +679,8 @@ export default function JournalHubPage() {
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
                     if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
-                    setHabitLevelMutation.mutate({ habitId, date, level });
+                    const h = habits.find(hb => hb.id === habitId);
+                    setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
                   onEditHabit={(id) => { const h = habits.find(hb => hb.id === id); if (h) { setHabitDialogEditing(h); setHabitDialogOpen(true); } }}
                   onDeleteHabit={(id) => deleteHabitMutation.mutate(id)}
@@ -1125,9 +1128,18 @@ function EisenhowerItemRow({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="clear_value">—</SelectItem>
-          <SelectItem value="2">2 – Full</SelectItem>
-          <SelectItem value="1">1 – Min</SelectItem>
-          <SelectItem value="0">0 – Skip</SelectItem>
+          {entry.isBinary ? (
+            <>
+              <SelectItem value="1">1 – Done</SelectItem>
+              <SelectItem value="0">0 – Not Done</SelectItem>
+            </>
+          ) : (
+            <>
+              <SelectItem value="2">2 – Full</SelectItem>
+              <SelectItem value="1">1 – Min</SelectItem>
+              <SelectItem value="0">0 – Skip</SelectItem>
+            </>
+          )}
         </SelectContent>
       </Select>
       <div className="flex-1 min-w-0">
@@ -1355,9 +1367,18 @@ function SortableHabitRow({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="clear_value">—</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="0">0</SelectItem>
+                  {habit.isBinary ? (
+                    <>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="0">0</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="0">0</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             ) : null}

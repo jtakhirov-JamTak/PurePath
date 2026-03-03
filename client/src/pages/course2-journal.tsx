@@ -92,12 +92,12 @@ export default function Course2JournalPage() {
   }, [habitCompletions]);
 
   const setHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, level, date }: { habitId: number; level: number | null; date: string }) => {
+    mutationFn: async ({ habitId, level, date, isBinary }: { habitId: number; level: number | null; date: string; isBinary?: boolean }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
       } else {
-        const status = level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
+        const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
         const existing = habitCompletions.some(hc => hc.habitId === habitId && hc.date === date);
         const payload: Record<string, unknown> = { status, completionLevel: level };
         if (existing) {
@@ -379,7 +379,7 @@ export default function Course2JournalPage() {
                       todayStr={todayStr}
                       cellH={cellH}
                       completionsByDate={completionsByDate}
-                      onSetLevel={(level, date) => setHabitLevelMutation.mutate({ habitId: habit.id, level, date })}
+                      onSetLevel={(level, date) => setHabitLevelMutation.mutate({ habitId: habit.id, level, date, isBinary: habit.isBinary || false })}
                     />
                   );
                 };
@@ -502,9 +502,18 @@ function HabitRow({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="clear_value">—</SelectItem>
-                  <SelectItem value="2">2</SelectItem>
-                  <SelectItem value="1">1</SelectItem>
-                  <SelectItem value="0">0</SelectItem>
+                  {habit.isBinary ? (
+                    <>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="0">0</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="0">0</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             ) : null}

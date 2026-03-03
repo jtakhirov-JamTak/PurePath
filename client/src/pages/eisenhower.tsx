@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -105,6 +106,7 @@ interface WizardItem {
   endTime: string;
   goalAlignment: string;
   blocksGoal: boolean;
+  isBinary: boolean;
 }
 
 export default function EisenhowerPage() {
@@ -122,6 +124,7 @@ export default function EisenhowerPage() {
     decision: "",
     goalAlignment: "",
     blocksGoal: false,
+    isBinary: false,
   });
 
   const [editEntry, setEditEntry] = useState<EisenhowerEntry | null>(null);
@@ -135,6 +138,7 @@ export default function EisenhowerPage() {
     endTime: "",
     goalAlignment: "",
     blocksGoal: false,
+    isBinary: false,
   });
 
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -190,6 +194,7 @@ export default function EisenhowerPage() {
           endTime: item.endTime || "",
           goalAlignment: "",
           blocksGoal: false,
+          isBinary: false,
         };
       });
       setWizardItems(items);
@@ -231,6 +236,7 @@ export default function EisenhowerPage() {
         scheduledDate: isSchedulable ? (entry.deadline || null) : null,
         goalAlignment: entry.quadrant === "q2" ? (entry.goalAlignment || null) : null,
         blocksGoal: entry.blocksGoal || false,
+        isBinary: entry.isBinary || false,
         weekStart,
       });
       if (!res.ok) {
@@ -243,7 +249,7 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStart] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setDialogOpen(false);
-      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "", blocksGoal: false });
+      setNewEntry({ role: "health", task: "", quadrant: "q2", deadline: "", startTime: "", endTime: "", decision: "", goalAlignment: "", blocksGoal: false, isBinary: false });
     },
     onError: (error: Error) => {
       toast({ title: "Could not create entry", description: error.message, variant: "destructive" });
@@ -274,6 +280,7 @@ export default function EisenhowerPage() {
         scheduledDate: deadlineVal,
         goalAlignment: data.updates.quadrant === "q2" ? (data.updates.goalAlignment || null) : null,
         blocksGoal: data.updates.blocksGoal || false,
+        isBinary: data.updates.isBinary || false,
         weekStart: newWeekStart,
       });
       if (!res.ok) {
@@ -350,6 +357,7 @@ export default function EisenhowerPage() {
       endTime: parsed.endTime,
       goalAlignment: entry.goalAlignment || "",
       blocksGoal: entry.blocksGoal || false,
+      isBinary: entry.isBinary || false,
     });
     setEditEntry(entry);
     setEditDialogOpen(true);
@@ -366,7 +374,7 @@ export default function EisenhowerPage() {
   };
 
   const renderFormFields = (
-    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string; blocksGoal: boolean },
+    formState: { role: HabitCategory; task: string; quadrant: string; deadline: string; startTime: string; endTime: string; goalAlignment: string; blocksGoal: boolean; isBinary: boolean },
     setFormState: (val: any) => void,
     durationVal: string,
     prefix: string,
@@ -491,6 +499,18 @@ export default function EisenhowerPage() {
           <Label htmlFor={`${prefix}blocks-goal`} className="text-sm cursor-pointer">
             Success Catalyst
           </Label>
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor={`${prefix}binary`} className="text-sm cursor-pointer">Binary (Yes / No only)</Label>
+            <p className="text-[11px] text-muted-foreground">Simple done/not-done — no minimum version</p>
+          </div>
+          <Switch
+            id={`${prefix}binary`}
+            checked={formState.isBinary}
+            onCheckedChange={(v) => setFormState({ ...formState, isBinary: v })}
+            data-testid={`${prefix}switch-binary`}
+          />
         </div>
       </div>
     );
@@ -1032,6 +1052,19 @@ export default function EisenhowerPage() {
                               />
                               <Label htmlFor={`wizard-catalyst-${idx}`} className="text-xs cursor-pointer">Success Catalyst</Label>
                             </div>
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor={`wizard-binary-${idx}`} className="text-xs cursor-pointer">Binary (Yes / No only)</Label>
+                              <Switch
+                                id={`wizard-binary-${idx}`}
+                                checked={item.isBinary}
+                                onCheckedChange={(v) => {
+                                  const updated = [...wizardItems];
+                                  updated[idx] = { ...updated[idx], isBinary: v };
+                                  setWizardItems(updated);
+                                }}
+                                data-testid={`wizard-detail-binary-${idx}`}
+                              />
+                            </div>
                             {isMissing && (
                               <p className="text-xs text-destructive">Date and time are required for {q.shortName} items</p>
                             )}
@@ -1085,6 +1118,7 @@ export default function EisenhowerPage() {
                           endTime: "",
                           goalAlignment: "",
                           blocksGoal: false,
+                          isBinary: false,
                         })));
                       }
                       setWizardStep(s => s + 1);
@@ -1119,6 +1153,7 @@ export default function EisenhowerPage() {
                             scheduledDate: isSchedulable ? (item.deadline || null) : null,
                             goalAlignment: item.quadrant === "q2" ? (item.goalAlignment || null) : null,
                             blocksGoal: item.blocksGoal || false,
+                            isBinary: item.isBinary || false,
                             weekStart,
                           });
                         }

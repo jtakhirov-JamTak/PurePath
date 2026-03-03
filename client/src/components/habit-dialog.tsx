@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
 import type { Habit } from "@shared/schema";
 import { HABIT_CATEGORIES } from "@shared/schema";
 
@@ -77,6 +78,7 @@ type HabitFormData = {
   hasEndDate: boolean;
   endDate: string;
   intervalWeeks: string;
+  isBinary: boolean;
 };
 
 const DEFAULT_FORM: HabitFormData = {
@@ -94,6 +96,7 @@ const DEFAULT_FORM: HabitFormData = {
   hasEndDate: false,
   endDate: "",
   intervalWeeks: "1",
+  isBinary: false,
 };
 
 interface HabitDialogProps {
@@ -129,6 +132,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         hasEndDate: !!editingHabit.endDate,
         endDate: editingHabit.endDate || "",
         intervalWeeks: (editingHabit.intervalWeeks || 1).toString(),
+        isBinary: editingHabit.isBinary || false,
       });
       setSelectedDays(editingHabit.cadence.split(","));
     } else {
@@ -166,6 +170,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         startDate: data.startDate || null,
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
         intervalWeeks: parseInt(data.intervalWeeks) || 1,
+        isBinary: data.isBinary,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -206,6 +211,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         startDate: data.startDate || null,
         endDate: data.hasEndDate && data.endDate ? data.endDate : null,
         intervalWeeks: parseInt(data.intervalWeeks) || 1,
+        isBinary: data.isBinary,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -296,6 +302,19 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="habit-binary" className="text-sm cursor-pointer">Binary (Yes / No only)</Label>
+              <p className="text-[11px] text-muted-foreground">For simple done/not-done habits like "take medication"</p>
+            </div>
+            <Switch
+              id="habit-binary"
+              checked={formData.isBinary}
+              onCheckedChange={(v) => setFormData({ ...formData, isBinary: v })}
+              data-testid="switch-binary"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

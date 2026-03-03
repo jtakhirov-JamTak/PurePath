@@ -29,6 +29,7 @@ export const createEisenhowerSchema = z.object({
   durationMinutes: z.number().int().positive("Must be a positive integer").optional().nullable(),
   goalAlignment: optionalString(500),
   blocksGoal: z.boolean().optional().nullable(),
+  isBinary: z.boolean().optional().nullable(),
   completed: z.boolean().optional().nullable(),
   status: optionalString(20),
   completionLevel: z.number().int().min(0).max(2).optional().nullable(),
@@ -81,6 +82,7 @@ export const createHabitSchema = z.object({
   startDate: optionalString(10),
   endDate: optionalString(10),
   sortOrder: z.number().int().min(0).optional().nullable(),
+  isBinary: z.boolean().optional().nullable(),
   active: z.boolean().optional().nullable(),
   googleCalendarEventId: optionalString(100),
 });

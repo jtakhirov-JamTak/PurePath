@@ -188,8 +188,15 @@ export default function DashboardPage() {
   });
 
   const habitStatusMap = new Map<number, string>();
+  const habitLevelMap = new Map<number, number>();
   habitCompletions.forEach((hc) => {
     habitStatusMap.set(hc.habitId, hc.status || "completed");
+    if (hc.completionLevel != null) {
+      habitLevelMap.set(hc.habitId, hc.completionLevel);
+    } else {
+      const fallback = hc.status === "completed" ? 2 : hc.status === "minimum" ? 1 : hc.status === "skipped" ? 0 : null;
+      if (fallback != null) habitLevelMap.set(hc.habitId, fallback);
+    }
   });
 
   const todayJournals = journals.filter((j) => j.date === todayStr);
@@ -237,12 +244,12 @@ export default function DashboardPage() {
   });
 
   const setHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, level, skipReason }: { habitId: number; level: number | null; skipReason?: string }) => {
+    mutationFn: async ({ habitId, level, skipReason, isBinary }: { habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
       } else {
-        const status = level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
+        const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
         const existing = habitCompletions.some(hc => hc.habitId === habitId);
         const payload: Record<string, unknown> = { status, completionLevel: level };
         if (skipReason) payload.skipReason = skipReason;
@@ -397,11 +404,16 @@ export default function DashboardPage() {
         return true;
       });
       scheduledHabits.forEach(h => {
-        consistencyMax += 2;
+        const maxPts = h.isBinary ? 1 : 2;
+        consistencyMax += maxPts;
         const hc = weekHabitCompletions.find(c => c.habitId === h.id && c.date === dayStr);
         if (hc) {
-          if (hc.completionLevel === 2) consistencyPoints += 2;
-          else if (hc.completionLevel === 1) consistencyPoints += 1;
+          if (h.isBinary) {
+            if (hc.completionLevel === 1) consistencyPoints += 1;
+          } else {
+            if (hc.completionLevel === 2) consistencyPoints += 2;
+            else if (hc.completionLevel === 1) consistencyPoints += 1;
+          }
         }
       });
     }
@@ -409,15 +421,22 @@ export default function DashboardPage() {
       (e.quadrant === "q1" || e.quadrant === "q2") && e.weekStart === weekStartStr
     );
     weekEisenhower.forEach(e => {
-      consistencyMax += 2;
-      if (e.completionLevel === 2) consistencyPoints += 2;
-      else if (e.completionLevel === 1) consistencyPoints += 1;
+      const maxPts = e.isBinary ? 1 : 2;
+      consistencyMax += maxPts;
+      if (e.isBinary) {
+        if (e.completionLevel === 1) consistencyPoints += 1;
+      } else {
+        if (e.completionLevel === 2) consistencyPoints += 2;
+        else if (e.completionLevel === 1) consistencyPoints += 1;
+      }
     });
     const consistencyPct = consistencyMax > 0 ? Math.round((consistencyPoints / consistencyMax) * 100) : 0;
 
     const firstStepItems = weekEisenhower.filter(e => e.quadrant === "q1" && e.role === "self-development");
     const firstStepStarted = firstStepItems.filter(e => e.completionLevel != null && e.completionLevel >= 1).length;
-    const firstStepCompleted = firstStepItems.filter(e => e.completionLevel === 2).length;
+    const firstStepCompleted = firstStepItems.filter(e =>
+      e.isBinary ? e.completionLevel === 1 : e.completionLevel === 2
+    ).length;
 
     const q2Items = weekEisenhower.filter(e => e.quadrant === "q2");
     const q2ActualMin = q2Items.reduce((sum, e) => sum + (e.actualDuration || 0), 0);
@@ -519,20 +538,20 @@ export default function DashboardPage() {
                   return (
                     <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
                       <Select
-                        value={status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value"}
+                        value={habitLevelMap.has(habit.id) ? String(habitLevelMap.get(habit.id)) : "clear_value"}
                         onValueChange={(v) => {
                           if (v === "clear_value") {
                             setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
                           } else if (v === "0") {
                             setHabitSkipDialog({ habitId: habit.id });
                           } else {
-                            setHabitLevelMutation.mutate({ habitId: habit.id, level: Number(v) });
+                            setHabitLevelMutation.mutate({ habitId: habit.id, level: Number(v), isBinary: habit.isBinary || false });
                           }
                         }}
                       >
                         <SelectTrigger
                           className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
-                            status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
+                            (status === "completed" || (habit.isBinary && habitLevelMap.get(habit.id) === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
                             : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
                             : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
                             : "border-border"
@@ -543,9 +562,18 @@ export default function DashboardPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="clear_value">—</SelectItem>
-                          <SelectItem value="2">2 – Full</SelectItem>
-                          <SelectItem value="1">1 – Min</SelectItem>
-                          <SelectItem value="0">0 – Skip</SelectItem>
+                          {habit.isBinary ? (
+                            <>
+                              <SelectItem value="1">1 – Done</SelectItem>
+                              <SelectItem value="0">0 – Not Done</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="2">2 – Full</SelectItem>
+                              <SelectItem value="1">1 – Min</SelectItem>
+                              <SelectItem value="0">0 – Skip</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
@@ -653,9 +681,18 @@ export default function DashboardPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="clear_value">—</SelectItem>
-                          <SelectItem value="2">2 – Full</SelectItem>
-                          <SelectItem value="1">1 – Min</SelectItem>
-                          <SelectItem value="0">0 – Skip</SelectItem>
+                          {item.isBinary ? (
+                            <>
+                              <SelectItem value="1">1 – Done</SelectItem>
+                              <SelectItem value="0">0 – Not Done</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="2">2 – Full</SelectItem>
+                              <SelectItem value="1">1 – Min</SelectItem>
+                              <SelectItem value="0">0 – Skip</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
@@ -715,9 +752,18 @@ export default function DashboardPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="clear_value">—</SelectItem>
-                          <SelectItem value="2">2 – Full</SelectItem>
-                          <SelectItem value="1">1 – Min</SelectItem>
-                          <SelectItem value="0">0 – Skip</SelectItem>
+                          {item.isBinary ? (
+                            <>
+                              <SelectItem value="1">1 – Done</SelectItem>
+                              <SelectItem value="0">0 – Not Done</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="2">2 – Full</SelectItem>
+                              <SelectItem value="1">1 – Min</SelectItem>
+                              <SelectItem value="0">0 – Skip</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />

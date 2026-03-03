@@ -151,6 +151,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   actualStartTime: varchar("actual_start_time", { length: 10 }),
   actualDuration: integer("actual_duration"),
   timeRange: varchar("time_range", { length: 20 }),
+  isBinary: boolean("is_binary").default(false),
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -229,6 +230,7 @@ export const habits = pgTable("habits", {
   startDate: varchar("start_date", { length: 10 }),
   endDate: varchar("end_date", { length: 10 }),
   sortOrder: integer("sort_order").default(0),
+  isBinary: boolean("is_binary").default(false),
   active: boolean("active").default(true),
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
