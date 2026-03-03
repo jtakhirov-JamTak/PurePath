@@ -1,0 +1,104 @@
+Modifications
+
+Morning Journal
+Add these daily:
+•	Sleep hours (approximate)
+•	Energy 0–5
+Battery icons with these labels:
+o	0 = Depleted
+o	1 = Low
+o	2 = Enough
+o	3 = Good
+o	4 = Strong
+o	5 = Fully Charged
+•	Stress 0–5
+Signal strength bars with these labels:
+o	0 = Calm
+o	1 = Light
+o	2 = Noticeable
+o	3 = Moderate
+o	4 = Heavy
+o	5 = Overloaded
+________________________________________
+Quick Tools  modification – the following replace Movement and Loved One tools.
+
+Trigger Log (On-Demand Tool)
+Use this only when something meaningful happens and you want to capture the pattern.
+Rule
+Use observable language. If you include interpretation, label it as Interpretation.
+Default Version
+•	Time (approximate is fine: morning / afternoon / evening)
+•	Context (Work / Partner / Family / Friends / Self)
+•	Trigger (observable; something a camera or mic could capture)
+•	Emotion + intensity (1–5)
+•	Urge + intensity (1–5)
+•	What I did
+•	Outcome
+•	Recovery / repair latency (minutes until calm or minutes until repair attempt)
+Emotion dropdown
+•	Anxiety / Worry
+•	Fear
+•	Anger / Irritation
+•	Frustration
+•	Shame
+•	Guilt
+•	Sadness
+•	Hurt / Rejection
+•	Overwhelm
+•	Numb / Disconnected
+Urge dropdown
+•	Avoid / Withdraw
+•	Delay / Procrastinate
+•	Defend / Justify
+•	Attack / Confront
+•	Shut Down / Go Silent
+•	Seek Reassurance
+•	Control / Fix
+•	Appease / People-Please
+•	Ruminate / Overthink
+•	Escape / Numb (scroll, eat, use, distract)
+________________________________________
+Avoidance Tool (On-Demand)
+Use this when the issue is procrastination, resistance, or emotional avoidance.
+•	What is the one thing I’m avoiding?
+•	Avoidance delay (hours / days)
+•	Discomfort (1–5)
+•	Smallest exposure rep
+•	Start now for 5 minutes
+________________________________________
+Calendar Items
+For all Habits + Q1 + Q2 items add new fields
+They are created AFTER a Habit or Q1/Q2 item are created and a required as part of completion tracking
+Track completion using:
+•	0 = Not done (Red Fill)
+•	1 = Minimum version (2–5 min) (Yellow Fill)
+•	2 = Full version (Green Fill)
+Skip reason list
+Use one primary reason:
+1.	Low Capacity (sleep / fatigue / depleted)
+2.	High System Load
+3.	Avoidance (emotion-driven)
+4.	Forgot / No Cue
+5.	Unclear Next Step
+6.	Overcommitted / Too Many Tasks
+7.	Distraction / Poor Environment
+8.	Unexpected Interruption
+9.	Low Motivation / Value Disconnect
+10.	Intentional Deprioritization
+For Q2 items only
+Add these fields:
+•	Scheduled start time
+•	Actual start time (or didn’t start)
+•	Planned duration
+•	Actual duration
+________________________________________
+Evening Journal
+End-of-day step
+Every day ends with:
+•	Tomorrow’s first 2-minute step
+That step should also be added to the next day’s calendar as a Q1 item at 8am or at the time chosen by the client.
+Add this section
+•	Win of the Day
+One small observable win
+
+
