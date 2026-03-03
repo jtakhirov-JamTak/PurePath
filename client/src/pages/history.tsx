@@ -29,7 +29,7 @@ export default function HistoryPage() {
       title: "Progress",
       description: "Track your habits, goals, and overall growth over time",
       icon: BarChart3,
-      path: "/progress",
+      path: "/",
     },
   ];
 

@@ -259,7 +259,11 @@ export async function registerRoutes(
             const weekStartDate = new Date(tomorrow);
             weekStartDate.setDate(weekStartDate.getDate() + mondayOffset);
             const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-            const scheduledTime = content.tomorrowStepTime || "08:00";
+            const rawTime = content.tomorrowStepTime || "08:00";
+            const [hh, mm] = rawTime.split(":").map(Number);
+            const ampm = hh >= 12 ? "PM" : "AM";
+            const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+            const displayTime = `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
             await storage.createEisenhowerEntry({
               userId,
               task: tomorrowStep,
@@ -267,7 +271,8 @@ export async function registerRoutes(
               role: "self-development",
               quadrant: "q1",
               scheduledDate: tomorrowStr,
-              scheduledStartTime: scheduledTime,
+              scheduledStartTime: rawTime,
+              scheduledTime: displayTime,
             });
           }
         } catch (e) {

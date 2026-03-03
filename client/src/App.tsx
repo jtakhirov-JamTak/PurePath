@@ -24,7 +24,7 @@ import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 import TasksPage from "@/pages/tasks";
-import ProgressPage from "@/pages/progress";
+
 import LearnPage from "@/pages/learn";
 import CoachPage from "@/pages/coach";
 import PlanPage from "@/pages/plan";
@@ -122,9 +122,6 @@ function Router() {
       </Route>
       <Route path="/tasks">
         {() => <AuthenticatedRoute component={TasksPage} />}
-      </Route>
-      <Route path="/progress">
-        {() => <AuthenticatedRoute component={ProgressPage} />}
       </Route>
       <Route path="/learn">
         {() => <AuthenticatedRoute component={LearnPage} />}

@@ -764,7 +764,7 @@ export default function JournalHubPage() {
           <div className="pt-6 border-t space-y-3">
             <Card
               className="overflow-visible hover-elevate cursor-pointer"
-              onClick={() => setLocation("/progress")}
+              onClick={() => setLocation("/")}
               data-testid="card-link-progress"
             >
               <CardHeader className="flex flex-row items-center gap-4">

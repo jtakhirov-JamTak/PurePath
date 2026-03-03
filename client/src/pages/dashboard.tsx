@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -12,12 +12,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Check, ArrowRight,
-  Heart, Shield,
+  Heart, Shield, BedDouble, Activity, Footprints, Clock,
   Target, Minus, Pencil, Plus, X, AlertTriangle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, Task, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
@@ -52,6 +52,13 @@ const CATEGORY_STYLES: Record<string, string> = {
   learning: "bg-blue-500",
   leisure: "bg-slate-300 dark:bg-slate-400",
 };
+
+function formatTime24to12(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
 
 function Q2TimeTracker({ item, onSave }: {
   item: EisenhowerEntry;
@@ -121,11 +128,18 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
+
   const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions", todayStr],
     enabled: !!user,
     staleTime: 0,
     refetchOnMount: "always",
+  });
+
+  const { data: weekHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+    enabled: !!user,
   });
 
   const { data: journals = [] } = useQuery<Journal[]>({
@@ -347,6 +361,75 @@ export default function DashboardPage() {
   const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
   const totalHabits = todaysHabits.length + journalHabitItems.length;
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+
+  const progressMetrics = useMemo(() => {
+    const weekDays: Date[] = [];
+    for (let d = 0; d < 7; d++) weekDays.push(addDays(weekStartDate, d));
+    const weekDayStrs = weekDays.map(d => format(d, "yyyy-MM-dd"));
+    const pastDayStrs = weekDayStrs.filter(d => d <= todayStr);
+
+    let sleepWins = 0;
+    let sleepNights = 0;
+    for (const dayStr of pastDayStrs) {
+      const mj = journals.find(j => j.date === dayStr && j.session === "morning");
+      if (mj && mj.content) {
+        try {
+          const c = JSON.parse(mj.content);
+          if (c.sleepHours) {
+            sleepNights++;
+            const hrs = parseFloat(c.sleepHours);
+            if (!isNaN(hrs) && hrs >= 7 && hrs <= 9) sleepWins++;
+          }
+        } catch {}
+      }
+    }
+
+    let consistencyPoints = 0;
+    let consistencyMax = 0;
+    for (const dayStr of pastDayStrs) {
+      const day = new Date(dayStr + "T12:00:00");
+      const dayCode = DAY_CODES[day.getDay()];
+      const scheduledHabits = habits.filter(h => {
+        if (!h.active) return false;
+        if (!h.cadence.split(",").includes(dayCode)) return false;
+        if (h.startDate && dayStr < h.startDate) return false;
+        if (h.endDate && dayStr > h.endDate) return false;
+        return true;
+      });
+      scheduledHabits.forEach(h => {
+        consistencyMax += 2;
+        const hc = weekHabitCompletions.find(c => c.habitId === h.id && c.date === dayStr);
+        if (hc) {
+          if (hc.completionLevel === 2) consistencyPoints += 2;
+          else if (hc.completionLevel === 1) consistencyPoints += 1;
+        }
+      });
+    }
+    const weekEisenhower = eisenhowerEntries.filter(e =>
+      (e.quadrant === "q1" || e.quadrant === "q2") && e.weekStart === weekStartStr
+    );
+    weekEisenhower.forEach(e => {
+      consistencyMax += 2;
+      if (e.completionLevel === 2) consistencyPoints += 2;
+      else if (e.completionLevel === 1) consistencyPoints += 1;
+    });
+    const consistencyPct = consistencyMax > 0 ? Math.round((consistencyPoints / consistencyMax) * 100) : 0;
+
+    const firstStepItems = weekEisenhower.filter(e => e.quadrant === "q1" && e.role === "self-development");
+    const firstStepStarted = firstStepItems.filter(e => e.completionLevel != null && e.completionLevel >= 1).length;
+    const firstStepCompleted = firstStepItems.filter(e => e.completionLevel === 2).length;
+
+    const q2Items = weekEisenhower.filter(e => e.quadrant === "q2");
+    const q2ActualMin = q2Items.reduce((sum, e) => sum + (e.actualDuration || 0), 0);
+    const q2PlannedMin = q2Items.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+
+    return {
+      sleepWins, sleepNights,
+      consistencyPoints, consistencyMax, consistencyPct,
+      firstStepTotal: firstStepItems.length, firstStepStarted, firstStepCompleted,
+      q2ActualMin, q2PlannedMin,
+    };
+  }, [journals, habits, weekHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr]);
 
   return (
     <AppLayout>
@@ -583,8 +666,8 @@ export default function DashboardPage() {
                           {item.scheduledDate || item.deadline}
                         </span>
                       )}
-                      {item.scheduledTime && (
-                        <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
+                      {(item.scheduledTime || item.scheduledStartTime) && (
+                        <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
                       )}
                     </li>
                   );
@@ -643,8 +726,8 @@ export default function DashboardPage() {
                         : status === "skipped" ? "text-muted-foreground italic"
                         : ""
                       }`}>{item.task}</span>
-                      {item.scheduledTime && (
-                        <span className="text-xs text-muted-foreground">{item.scheduledTime}</span>
+                      {(item.scheduledTime || item.scheduledStartTime) && (
+                        <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
                       )}
                       {item.durationMinutes && (
                         <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
@@ -673,6 +756,63 @@ export default function DashboardPage() {
           hasAccess={!!hasPhase12}
           setLocation={setLocation}
         />
+
+        <Card className="overflow-visible" data-testid="card-progress-dashboard">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-serif">Weekly Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-sleep-wins">
+                <div className="flex items-center gap-2">
+                  <BedDouble className="h-4 w-4 text-indigo-500" />
+                  <span className="text-xs font-medium text-muted-foreground">Sleep Wins</span>
+                </div>
+                <p className="text-lg font-bold" data-testid="text-sleep-wins">
+                  {progressMetrics.sleepWins}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.sleepNights} nights</span>
+                </p>
+                <p className="text-[10px] text-muted-foreground">In 7–9h target window</p>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-consistency">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-emerald-500" />
+                  <span className="text-xs font-medium text-muted-foreground">Consistency</span>
+                </div>
+                <p className="text-lg font-bold" data-testid="text-consistency">
+                  {progressMetrics.consistencyPct}%
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {progressMetrics.consistencyPoints}/{progressMetrics.consistencyMax} pts
+                </p>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-first-steps">
+                <div className="flex items-center gap-2">
+                  <Footprints className="h-4 w-4 text-amber-500" />
+                  <span className="text-xs font-medium text-muted-foreground">First-Step Starts</span>
+                </div>
+                <p className="text-lg font-bold" data-testid="text-first-steps">
+                  {progressMetrics.firstStepStarted}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.firstStepTotal}</span>
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {progressMetrics.firstStepCompleted} fully completed
+                </p>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-q2-focus">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-500" />
+                  <span className="text-xs font-medium text-muted-foreground">Q2 Focus Minutes</span>
+                </div>
+                <p className="text-lg font-bold" data-testid="text-q2-focus">
+                  {progressMetrics.q2ActualMin}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.q2PlannedMin}m</span>
+                </p>
+                <p className="text-[10px] text-muted-foreground">Actual vs planned</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="overflow-visible" data-testid="card-quick-tools">
           <CardHeader className="pb-2">
