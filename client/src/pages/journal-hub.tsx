@@ -986,27 +986,20 @@ function ScheduledDayCell({
 
   return (
     <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.05]" : "bg-muted/20"} group/daycell relative`}>
-      {items.length > 0 && (() => {
-        const visibleItems = items.filter((e) => {
-          if (e.quadrant !== "q2") return true;
-          if (e.startedOnTime !== null && e.startedOnTime !== undefined) return false;
-          return true;
-        });
-        return visibleItems.length > 0 ? (
-          <div className="space-y-1.5 py-2 w-full">
-            {visibleItems.map((entry) => (
-              <EisenhowerItemRow
-                key={entry.id}
-                entry={entry}
-                setEisenhowerLevelMutation={setEisenhowerLevelMutation}
-                updateEisenhowerMutation={updateEisenhowerMutation}
-                deleteEisenhowerMutation={deleteEisenhowerMutation}
-                onSkipRequest={onSkipRequest}
-              />
-            ))}
-          </div>
-        ) : null;
-      })()}
+      {items.length > 0 && (
+        <div className="space-y-1.5 py-2 w-full">
+          {items.map((entry) => (
+            <EisenhowerItemRow
+              key={entry.id}
+              entry={entry}
+              setEisenhowerLevelMutation={setEisenhowerLevelMutation}
+              updateEisenhowerMutation={updateEisenhowerMutation}
+              deleteEisenhowerMutation={deleteEisenhowerMutation}
+              onSkipRequest={onSkipRequest}
+            />
+          ))}
+        </div>
+      )}
       {showAdd ? (
         <div className="flex items-center gap-1 py-1 w-full">
           <Input
@@ -1037,130 +1030,6 @@ function ScheduledDayCell({
         >
           <Plus className="h-3 w-3" />
         </button>
-      )}
-    </div>
-  );
-}
-
-const DELAY_REASONS_INLINE = [
-  "Low Capacity (sleep / fatigue / depleted)",
-  "Distraction / Poor Environment",
-  "Unexpected Interruption",
-  "Overcommitted / Too Many Tasks",
-  "Avoidance (emotion-driven)",
-  "Forgot / No Cue",
-  "Unclear Next Step",
-  "Low Motivation / Value Disconnect",
-  "Intentional Deprioritization",
-  "Other",
-];
-
-const MINUTE_INCREMENTS_INLINE = [15, 30, 45, 60, 75, 90, 105, 120];
-
-function Q2TimeTrackerInline({ entry, setEisenhowerLevelMutation }: { entry: EisenhowerEntry; setEisenhowerLevelMutation: any }) {
-  const [onTime, setOnTime] = useState<boolean | null>(entry.startedOnTime ?? null);
-  const [delayMin, setDelayMin] = useState<number | null>(entry.delayMinutes ?? null);
-  const [delayRsn, setDelayRsn] = useState(entry.delayReason || "");
-  const [completedTime, setCompletedTime] = useState<boolean | null>(entry.completedRequiredTime ?? null);
-  const [shortMin, setShortMin] = useState<number | null>(entry.timeShortMinutes ?? null);
-  const [dirty, setDirty] = useState(false);
-
-  return (
-    <div className="space-y-1.5 mt-1 pt-1 border-t border-dashed border-muted" data-testid={`q2-time-${entry.id}`}>
-      {entry.scheduledStartTime && (
-        <p className="text-[9px] text-muted-foreground">Scheduled: {entry.scheduledStartTime}</p>
-      )}
-      {entry.durationMinutes && (
-        <p className="text-[9px] text-muted-foreground">Required: {entry.durationMinutes} min</p>
-      )}
-      <div>
-        <label className="text-[9px] text-muted-foreground block mb-0.5">Start on time?</label>
-        <div className="flex gap-1">
-          <Button size="sm" variant={onTime === true ? "default" : "outline"} className="h-5 text-[10px] px-2"
-            onClick={() => { setOnTime(true); setDelayMin(null); setDelayRsn(""); setDirty(true); }}
-            data-testid={`q2-ontime-yes-${entry.id}`}
-          >Yes</Button>
-          <Button size="sm" variant={onTime === false ? "destructive" : "outline"} className="h-5 text-[10px] px-2"
-            onClick={() => { setOnTime(false); setDirty(true); }}
-            data-testid={`q2-ontime-no-${entry.id}`}
-          >No</Button>
-        </div>
-      </div>
-      {onTime === false && (
-        <>
-          <div>
-            <label className="text-[9px] text-muted-foreground block mb-0.5">Minutes delay?</label>
-            <Select value={delayMin != null ? String(delayMin) : ""} onValueChange={(v) => { setDelayMin(Number(v)); setDirty(true); }}>
-              <SelectTrigger className="h-5 text-[10px] px-1 w-24" data-testid={`q2-delay-min-${entry.id}`}>
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {MINUTE_INCREMENTS_INLINE.map(m => (
-                  <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-[9px] text-muted-foreground block mb-0.5">Delay reason?</label>
-            <Select value={delayRsn} onValueChange={(v) => { setDelayRsn(v); setDirty(true); }}>
-              <SelectTrigger className="h-5 text-[10px] px-1" data-testid={`q2-delay-reason-${entry.id}`}>
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {DELAY_REASONS_INLINE.map(r => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      )}
-      <div>
-        <label className="text-[9px] text-muted-foreground block mb-0.5">Completed required time?</label>
-        <div className="flex gap-1">
-          <Button size="sm" variant={completedTime === true ? "default" : "outline"} className="h-5 text-[10px] px-2"
-            onClick={() => { setCompletedTime(true); setShortMin(null); setDirty(true); }}
-            data-testid={`q2-completed-yes-${entry.id}`}
-          >Yes</Button>
-          <Button size="sm" variant={completedTime === false ? "destructive" : "outline"} className="h-5 text-[10px] px-2"
-            onClick={() => { setCompletedTime(false); setDirty(true); }}
-            data-testid={`q2-completed-no-${entry.id}`}
-          >No</Button>
-        </div>
-      </div>
-      {completedTime === false && (
-        <div>
-          <label className="text-[9px] text-muted-foreground block mb-0.5">Minutes less?</label>
-          <Select value={shortMin != null ? String(shortMin) : ""} onValueChange={(v) => { setShortMin(Number(v)); setDirty(true); }}>
-            <SelectTrigger className="h-5 text-[10px] px-1 w-24" data-testid={`q2-short-min-${entry.id}`}>
-              <SelectValue placeholder="Select..." />
-            </SelectTrigger>
-            <SelectContent>
-              {MINUTE_INCREMENTS_INLINE.map(m => (
-                <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      {dirty && (
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" className="h-5 text-[10px] px-2" onClick={() => {
-            setEisenhowerLevelMutation.mutate({
-              id: entry.id,
-              level: entry.completionLevel,
-              startedOnTime: onTime,
-              delayMinutes: onTime === false ? delayMin : null,
-              delayReason: onTime === false ? (delayRsn || null) : null,
-              completedRequiredTime: completedTime,
-              timeShortMinutes: completedTime === false ? shortMin : null,
-            });
-            setDirty(false);
-          }} data-testid={`q2-time-save-${entry.id}`}>
-            Save
-          </Button>
-        </div>
       )}
     </div>
   );
@@ -1264,9 +1133,6 @@ function EisenhowerItemRow({
                 <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
               )}
             </div>
-            {entry.quadrant === "q2" && (entry.completionLevel === 1 || entry.completionLevel === 2) && (
-              <Q2TimeTrackerInline entry={entry} setEisenhowerLevelMutation={setEisenhowerLevelMutation} />
-            )}
           </>
         )}
       </div>
