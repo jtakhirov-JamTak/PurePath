@@ -989,10 +989,7 @@ function ScheduledDayCell({
       {items.length > 0 && (() => {
         const visibleItems = items.filter((e) => {
           if (e.quadrant !== "q2") return true;
-          const isBin = e.isBinary || false;
-          if (isBin && e.completionLevel === 1) return false;
-          if (!isBin && e.completionLevel === 2) return false;
-          if (e.status === "skipped") return false;
+          if (e.startedOnTime !== null && e.startedOnTime !== undefined) return false;
           return true;
         });
         return visibleItems.length > 0 ? (
@@ -1434,8 +1431,10 @@ function SortableHabitRow({
           ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60 text-white"
           : "border-muted-foreground/30 text-muted-foreground";
 
-        const currentLevel = status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null;
         const isBin = habit.isBinary || false;
+        const currentLevel = isBin
+          ? (status === "completed" ? 1 : status === "skipped" ? 0 : null)
+          : (status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null);
 
         const cycleLevel = () => {
           if (isBin) {

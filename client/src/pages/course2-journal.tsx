@@ -474,8 +474,10 @@ function HabitRow({
         const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
-        const currentLevel = status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null;
         const isBin = habit.isBinary || false;
+        const currentLevel = isBin
+          ? (status === "completed" ? 1 : status === "skipped" ? 0 : null)
+          : (status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null);
         const boxClass = status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
           : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
           : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
