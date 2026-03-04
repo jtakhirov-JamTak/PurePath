@@ -494,14 +494,16 @@ function HabitRow({
           }
         };
 
-        const boxLabel = currentLevel === 2 ? "2" : currentLevel === 1 ? "1" : currentLevel === 0 ? "0" : "—";
+        const boxLabel = isBin
+          ? (currentLevel === 1 ? "Done" : currentLevel === 0 ? "Skip" : "—")
+          : (currentLevel === 2 ? "Full" : currentLevel === 1 ? "Min" : currentLevel === 0 ? "Skip" : "—");
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
               <button
                 onClick={cycleLevel}
-                className={`h-5 w-8 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
+                className={`h-5 w-12 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
                 {boxLabel}

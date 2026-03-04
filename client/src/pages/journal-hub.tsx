@@ -1196,7 +1196,9 @@ function EisenhowerItemRow({
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           }
         };
-        const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+        const boxLabel = isBin
+          ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
+          : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
         const boxClass =
           (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
           : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
@@ -1205,7 +1207,7 @@ function EisenhowerItemRow({
         return (
           <button
             onClick={cycleEis}
-            className={`mt-0.5 h-5 w-10 text-[10px] shrink-0 rounded border-2 font-medium cursor-pointer ${boxClass}`}
+            className={`mt-0.5 h-5 w-12 text-[10px] shrink-0 rounded border-2 font-medium cursor-pointer ${boxClass}`}
             data-testid={`eisenhower-level-${entry.id}`}
           >
             {boxLabel}
@@ -1429,14 +1431,16 @@ function SortableHabitRow({
           }
         };
 
-        const boxLabel = currentLevel === 2 ? "2" : currentLevel === 1 ? "1" : currentLevel === 0 ? "0" : "—";
+        const boxLabel = isBin
+          ? (currentLevel === 1 ? "Done" : currentLevel === 0 ? "Skip" : "—")
+          : (currentLevel === 2 ? "Full" : currentLevel === 1 ? "Min" : currentLevel === 0 ? "Skip" : "—");
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
               <button
                 onClick={cycleLevel}
-                className={`h-7 w-10 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
+                className={`h-7 w-12 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
                 data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
                 {boxLabel}

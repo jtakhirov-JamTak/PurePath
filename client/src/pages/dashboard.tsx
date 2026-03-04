@@ -642,7 +642,9 @@ export default function DashboardPage() {
                       }
                     }
                   };
-                  const boxLabel = level === 2 ? "2" : level === 1 ? "1" : level === 0 ? "0" : "—";
+                  const boxLabel = isBin
+                    ? (level === 1 ? "Done" : level === 0 ? "Skip" : "—")
+                    : (level === 2 ? "Full" : level === 1 ? "Min" : level === 0 ? "Skip" : "—");
                   const boxClass =
                     (status === "completed" || (isBin && level === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
                     : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
@@ -652,7 +654,7 @@ export default function DashboardPage() {
                     <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
                       <button
                         onClick={cycleHabit}
-                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
                         data-testid={`habit-level-${habit.id}`}
                       >
                         {boxLabel}
@@ -749,7 +751,9 @@ export default function DashboardPage() {
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
-                  const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+                  const boxLabel = isBin
+                    ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
+                    : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
                   const boxClass =
                     (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
                     : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800"
@@ -759,7 +763,7 @@ export default function DashboardPage() {
                     <li key={item.id} className="flex items-center gap-3" data-testid={`overdue-item-${item.id}`}>
                       <button
                         onClick={cycleOverdue}
-                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
                         data-testid={`overdue-level-${item.id}`}
                       >
                         {boxLabel}
@@ -807,7 +811,9 @@ export default function DashboardPage() {
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
-                  const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+                  const boxLabel = isBin
+                    ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
+                    : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
                   const boxClass =
                     (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
                     : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
@@ -818,7 +824,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-3">
                       <button
                         onClick={cycleQ2}
-                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
                         data-testid={`q2-level-${item.id}`}
                       >
                         {boxLabel}
