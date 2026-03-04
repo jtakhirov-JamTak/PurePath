@@ -735,7 +735,7 @@ export default function EisenhowerPage() {
 
         {/* Plan Week Wizard */}
         <Dialog open={wizardOpen} onOpenChange={handleWizardOpenChange}>
-          <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="modal-plan-wizard">
+          <DialogContent className="sm:max-w-4xl" data-testid="modal-plan-wizard">
             <DialogHeader>
               <DialogTitle className="font-serif flex items-center gap-2">
                 <Wand2 className="h-5 w-5 text-primary" />

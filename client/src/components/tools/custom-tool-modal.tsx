@@ -250,7 +250,7 @@ export function CustomToolExerciseModal({
       mood={mood}
       title={tool.name}
       icon={<Icon className="h-5 w-5 text-primary" />}
-      className="sm:max-w-md max-h-[85vh] overflow-y-auto"
+      className="sm:max-w-md"
       testId="modal-custom-tool-exercise"
     >
       <div className="space-y-4">

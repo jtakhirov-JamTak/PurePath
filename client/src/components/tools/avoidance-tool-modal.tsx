@@ -71,7 +71,7 @@ export function AvoidanceToolModal({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="modal-avoidance">
+      <DialogContent className="sm:max-w-lg" data-testid="modal-avoidance">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-blue-500" />

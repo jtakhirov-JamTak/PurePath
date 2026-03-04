@@ -473,7 +473,7 @@ export default function EmpathyPage() {
                     New Prep
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh]">
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Conversation Prep</DialogTitle>
                     <DialogDescription>Prepare for an upcoming conversation</DialogDescription>
@@ -500,7 +500,7 @@ export default function EmpathyPage() {
                     New Debrief
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh]">
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Conversation Debrief</DialogTitle>
                     <DialogDescription>Reflect on a past interaction to build understanding</DialogDescription>
@@ -536,7 +536,7 @@ export default function EmpathyPage() {
         </Tabs>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh]">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingType === "prep" ? "Edit Prep" : "Edit Debrief"}</DialogTitle>
               <DialogDescription>

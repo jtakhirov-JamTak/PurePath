@@ -103,7 +103,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="modal-trigger-log">
+      <DialogContent className="sm:max-w-lg" data-testid="modal-trigger-log">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-500" />

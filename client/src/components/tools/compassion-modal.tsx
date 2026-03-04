@@ -139,7 +139,7 @@ export function CompassionModal({
       mood={mood}
       title="Loved One Mirror"
       icon={<HandHeart className="h-5 w-5 text-violet-500" />}
-      className="sm:max-w-lg max-h-[85vh] overflow-y-auto"
+      className="sm:max-w-lg"
       testId="modal-compassion"
     >
       <>
