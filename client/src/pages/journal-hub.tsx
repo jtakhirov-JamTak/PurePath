@@ -187,14 +187,18 @@ export default function JournalHubPage() {
   const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
 
   const setEisenhowerLevelMutation = useMutation({
-    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration }: {
-      id: number; level: number | null; skipReason?: string;
+    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
+      startedOnTime, delayMinutes, delayReason, completedRequiredTime, timeShortMinutes }: {
+      id: number; level: number | null; skipReason?: string; isBinary?: boolean;
       scheduledStartTime?: string | null; actualStartTime?: string | null;
       durationMinutes?: number | null; actualDuration?: number | null;
+      startedOnTime?: boolean | null; delayMinutes?: number | null; delayReason?: string | null;
+      completedRequiredTime?: boolean | null; timeShortMinutes?: number | null;
     }) => {
       let status: string | null;
       if (level === null) { status = null; }
       else if (level === 0) { status = "skipped"; }
+      else if (isBinary && level === 1) { status = "completed"; }
       else if (level === 1) { status = "minimum"; }
       else { status = "completed"; }
       const body: Record<string, unknown> = { status, completionLevel: level };
@@ -203,6 +207,11 @@ export default function JournalHubPage() {
       if (actualStartTime !== undefined) body.actualStartTime = actualStartTime;
       if (durationMinutes !== undefined) body.durationMinutes = durationMinutes;
       if (actualDuration !== undefined) body.actualDuration = actualDuration;
+      if (startedOnTime !== undefined) body.startedOnTime = startedOnTime;
+      if (delayMinutes !== undefined) body.delayMinutes = delayMinutes;
+      if (delayReason !== undefined) body.delayReason = delayReason;
+      if (completedRequiredTime !== undefined) body.completedRequiredTime = completedRequiredTime;
+      if (timeShortMinutes !== undefined) body.timeShortMinutes = timeShortMinutes;
       const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
         const errBody = await res.json();
@@ -977,20 +986,30 @@ function ScheduledDayCell({
 
   return (
     <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.05]" : "bg-muted/20"} group/daycell relative`}>
-      {items.length > 0 && (
-        <div className="space-y-1.5 py-2 w-full">
-          {items.map((entry) => (
-            <EisenhowerItemRow
-              key={entry.id}
-              entry={entry}
-              setEisenhowerLevelMutation={setEisenhowerLevelMutation}
-              updateEisenhowerMutation={updateEisenhowerMutation}
-              deleteEisenhowerMutation={deleteEisenhowerMutation}
-              onSkipRequest={onSkipRequest}
-            />
-          ))}
-        </div>
-      )}
+      {items.length > 0 && (() => {
+        const visibleItems = items.filter((e) => {
+          if (e.quadrant !== "q2") return true;
+          const isBin = e.isBinary || false;
+          if (isBin && e.completionLevel === 1) return false;
+          if (!isBin && e.completionLevel === 2) return false;
+          if (e.status === "skipped") return false;
+          return true;
+        });
+        return visibleItems.length > 0 ? (
+          <div className="space-y-1.5 py-2 w-full">
+            {visibleItems.map((entry) => (
+              <EisenhowerItemRow
+                key={entry.id}
+                entry={entry}
+                setEisenhowerLevelMutation={setEisenhowerLevelMutation}
+                updateEisenhowerMutation={updateEisenhowerMutation}
+                deleteEisenhowerMutation={deleteEisenhowerMutation}
+                onSkipRequest={onSkipRequest}
+              />
+            ))}
+          </div>
+        ) : null;
+      })()}
       {showAdd ? (
         <div className="flex items-center gap-1 py-1 w-full">
           <Input
@@ -1186,7 +1205,7 @@ function EisenhowerItemRow({
         const lvl = entry.completionLevel ?? null;
         const cycleEis = () => {
           if (isBin) {
-            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
+            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1, isBinary: true });
             else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           } else {

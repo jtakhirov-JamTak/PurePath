@@ -368,14 +368,18 @@ export default function DashboardPage() {
   });
 
   const setEisenhowerLevelMutation = useMutation({
-    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration }: {
-      id: number; level: number | null; skipReason?: string;
+    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
+      startedOnTime, delayMinutes, delayReason, completedRequiredTime, timeShortMinutes }: {
+      id: number; level: number | null; skipReason?: string; isBinary?: boolean;
       scheduledStartTime?: string | null; actualStartTime?: string | null;
       durationMinutes?: number | null; actualDuration?: number | null;
+      startedOnTime?: boolean | null; delayMinutes?: number | null; delayReason?: string | null;
+      completedRequiredTime?: boolean | null; timeShortMinutes?: number | null;
     }) => {
       let status: string | null;
       if (level === null) { status = null; }
       else if (level === 0) { status = "skipped"; }
+      else if (isBinary && level === 1) { status = "completed"; }
       else if (level === 1) { status = "minimum"; }
       else { status = "completed"; }
       const body: Record<string, unknown> = { status, completionLevel: level };
@@ -384,6 +388,11 @@ export default function DashboardPage() {
       if (actualStartTime !== undefined) body.actualStartTime = actualStartTime;
       if (durationMinutes !== undefined) body.durationMinutes = durationMinutes;
       if (actualDuration !== undefined) body.actualDuration = actualDuration;
+      if (startedOnTime !== undefined) body.startedOnTime = startedOnTime;
+      if (delayMinutes !== undefined) body.delayMinutes = delayMinutes;
+      if (delayReason !== undefined) body.delayReason = delayReason;
+      if (completedRequiredTime !== undefined) body.completedRequiredTime = completedRequiredTime;
+      if (timeShortMinutes !== undefined) body.timeShortMinutes = timeShortMinutes;
       const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
         const errBody = await res.json();
@@ -741,7 +750,7 @@ export default function DashboardPage() {
                   const lvl = item.completionLevel ?? null;
                   const cycleOverdue = () => {
                     if (isBin) {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
                       else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
@@ -801,7 +810,7 @@ export default function DashboardPage() {
                   const lvl = item.completionLevel ?? null;
                   const cycleQ2 = () => {
                     if (isBin) {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
                       else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
