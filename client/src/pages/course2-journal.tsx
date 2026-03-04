@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -475,47 +474,38 @@ function HabitRow({
         const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
-        const currentLevel = status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value";
+        const currentLevel = status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null;
+        const isBin = habit.isBinary || false;
         const boxClass = status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
           : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
           : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-          : "border-muted-foreground/30";
+          : "border-muted-foreground/30 text-muted-foreground";
+
+        const cycleLevel = () => {
+          if (isBin) {
+            if (currentLevel === null) onSetLevel(1, dateStr);
+            else if (currentLevel === 1) onSetLevel(0, dateStr);
+            else onSetLevel(null, dateStr);
+          } else {
+            if (currentLevel === null) onSetLevel(2, dateStr);
+            else if (currentLevel === 2) onSetLevel(1, dateStr);
+            else if (currentLevel === 1) onSetLevel(0, dateStr);
+            else onSetLevel(null, dateStr);
+          }
+        };
+
+        const boxLabel = currentLevel === 2 ? "2" : currentLevel === 1 ? "1" : currentLevel === 0 ? "0" : "—";
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
-              <Select
-                value={currentLevel}
-                onValueChange={(v) => {
-                  if (v === "clear_value") {
-                    onSetLevel(null, dateStr);
-                  } else {
-                    onSetLevel(Number(v), dateStr);
-                  }
-                }}
+              <button
+                onClick={cycleLevel}
+                className={`h-5 w-8 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
+                data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
-                <SelectTrigger
-                  className={`h-5 w-8 text-[10px] px-0.5 rounded-md border ${boxClass}`}
-                  data-testid={`habit-status-${habit.id}-${dateStr}`}
-                >
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="clear_value">—</SelectItem>
-                  {habit.isBinary ? (
-                    <>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="0">0</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value="2">2</SelectItem>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="0">0</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
+                {boxLabel}
+              </button>
             ) : null}
           </DayCell>
         );

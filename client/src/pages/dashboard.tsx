@@ -60,46 +60,124 @@ function formatTime24to12(time: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
+const DELAY_REASONS = [
+  "Low Capacity (sleep / fatigue / depleted)",
+  "Distraction / Poor Environment",
+  "Unexpected Interruption",
+  "Overcommitted / Too Many Tasks",
+  "Avoidance (emotion-driven)",
+  "Forgot / No Cue",
+  "Unclear Next Step",
+  "Low Motivation / Value Disconnect",
+  "Intentional Deprioritization",
+  "Other",
+];
+
+const MINUTE_INCREMENTS = [15, 30, 45, 60, 75, 90, 105, 120];
+
 function Q2TimeTracker({ item, onSave }: {
   item: EisenhowerEntry;
-  onSave: (fields: { scheduledStartTime?: string | null; actualStartTime?: string | null; durationMinutes?: number | null; actualDuration?: number | null }) => void;
+  onSave: (fields: Record<string, unknown>) => void;
 }) {
-  const [sched, setSched] = useState(item.scheduledStartTime || "");
-  const [actual, setActual] = useState(item.actualStartTime || "");
-  const [planned, setPlanned] = useState(item.durationMinutes ? String(item.durationMinutes) : "");
-  const [actualDur, setActualDur] = useState(item.actualDuration ? String(item.actualDuration) : "");
+  const [onTime, setOnTime] = useState<boolean | null>(item.startedOnTime ?? null);
+  const [delayMin, setDelayMin] = useState<number | null>(item.delayMinutes ?? null);
+  const [delayRsn, setDelayRsn] = useState(item.delayReason || "");
+  const [completedTime, setCompletedTime] = useState<boolean | null>(item.completedRequiredTime ?? null);
+  const [shortMin, setShortMin] = useState<number | null>(item.timeShortMinutes ?? null);
   const [dirty, setDirty] = useState(false);
 
   return (
-    <div className="ml-14 grid grid-cols-2 gap-2 py-1" data-testid={`q2-time-${item.id}`}>
+    <div className="ml-14 space-y-2 py-1" data-testid={`q2-time-${item.id}`}>
+      {item.scheduledStartTime && (
+        <p className="text-[10px] text-muted-foreground">Scheduled: {item.scheduledStartTime}</p>
+      )}
+      {item.durationMinutes && (
+        <p className="text-[10px] text-muted-foreground">Required: {item.durationMinutes} min</p>
+      )}
       <div>
-        <label className="text-[10px] text-muted-foreground">Scheduled Start</label>
-        <Input type="time" value={sched} onChange={(e) => { setSched(e.target.value); setDirty(true); }} className="h-7 text-xs" data-testid={`q2-sched-start-${item.id}`} />
+        <label className="text-[10px] text-muted-foreground block mb-1">Did you start on time?</label>
+        <div className="flex gap-1">
+          <Button size="sm" variant={onTime === true ? "default" : "outline"} className="h-6 text-xs px-3"
+            onClick={() => { setOnTime(true); setDelayMin(null); setDelayRsn(""); setDirty(true); }}
+            data-testid={`q2-ontime-yes-${item.id}`}
+          >Yes</Button>
+          <Button size="sm" variant={onTime === false ? "destructive" : "outline"} className="h-6 text-xs px-3"
+            onClick={() => { setOnTime(false); setDirty(true); }}
+            data-testid={`q2-ontime-no-${item.id}`}
+          >No</Button>
+        </div>
       </div>
+      {onTime === false && (
+        <>
+          <div>
+            <label className="text-[10px] text-muted-foreground block mb-1">How many minutes delay?</label>
+            <Select value={delayMin != null ? String(delayMin) : ""} onValueChange={(v) => { setDelayMin(Number(v)); setDirty(true); }}>
+              <SelectTrigger className="h-7 text-xs w-32" data-testid={`q2-delay-min-${item.id}`}>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {MINUTE_INCREMENTS.map(m => (
+                  <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground block mb-1">Reason for delay?</label>
+            <Select value={delayRsn} onValueChange={(v) => { setDelayRsn(v); setDirty(true); }}>
+              <SelectTrigger className="h-7 text-xs" data-testid={`q2-delay-reason-${item.id}`}>
+                <SelectValue placeholder="Select reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                {DELAY_REASONS.map(r => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
       <div>
-        <label className="text-[10px] text-muted-foreground">Actual Start</label>
-        <Input type="time" value={actual} onChange={(e) => { setActual(e.target.value); setDirty(true); }} className="h-7 text-xs" data-testid={`q2-actual-start-${item.id}`} />
+        <label className="text-[10px] text-muted-foreground block mb-1">Did you complete required time?</label>
+        <div className="flex gap-1">
+          <Button size="sm" variant={completedTime === true ? "default" : "outline"} className="h-6 text-xs px-3"
+            onClick={() => { setCompletedTime(true); setShortMin(null); setDirty(true); }}
+            data-testid={`q2-completed-yes-${item.id}`}
+          >Yes</Button>
+          <Button size="sm" variant={completedTime === false ? "destructive" : "outline"} className="h-6 text-xs px-3"
+            onClick={() => { setCompletedTime(false); setDirty(true); }}
+            data-testid={`q2-completed-no-${item.id}`}
+          >No</Button>
+        </div>
       </div>
-      <div>
-        <label className="text-[10px] text-muted-foreground">Planned (min)</label>
-        <Input type="number" value={planned} onChange={(e) => { setPlanned(e.target.value); setDirty(true); }} className="h-7 text-xs" min="1" data-testid={`q2-planned-dur-${item.id}`} />
-      </div>
-      <div>
-        <label className="text-[10px] text-muted-foreground">Actual (min)</label>
-        <Input type="number" value={actualDur} onChange={(e) => { setActualDur(e.target.value); setDirty(true); }} className="h-7 text-xs" min="1" data-testid={`q2-actual-dur-${item.id}`} />
-      </div>
+      {completedTime === false && (
+        <div>
+          <label className="text-[10px] text-muted-foreground block mb-1">How many minutes less?</label>
+          <Select value={shortMin != null ? String(shortMin) : ""} onValueChange={(v) => { setShortMin(Number(v)); setDirty(true); }}>
+            <SelectTrigger className="h-7 text-xs w-32" data-testid={`q2-short-min-${item.id}`}>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {MINUTE_INCREMENTS.map(m => (
+                <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {dirty && (
-        <div className="col-span-2 flex justify-end">
+        <div className="flex justify-end">
           <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => {
             onSave({
-              scheduledStartTime: sched || null,
-              actualStartTime: actual || null,
-              durationMinutes: planned ? parseInt(planned) : null,
-              actualDuration: actualDur ? parseInt(actualDur) : null,
+              startedOnTime: onTime,
+              delayMinutes: onTime === false ? delayMin : null,
+              delayReason: onTime === false ? (delayRsn || null) : null,
+              completedRequiredTime: completedTime,
+              timeShortMinutes: completedTime === false ? shortMin : null,
             });
             setDirty(false);
           }} data-testid={`q2-time-save-${item.id}`}>
-            Save Times
+            Save
           </Button>
         </div>
       )}
@@ -439,8 +517,14 @@ export default function DashboardPage() {
     ).length;
 
     const q2Items = weekEisenhower.filter(e => e.quadrant === "q2");
-    const q2ActualMin = q2Items.reduce((sum, e) => sum + (e.actualDuration || 0), 0);
     const q2PlannedMin = q2Items.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+    const q2ActualMin = q2Items.reduce((sum, e) => {
+      const planned = e.durationMinutes || 0;
+      if (e.completedRequiredTime === true) return sum + planned;
+      if (e.completedRequiredTime === false && e.timeShortMinutes != null) return sum + Math.max(0, planned - e.timeShortMinutes);
+      if (e.actualDuration != null) return sum + e.actualDuration;
+      return sum;
+    }, 0);
 
     return {
       sleepWins, sleepNights,
@@ -534,48 +618,45 @@ export default function DashboardPage() {
                 ))}
                 {todaysHabits.map((habit) => {
                   const status = habitStatusMap.get(habit.id) || null;
+                  const level = habitLevelMap.get(habit.id) ?? null;
                   const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
+                  const isBin = habit.isBinary || false;
+                  const cycleHabit = () => {
+                    if (isBin) {
+                      if (level === null || level === undefined) {
+                        setHabitLevelMutation.mutate({ habitId: habit.id, level: 1, isBinary: true });
+                      } else if (level === 1) {
+                        setHabitSkipDialog({ habitId: habit.id });
+                      } else {
+                        setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
+                      }
+                    } else {
+                      if (level === null || level === undefined) {
+                        setHabitLevelMutation.mutate({ habitId: habit.id, level: 2, isBinary: false });
+                      } else if (level === 2) {
+                        setHabitLevelMutation.mutate({ habitId: habit.id, level: 1, isBinary: false });
+                      } else if (level === 1) {
+                        setHabitSkipDialog({ habitId: habit.id });
+                      } else {
+                        setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
+                      }
+                    }
+                  };
+                  const boxLabel = level === 2 ? "2" : level === 1 ? "1" : level === 0 ? "0" : "—";
+                  const boxClass =
+                    (status === "completed" || (isBin && level === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+                    : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                    : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                    : "border-border text-muted-foreground";
                   return (
                     <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
-                      <Select
-                        value={habitLevelMap.has(habit.id) ? String(habitLevelMap.get(habit.id)) : "clear_value"}
-                        onValueChange={(v) => {
-                          if (v === "clear_value") {
-                            setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
-                          } else if (v === "0") {
-                            setHabitSkipDialog({ habitId: habit.id });
-                          } else {
-                            setHabitLevelMutation.mutate({ habitId: habit.id, level: Number(v), isBinary: habit.isBinary || false });
-                          }
-                        }}
+                      <button
+                        onClick={cycleHabit}
+                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        data-testid={`habit-level-${habit.id}`}
                       >
-                        <SelectTrigger
-                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
-                            (status === "completed" || (habit.isBinary && habitLevelMap.get(habit.id) === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-                            : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                            : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                            : "border-border"
-                          }`}
-                          data-testid={`habit-level-${habit.id}`}
-                        >
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="clear_value">—</SelectItem>
-                          {habit.isBinary ? (
-                            <>
-                              <SelectItem value="1">1 – Done</SelectItem>
-                              <SelectItem value="0">0 – Not Done</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="2">2 – Full</SelectItem>
-                              <SelectItem value="1">1 – Min</SelectItem>
-                              <SelectItem value="0">0 – Skip</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                        {boxLabel}
+                      </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
@@ -654,47 +735,35 @@ export default function DashboardPage() {
               <ul className="space-y-2">
                 {overdueItems.map((item) => {
                   const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
+                  const isBin = item.isBinary || false;
+                  const lvl = item.completionLevel ?? null;
+                  const cycleOverdue = () => {
+                    if (isBin) {
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                    } else {
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
+                      else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                    }
+                  };
+                  const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+                  const boxClass =
+                    (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+                    : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800"
+                    : lvl === 0 ? "bg-red-400 border-red-500 text-white"
+                    : "border-red-300 dark:border-red-500/50 text-muted-foreground";
                   return (
                     <li key={item.id} className="flex items-center gap-3" data-testid={`overdue-item-${item.id}`}>
-                      <Select
-                        value={item.completionLevel != null ? String(item.completionLevel) : "clear_value"}
-                        onValueChange={(v) => {
-                          if (v === "clear_value") {
-                            setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                          } else if (v === "0") {
-                            setEisenhowerSkipDialog({ id: item.id });
-                          } else {
-                            setEisenhowerLevelMutation.mutate({ id: item.id, level: Number(v) });
-                          }
-                        }}
+                      <button
+                        onClick={cycleOverdue}
+                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        data-testid={`overdue-level-${item.id}`}
                       >
-                        <SelectTrigger
-                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
-                            item.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
-                            : item.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800"
-                            : item.completionLevel === 0 ? "bg-red-400 border-red-500 text-white"
-                            : "border-red-300 dark:border-red-500/50"
-                          }`}
-                          data-testid={`overdue-level-${item.id}`}
-                        >
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="clear_value">—</SelectItem>
-                          {item.isBinary ? (
-                            <>
-                              <SelectItem value="1">1 – Done</SelectItem>
-                              <SelectItem value="0">0 – Not Done</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="2">2 – Full</SelectItem>
-                              <SelectItem value="1">1 – Min</SelectItem>
-                              <SelectItem value="0">0 – Skip</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                        {boxLabel}
+                      </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className="text-sm flex-1">{item.task}</span>
                       <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 dark:text-red-400">{item.quadrant?.toUpperCase()}</Badge>
@@ -724,48 +793,36 @@ export default function DashboardPage() {
                 {todayQ2Items.map((item) => {
                   const status = item.status || null;
                   const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
+                  const isBin = item.isBinary || false;
+                  const lvl = item.completionLevel ?? null;
+                  const cycleQ2 = () => {
+                    if (isBin) {
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                    } else {
+                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
+                      else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                    }
+                  };
+                  const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+                  const boxClass =
+                    (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+                    : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                    : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                    : "border-border text-muted-foreground";
                   return (
                     <li key={item.id} className="flex flex-col gap-1" data-testid={`q2-block-${item.id}`}>
                       <div className="flex items-center gap-3">
-                      <Select
-                        value={item.completionLevel != null ? String(item.completionLevel) : "clear_value"}
-                        onValueChange={(v) => {
-                          if (v === "clear_value") {
-                            setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                          } else if (v === "0") {
-                            setEisenhowerSkipDialog({ id: item.id });
-                          } else {
-                            setEisenhowerLevelMutation.mutate({ id: item.id, level: Number(v) });
-                          }
-                        }}
+                      <button
+                        onClick={cycleQ2}
+                        className={`h-5 w-10 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                        data-testid={`q2-level-${item.id}`}
                       >
-                        <SelectTrigger
-                          className={`h-5 w-12 text-[10px] px-1 rounded-md border-2 shrink-0 ${
-                            item.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
-                            : item.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                            : item.completionLevel === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                            : "border-border"
-                          }`}
-                          data-testid={`q2-level-${item.id}`}
-                        >
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="clear_value">—</SelectItem>
-                          {item.isBinary ? (
-                            <>
-                              <SelectItem value="1">1 – Done</SelectItem>
-                              <SelectItem value="0">0 – Not Done</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="2">2 – Full</SelectItem>
-                              <SelectItem value="1">1 – Min</SelectItem>
-                              <SelectItem value="0">0 – Skip</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                        {boxLabel}
+                      </button>
                       <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
                       <span className={`text-sm flex-1 ${
                         status === "completed" ? "line-through text-muted-foreground"

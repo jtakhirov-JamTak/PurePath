@@ -1026,41 +1026,119 @@ function ScheduledDayCell({
   );
 }
 
+const DELAY_REASONS_INLINE = [
+  "Low Capacity (sleep / fatigue / depleted)",
+  "Distraction / Poor Environment",
+  "Unexpected Interruption",
+  "Overcommitted / Too Many Tasks",
+  "Avoidance (emotion-driven)",
+  "Forgot / No Cue",
+  "Unclear Next Step",
+  "Low Motivation / Value Disconnect",
+  "Intentional Deprioritization",
+  "Other",
+];
+
+const MINUTE_INCREMENTS_INLINE = [15, 30, 45, 60, 75, 90, 105, 120];
+
 function Q2TimeTrackerInline({ entry, setEisenhowerLevelMutation }: { entry: EisenhowerEntry; setEisenhowerLevelMutation: any }) {
-  const [sched, setSched] = useState(entry.scheduledStartTime || "");
-  const [actual, setActual] = useState(entry.actualStartTime || "");
-  const [planned, setPlanned] = useState(entry.durationMinutes ? String(entry.durationMinutes) : "");
-  const [actualDur, setActualDur] = useState(entry.actualDuration ? String(entry.actualDuration) : "");
+  const [onTime, setOnTime] = useState<boolean | null>(entry.startedOnTime ?? null);
+  const [delayMin, setDelayMin] = useState<number | null>(entry.delayMinutes ?? null);
+  const [delayRsn, setDelayRsn] = useState(entry.delayReason || "");
+  const [completedTime, setCompletedTime] = useState<boolean | null>(entry.completedRequiredTime ?? null);
+  const [shortMin, setShortMin] = useState<number | null>(entry.timeShortMinutes ?? null);
   const [dirty, setDirty] = useState(false);
 
   return (
-    <div className="grid grid-cols-2 gap-1.5 mt-1 pt-1 border-t border-dashed border-muted" data-testid={`q2-time-${entry.id}`}>
+    <div className="space-y-1.5 mt-1 pt-1 border-t border-dashed border-muted" data-testid={`q2-time-${entry.id}`}>
+      {entry.scheduledStartTime && (
+        <p className="text-[9px] text-muted-foreground">Scheduled: {entry.scheduledStartTime}</p>
+      )}
+      {entry.durationMinutes && (
+        <p className="text-[9px] text-muted-foreground">Required: {entry.durationMinutes} min</p>
+      )}
       <div>
-        <label className="text-[9px] text-muted-foreground">Sched Start</label>
-        <Input type="time" value={sched} onChange={(e) => { setSched(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" data-testid={`q2-sched-start-${entry.id}`} />
+        <label className="text-[9px] text-muted-foreground block mb-0.5">Start on time?</label>
+        <div className="flex gap-1">
+          <Button size="sm" variant={onTime === true ? "default" : "outline"} className="h-5 text-[10px] px-2"
+            onClick={() => { setOnTime(true); setDelayMin(null); setDelayRsn(""); setDirty(true); }}
+            data-testid={`q2-ontime-yes-${entry.id}`}
+          >Yes</Button>
+          <Button size="sm" variant={onTime === false ? "destructive" : "outline"} className="h-5 text-[10px] px-2"
+            onClick={() => { setOnTime(false); setDirty(true); }}
+            data-testid={`q2-ontime-no-${entry.id}`}
+          >No</Button>
+        </div>
       </div>
+      {onTime === false && (
+        <>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Minutes delay?</label>
+            <Select value={delayMin != null ? String(delayMin) : ""} onValueChange={(v) => { setDelayMin(Number(v)); setDirty(true); }}>
+              <SelectTrigger className="h-5 text-[10px] px-1 w-24" data-testid={`q2-delay-min-${entry.id}`}>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {MINUTE_INCREMENTS_INLINE.map(m => (
+                  <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Delay reason?</label>
+            <Select value={delayRsn} onValueChange={(v) => { setDelayRsn(v); setDirty(true); }}>
+              <SelectTrigger className="h-5 text-[10px] px-1" data-testid={`q2-delay-reason-${entry.id}`}>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {DELAY_REASONS_INLINE.map(r => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
       <div>
-        <label className="text-[9px] text-muted-foreground">Actual Start</label>
-        <Input type="time" value={actual} onChange={(e) => { setActual(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" data-testid={`q2-actual-start-${entry.id}`} />
+        <label className="text-[9px] text-muted-foreground block mb-0.5">Completed required time?</label>
+        <div className="flex gap-1">
+          <Button size="sm" variant={completedTime === true ? "default" : "outline"} className="h-5 text-[10px] px-2"
+            onClick={() => { setCompletedTime(true); setShortMin(null); setDirty(true); }}
+            data-testid={`q2-completed-yes-${entry.id}`}
+          >Yes</Button>
+          <Button size="sm" variant={completedTime === false ? "destructive" : "outline"} className="h-5 text-[10px] px-2"
+            onClick={() => { setCompletedTime(false); setDirty(true); }}
+            data-testid={`q2-completed-no-${entry.id}`}
+          >No</Button>
+        </div>
       </div>
-      <div>
-        <label className="text-[9px] text-muted-foreground">Planned (min)</label>
-        <Input type="number" value={planned} onChange={(e) => { setPlanned(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" min="1" data-testid={`q2-planned-dur-${entry.id}`} />
-      </div>
-      <div>
-        <label className="text-[9px] text-muted-foreground">Actual (min)</label>
-        <Input type="number" value={actualDur} onChange={(e) => { setActualDur(e.target.value); setDirty(true); }} className="h-5 text-[10px] px-1" min="1" data-testid={`q2-actual-dur-${entry.id}`} />
-      </div>
+      {completedTime === false && (
+        <div>
+          <label className="text-[9px] text-muted-foreground block mb-0.5">Minutes less?</label>
+          <Select value={shortMin != null ? String(shortMin) : ""} onValueChange={(v) => { setShortMin(Number(v)); setDirty(true); }}>
+            <SelectTrigger className="h-5 text-[10px] px-1 w-24" data-testid={`q2-short-min-${entry.id}`}>
+              <SelectValue placeholder="Select..." />
+            </SelectTrigger>
+            <SelectContent>
+              {MINUTE_INCREMENTS_INLINE.map(m => (
+                <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {dirty && (
-        <div className="col-span-2 flex justify-end">
+        <div className="flex justify-end">
           <Button size="sm" variant="outline" className="h-5 text-[10px] px-2" onClick={() => {
             setEisenhowerLevelMutation.mutate({
               id: entry.id,
               level: entry.completionLevel,
-              scheduledStartTime: sched || null,
-              actualStartTime: actual || null,
-              durationMinutes: planned ? parseInt(planned) : null,
-              actualDuration: actualDur ? parseInt(actualDur) : null,
+              startedOnTime: onTime,
+              delayMinutes: onTime === false ? delayMin : null,
+              delayReason: onTime === false ? (delayRsn || null) : null,
+              completedRequiredTime: completedTime,
+              timeShortMinutes: completedTime === false ? shortMin : null,
             });
             setDirty(false);
           }} data-testid={`q2-time-save-${entry.id}`}>
@@ -1103,45 +1181,37 @@ function EisenhowerItemRow({
 
   return (
     <div className="flex items-start gap-1.5 px-1 group/eitem" data-testid={`eisenhower-${entry.id}`}>
-      <Select
-        value={entry.completionLevel != null ? String(entry.completionLevel) : "clear_value"}
-        onValueChange={(v) => {
-          if (v === "clear_value") {
-            setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
-          } else if (v === "0") {
-            if (onSkipRequest) { onSkipRequest(entry.id); } else { setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+      {(() => {
+        const isBin = entry.isBinary || false;
+        const lvl = entry.completionLevel ?? null;
+        const cycleEis = () => {
+          if (isBin) {
+            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           } else {
-            setEisenhowerLevelMutation.mutate({ id: entry.id, level: Number(v) });
+            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 2 });
+            else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           }
-        }}
-      >
-        <SelectTrigger
-          className={`mt-0.5 h-5 w-12 text-[10px] px-1 shrink-0 rounded border-2 ${
-            entry.completionLevel === 2 ? "bg-emerald-500 border-emerald-600 text-white"
-            : entry.completionLevel === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-            : entry.completionLevel === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-            : "border-muted-foreground/30"
-          }`}
-          data-testid={`eisenhower-level-${entry.id}`}
-        >
-          <SelectValue placeholder="—" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="clear_value">—</SelectItem>
-          {entry.isBinary ? (
-            <>
-              <SelectItem value="1">1 – Done</SelectItem>
-              <SelectItem value="0">0 – Not Done</SelectItem>
-            </>
-          ) : (
-            <>
-              <SelectItem value="2">2 – Full</SelectItem>
-              <SelectItem value="1">1 – Min</SelectItem>
-              <SelectItem value="0">0 – Skip</SelectItem>
-            </>
-          )}
-        </SelectContent>
-      </Select>
+        };
+        const boxLabel = lvl === 2 ? "2" : lvl === 1 ? "1" : lvl === 0 ? "0" : "—";
+        const boxClass =
+          (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+          : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+          : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+          : "border-muted-foreground/30 text-muted-foreground";
+        return (
+          <button
+            onClick={cycleEis}
+            className={`mt-0.5 h-5 w-10 text-[10px] shrink-0 rounded border-2 font-medium cursor-pointer ${boxClass}`}
+            data-testid={`eisenhower-level-${entry.id}`}
+          >
+            {boxLabel}
+          </button>
+        );
+      })()}
       <div className="flex-1 min-w-0">
         {editing ? (
           <div className="flex items-center gap-1">
@@ -1335,52 +1405,42 @@ function SortableHabitRow({
         const dateMap = completionsByDate.get(dateStr);
         const status = dateMap?.get(habit.id) || null;
 
-        const statusLabel = status === "completed" ? "Full" : status === "minimum" ? "Minimum" : status === "skipped" ? "Skipped" : "Not done";
         const boxClass = status === "completed"
-          ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500"
+          ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500 text-white"
           : status === "minimum"
-          ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60"
+          ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/40 dark:border-yellow-400/60 text-yellow-800 dark:text-yellow-200"
           : status === "skipped"
-          ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60"
-          : "border-muted-foreground/30";
+          ? "bg-red-400 border-red-500 dark:bg-red-500/40 dark:border-red-500/60 text-white"
+          : "border-muted-foreground/30 text-muted-foreground";
 
-        const currentLevel = status === "completed" ? "2" : status === "minimum" ? "1" : status === "skipped" ? "0" : "clear_value";
+        const currentLevel = status === "completed" ? 2 : status === "minimum" ? 1 : status === "skipped" ? 0 : null;
+        const isBin = habit.isBinary || false;
+
+        const cycleLevel = () => {
+          if (isBin) {
+            if (currentLevel === null) onSetLevel(habit.id, 1, dateStr);
+            else if (currentLevel === 1) onSetLevel(habit.id, 0, dateStr);
+            else onSetLevel(habit.id, null, dateStr);
+          } else {
+            if (currentLevel === null) onSetLevel(habit.id, 2, dateStr);
+            else if (currentLevel === 2) onSetLevel(habit.id, 1, dateStr);
+            else if (currentLevel === 1) onSetLevel(habit.id, 0, dateStr);
+            else onSetLevel(habit.id, null, dateStr);
+          }
+        };
+
+        const boxLabel = currentLevel === 2 ? "2" : currentLevel === 1 ? "1" : currentLevel === 0 ? "0" : "—";
 
         return (
           <DayCell key={dateStr} dateStr={dateStr} todayStr={todayStr} cellH={cellH}>
             {isScheduled ? (
-              <Select
-                value={currentLevel}
-                onValueChange={(v) => {
-                  if (v === "clear_value") {
-                    onSetLevel(habit.id, null, dateStr);
-                  } else {
-                    onSetLevel(habit.id, Number(v), dateStr);
-                  }
-                }}
+              <button
+                onClick={cycleLevel}
+                className={`h-7 w-10 text-[10px] rounded-md border-2 font-medium cursor-pointer ${boxClass}`}
+                data-testid={`habit-status-${habit.id}-${dateStr}`}
               >
-                <SelectTrigger
-                  className={`h-7 w-10 text-[10px] px-0.5 rounded-md border-2 ${boxClass}`}
-                  data-testid={`habit-status-${habit.id}-${dateStr}`}
-                >
-                  <SelectValue placeholder="—" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="clear_value">—</SelectItem>
-                  {habit.isBinary ? (
-                    <>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="0">0</SelectItem>
-                    </>
-                  ) : (
-                    <>
-                      <SelectItem value="2">2</SelectItem>
-                      <SelectItem value="1">1</SelectItem>
-                      <SelectItem value="0">0</SelectItem>
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
+                {boxLabel}
+              </button>
             ) : null}
           </DayCell>
         );

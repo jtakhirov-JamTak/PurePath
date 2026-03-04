@@ -36,6 +36,11 @@ export const createEisenhowerSchema = z.object({
   skipReason: optionalString(100),
   actualStartTime: optionalString(10),
   actualDuration: z.number().int().positive().optional().nullable(),
+  startedOnTime: z.boolean().optional().nullable(),
+  delayMinutes: z.number().int().min(0).optional().nullable(),
+  delayReason: optionalString(100),
+  completedRequiredTime: z.boolean().optional().nullable(),
+  timeShortMinutes: z.number().int().min(0).optional().nullable(),
   timeRange: z.enum(["morning", "afternoon", "evening"]).optional().nullable(),
   sortOrder: z.number().int().min(0).optional().nullable(),
 });
