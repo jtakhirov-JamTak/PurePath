@@ -14,7 +14,9 @@ import {
   Sun, Moon, Check, ArrowRight,
   Heart, Shield, BedDouble, Activity, Footprints, Clock,
   Target, Minus, Pencil, Plus, X, AlertTriangle,
+  Brain, Pause, Flame, Trophy,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays } from "date-fns";
@@ -426,6 +428,25 @@ export default function DashboardPage() {
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
   const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
   const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
+  const [stillnessOpen, setStillnessOpen] = useState(false);
+  const [stillnessSeconds, setStillnessSeconds] = useState(600);
+  const [stillnessRunning, setStillnessRunning] = useState(false);
+  const stillnessRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (stillnessRunning && stillnessSeconds > 0) {
+      stillnessRef.current = setInterval(() => {
+        setStillnessSeconds(prev => {
+          if (prev <= 1) {
+            setStillnessRunning(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => { if (stillnessRef.current) clearInterval(stillnessRef.current); };
+  }, [stillnessRunning, stillnessSeconds]);
 
   const { data: customTools = [] } = useQuery<CustomTool[]>({
     queryKey: ["/api/custom-tools"],
@@ -435,10 +456,17 @@ export default function DashboardPage() {
   if (authLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-4 py-8 max-w-2xl space-y-6">
-          <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
-          <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
-          <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex-1 min-w-0 space-y-6">
+              <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
+              <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
+              <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
+            </div>
+            <div className="w-full lg:w-80 lg:flex-shrink-0">
+              <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
+            </div>
+          </div>
         </div>
       </AppLayout>
     );
@@ -543,9 +571,17 @@ export default function DashboardPage() {
     };
   }, [journals, habits, weekHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr]);
 
+  const getProgressColor = (pct: number) => {
+    if (pct >= 66) return "bg-emerald-500";
+    if (pct >= 33) return "bg-amber-400";
+    return "bg-rose-400";
+  };
+
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-6 max-w-2xl space-y-5">
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 min-w-0 space-y-5">
         <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
           <div>
             <h1 className="font-serif text-2xl font-bold" data-testid="text-today-title">
@@ -867,85 +903,20 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <JournalQuickEntry
-          todayStr={todayStr}
-          hasMorning={hasMorning}
-          hasEvening={hasEvening}
-          hasAccess={!!hasPhase12}
-          setLocation={setLocation}
-        />
-
-        <Card className="overflow-visible" data-testid="card-progress-dashboard">
+        <Card className="overflow-visible" data-testid="card-foundational-tools">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Weekly Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-sleep-wins">
-                <div className="flex items-center gap-2">
-                  <BedDouble className="h-4 w-4 text-indigo-500" />
-                  <span className="text-xs font-medium text-muted-foreground">Sleep Wins</span>
-                </div>
-                <p className="text-lg font-bold" data-testid="text-sleep-wins">
-                  {progressMetrics.sleepWins}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.sleepNights} nights</span>
-                </p>
-                <p className="text-[10px] text-muted-foreground">In 7–9h target window</p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-consistency">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs font-medium text-muted-foreground">Consistency</span>
-                </div>
-                <p className="text-lg font-bold" data-testid="text-consistency">
-                  {progressMetrics.consistencyPct}%
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {progressMetrics.consistencyPoints}/{progressMetrics.consistencyMax} pts
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-first-steps">
-                <div className="flex items-center gap-2">
-                  <Footprints className="h-4 w-4 text-amber-500" />
-                  <span className="text-xs font-medium text-muted-foreground">First-Step Starts</span>
-                </div>
-                <p className="text-lg font-bold" data-testid="text-first-steps">
-                  {progressMetrics.firstStepStarted}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.firstStepTotal}</span>
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  {progressMetrics.firstStepCompleted} fully completed
-                </p>
-              </div>
-
-              <div className="rounded-lg border p-3 space-y-1" data-testid="metric-q2-focus">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-500" />
-                  <span className="text-xs font-medium text-muted-foreground">Q2 Focus Minutes</span>
-                </div>
-                <p className="text-lg font-bold" data-testid="text-q2-focus">
-                  {progressMetrics.q2ActualMin}<span className="text-sm font-normal text-muted-foreground">/{progressMetrics.q2PlannedMin}m</span>
-                </p>
-                <p className="text-[10px] text-muted-foreground">Actual vs planned</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-visible" data-testid="card-quick-tools">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Quick Tools</CardTitle>
+            <CardTitle className="text-base font-serif">Foundational Tools</CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
             <div className="grid grid-cols-3 gap-3">
               <Button
                 variant="outline"
                 className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("containment")}
-                data-testid="button-tool-containment"
+                onClick={() => setLocation("/empathy")}
+                data-testid="button-tool-eq-module"
               >
-                <Heart className="h-5 w-5 text-rose-500" />
-                <span className="text-xs">Containment</span>
+                <Brain className="h-5 w-5 text-emerald-500" />
+                <span className="text-xs">EQ Module</span>
               </Button>
               <Button
                 variant="outline"
@@ -969,11 +940,148 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        <Card className="overflow-visible" data-testid="card-quick-tools">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-serif">Quick Tools</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => setQuickToolOpen("containment")}
+                data-testid="button-tool-containment"
+              >
+                <Heart className="h-5 w-5 text-rose-500" />
+                <span className="text-xs">Containment</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => setLocation("/meditation")}
+                data-testid="button-tool-meditation"
+              >
+                <Brain className="h-5 w-5 text-purple-500" />
+                <span className="text-xs">Meditation</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="flex flex-col items-center gap-1.5 h-auto py-3"
+                onClick={() => { setStillnessOpen(true); setStillnessSeconds(600); setStillnessRunning(false); }}
+                data-testid="button-tool-stillness"
+              >
+                <Pause className="h-5 w-5 text-slate-500" />
+                <span className="text-xs">Stillness</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <JournalQuickEntry
+          todayStr={todayStr}
+          hasMorning={hasMorning}
+          hasEvening={hasEvening}
+          hasAccess={!!hasPhase12}
+          setLocation={setLocation}
+        />
+
         <CustomToolsCard
           customTools={customTools}
           onAdd={() => setShowAddCustomTool(true)}
           onUse={(tool) => setCustomToolExercise(tool)}
         />
+      </div>
+
+      <div className="w-full lg:w-80 lg:flex-shrink-0">
+        <div className="lg:sticky lg:top-6 space-y-4">
+          <Card className="overflow-visible border-2 border-emerald-200 dark:border-emerald-800" data-testid="card-progress-dashboard">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <CardTitle className="text-base font-serif">Weekly Progress</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pb-4 space-y-4">
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-sleep-wins">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BedDouble className="h-4 w-4 text-indigo-500" />
+                    <span className="text-xs font-semibold">Sleep Wins</span>
+                  </div>
+                  <span className="text-sm font-bold" data-testid="text-sleep-wins">
+                    {progressMetrics.sleepWins}/{progressMetrics.sleepNights}
+                  </span>
+                </div>
+                <Progress
+                  value={progressMetrics.sleepNights > 0 ? (progressMetrics.sleepWins / progressMetrics.sleepNights) * 100 : 0}
+                  className="h-2"
+                  indicatorClassName={getProgressColor(progressMetrics.sleepNights > 0 ? (progressMetrics.sleepWins / progressMetrics.sleepNights) * 100 : 0)}
+                />
+                <p className="text-[10px] text-muted-foreground">Nights in 7–9h window</p>
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-consistency">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    <span className="text-xs font-semibold">Consistency</span>
+                  </div>
+                  <span className="text-sm font-bold" data-testid="text-consistency">
+                    {progressMetrics.consistencyPct}%
+                  </span>
+                </div>
+                <Progress
+                  value={progressMetrics.consistencyPct}
+                  className="h-2"
+                  indicatorClassName={getProgressColor(progressMetrics.consistencyPct)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {progressMetrics.consistencyPoints}/{progressMetrics.consistencyMax} pts earned
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-first-steps">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Footprints className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-semibold">First-Step Starts</span>
+                  </div>
+                  <span className="text-sm font-bold" data-testid="text-first-steps">
+                    {progressMetrics.firstStepStarted}/{progressMetrics.firstStepTotal}
+                  </span>
+                </div>
+                <Progress
+                  value={progressMetrics.firstStepTotal > 0 ? (progressMetrics.firstStepStarted / progressMetrics.firstStepTotal) * 100 : 0}
+                  className="h-2"
+                  indicatorClassName={getProgressColor(progressMetrics.firstStepTotal > 0 ? (progressMetrics.firstStepStarted / progressMetrics.firstStepTotal) * 100 : 0)}
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  {progressMetrics.firstStepCompleted} fully done
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-q2-focus">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs font-semibold">Q2 Focus</span>
+                  </div>
+                  <span className="text-sm font-bold" data-testid="text-q2-focus">
+                    {progressMetrics.q2ActualMin}/{progressMetrics.q2PlannedMin}m
+                  </span>
+                </div>
+                <Progress
+                  value={progressMetrics.q2PlannedMin > 0 ? Math.min((progressMetrics.q2ActualMin / progressMetrics.q2PlannedMin) * 100, 100) : 0}
+                  className="h-2"
+                  indicatorClassName={getProgressColor(progressMetrics.q2PlannedMin > 0 ? Math.min((progressMetrics.q2ActualMin / progressMetrics.q2PlannedMin) * 100, 100) : 0)}
+                />
+                <p className="text-[10px] text-muted-foreground">Actual vs planned minutes</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      </div>
       </div>
 
       <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
@@ -1036,6 +1144,77 @@ export default function DashboardPage() {
                 {reason}
               </button>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={stillnessOpen} onOpenChange={(open) => {
+        if (!open) { setStillnessOpen(false); setStillnessRunning(false); }
+      }}>
+        <DialogContent className="max-w-sm text-center" data-testid="dialog-stillness">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-serif">Stillness Exercise</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <p className="text-sm text-muted-foreground leading-relaxed italic">
+              Be still for 10 minutes. When thinking, say to yourself:
+            </p>
+            <p className="text-base font-medium px-4">
+              "This is just my nervous system, not my identity."
+            </p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative w-28 h-28 rounded-full border-4 border-slate-200 dark:border-slate-700 flex items-center justify-center" data-testid="stillness-timer-circle">
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 112 112">
+                  <circle
+                    cx="56" cy="56" r="52"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    className="text-emerald-500"
+                    strokeDasharray={2 * Math.PI * 52}
+                    strokeDashoffset={2 * Math.PI * 52 * (stillnessSeconds / 600)}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-2xl font-bold tabular-nums" data-testid="text-stillness-time">
+                  {Math.floor(stillnessSeconds / 60)}:{String(stillnessSeconds % 60).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="flex gap-3">
+                {!stillnessRunning && stillnessSeconds > 0 && (
+                  <Button
+                    onClick={() => setStillnessRunning(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="button-stillness-start"
+                  >
+                    {stillnessSeconds < 600 ? "Resume" : "Begin"}
+                  </Button>
+                )}
+                {stillnessRunning && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setStillnessRunning(false)}
+                    data-testid="button-stillness-pause"
+                  >
+                    Pause
+                  </Button>
+                )}
+                {stillnessSeconds === 0 && (
+                  <Button
+                    onClick={() => { setStillnessSeconds(600); setStillnessRunning(false); }}
+                    data-testid="button-stillness-reset"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              {stillnessSeconds === 0 && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium" data-testid="text-stillness-complete">
+                  <Check className="h-4 w-4 inline mr-1" />
+                  Well done. Stillness complete.
+                </p>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
