@@ -361,41 +361,6 @@ export default function JournalEntryPage() {
           </div>
         ) : isMorning ? (
           <div className="space-y-10">
-            {(valuesItems.length > 0 || othersWillSeeItems.length > 0 || beYourselfItems.length > 0) && (
-              <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-2" data-testid="identity-reminder">
-                {valuesItems.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Values</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {valuesItems.map((item, i) => (
-                        <Badge key={i} variant="default" className="text-xs font-normal" data-testid={`badge-value-${i}`}>{item}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {beYourselfItems.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Be Yourself</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {beYourselfItems.map((item, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs font-normal" data-testid={`badge-beyourself-${i}`}>{item}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {othersWillSeeItems.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {othersWillSeeItems.map((item, i) => (
-                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             <Card data-testid="card-check-in">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -529,6 +494,16 @@ export default function JournalEntryPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {valuesItems.length > 0 && (
+                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="identity-values">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">My Values</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {valuesItems.map((item, i) => (
+                        <Badge key={i} variant="default" className="text-xs font-normal" data-testid={`badge-value-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Intention — What value do I want to practice today?</Label>
                   <VoiceTextarea
@@ -539,12 +514,6 @@ export default function JournalEntryPage() {
                     data-testid="input-intention"
                   />
                 </div>
-                {hasGoal && (
-                  <div className="rounded-md bg-muted/50 px-4 py-3 mt-2" data-testid="goal-context">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
-                    <p className="text-sm">{goalDisplayText}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -561,6 +530,16 @@ export default function JournalEntryPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {othersWillSeeItems.length > 0 && (
+                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="identity-others">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {othersWillSeeItems.map((item, i) => (
+                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Gratitude — Who or what am I grateful for today?</Label>
                   <VoiceTextarea
@@ -598,6 +577,12 @@ export default function JournalEntryPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {hasGoal && (
+                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="goal-context">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
+                    <p className="text-sm">{goalDisplayText}</p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">What am I avoiding?</Label>
                   <VoiceTextarea
