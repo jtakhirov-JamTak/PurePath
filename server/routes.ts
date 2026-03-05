@@ -273,6 +273,7 @@ export async function registerRoutes(
               scheduledDate: tomorrowStr,
               scheduledStartTime: rawTime,
               scheduledTime: displayTime,
+              isBinary: true,
             });
           }
         } catch (e) {
