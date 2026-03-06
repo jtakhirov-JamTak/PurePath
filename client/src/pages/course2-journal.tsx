@@ -18,6 +18,17 @@ import { useToast } from "@/hooks/use-toast";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
+  if (!est) return null;
+  const lower = est.toLowerCase().trim();
+  const hMatch = lower.match(/(\d+)\s*h/);
+  const mMatch = lower.match(/(\d+)\s*m/);
+  let total = 0;
+  if (hMatch) total += parseInt(hMatch[1]) * 60;
+  if (mMatch) total += parseInt(mMatch[1]);
+  return total > 0 ? total : null;
+}
+
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
   wealth: "bg-yellow-400",
@@ -120,13 +131,16 @@ export default function Course2JournalPage() {
   });
 
   const toggleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus, durationMinutes }: { id: number; currentStatus: string | null; durationMinutes?: number | null }) => {
+    mutationFn: async ({ id, currentStatus, durationMinutes, timeEstimate }: { id: number; currentStatus: string | null; durationMinutes?: number | null; timeEstimate?: string | null }) => {
       const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
       const body: Record<string, unknown> = { status: nextStatus };
-      if (nextStatus === "skipped" && durationMinutes) {
-        body.startedOnTime = false;
-        body.completedRequiredTime = false;
-        body.timeShortMinutes = durationMinutes;
+      if (nextStatus === "skipped") {
+        const mins = durationMinutes || parseTimeEstimateMinutes(timeEstimate);
+        if (mins) {
+          body.startedOnTime = false;
+          body.completedRequiredTime = false;
+          body.timeShortMinutes = mins;
+        }
       }
       const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
@@ -282,7 +296,7 @@ export default function Course2JournalPage() {
                               className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                                 entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
                               }`}
-                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null, durationMinutes: entry.durationMinutes })}
+                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null, durationMinutes: entry.durationMinutes, timeEstimate: entry.timeEstimate })}
                               data-testid={`eisenhower-cycle-${entry.id}`}
                             >
                               {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}

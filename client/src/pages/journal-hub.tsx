@@ -42,6 +42,17 @@ import { CSS } from "@dnd-kit/utilities";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
+  if (!est) return null;
+  const lower = est.toLowerCase().trim();
+  const hMatch = lower.match(/(\d+)\s*h/);
+  const mMatch = lower.match(/(\d+)\s*m/);
+  let total = 0;
+  if (hMatch) total += parseInt(hMatch[1]) * 60;
+  if (mMatch) total += parseInt(mMatch[1]);
+  return total > 0 ? total : null;
+}
+
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
   wealth: "bg-yellow-400",
@@ -184,7 +195,7 @@ export default function JournalHubPage() {
     },
   });
 
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null; timeEstimate?: string | null } | null>(null);
 
   const setEisenhowerLevelMutation = useMutation({
     mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
@@ -629,7 +640,7 @@ export default function JournalHubPage() {
                 createEisenhowerMutation={createEisenhowerMutation}
                 updateEisenhowerMutation={updateEisenhowerMutation}
                 deleteEisenhowerMutation={deleteEisenhowerMutation}
-                onSkipRequest={(id, durationMinutes) => setEisenhowerSkipDialog({ id, durationMinutes })}
+                onSkipRequest={(id, durationMinutes, timeEstimate) => setEisenhowerSkipDialog({ id, durationMinutes, timeEstimate })}
               />
 
               <SectionHeaderRow label="Habits" days={days} todayStr={today} />
@@ -857,8 +868,9 @@ export default function JournalHubPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    const timeFields = eisenhowerSkipDialog.durationMinutes
-                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: eisenhowerSkipDialog.durationMinutes }
+                    const mins = eisenhowerSkipDialog.durationMinutes || parseTimeEstimateMinutes(eisenhowerSkipDialog.timeEstimate);
+                    const timeFields = mins
+                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: mins }
                       : {};
                     setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
                     setEisenhowerSkipDialog(null);
@@ -921,7 +933,7 @@ function ScheduledItemsSection({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number, durationMinutes?: number | null) => void;
+  onSkipRequest: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
 }) {
   return (
     <>
@@ -972,7 +984,7 @@ function ScheduledDayCell({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number, durationMinutes?: number | null) => void;
+  onSkipRequest: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
 }) {
   const isToday = dateStr === todayStr;
   const [showAdd, setShowAdd] = useState(false);
@@ -1049,7 +1061,7 @@ function EisenhowerItemRow({
   setEisenhowerLevelMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest?: (id: number, durationMinutes?: number | null) => void;
+  onSkipRequest?: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(entry.task);
@@ -1075,12 +1087,12 @@ function EisenhowerItemRow({
         const cycleEis = () => {
           if (isBin) {
             if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1, isBinary: true });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes, entry.timeEstimate); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           } else {
             if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 2 });
             else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes, entry.timeEstimate); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           }
         };

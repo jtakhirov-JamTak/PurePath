@@ -55,6 +55,17 @@ const CATEGORY_STYLES: Record<string, string> = {
   leisure: "bg-slate-300 dark:bg-slate-400",
 };
 
+function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
+  if (!est) return null;
+  const lower = est.toLowerCase().trim();
+  const hMatch = lower.match(/(\d+)\s*h/);
+  const mMatch = lower.match(/(\d+)\s*m/);
+  let total = 0;
+  if (hMatch) total += parseInt(hMatch[1]) * 60;
+  if (mMatch) total += parseInt(mMatch[1]);
+  return total > 0 ? total : null;
+}
+
 function formatTime24to12(time: string): string {
   const [h, m] = time.split(":").map(Number);
   const ampm = h >= 12 ? "PM" : "AM";
@@ -88,13 +99,15 @@ function Q2TimeTracker({ item, onSave }: {
   const [shortMin, setShortMin] = useState<number | null>(item.timeShortMinutes ?? null);
   const [dirty, setDirty] = useState(false);
 
+  const derivedMinutes = item.durationMinutes || parseTimeEstimateMinutes(item.timeEstimate);
+
   return (
     <div className="ml-14 space-y-2 py-1" data-testid={`q2-time-${item.id}`}>
       {item.scheduledStartTime && (
         <p className="text-[10px] text-muted-foreground">Scheduled: {item.scheduledStartTime}</p>
       )}
-      {item.durationMinutes && (
-        <p className="text-[10px] text-muted-foreground">Required: {item.durationMinutes} min</p>
+      {(derivedMinutes || item.timeEstimate) && (
+        <p className="text-[10px] text-muted-foreground">Required: {derivedMinutes ? `${derivedMinutes} min` : item.timeEstimate}</p>
       )}
       <div>
         <label className="text-[10px] text-muted-foreground block mb-1">Did you start on time?</label>
@@ -427,7 +440,7 @@ export default function DashboardPage() {
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
   const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null; timeEstimate?: string | null } | null>(null);
   const [stillnessOpen, setStillnessOpen] = useState(false);
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
@@ -456,14 +469,14 @@ export default function DashboardPage() {
   if (authLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="flex flex-col lg:flex-row gap-6">
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1 min-w-0 space-y-6">
               <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
               <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
               <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
             </div>
-            <div className="w-full lg:w-80 lg:flex-shrink-0">
+            <div className="w-full md:w-72 md:flex-shrink-0">
               <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
             </div>
           </div>
@@ -579,8 +592,8 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="container mx-auto px-4 py-6 max-w-5xl">
+        <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 min-w-0 space-y-5">
         <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
           <div>
@@ -787,12 +800,12 @@ export default function DashboardPage() {
                   const cycleOverdue = () => {
                     if (isBin) {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
                       else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
@@ -826,7 +839,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
                       )}
                       </div>
-                      {item.durationMinutes && (item.completionLevel === 1 || item.completionLevel === 2) && (
+                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
                         <Q2TimeTracker item={item} onSave={(fields) => {
                           setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
                         }} />
@@ -854,12 +867,12 @@ export default function DashboardPage() {
                   const cycleQ2 = () => {
                     if (isBin) {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
                       else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
@@ -897,7 +910,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-muted-foreground">{status}</span>
                       )}
                       </div>
-                      {item.durationMinutes && (item.completionLevel === 1 || item.completionLevel === 2) && (
+                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
                         <Q2TimeTracker item={item} onSave={(fields) => {
                           setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
                         }} />
@@ -999,8 +1012,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="w-full lg:w-80 lg:flex-shrink-0">
-        <div className="lg:sticky lg:top-6 space-y-4">
+      <div className="w-full md:w-72 md:flex-shrink-0">
+        <div className="md:sticky md:top-6 space-y-4">
           <Card className="overflow-visible border-2 border-emerald-200 dark:border-emerald-800" data-testid="card-progress-dashboard">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -1142,8 +1155,9 @@ export default function DashboardPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    const timeFields = eisenhowerSkipDialog.durationMinutes
-                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: eisenhowerSkipDialog.durationMinutes }
+                    const mins = eisenhowerSkipDialog.durationMinutes || parseTimeEstimateMinutes(eisenhowerSkipDialog.timeEstimate);
+                    const timeFields = mins
+                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: mins }
                       : {};
                     setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
                     setEisenhowerSkipDialog(null);
