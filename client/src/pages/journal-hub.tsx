@@ -184,7 +184,7 @@ export default function JournalHubPage() {
     },
   });
 
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null } | null>(null);
 
   const setEisenhowerLevelMutation = useMutation({
     mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
@@ -629,7 +629,7 @@ export default function JournalHubPage() {
                 createEisenhowerMutation={createEisenhowerMutation}
                 updateEisenhowerMutation={updateEisenhowerMutation}
                 deleteEisenhowerMutation={deleteEisenhowerMutation}
-                onSkipRequest={(id) => setEisenhowerSkipDialog({ id })}
+                onSkipRequest={(id, durationMinutes) => setEisenhowerSkipDialog({ id, durationMinutes })}
               />
 
               <SectionHeaderRow label="Habits" days={days} todayStr={today} />
@@ -857,7 +857,10 @@ export default function JournalHubPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
+                    const timeFields = eisenhowerSkipDialog.durationMinutes
+                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: eisenhowerSkipDialog.durationMinutes }
+                      : {};
+                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
                     setEisenhowerSkipDialog(null);
                   }
                 }}
@@ -918,7 +921,7 @@ function ScheduledItemsSection({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number) => void;
+  onSkipRequest: (id: number, durationMinutes?: number | null) => void;
 }) {
   return (
     <>
@@ -969,7 +972,7 @@ function ScheduledDayCell({
   createEisenhowerMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number) => void;
+  onSkipRequest: (id: number, durationMinutes?: number | null) => void;
 }) {
   const isToday = dateStr === todayStr;
   const [showAdd, setShowAdd] = useState(false);
@@ -1046,7 +1049,7 @@ function EisenhowerItemRow({
   setEisenhowerLevelMutation: any;
   updateEisenhowerMutation: any;
   deleteEisenhowerMutation: any;
-  onSkipRequest?: (id: number) => void;
+  onSkipRequest?: (id: number, durationMinutes?: number | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(entry.task);
@@ -1072,12 +1075,12 @@ function EisenhowerItemRow({
         const cycleEis = () => {
           if (isBin) {
             if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1, isBinary: true });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           } else {
             if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 2 });
             else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
+            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
             else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
           }
         };

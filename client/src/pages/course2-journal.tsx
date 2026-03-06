@@ -120,12 +120,18 @@ export default function Course2JournalPage() {
   });
 
   const toggleEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, currentStatus }: { id: number; currentStatus: string | null }) => {
+    mutationFn: async ({ id, currentStatus, durationMinutes }: { id: number; currentStatus: string | null; durationMinutes?: number | null }) => {
       const nextStatus = currentStatus === null || currentStatus === undefined ? "completed" : currentStatus === "completed" ? "skipped" : null;
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { status: nextStatus });
+      const body: Record<string, unknown> = { status: nextStatus };
+      if (nextStatus === "skipped" && durationMinutes) {
+        body.startedOnTime = false;
+        body.completedRequiredTime = false;
+        body.timeShortMinutes = durationMinutes;
+      }
+      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update status");
+        const errBody = await res.json();
+        throw new Error(errBody.error || "Failed to update status");
       }
     },
     onSuccess: () => {
@@ -276,7 +282,7 @@ export default function Course2JournalPage() {
                               className={`mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
                                 entry.status === "completed" ? "bg-primary border-primary" : entry.status === "skipped" ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
                               }`}
-                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null })}
+                              onClick={() => toggleEisenhowerMutation.mutate({ id: entry.id, currentStatus: entry.status || null, durationMinutes: entry.durationMinutes })}
                               data-testid={`eisenhower-cycle-${entry.id}`}
                             >
                               {entry.status === "completed" && <Check className="h-2.5 w-2.5 text-primary-foreground" />}

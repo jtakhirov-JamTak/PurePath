@@ -427,7 +427,7 @@ export default function DashboardPage() {
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
   const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null } | null>(null);
   const [stillnessOpen, setStillnessOpen] = useState(false);
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
@@ -787,12 +787,12 @@ export default function DashboardPage() {
                   const cycleOverdue = () => {
                     if (isBin) {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
                       else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
@@ -805,7 +805,8 @@ export default function DashboardPage() {
                     : lvl === 0 ? "bg-red-400 border-red-500 text-white"
                     : "border-red-300 dark:border-red-500/50 text-muted-foreground";
                   return (
-                    <li key={item.id} className="flex items-center gap-3" data-testid={`overdue-item-${item.id}`}>
+                    <li key={item.id} className="flex flex-col gap-1" data-testid={`overdue-item-${item.id}`}>
+                      <div className="flex items-center gap-3">
                       <button
                         onClick={cycleOverdue}
                         className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
@@ -823,6 +824,12 @@ export default function DashboardPage() {
                       )}
                       {(item.scheduledTime || item.scheduledStartTime) && (
                         <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
+                      )}
+                      </div>
+                      {item.durationMinutes && (item.completionLevel === 1 || item.completionLevel === 2) && (
+                        <Q2TimeTracker item={item} onSave={(fields) => {
+                          setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
+                        }} />
                       )}
                     </li>
                   );
@@ -847,12 +854,12 @@ export default function DashboardPage() {
                   const cycleQ2 = () => {
                     if (isBin) {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     } else {
                       if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
                       else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes });
                       else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                     }
                   };
@@ -890,7 +897,7 @@ export default function DashboardPage() {
                         <span className="text-xs text-muted-foreground">{status}</span>
                       )}
                       </div>
-                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
+                      {item.durationMinutes && (item.completionLevel === 1 || item.completionLevel === 2) && (
                         <Q2TimeTracker item={item} onSave={(fields) => {
                           setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
                         }} />
@@ -1135,7 +1142,10 @@ export default function DashboardPage() {
                 className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
+                    const timeFields = eisenhowerSkipDialog.durationMinutes
+                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: eisenhowerSkipDialog.durationMinutes }
+                      : {};
+                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
                     setEisenhowerSkipDialog(null);
                   }
                 }}
