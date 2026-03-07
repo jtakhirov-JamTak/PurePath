@@ -8,7 +8,7 @@ const optionalString = (max: number) => z.string().max(max, `Must be at most ${m
 const optionalTrimmedString = (max: number) => z.string().trim().max(max, `Must be at most ${max} characters`).optional().nullable();
 
 const quadrantEnum = z.enum(["q1", "q2", "q3", "q4"]);
-const categoryEnum = z.enum(["health", "wealth", "relationships", "self-development", "happiness"]);
+const categoryEnum = z.enum(["health", "wealth", "relationships", "self-development", "happiness", "career", "mindfulness", "learning", "leisure"]);
 const habitTypeEnum = z.enum(["goal", "learning", "maintenance"]);
 const timingEnum = z.enum(["morning", "afternoon", "evening"]);
 const decisionEnum = z.enum(["do_today", "schedule", "delegate", "delete"]);
