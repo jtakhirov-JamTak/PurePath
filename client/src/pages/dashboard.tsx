@@ -567,9 +567,9 @@ export default function DashboardPage() {
     ).length;
 
     const q2Items = weekEisenhower.filter(e => e.quadrant === "q2");
-    const q2PlannedMin = q2Items.reduce((sum, e) => sum + (e.durationMinutes || 0), 0);
+    const q2PlannedMin = q2Items.reduce((sum, e) => sum + (e.durationMinutes || parseTimeEstimateMinutes(e.timeEstimate) || 0), 0);
     const q2ActualMin = q2Items.reduce((sum, e) => {
-      const planned = e.durationMinutes || 0;
+      const planned = e.durationMinutes || parseTimeEstimateMinutes(e.timeEstimate) || 0;
       if (e.completedRequiredTime === true) return sum + planned;
       if (e.completedRequiredTime === false && e.timeShortMinutes != null) return sum + Math.max(0, planned - e.timeShortMinutes);
       if (e.actualDuration != null) return sum + e.actualDuration;
