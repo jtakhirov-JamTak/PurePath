@@ -67,6 +67,7 @@ import {
   chatMessageSchema, phase3AnalyzeSchema,
   visionBoardSchema, checkoutSchema,
   createTriggerLogSchema, createAvoidanceLogSchema,
+  reorderSchema,
 } from "./validation";
 
 const upload = multer({ dest: "/tmp/audio-uploads", limits: { fileSize: 10 * 1024 * 1024 } });
@@ -890,10 +891,11 @@ export async function registerRoutes(
   app.post("/api/habits/reorder", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { items } = req.body;
-      if (!Array.isArray(items)) {
-        return res.status(400).json({ error: "items must be an array" });
+      const parsed = reorderSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const items = parsed.data.items;
       const existing = await storage.getHabitsByUser(userId);
       const existingIds = new Set(existing.map(h => h.id));
       for (const item of items) {
@@ -915,10 +917,11 @@ export async function registerRoutes(
   app.post("/api/eisenhower/reorder", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { items } = req.body;
-      if (!Array.isArray(items)) {
-        return res.status(400).json({ error: "items must be an array" });
+      const parsed = reorderSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
       }
+      const items = parsed.data.items;
       const existing = await storage.getEisenhowerEntriesByUser(userId);
       const existingIds = new Set(existing.map(e => e.id));
       for (const item of items) {

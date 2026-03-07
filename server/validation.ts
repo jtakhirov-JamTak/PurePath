@@ -192,3 +192,15 @@ export const createAvoidanceLogSchema = z.object({
   smallestExposure: optionalString(2000),
   startedNow: z.boolean().optional().nullable(),
 });
+
+export const reorderItemSchema = z.object({
+  id: z.number().int().positive(),
+  sortOrder: z.number().int().min(0),
+  timing: z.enum(["morning", "afternoon", "evening"]).optional(),
+  timeRange: z.enum(["morning", "afternoon", "evening"]).optional(),
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+export const reorderSchema = z.object({
+  items: z.array(reorderItemSchema).min(1).max(100),
+});
