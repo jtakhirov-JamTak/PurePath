@@ -643,9 +643,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getEisenhowerEntriesByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
@@ -655,7 +656,7 @@ export async function registerRoutes(
       } else if (body.completed !== undefined) {
         body.status = body.completed ? "completed" : null;
       }
-      const entry = await storage.updateEisenhowerEntry(parseInt(id), body);
+      const entry = await storage.updateEisenhowerEntry(id, body);
       res.json(entry);
     } catch (error) {
       console.error("Error updating entry:", error);
@@ -666,13 +667,14 @@ export async function registerRoutes(
   app.delete("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getEisenhowerEntriesByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteEisenhowerEntry(parseInt(id));
+      await storage.deleteEisenhowerEntry(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting entry:", error);
@@ -730,9 +732,10 @@ export async function registerRoutes(
   app.patch("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getEmpathyExercisesByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
@@ -740,7 +743,7 @@ export async function registerRoutes(
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const exercise = await storage.updateEmpathyExercise(parseInt(id), parsedBody.data);
+      const exercise = await storage.updateEmpathyExercise(id, parsedBody.data);
       res.json(exercise);
     } catch (error) {
       console.error("Error updating exercise:", error);
@@ -751,13 +754,14 @@ export async function registerRoutes(
   app.delete("/api/empathy/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getEmpathyExercisesByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteEmpathyExercise(parseInt(id));
+      await storage.deleteEmpathyExercise(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting exercise:", error);
@@ -834,9 +838,10 @@ export async function registerRoutes(
   app.patch("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getHabitsByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
@@ -844,7 +849,7 @@ export async function registerRoutes(
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const habit = await storage.updateHabit(parseInt(id), parsedBody.data);
+      const habit = await storage.updateHabit(id, parsedBody.data);
       res.json(habit);
     } catch (error) {
       console.error("Error updating habit:", error);
@@ -855,13 +860,14 @@ export async function registerRoutes(
   app.delete("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getHabitsByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteHabit(parseInt(id));
+      await storage.deleteHabit(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting habit:", error);
@@ -1094,13 +1100,14 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.delete("/api/meditation-insights/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getMeditationInsightsByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteMeditationInsight(parseInt(id));
+      await storage.deleteMeditationInsight(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting meditation insight:", error);
@@ -1299,9 +1306,10 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.post("/api/plan-versions/:id/restore", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const versions = await storage.getPlanVersionsByUser(userId);
-      const version = versions.find(v => v.id === parseInt(id));
+      const version = versions.find(v => v.id === id);
       if (!version) {
         return res.status(404).json({ error: "Version not found" });
       }
@@ -1388,13 +1396,14 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.delete("/api/plan-versions/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getPlanVersionsByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deletePlanVersion(parseInt(id));
+      await storage.deletePlanVersion(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting plan version:", error);
@@ -1439,9 +1448,10 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.patch("/api/tool-usage/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const logs = await storage.getToolUsageLogsByUser(userId);
-      const log = logs.find(l => l.id === parseInt(id));
+      const log = logs.find(l => l.id === id);
       if (!log) {
         return res.status(404).json({ error: "Tool usage log not found" });
       }
@@ -1449,7 +1459,7 @@ Return a JSON object with a single key "items" containing an array of parsed tas
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const updated = await storage.updateToolUsageLog(parseInt(id), parsedBody.data);
+      const updated = await storage.updateToolUsageLog(id, parsedBody.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating tool usage log:", error);
@@ -1524,9 +1534,10 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.patch("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const tools = await storage.getCustomToolsByUser(userId);
-      const tool = tools.find(t => t.id === parseInt(id));
+      const tool = tools.find(t => t.id === id);
       if (!tool) {
         return res.status(404).json({ error: "Custom tool not found" });
       }
@@ -1534,7 +1545,7 @@ Return a JSON object with a single key "items" containing an array of parsed tas
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const updated = await storage.updateCustomTool(parseInt(id), parsedBody.data);
+      const updated = await storage.updateCustomTool(id, parsedBody.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating custom tool:", error);
@@ -1545,13 +1556,14 @@ Return a JSON object with a single key "items" containing an array of parsed tas
   app.delete("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const tools = await storage.getCustomToolsByUser(userId);
-      const tool = tools.find(t => t.id === parseInt(id));
+      const tool = tools.find(t => t.id === id);
       if (!tool) {
         return res.status(404).json({ error: "Custom tool not found" });
       }
-      await storage.deleteCustomTool(parseInt(id));
+      await storage.deleteCustomTool(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting custom tool:", error);
@@ -1682,9 +1694,10 @@ Be compassionate but honest. Use evidence from their text to support your observ
   app.patch("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getTasksByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
@@ -1692,7 +1705,7 @@ Be compassionate but honest. Use evidence from their text to support your observ
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const task = await storage.updateTask(parseInt(id), parsedBody.data);
+      const task = await storage.updateTask(id, parsedBody.data);
       res.json(task);
     } catch (error) {
       console.error("Error updating task:", error);
@@ -1703,13 +1716,14 @@ Be compassionate but honest. Use evidence from their text to support your observ
   app.delete("/api/tasks/:id", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { id } = req.params;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
       const existing = await storage.getTasksByUser(userId);
-      const record = existing.find(r => r.id === parseInt(id));
+      const record = existing.find(r => r.id === id);
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteTask(parseInt(id));
+      await storage.deleteTask(id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting task:", error);
