@@ -689,7 +689,11 @@ export async function registerRoutes(
       
       let csv = "Week Start,Role,Task,Quadrant,Deadline,Time Estimate,Decision,Scheduled Time,Completed\n";
       entries.forEach(e => {
-        csv += `${e.weekStart},${e.role},"${e.task}",${e.quadrant},${e.deadline || ""},${e.timeEstimate || ""},${e.decision || ""},${e.scheduledTime || ""},${e.completed}\n`;
+        csv += [
+          csvEscape(e.weekStart), csvEscape(e.role), csvEscape(e.task),
+          csvEscape(e.quadrant), csvEscape(e.deadline), csvEscape(e.timeEstimate),
+          csvEscape(e.decision), csvEscape(e.scheduledTime), String(e.completed),
+        ].join(",") + "\n";
       });
 
       res.setHeader("Content-Type", "text/csv");
@@ -776,7 +780,15 @@ export async function registerRoutes(
       
       let csv = "Type,Date,Who,Context,Their Emotional State,My Emotional State,Facts Observed,How I Came Across,How They Likely Felt,What Matters to Them,What They Need,Next Action,Did Confirm,Intention,Leave Them Feeling,Trigger Risk IF-THEN,Them Hypothesis,Reality Check Question,Reflection Validation\n";
       exercises.forEach(e => {
-        csv += `"${e.exerciseType || "debrief"}",${e.date},"${e.who}","${e.context || ""}","${e.theirEmotionalState || ""}","${e.myEmotionalState || ""}","${e.factsObserved || ""}","${e.howICameAcross || ""}","${e.howTheyLikelyFelt || ""}","${e.whatMattersToThem || ""}","${e.whatTheyNeed || ""}","${e.nextAction || ""}","${e.didConfirm || ""}","${e.intention || ""}","${e.leaveThemFeeling || ""}","${e.triggerRiskIfThen || ""}","${e.themHypothesis || ""}","${e.realityCheckQuestion || ""}","${e.reflectionValidation || ""}"\n`;
+        csv += [
+          csvEscape(e.exerciseType || "debrief"), csvEscape(e.date), csvEscape(e.who),
+          csvEscape(e.context), csvEscape(e.theirEmotionalState), csvEscape(e.myEmotionalState),
+          csvEscape(e.factsObserved), csvEscape(e.howICameAcross), csvEscape(e.howTheyLikelyFelt),
+          csvEscape(e.whatMattersToThem), csvEscape(e.whatTheyNeed), csvEscape(e.nextAction),
+          csvEscape(e.didConfirm), csvEscape(e.intention), csvEscape(e.leaveThemFeeling),
+          csvEscape(e.triggerRiskIfThen), csvEscape(e.themHypothesis), csvEscape(e.realityCheckQuestion),
+          csvEscape(e.reflectionValidation),
+        ].join(",") + "\n";
       });
 
       res.setHeader("Content-Type", "text/csv");
@@ -1479,7 +1491,11 @@ Return a JSON object with a single key "items" containing an array of parsed tas
       }
       const csvHeader = "Date,Tool,Mood Before,Emotion Before,Mood After,Emotion After,Completed\n";
       const csvRows = logs.map(l =>
-        `${l.date},${l.toolName},${l.moodBefore},${l.emotionBefore},${l.moodAfter ?? ""},${l.emotionAfter ?? ""},${l.completed}`
+        [
+          csvEscape(l.date), csvEscape(l.toolName), String(l.moodBefore),
+          csvEscape(l.emotionBefore), String(l.moodAfter ?? ""),
+          csvEscape(l.emotionAfter), String(l.completed),
+        ].join(",")
       ).join("\n");
       res.setHeader("Content-Type", "text/csv");
       res.setHeader("Content-Disposition", "attachment; filename=tool-usage.csv");
