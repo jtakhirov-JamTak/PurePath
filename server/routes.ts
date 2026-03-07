@@ -15,6 +15,16 @@ function parseId(raw: string): number | null {
 function parseDateParam(raw: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
 }
+
+function csvEscape(val: string | null | undefined): string {
+  if (val == null) return "";
+  const s = String(val);
+  const needsEscape = /[",\n\r]/.test(s) || /^[=+\-@\t\r]/.test(s);
+  if (needsEscape) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
 import fs from "fs";
 import rateLimit from "express-rate-limit";
 
