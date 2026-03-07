@@ -3,6 +3,13 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
+const requiredEnvVars = ["DATABASE_URL"];
+const missingVars = requiredEnvVars.filter(k => !process.env[k]);
+if (missingVars.length > 0) {
+  console.error(`Missing required environment variables: ${missingVars.join(", ")}`);
+  process.exit(1);
+}
+
 const app = express();
 const httpServer = createServer(app);
 
