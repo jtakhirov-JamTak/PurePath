@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
 import {
-  Sun, Moon, Check, ArrowRight,
+  Sun, Moon, Check, ArrowRight, ChevronDown,
   Heart, Shield, BedDouble, Activity, Footprints, Clock,
   Target, Minus, Pencil, Plus, X, AlertTriangle,
   Brain, Pause, Flame, Trophy,
@@ -442,6 +442,7 @@ export default function DashboardPage() {
   const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
   const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null; timeEstimate?: string | null } | null>(null);
   const [stillnessOpen, setStillnessOpen] = useState(false);
+  const [expandedMetrics, setExpandedMetrics] = useState<Set<string>>(new Set());
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
   const stillnessRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -505,6 +506,7 @@ export default function DashboardPage() {
 
     let sleepWins = 0;
     let sleepNights = 0;
+    const sleepDetails: { date: string; hours: number; isWin: boolean }[] = [];
     for (const dayStr of pastDayStrs) {
       const mj = journals.find(j => j.date === dayStr && j.session === "morning");
       if (mj && mj.content) {
@@ -513,7 +515,9 @@ export default function DashboardPage() {
           if (c.sleepHours) {
             sleepNights++;
             const hrs = parseFloat(c.sleepHours);
-            if (!isNaN(hrs) && hrs >= 7 && hrs <= 9) sleepWins++;
+            const isWin = !isNaN(hrs) && hrs >= 7 && hrs <= 9;
+            if (isWin) sleepWins++;
+            sleepDetails.push({ date: dayStr, hours: hrs, isWin });
           }
         } catch {}
       }
@@ -521,6 +525,7 @@ export default function DashboardPage() {
 
     let consistencyPoints = 0;
     let consistencyMax = 0;
+    const consistencyDetails: { name: string; date: string; points: number; maxPoints: number }[] = [];
     for (const dayStr of pastDayStrs) {
       const day = new Date(dayStr + "T12:00:00");
       const dayCode = DAY_CODES[day.getDay()];
@@ -534,15 +539,17 @@ export default function DashboardPage() {
       scheduledHabits.forEach(h => {
         const maxPts = h.isBinary ? 1 : 2;
         consistencyMax += maxPts;
+        let earned = 0;
         const hc = weekHabitCompletions.find(c => c.habitId === h.id && c.date === dayStr);
         if (hc) {
           if (h.isBinary) {
-            if (hc.completionLevel === 1) consistencyPoints += 1;
+            if (hc.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
           } else {
-            if (hc.completionLevel === 2) consistencyPoints += 2;
-            else if (hc.completionLevel === 1) consistencyPoints += 1;
+            if (hc.completionLevel === 2) { consistencyPoints += 2; earned = 2; }
+            else if (hc.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
           }
         }
+        consistencyDetails.push({ name: h.name, date: dayStr, points: earned, maxPoints: maxPts });
       });
     }
     const weekEisenhower = eisenhowerEntries.filter(e =>
@@ -551,12 +558,14 @@ export default function DashboardPage() {
     weekEisenhower.forEach(e => {
       const maxPts = e.isBinary ? 1 : 2;
       consistencyMax += maxPts;
+      let earned = 0;
       if (e.isBinary) {
-        if (e.completionLevel === 1) consistencyPoints += 1;
+        if (e.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
       } else {
-        if (e.completionLevel === 2) consistencyPoints += 2;
-        else if (e.completionLevel === 1) consistencyPoints += 1;
+        if (e.completionLevel === 2) { consistencyPoints += 2; earned = 2; }
+        else if (e.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
       }
+      consistencyDetails.push({ name: e.task, date: e.scheduledDate || e.deadline || "", points: earned, maxPoints: maxPts });
     });
     const consistencyPct = consistencyMax > 0 ? Math.round((consistencyPoints / consistencyMax) * 100) : 0;
 
@@ -565,6 +574,14 @@ export default function DashboardPage() {
     const firstStepCompleted = firstStepItems.filter(e =>
       e.isBinary ? e.completionLevel === 1 : e.completionLevel === 2
     ).length;
+    const firstStepDetails = firstStepItems.map(e => ({
+      task: e.task,
+      completionLevel: e.completionLevel ?? 0,
+      isBinary: !!e.isBinary,
+      status: (e.isBinary ? e.completionLevel === 1 : e.completionLevel === 2) ? "done" as const
+        : (e.completionLevel != null && e.completionLevel >= 1) ? "started" as const
+        : "pending" as const,
+    }));
 
     const q2Items = weekEisenhower.filter(e => e.quadrant === "q2");
     const q2PlannedMin = q2Items.reduce((sum, e) => sum + (e.durationMinutes || parseTimeEstimateMinutes(e.timeEstimate) || 0), 0);
@@ -575,12 +592,25 @@ export default function DashboardPage() {
       if (e.actualDuration != null) return sum + e.actualDuration;
       return sum;
     }, 0);
+    const q2Details = q2Items.map(e => {
+      const planned = e.durationMinutes || parseTimeEstimateMinutes(e.timeEstimate) || 0;
+      let actual = 0;
+      if (e.completedRequiredTime === true) actual = planned;
+      else if (e.completedRequiredTime === false && e.timeShortMinutes != null) actual = Math.max(0, planned - e.timeShortMinutes);
+      else if (e.actualDuration != null) actual = e.actualDuration;
+      return {
+        task: e.task,
+        plannedMin: planned,
+        actualMin: actual,
+        status: e.status || (e.completed ? "completed" : "pending"),
+      };
+    });
 
     return {
-      sleepWins, sleepNights,
-      consistencyPoints, consistencyMax, consistencyPct,
-      firstStepTotal: firstStepItems.length, firstStepStarted, firstStepCompleted,
-      q2ActualMin, q2PlannedMin,
+      sleepWins, sleepNights, sleepDetails,
+      consistencyPoints, consistencyMax, consistencyPct, consistencyDetails,
+      firstStepTotal: firstStepItems.length, firstStepStarted, firstStepCompleted, firstStepDetails,
+      q2ActualMin, q2PlannedMin, q2Details,
     };
   }, [journals, habits, weekHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr]);
 
@@ -588,6 +618,24 @@ export default function DashboardPage() {
     if (pct >= 66) return "bg-emerald-500";
     if (pct >= 33) return "bg-amber-400";
     return "bg-rose-400";
+  };
+
+  const toggleMetric = (key: string) => {
+    setExpandedMetrics(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const formatShortDate = (dateStr: string) => {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr + "T12:00:00");
+      if (isNaN(d.getTime())) return "—";
+      return format(d, "EEE");
+    } catch { return "—"; }
   };
 
   return (
@@ -1023,14 +1071,17 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="pb-4 space-y-4">
               <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-sleep-wins">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleMetric("sleep")} data-testid="toggle-sleep-details">
                   <div className="flex items-center gap-2">
                     <BedDouble className="h-4 w-4 text-indigo-500" />
                     <span className="text-xs font-semibold">Sleep Wins</span>
                   </div>
-                  <span className="text-sm font-bold" data-testid="text-sleep-wins">
-                    {progressMetrics.sleepWins}/{progressMetrics.sleepNights}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" data-testid="text-sleep-wins">
+                      {progressMetrics.sleepWins}/{progressMetrics.sleepNights}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expandedMetrics.has("sleep") ? "rotate-180" : ""}`} />
+                  </div>
                 </div>
                 <Progress
                   value={progressMetrics.sleepNights > 0 ? (progressMetrics.sleepWins / progressMetrics.sleepNights) * 100 : 0}
@@ -1038,17 +1089,36 @@ export default function DashboardPage() {
                   indicatorClassName={getProgressColor(progressMetrics.sleepNights > 0 ? (progressMetrics.sleepWins / progressMetrics.sleepNights) * 100 : 0)}
                 />
                 <p className="text-[10px] text-muted-foreground">Nights in 7–9h window</p>
+                {expandedMetrics.has("sleep") && (
+                  <div className="pt-1 space-y-1 border-t border-border/50">
+                    {progressMetrics.sleepDetails.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">No sleep data logged yet</p>
+                    )}
+                    {progressMetrics.sleepDetails.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px]">
+                        <span className="text-muted-foreground">{formatShortDate(s.date)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{s.hours}h</span>
+                          {s.isWin ? <Check className="h-3 w-3 text-emerald-500" /> : <X className="h-3 w-3 text-rose-400" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-consistency">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleMetric("consistency")} data-testid="toggle-consistency-details">
                   <div className="flex items-center gap-2">
                     <Flame className="h-4 w-4 text-orange-500" />
                     <span className="text-xs font-semibold">Consistency</span>
                   </div>
-                  <span className="text-sm font-bold" data-testid="text-consistency">
-                    {progressMetrics.consistencyPct}%
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" data-testid="text-consistency">
+                      {progressMetrics.consistencyPct}%
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expandedMetrics.has("consistency") ? "rotate-180" : ""}`} />
+                  </div>
                 </div>
                 <Progress
                   value={progressMetrics.consistencyPct}
@@ -1058,17 +1128,35 @@ export default function DashboardPage() {
                 <p className="text-[10px] text-muted-foreground">
                   {progressMetrics.consistencyPoints}/{progressMetrics.consistencyMax} pts earned
                 </p>
+                {expandedMetrics.has("consistency") && (
+                  <div className="pt-1 space-y-1 border-t border-border/50 max-h-40 overflow-y-auto">
+                    {progressMetrics.consistencyDetails.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">No items tracked yet</p>
+                    )}
+                    {progressMetrics.consistencyDetails.map((c, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px] gap-2">
+                        <span className="text-muted-foreground truncate flex-1 min-w-0">{formatShortDate(c.date)} · {c.name}</span>
+                        <span className={`font-medium flex-shrink-0 ${c.points === c.maxPoints ? "text-emerald-600" : c.points > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                          {c.points}/{c.maxPoints}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-first-steps">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleMetric("firstSteps")} data-testid="toggle-first-steps-details">
                   <div className="flex items-center gap-2">
                     <Footprints className="h-4 w-4 text-amber-500" />
                     <span className="text-xs font-semibold">First-Step Starts</span>
                   </div>
-                  <span className="text-sm font-bold" data-testid="text-first-steps">
-                    {progressMetrics.firstStepStarted}/{progressMetrics.firstStepTotal}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" data-testid="text-first-steps">
+                      {progressMetrics.firstStepStarted}/{progressMetrics.firstStepTotal}
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expandedMetrics.has("firstSteps") ? "rotate-180" : ""}`} />
+                  </div>
                 </div>
                 <Progress
                   value={progressMetrics.firstStepTotal > 0 ? (progressMetrics.firstStepStarted / progressMetrics.firstStepTotal) * 100 : 0}
@@ -1078,17 +1166,35 @@ export default function DashboardPage() {
                 <p className="text-[10px] text-muted-foreground">
                   {progressMetrics.firstStepCompleted} fully done
                 </p>
+                {expandedMetrics.has("firstSteps") && (
+                  <div className="pt-1 space-y-1 border-t border-border/50">
+                    {progressMetrics.firstStepDetails.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">No Q1 self-dev items this week</p>
+                    )}
+                    {progressMetrics.firstStepDetails.map((f, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px] gap-2">
+                        <span className="text-muted-foreground truncate flex-1 min-w-0">{f.task}</span>
+                        <span className={`flex-shrink-0 font-medium ${f.status === "done" ? "text-emerald-600" : f.status === "started" ? "text-amber-500" : "text-muted-foreground"}`}>
+                          {f.status === "done" ? "Done" : f.status === "started" ? "Started" : "Pending"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-q2-focus">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleMetric("q2")} data-testid="toggle-q2-details">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-500" />
                     <span className="text-xs font-semibold">Q2 Focus</span>
                   </div>
-                  <span className="text-sm font-bold" data-testid="text-q2-focus">
-                    {progressMetrics.q2ActualMin}/{progressMetrics.q2PlannedMin}m
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold" data-testid="text-q2-focus">
+                      {progressMetrics.q2ActualMin}/{progressMetrics.q2PlannedMin}m
+                    </span>
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 ${expandedMetrics.has("q2") ? "rotate-180" : ""}`} />
+                  </div>
                 </div>
                 <Progress
                   value={progressMetrics.q2PlannedMin > 0 ? Math.min((progressMetrics.q2ActualMin / progressMetrics.q2PlannedMin) * 100, 100) : 0}
@@ -1096,6 +1202,21 @@ export default function DashboardPage() {
                   indicatorClassName={getProgressColor(progressMetrics.q2PlannedMin > 0 ? Math.min((progressMetrics.q2ActualMin / progressMetrics.q2PlannedMin) * 100, 100) : 0)}
                 />
                 <p className="text-[10px] text-muted-foreground">Actual vs planned minutes</p>
+                {expandedMetrics.has("q2") && (
+                  <div className="pt-1 space-y-1 border-t border-border/50">
+                    {progressMetrics.q2Details.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">No Q2 items this week</p>
+                    )}
+                    {progressMetrics.q2Details.map((q, i) => (
+                      <div key={i} className="flex items-center justify-between text-[11px] gap-2">
+                        <span className="text-muted-foreground truncate flex-1 min-w-0">{q.task}</span>
+                        <span className={`flex-shrink-0 font-medium ${q.status === "completed" ? "text-emerald-600" : q.status === "skipped" ? "text-rose-400" : "text-muted-foreground"}`}>
+                          {q.actualMin}/{q.plannedMin}m
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
