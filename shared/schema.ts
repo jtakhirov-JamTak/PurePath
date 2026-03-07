@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check, jsonb, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -65,6 +65,7 @@ export const chatMessages = pgTable("chat_messages", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
+  index("chat_messages_user_id_idx").on(table.userId),
   check("chat_role_check", sql`${table.role} IN ('user', 'assistant')`),
 ]);
 
@@ -160,6 +161,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
+  index("eisenhower_user_id_idx").on(table.userId),
   check("eisenhower_quadrant_check", sql`${table.quadrant} IN ('q1', 'q2', 'q3', 'q4')`),
 ]);
 
@@ -240,6 +242,7 @@ export const habits = pgTable("habits", {
   googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
+  index("habits_user_id_idx").on(table.userId),
   check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'self-development', 'happiness', 'career', 'mindfulness', 'learning', 'leisure')`),
   check("habit_type_check", sql`${table.habitType} IN ('goal', 'learning', 'maintenance')`),
   check("habit_timing_check", sql`${table.timing} IN ('morning', 'afternoon', 'evening')`),
@@ -444,6 +447,7 @@ export const toolUsageLogs = pgTable("tool_usage_logs", {
   date: date("date").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
+  index("tool_usage_user_id_idx").on(table.userId),
   check("mood_before_range", sql`${table.moodBefore} BETWEEN 1 AND 5`),
   check("mood_after_range", sql`${table.moodAfter} IS NULL OR ${table.moodAfter} BETWEEN 1 AND 5`),
 ]);
@@ -471,7 +475,9 @@ export const triggerLogs = pgTable("trigger_logs", {
   outcome: text("outcome"),
   recoveryMinutes: integer("recovery_minutes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("trigger_logs_user_id_idx").on(table.userId),
+]);
 
 export const insertTriggerLogSchema = createInsertSchema(triggerLogs).omit({
   id: true,
@@ -491,7 +497,9 @@ export const avoidanceLogs = pgTable("avoidance_logs", {
   smallestExposure: text("smallest_exposure"),
   startedNow: boolean("started_now").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("avoidance_logs_user_id_idx").on(table.userId),
+]);
 
 export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
   id: true,
