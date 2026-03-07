@@ -7,6 +7,14 @@ import { COURSES, type CourseType, HABIT_CATEGORIES } from "@shared/schema";
 import OpenAI from "openai";
 import { format } from "date-fns";
 import multer from "multer";
+function parseId(raw: string): number | null {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function parseDateParam(raw: string): string | null {
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
 import fs from "fs";
 import rateLimit from "express-rate-limit";
 
@@ -155,12 +163,18 @@ export async function registerRoutes(
       }
 
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-      
+
+      if (!webhookSecret) {
+        console.error("STRIPE_WEBHOOK_SECRET is not configured");
+        return res.status(500).json({ error: "Webhook not configured" });
+      }
+
       let event;
-      if (webhookSecret) {
+      try {
         event = stripe.webhooks.constructEvent(req.rawBody as Buffer, sig, webhookSecret);
-      } else {
-        event = req.body;
+      } catch (err: any) {
+        console.error("Webhook signature verification failed:", err.message);
+        return res.status(400).json({ error: "Invalid signature" });
       }
 
       if (event.type === "checkout.session.completed") {
