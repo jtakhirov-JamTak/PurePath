@@ -525,7 +525,7 @@ export default function DashboardPage() {
 
     let consistencyPoints = 0;
     let consistencyMax = 0;
-    const consistencyDetails: { name: string; date: string; points: number; maxPoints: number }[] = [];
+    const habitTracker: Record<number, { name: string; scheduled: number; completed: number; points: number; maxPoints: number }> = {};
     for (const dayStr of pastDayStrs) {
       const day = new Date(dayStr + "T12:00:00");
       const dayCode = DAY_CODES[day.getDay()];
@@ -539,22 +539,25 @@ export default function DashboardPage() {
       scheduledHabits.forEach(h => {
         const maxPts = h.isBinary ? 1 : 2;
         consistencyMax += maxPts;
-        let earned = 0;
+        if (!habitTracker[h.id]) habitTracker[h.id] = { name: h.name, scheduled: 0, completed: 0, points: 0, maxPoints: 0 };
+        habitTracker[h.id].scheduled++;
+        habitTracker[h.id].maxPoints += maxPts;
         const hc = weekHabitCompletions.find(c => c.habitId === h.id && c.date === dayStr);
         if (hc) {
           if (h.isBinary) {
-            if (hc.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
+            if (hc.completionLevel === 1) { consistencyPoints += 1; habitTracker[h.id].points += 1; habitTracker[h.id].completed++; }
           } else {
-            if (hc.completionLevel === 2) { consistencyPoints += 2; earned = 2; }
-            else if (hc.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
+            if (hc.completionLevel === 2) { consistencyPoints += 2; habitTracker[h.id].points += 2; habitTracker[h.id].completed++; }
+            else if (hc.completionLevel === 1) { consistencyPoints += 1; habitTracker[h.id].points += 1; }
           }
         }
-        consistencyDetails.push({ name: h.name, date: dayStr, points: earned, maxPoints: maxPts });
       });
     }
+    const habitSummaries = Object.values(habitTracker);
     const weekEisenhower = eisenhowerEntries.filter(e =>
       (e.quadrant === "q1" || e.quadrant === "q2") && e.weekStart === weekStartStr
     );
+    const q1ItemDetails: { task: string; points: number; maxPoints: number }[] = [];
     weekEisenhower.filter(e => e.quadrant === "q1").forEach(e => {
       const maxPts = e.isBinary ? 1 : 2;
       consistencyMax += maxPts;
@@ -565,7 +568,7 @@ export default function DashboardPage() {
         if (e.completionLevel === 2) { consistencyPoints += 2; earned = 2; }
         else if (e.completionLevel === 1) { consistencyPoints += 1; earned = 1; }
       }
-      consistencyDetails.push({ name: e.task, date: e.scheduledDate || e.deadline || "", points: earned, maxPoints: maxPts });
+      q1ItemDetails.push({ task: e.task, points: earned, maxPoints: maxPts });
     });
     const consistencyPct = consistencyMax > 0 ? Math.round((consistencyPoints / consistencyMax) * 100) : 0;
 
@@ -608,7 +611,7 @@ export default function DashboardPage() {
 
     return {
       sleepWins, sleepNights, sleepDetails,
-      consistencyPoints, consistencyMax, consistencyPct, consistencyDetails,
+      consistencyPoints, consistencyMax, consistencyPct, habitSummaries, q1ItemDetails,
       firstStepTotal: firstStepItems.length, firstStepStarted, firstStepCompleted, firstStepDetails,
       q2ActualMin, q2PlannedMin, q2Details,
     };
@@ -1129,18 +1132,36 @@ export default function DashboardPage() {
                   {progressMetrics.consistencyPoints}/{progressMetrics.consistencyMax} pts earned
                 </p>
                 {expandedMetrics.has("consistency") && (
-                  <div className="pt-1 space-y-1 border-t border-border/50 max-h-40 overflow-y-auto">
-                    {progressMetrics.consistencyDetails.length === 0 && (
+                  <div className="pt-1 space-y-1 border-t border-border/50 max-h-48 overflow-y-auto">
+                    {progressMetrics.habitSummaries.length === 0 && progressMetrics.q1ItemDetails.length === 0 && (
                       <p className="text-[10px] text-muted-foreground italic">No items tracked yet</p>
                     )}
-                    {progressMetrics.consistencyDetails.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between text-[11px] gap-2">
-                        <span className="text-muted-foreground truncate flex-1 min-w-0">{formatShortDate(c.date)} · {c.name}</span>
-                        <span className={`font-medium flex-shrink-0 ${c.points === c.maxPoints ? "text-emerald-600" : c.points > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
-                          {c.points}/{c.maxPoints}
-                        </span>
-                      </div>
-                    ))}
+                    {progressMetrics.habitSummaries.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide pt-0.5">Habits</p>
+                        {progressMetrics.habitSummaries.map((h, i) => (
+                          <div key={`h-${i}`} className="flex items-center justify-between text-[11px] gap-2">
+                            <span className="text-muted-foreground truncate flex-1 min-w-0">{h.name}</span>
+                            <span className={`font-medium flex-shrink-0 ${h.completed === h.scheduled ? "text-emerald-600" : h.completed > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                              {h.completed}/{h.scheduled}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {progressMetrics.q1ItemDetails.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide pt-1">Q1 Items</p>
+                        {progressMetrics.q1ItemDetails.map((q, i) => (
+                          <div key={`q-${i}`} className="flex items-center justify-between text-[11px] gap-2">
+                            <span className="text-muted-foreground truncate flex-1 min-w-0">{q.task}</span>
+                            <span className={`font-medium flex-shrink-0 ${q.points === q.maxPoints ? "text-emerald-600" : q.points > 0 ? "text-amber-500" : "text-muted-foreground"}`}>
+                              {q.points}/{q.maxPoints}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
