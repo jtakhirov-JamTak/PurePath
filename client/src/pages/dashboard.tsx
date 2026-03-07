@@ -555,7 +555,7 @@ export default function DashboardPage() {
     const weekEisenhower = eisenhowerEntries.filter(e =>
       (e.quadrant === "q1" || e.quadrant === "q2") && e.weekStart === weekStartStr
     );
-    weekEisenhower.forEach(e => {
+    weekEisenhower.filter(e => e.quadrant === "q1").forEach(e => {
       const maxPts = e.isBinary ? 1 : 2;
       consistencyMax += maxPts;
       let earned = 0;
