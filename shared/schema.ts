@@ -509,6 +509,26 @@ export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
 export type AvoidanceLog = typeof avoidanceLogs.$inferSelect;
 export type InsertAvoidanceLog = z.infer<typeof insertAvoidanceLogSchema>;
 
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  onboardingStep: integer("onboarding_step").default(0).notNull(),
+  onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("user_settings_user_id_idx").on(table.userId),
+]);
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UserSettings = typeof userSettings.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+
 export const customTools = pgTable("custom_tools", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
