@@ -427,19 +427,19 @@ export default function DashboardPage() {
     },
   });
 
-  const isGoalComplete = (g: MonthlyGoal | undefined) => {
-    if (!g) return false;
-    const requiredFields = [g.value, g.strengths, g.advantage, g.goalWhat, g.goalWhen, g.goalWhere, g.goalHow, g.successProof, g.proofMetric, g.weeklyBehavior, g.bestResult, g.innerObstacle, g.obstacleTrigger, g.obstacleThought, g.obstacleEmotion, g.obstacleBehavior, g.ifThenPlan1, g.ifThenPlan2, g.prize, g.fun, g.deadline];
-    return requiredFields.every(f => f && f.trim().length > 0);
-  };
-
   const redirectedRef = useRef(false);
   useEffect(() => {
-    if (monthlyGoalLoaded && !isGoalComplete(monthlyGoal) && !redirectedRef.current) {
+    if (
+      monthlyGoalLoaded &&
+      onboarding?.onboardingComplete &&
+      monthlyGoal &&
+      !monthlyGoal.goalStatement?.trim() &&
+      !redirectedRef.current
+    ) {
       redirectedRef.current = true;
       setLocation(buildProcessUrl("/goal-wizard", "/dashboard"));
     }
-  }, [monthlyGoalLoaded, monthlyGoal, setLocation]);
+  }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);

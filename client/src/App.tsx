@@ -44,17 +44,18 @@ import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      window.location.href = "/api/login";
+    }
+  }, [isLoading, isAuthenticated]);
+
+  if (isLoading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    window.location.href = "/api/login";
-    return null;
   }
 
   return <Component />;
