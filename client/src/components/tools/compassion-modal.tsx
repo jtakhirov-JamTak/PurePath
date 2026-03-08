@@ -7,8 +7,7 @@ import { useMoodTracking } from "@/hooks/use-mood-tracking";
 import { VoiceTextarea } from "@/components/voice-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { HandHeart, ArrowRight, Check, Plus } from "lucide-react";
+import { HandHeart, ArrowRight, Check } from "lucide-react";
 import { format } from "date-fns";
 
 function convertPronouns(text: string): string {
@@ -37,10 +36,7 @@ export function CompassionModal({
   const [selfMsg, setSelfMsg] = useState("");
   const [convertToggle, setConvertToggle] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [taskAdded, setTaskAdded] = useState(false);
   const [showCopyConfirm, setShowCopyConfirm] = useState(false);
-  const [nextStepInput, setNextStepInput] = useState("");
-  const [showNextStepPrompt, setShowNextStepPrompt] = useState(false);
   const mood = useMoodTracking("Self-Compassion");
 
   const saveMutation = useMutation({
@@ -69,34 +65,11 @@ export function CompassionModal({
     },
   });
 
-  const addTaskMutation = useMutation({
-    mutationFn: async (title: string) => {
-      const res = await apiRequest("POST", "/api/tasks", {
-        title,
-        date: todayStr,
-        time: "09:00",
-        quadrant: "q2",
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to add task");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/tasks"] });
-      setTaskAdded(true);
-      setShowNextStepPrompt(false);
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not add task", description: error.message, variant: "destructive" });
-    },
-  });
 
   const handleClose = () => {
     setSituation(""); setLovedOneMsg(""); setSelfMsg("");
-    setConvertToggle(false); setSaved(false); setTaskAdded(false);
-    setShowCopyConfirm(false); setNextStepInput(""); setShowNextStepPrompt(false);
+    setConvertToggle(false); setSaved(false);
+    setShowCopyConfirm(false);
     onClose();
   };
 
@@ -119,14 +92,6 @@ export function CompassionModal({
     setShowCopyConfirm(false);
   };
 
-  const handleAddNextStep = () => {
-    const match = lovedOneMsg.match(/let's just do (.+?) for/i) || lovedOneMsg.match(/let's just do (.+)/i);
-    if (match) {
-      addTaskMutation.mutate(match[1].trim());
-    } else {
-      setShowNextStepPrompt(true);
-    }
-  };
 
   const insertChip = (text: string) => {
     setLovedOneMsg((prev) => prev ? prev + " " + text : text);
@@ -240,26 +205,6 @@ export function CompassionModal({
             />
           </div>
 
-          {showNextStepPrompt && (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
-              <Input
-                value={nextStepInput}
-                onChange={(e) => setNextStepInput(e.target.value)}
-                placeholder="What's a 2-minute next step?"
-                className="text-sm flex-1"
-                data-testid="input-mirror-next-step"
-              />
-              <Button
-                size="sm"
-                onClick={() => addTaskMutation.mutate(nextStepInput.trim())}
-                disabled={!nextStepInput.trim() || addTaskMutation.isPending}
-                data-testid="button-add-next-step-confirm"
-              >
-                Add
-              </Button>
-            </div>
-          )}
-
           <div className="flex flex-wrap gap-2 pt-2 border-t">
             <Button
               variant="outline"
@@ -275,25 +220,6 @@ export function CompassionModal({
                 </>
               ) : (
                 "Save to journal"
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAddNextStep}
-              disabled={taskAdded || addTaskMutation.isPending}
-              data-testid="button-mirror-add-task"
-            >
-              {taskAdded ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  Added
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add next step to Today
-                </>
               )}
             </Button>
             <Button

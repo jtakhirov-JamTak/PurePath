@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { ExerciseModal } from "@/components/exercise-modal";
 import { useMoodTracking } from "@/hooks/use-mood-tracking";
 import { useTimer, formatTime } from "@/hooks/use-timer";
@@ -12,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Heart, ArrowRight, Play, Pause, RotateCcw, Plus,
 } from "lucide-react";
-import { format } from "date-fns";
 
 const CONTAINMENT_STEPS = [
   { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
@@ -69,27 +65,8 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
   const [becauseText, setBecauseText] = useState("");
   const [validationChip, setValidationChip] = useState<string>("");
   const [moveAction, setMoveAction] = useState("");
-  const qc = useQueryClient();
-  const { toast } = useToast();
   const mood = useMoodTracking("Containment");
 
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  const addTaskMutation = useMutation({
-    mutationFn: async (title: string) => {
-      const res = await apiRequest("POST", "/api/tasks", {
-        title, date: todayStr, time: format(new Date(), "HH:mm"),
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to add task");
-      }
-      return res.json();
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/tasks"] }); },
-    onError: (error: Error) => {
-      toast({ title: "Could not add task", description: error.message, variant: "destructive" });
-    },
-  });
 
   const currentStep = CONTAINMENT_STEPS[step];
   const isLastStep = step === CONTAINMENT_STEPS.length - 1;
@@ -102,7 +79,6 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
 
   const goNext = () => {
     if (isLastStep) {
-      if (moveAction.trim()) addTaskMutation.mutate(moveAction.trim());
       mood.finishExercise();
       return;
     }
@@ -203,7 +179,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
                 className="text-sm resize-none"
                 data-testid="input-move-action"
               />
-              <p className="text-xs text-muted-foreground">This will be added to today's tasks</p>
+              <p className="text-xs text-muted-foreground">What small action will you take next?</p>
             </div>
           )}
         </div>
@@ -213,7 +189,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
             Close
           </Button>
           <Button size="sm" onClick={goNext} disabled={!canAdvance()} data-testid="button-containment-next">
-            {isLastStep ? (moveAction.trim() ? "Add to Tasks & Done" : "Done") : "Next"}
+            {isLastStep ? "Done" : "Next"}
             <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
