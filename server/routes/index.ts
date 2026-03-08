@@ -12,6 +12,7 @@ import { registerTaskRoutes } from "./tasks";
 import { registerIdentityRoutes } from "./identity";
 import { registerToolRoutes } from "./tools";
 import { registerPhase3Routes } from "./phase3";
+import { registerOnboardingRoutes } from "./onboarding";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -30,6 +31,7 @@ export async function registerRoutes(
   registerIdentityRoutes(app);
   registerToolRoutes(app);
   registerPhase3Routes(app);
+  registerOnboardingRoutes(app);
 
   return httpServer;
 }
