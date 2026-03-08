@@ -102,17 +102,6 @@ export const createHabitCompletionSchema = z.object({
   skipReason: optionalString(100),
 });
 
-export const createTaskSchema = z.object({
-  title: trimmedString(1, 200),
-  date: dateString,
-  time: z.string().max(20, "Time must be at most 20 characters"),
-  quadrant: quadrantEnum.optional().nullable(),
-  scheduledTime: optionalString(50),
-  completed: z.boolean().optional().nullable(),
-  googleCalendarEventId: optionalString(100),
-});
-
-export const updateTaskSchema = createTaskSchema.partial();
 
 export const createMeditationInsightSchema = z.object({
   date: dateString,
