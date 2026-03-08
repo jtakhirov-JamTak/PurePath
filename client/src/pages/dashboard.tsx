@@ -211,6 +211,11 @@ export default function DashboardPage() {
   const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
 
+  const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
+    queryKey: ["/api/onboarding"],
+    enabled: !!user,
+  });
+
   const { data: purchases } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
     enabled: !!user,
@@ -467,7 +472,7 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  if (authLoading) {
+  if (authLoading || onboardingLoading) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -484,6 +489,11 @@ export default function DashboardPage() {
         </div>
       </AppLayout>
     );
+  }
+
+  if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
+    window.location.href = "/setup";
+    return null;
   }
 
   const currentHour = new Date().getHours();
