@@ -279,27 +279,6 @@ export const insertHabitCompletionSchema = createInsertSchema(habitCompletions).
 export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type InsertHabitCompletion = z.infer<typeof insertHabitCompletionSchema>;
 
-// Daily tasks - specific tasks for specific dates
-export const tasks = pgTable("tasks", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  date: date("date").notNull(),
-  time: varchar("time", { length: 20 }).notNull(), // '09:00', '14:30', etc.
-  quadrant: varchar("quadrant", { length: 10 }), // 'q1', 'q2', 'q3', 'q4' - Eisenhower quadrant
-  scheduledTime: varchar("scheduled_time", { length: 50 }), // required when quadrant is 'q2'
-  completed: boolean("completed").default(false),
-  googleCalendarEventId: varchar("google_calendar_event_id", { length: 100 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertTaskSchema = createInsertSchema(tasks).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type Task = typeof tasks.$inferSelect;
-export type InsertTask = z.infer<typeof insertTaskSchema>;
 
 export const meditationInsights = pgTable("meditation_insights", {
   id: serial("id").primaryKey(),

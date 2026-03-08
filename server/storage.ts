@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, tasks, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
+  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
   type Purchase, type InsertPurchase, 
   type Journal, type InsertJournal, 
   type ChatMessage, type InsertChatMessage,
@@ -8,7 +8,6 @@ import {
   type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
-  type Task, type InsertTask,
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
@@ -62,12 +61,6 @@ export interface IStorage {
   updateHabitCompletionStatus(userId: string, habitId: number, date: string, status: string): Promise<void>;
   deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void>;
   
-  // Tasks
-  getTasksByUser(userId: string): Promise<Task[]>;
-  getTasksForDate(userId: string, date: string): Promise<Task[]>;
-  createTask(task: InsertTask): Promise<Task>;
-  updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
-  deleteTask(id: number): Promise<void>;
 
   // Meditation Insights
   getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]>;
@@ -320,33 +313,6 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  // Tasks
-  async getTasksByUser(userId: string): Promise<Task[]> {
-    return db.select().from(tasks).where(eq(tasks.userId, userId)).orderBy(desc(tasks.date), tasks.time);
-  }
-
-  async getTasksForDate(userId: string, date: string): Promise<Task[]> {
-    return db.select().from(tasks)
-      .where(and(
-        eq(tasks.userId, userId),
-        eq(tasks.date, date)
-      ))
-      .orderBy(tasks.time);
-  }
-
-  async createTask(task: InsertTask): Promise<Task> {
-    const [newTask] = await db.insert(tasks).values(task).returning();
-    return newTask;
-  }
-
-  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
-    const [updated] = await db.update(tasks).set(task).where(eq(tasks.id, id)).returning();
-    return updated;
-  }
-
-  async deleteTask(id: number): Promise<void> {
-    await db.delete(tasks).where(eq(tasks.id, id));
-  }
 
   // Meditation Insights
   async getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]> {
