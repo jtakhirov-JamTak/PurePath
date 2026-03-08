@@ -472,6 +472,12 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  useEffect(() => {
+    if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
+      window.location.href = "/setup";
+    }
+  }, [onboarding, onboardingLoading]);
+
   if (authLoading || onboardingLoading) {
     return (
       <AppLayout>
@@ -491,8 +497,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
-    window.location.href = "/setup";
+  if (onboarding && !onboarding.onboardingComplete) {
     return null;
   }
 
