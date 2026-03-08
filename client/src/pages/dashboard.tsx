@@ -450,11 +450,9 @@ export default function DashboardPage() {
   const [expandedMetrics, setExpandedMetrics] = useState<Set<string>>(new Set());
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
-  const stillnessRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
-    if (stillnessRunning && stillnessSeconds > 0) {
-      stillnessRef.current = setInterval(() => {
+    if (stillnessRunning) {
+      const id = setInterval(() => {
         setStillnessSeconds(prev => {
           if (prev <= 1) {
             setStillnessRunning(false);
@@ -463,55 +461,14 @@ export default function DashboardPage() {
           return prev - 1;
         });
       }, 1000);
+      return () => clearInterval(id);
     }
-    return () => { if (stillnessRef.current) clearInterval(stillnessRef.current); };
-  }, [stillnessRunning, stillnessSeconds]);
+  }, [stillnessRunning]);
 
   const { data: customTools = [] } = useQuery<CustomTool[]>({
     queryKey: ["/api/custom-tools"],
     enabled: !!user,
   });
-
-  useEffect(() => {
-    if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
-      window.location.href = "/setup";
-    }
-  }, [onboarding, onboardingLoading]);
-
-  if (authLoading || onboardingLoading) {
-    return (
-      <AppLayout>
-        <div className="container mx-auto px-4 py-8 max-w-5xl">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1 min-w-0 space-y-6">
-              <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
-              <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
-              <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
-            </div>
-            <div className="w-full md:w-72 md:flex-shrink-0">
-              <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
-            </div>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (onboarding && !onboarding.onboardingComplete) {
-    return null;
-  }
-
-  const currentHour = new Date().getHours();
-  const morningSkipped = !hasMorning && currentHour >= 12;
-
-  const journalHabitItems = hasPhase12 ? [
-    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
-    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening, skipped: false },
-  ] : [];
-
-  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
-  const totalHabits = todaysHabits.length + journalHabitItems.length;
-  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
 
   const progressMetrics = useMemo(() => {
     const weekDays: Date[] = [];
@@ -655,6 +612,47 @@ export default function DashboardPage() {
       return format(d, "EEE");
     } catch { return "—"; }
   };
+
+  useEffect(() => {
+    if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
+      window.location.href = "/setup";
+    }
+  }, [onboarding, onboardingLoading]);
+
+  if (authLoading || onboardingLoading) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="flex-1 min-w-0 space-y-6">
+              <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
+              <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
+              <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
+            </div>
+            <div className="w-full md:w-72 md:flex-shrink-0">
+              <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (onboarding && !onboarding.onboardingComplete) {
+    return null;
+  }
+
+  const currentHour = new Date().getHours();
+  const morningSkipped = !hasMorning && currentHour >= 12;
+
+  const journalHabitItems = hasPhase12 ? [
+    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
+    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening, skipped: false },
+  ] : [];
+
+  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
+  const totalHabits = todaysHabits.length + journalHabitItems.length;
+  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
 
   return (
     <AppLayout>
