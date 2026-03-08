@@ -675,11 +675,19 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <JournalQuickEntry
+          todayStr={todayStr}
+          hasMorning={hasMorning}
+          hasEvening={hasEvening}
+          hasAccess={!!hasPhase12}
+          setLocation={setLocation}
+        />
+
         {(todaysHabits.length > 0 || journalHabitItems.length > 0) && (
           <Card className="overflow-visible" data-testid="card-daily-habits">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between gap-4 flex-wrap">
-                <CardTitle className="text-base font-serif">Due Today</CardTitle>
+                <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
                 <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
                   {completedHabits}/{totalHabits} done
                 </span>
@@ -930,93 +938,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        <Card className="overflow-visible" data-testid="card-foundational-tools">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Foundational Tools</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setLocation("/empathy")}
-                data-testid="button-tool-eq-module"
-              >
-                <Brain className="h-5 w-5 text-emerald-500" />
-                <span className="text-xs">EQ Module</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("trigger")}
-                data-testid="button-tool-trigger"
-              >
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <span className="text-xs">Trigger Log</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("avoidance")}
-                data-testid="button-tool-avoidance"
-              >
-                <Shield className="h-5 w-5 text-blue-500" />
-                <span className="text-xs">Avoidance</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="overflow-visible" data-testid="card-quick-tools">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Quick Tools</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setQuickToolOpen("containment")}
-                data-testid="button-tool-containment"
-              >
-                <Heart className="h-5 w-5 text-rose-500" />
-                <span className="text-xs">Containment</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => setLocation("/meditation")}
-                data-testid="button-tool-meditation"
-              >
-                <Brain className="h-5 w-5 text-purple-500" />
-                <span className="text-xs">Meditation</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-1.5 h-auto py-3"
-                onClick={() => { setStillnessOpen(true); setStillnessSeconds(600); setStillnessRunning(false); }}
-                data-testid="button-tool-stillness"
-              >
-                <Pause className="h-5 w-5 text-slate-500" />
-                <span className="text-xs">Stillness</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <JournalQuickEntry
-          todayStr={todayStr}
-          hasMorning={hasMorning}
-          hasEvening={hasEvening}
-          hasAccess={!!hasPhase12}
-          setLocation={setLocation}
-        />
-
-        <CustomToolsCard
-          customTools={customTools}
-          onAdd={() => setShowAddCustomTool(true)}
-          onUse={(tool) => setCustomToolExercise(tool)}
-        />
       </div>
 
       <div className="w-full md:w-72 md:flex-shrink-0">
