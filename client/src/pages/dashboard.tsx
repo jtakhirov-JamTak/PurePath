@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Check, ArrowRight, ChevronDown,
   Heart, Shield, BedDouble, Activity, Footprints, Clock,
@@ -681,6 +680,7 @@ export default function DashboardPage() {
           hasEvening={hasEvening}
           hasAccess={!!hasPhase12}
           setLocation={setLocation}
+          firstName={user?.firstName || ""}
         />
 
         {(todaysHabits.length > 0 || journalHabitItems.length > 0) && (
@@ -1341,107 +1341,120 @@ function JournalQuickEntry({
   hasEvening,
   hasAccess,
   setLocation,
+  firstName,
 }: {
   todayStr: string;
   hasMorning: boolean;
   hasEvening: boolean;
   hasAccess: boolean;
   setLocation: (path: string) => void;
+  firstName: string;
 }) {
-  const queryClient = useQueryClient();
-  const [quickNote, setQuickNote] = useState("");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const { toast: journalToast } = useToast();
-
-  const saveMutation = useMutation({
-    mutationFn: async (note: string) => {
-      const session = hasMorning ? "evening" : "morning";
-      const res = await apiRequest("PUT", "/api/journals", {
-        date: todayStr,
-        session,
-        reflections: note,
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to save journal");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    },
-    onError: (error: Error) => {
-      setSaveStatus("idle");
-      journalToast({ title: "Could not save journal", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const handleNoteChange = useCallback((value: string) => {
-    setQuickNote(value);
-    setSaveStatus("saving");
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      if (value.trim()) {
-        saveMutation.mutate(value);
-      } else {
-        setSaveStatus("idle");
-      }
-    }, 1500);
-  }, [saveMutation]);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
-
   if (!hasAccess) return null;
 
+  const bothDone = hasMorning && hasEvening;
+  const displayName = firstName || "there";
+
+  if (bothDone) {
+    return (
+      <Card className="overflow-visible" data-testid="card-journal-quick">
+        <CardContent className="py-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Check className="h-4 w-4 text-emerald-500" />
+            <span data-testid="text-journals-complete">Journals complete for today</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!hasMorning) {
+    return (
+      <Card className="overflow-visible border-l-4 border-l-primary" data-testid="card-journal-quick">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-lg font-serif" data-testid="text-journal-greeting">
+                <Sun className="h-5 w-5 inline mr-1.5 text-amber-500" />
+                Good morning, {displayName}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Start your day with intention</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pb-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">What are you grateful for?</label>
+              <Input
+                placeholder="Today I'm grateful for..."
+                className="text-sm"
+                readOnly
+                onFocus={() => {
+                  setLocation(`/journal/${todayStr}/morning`);
+                  window.scrollTo(0, 0);
+                }}
+                data-testid="input-gratitude-preview"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">What's your intention?</label>
+              <Input
+                placeholder="Today I intend to..."
+                className="text-sm"
+                readOnly
+                onFocus={() => {
+                  setLocation(`/journal/${todayStr}/morning`);
+                  window.scrollTo(0, 0);
+                }}
+                data-testid="input-intention-preview"
+              />
+            </div>
+          </div>
+          <Button
+            onClick={() => {
+              setLocation(`/journal/${todayStr}/morning`);
+              window.scrollTo(0, 0);
+            }}
+            className="w-full"
+            data-testid="button-start-morning-journal"
+          >
+            <Sun className="h-4 w-4 mr-2" />
+            Start Morning Journal
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="overflow-visible" data-testid="card-journal-quick">
+    <Card className="overflow-visible border-l-4 border-l-primary/50" data-testid="card-journal-quick">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-base font-serif">
-            {hasMorning ? "Evening Thought" : "Morning Thought"}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {saveStatus === "saving" && (
-              <span className="text-xs text-muted-foreground" data-testid="text-save-status">Saving...</span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="text-xs text-green-600 dark:text-green-400" data-testid="text-save-status">
-                <Check className="h-3 w-3 inline mr-0.5" />
-                Saved
-              </span>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const session = hasMorning ? "evening" : "morning";
-                setLocation(`/journal/${todayStr}/${session}`);
-                window.scrollTo(0, 0);
-              }}
-              data-testid="button-expand-journal"
-            >
-              Expand
-              <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
+          <div>
+            <CardTitle className="text-base font-serif" data-testid="text-journal-greeting">
+              <Moon className="h-4 w-4 inline mr-1.5 text-indigo-400" />
+              How was your day?
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">Take a moment to reflect</p>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pb-4">
-        <VoiceTextarea
-          value={quickNote}
-          onChange={handleNoteChange}
-          placeholder={hasMorning ? "What's on your mind this evening?" : "Set your intention for today..."}
-          rows={2}
-          className="resize-none text-sm"
-          data-testid="textarea-quick-journal"
-        />
+        <Button
+          variant="outline"
+          onClick={() => {
+            setLocation(`/journal/${todayStr}/evening`);
+            window.scrollTo(0, 0);
+          }}
+          className="w-full"
+          data-testid="button-start-evening-journal"
+        >
+          <Moon className="h-4 w-4 mr-2" />
+          Start Evening Journal
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
       </CardContent>
     </Card>
   );
