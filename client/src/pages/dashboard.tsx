@@ -13,14 +13,14 @@ import { VoiceTextarea } from "@/components/voice-input";
 import {
   Sun, Moon, Check, ArrowRight, ChevronDown,
   Heart, Shield, BedDouble, Activity, Footprints, Clock,
-  Target, Minus, Pencil, Plus, X, AlertTriangle,
+  Target, Minus, Plus, X, AlertTriangle,
   Brain, Pause, Flame, Trophy,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays } from "date-fns";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, Task, CustomTool } from "@shared/schema";
+import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
@@ -250,10 +250,6 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const { data: allTasks = [] } = useQuery<Task[]>({
-    queryKey: ["/api/tasks"],
-    enabled: !!user,
-  });
 
   const currentMonthKey = format(today, "yyyy-MM");
 
@@ -301,7 +297,6 @@ export default function DashboardPage() {
   const hasMorning = todayJournals.some((j) => j.session === "morning");
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
-  const todayTasks = allTasks.filter(t => t.date === todayStr).slice(0, 3);
 
   const todayQ2Items = eisenhowerEntries.filter((e) => {
     if (e.quadrant !== "q2") return false;
@@ -371,21 +366,6 @@ export default function DashboardPage() {
     },
   });
 
-  const toggleTaskMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await apiRequest("PATCH", `/api/tasks/${id}`, { completed: !completed });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update task");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update task", description: error.message, variant: "destructive" });
-    },
-  });
 
   const setEisenhowerLevelMutation = useMutation({
     mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
@@ -627,7 +607,6 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0 space-y-6">
               <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
               <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
-              <Skeleton className="h-32 w-full" data-testid="skeleton-tasks" />
             </div>
             <div className="w-full md:w-72 md:flex-shrink-0">
               <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
@@ -810,42 +789,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {todayTasks.length > 0 && (
-          <Card className="overflow-visible" data-testid="card-today-tasks">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <CardTitle className="text-base font-serif">Top Tasks</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setLocation("/tasks")} data-testid="button-manage-tasks">
-                  <Pencil className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <ul className="space-y-2">
-                {todayTasks.map((task) => (
-                  <li key={task.id} className="flex items-center gap-3" data-testid={`task-item-${task.id}`}>
-                    <button
-                      className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer shrink-0 ${
-                        task.completed ? "bg-primary border-primary" : "border-border"
-                      }`}
-                      onClick={() => toggleTaskMutation.mutate({ id: task.id, completed: task.completed || false })}
-                      data-testid={`task-toggle-${task.id}`}
-                    >
-                      {task.completed && <Check className="h-3 w-3 text-primary-foreground" />}
-                    </button>
-                    <span className={`text-sm flex-1 ${task.completed ? "line-through text-muted-foreground" : ""}`}>
-                      {task.title}
-                    </span>
-                    {task.quadrant && (
-                      <Badge variant="outline" className="text-[10px]">{task.quadrant.toUpperCase()}</Badge>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
 
         {overdueItems.length > 0 && (
           <Card className="overflow-visible border-red-300 dark:border-red-500/50 bg-red-50/50 dark:bg-red-950/20" data-testid="card-overdue">
