@@ -36,6 +36,7 @@ import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
 
 import RegulationPage from "@/pages/regulation";
 import GoalWizardPage from "@/pages/goal-wizard";
+import SetupWizardPage from "@/pages/setup-wizard";
 import HistoryPage from "@/pages/history";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
@@ -156,6 +157,9 @@ function Router() {
       </Route>
       <Route path="/history">
         {() => <AuthenticatedRoute component={HistoryPage} />}
+      </Route>
+      <Route path="/setup">
+        {() => <AuthenticatedRoute component={SetupWizardPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
