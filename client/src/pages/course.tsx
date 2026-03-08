@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Video, MessageSquare, BookOpen, Brain, Heart, Grid3X3, 
   CheckSquare, ArrowRight, Lock, Play, Loader2, ChevronDown,
-  Sparkles, Zap, Calendar, Repeat, ListTodo, Target
+  Sparkles, Zap, Calendar, Repeat, Target
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
@@ -316,19 +316,6 @@ export default function CoursePage() {
                           <div>
                             <p className="font-medium text-sm">Habits</p>
                             <p className="text-xs text-muted-foreground">Build recurring habits</p>
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                    <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/tasks")} data-testid="card-tool-tasks">
-                      <CardHeader className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center">
-                            <ListTodo className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Daily Tasks</p>
-                            <p className="text-xs text-muted-foreground">Track daily tasks with quadrants</p>
                           </div>
                         </div>
                       </CardHeader>
