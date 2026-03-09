@@ -3,17 +3,13 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { VoiceTextarea } from "@/components/voice-input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, User, Eye, Leaf, Users, Heart, X } from "lucide-react";
+import { Save, Eye, User, Users, Heart } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
 
 export default function IdentityDocPage() {
@@ -26,32 +22,42 @@ export default function IdentityDocPage() {
     enabled: !!user,
   });
 
-  const [identity, setIdentity] = useState("");
   const [vision, setVision] = useState("");
-  const [values, setValues] = useState("");
+  const [identity, setIdentity] = useState("");
   const [othersWillSee, setOthersWillSee] = useState<string[]>(["", "", ""]);
-  const [beYourself, setBeYourself] = useState("");
+  const [purpose, setPurpose] = useState("");
 
   useEffect(() => {
     if (doc) {
-      setIdentity(doc.identity || "");
       setVision(doc.vision || "");
-      setValues(doc.values || "");
+      setIdentity(doc.identity || "");
       const parsed = doc.othersWillSee ? doc.othersWillSee.split("|||") : ["", "", ""];
       setOthersWillSee(parsed.length === 3 ? parsed : [parsed[0] || "", parsed[1] || "", parsed[2] || ""]);
-      setBeYourself(doc.beYourself || "");
+      setPurpose(doc.purpose || "");
     }
   }, [doc]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("PUT", "/api/identity-document", {
-        identity: identity.trim(),
         vision: vision.trim(),
-        values: values.trim(),
+        identity: identity.trim(),
         othersWillSee: othersWillSee.map(s => s.trim()).join("|||"),
-        beYourself: beYourself.trim(),
+        purpose: purpose.trim(),
+        values: doc?.values || "",
+        yearVision: doc?.yearVision || "",
+        yearVisualization: doc?.yearVisualization || "",
         todayValue: doc?.todayValue || "",
+        todayIntention: doc?.todayIntention || "",
+        todayReflection: doc?.todayReflection || "",
+        visionBoardMain: doc?.visionBoardMain || "",
+        visionBoardLeft: doc?.visionBoardLeft || "",
+        visionBoardRight: doc?.visionBoardRight || "",
+        beYourself: doc?.beYourself || "",
+        strengths: doc?.strengths || "",
+        helpingPatterns: doc?.helpingPatterns || "",
+        hurtingPatterns: doc?.hurtingPatterns || "",
+        stressResponses: doc?.stressResponses || "",
       });
     },
     onSuccess: () => {
@@ -63,22 +69,21 @@ export default function IdentityDocPage() {
     },
   });
 
-  const valuesArray = values.split(",").map(v => v.trim()).filter(Boolean);
-  const beYourselfArray = beYourself.split(",").map(v => v.trim()).filter(Boolean);
-
   const hasChanges =
-    identity !== (doc?.identity || "") ||
     vision !== (doc?.vision || "") ||
-    values !== (doc?.values || "") ||
+    identity !== (doc?.identity || "") ||
     othersWillSee.map(s => s.trim()).join("|||") !== (doc?.othersWillSee || "||") ||
-    beYourself !== (doc?.beYourself || "");
+    purpose !== (doc?.purpose || "");
 
   if (isLoading) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
         </div>
       </AppLayout>
     );
@@ -88,36 +93,13 @@ export default function IdentityDocPage() {
     <AppLayout>
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-10">
-          <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-identity-title">Identity Document</h1>
-          <p className="text-muted-foreground text-lg">
-            Define who you are, where you're going, and what you stand for.
+          <h1 className="font-serif text-2xl font-bold" data-testid="text-identity-title">Identity Document</h1>
+          <p className="text-sm text-muted-foreground mt-1" data-testid="text-identity-subtitle">
+            Who you're choosing to become — from Lesson 2: Decide
           </p>
         </div>
 
         <div className="space-y-6">
-          <Card className="overflow-visible" data-testid="card-identity">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-serif text-lg">Identity</CardTitle>
-                  <CardDescription>Who are you becoming? Write it as if it's already true.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <VoiceTextarea
-                value={identity}
-                onChange={(val) => setIdentity(val)}
-                placeholder="I am someone who shows up with courage every day. I am disciplined, present, and kind..."
-                className="min-h-[120px] resize-none"
-                data-testid="input-identity"
-              />
-            </CardContent>
-          </Card>
-
           <Card className="overflow-visible" data-testid="card-vision">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -126,82 +108,41 @@ export default function IdentityDocPage() {
                 </div>
                 <div>
                   <CardTitle className="font-serif text-lg">Vision</CardTitle>
-                  <CardDescription>Where are you headed? Describe the life you're building.</CardDescription>
+                  <CardDescription>Your 10+ year vision. Where are you headed?</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <VoiceTextarea
                 value={vision}
-                onChange={(val) => setVision(val)}
-                placeholder="In 3 years I see myself living with purpose, running a meaningful business, deeply connected to the people I love..."
+                onChange={setVision}
+                placeholder="In 10 years I see myself living with purpose, running a meaningful business, deeply connected to the people I love..."
                 className="min-h-[120px] resize-none"
                 data-testid="input-vision"
               />
             </CardContent>
           </Card>
 
-          <Card className="overflow-visible" data-testid="card-values">
+          <Card className="overflow-visible" data-testid="card-identity">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Leaf className="h-4 w-4 text-primary" />
+                  <User className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Values</CardTitle>
-                  <CardDescription>Your guiding principles, separated by commas. You'll choose one to practice each day.</CardDescription>
+                  <CardTitle className="font-serif text-lg">Identity Statement</CardTitle>
+                  <CardDescription>Who are you becoming? Write it as if it's already true.</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <VoiceTextarea
-                value={values}
-                onChange={(val) => setValues(val)}
-                placeholder="courage, patience, kindness, discipline, gratitude, honesty"
-                className="min-h-[80px] resize-none"
-                data-testid="input-values"
+                value={identity}
+                onChange={setIdentity}
+                placeholder="I am someone who shows up with courage every day. I am disciplined, present, and kind..."
+                className="min-h-[120px] resize-none"
+                data-testid="input-identity"
               />
-              {valuesArray.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {valuesArray.map((v, i) => (
-                    <Badge key={i} variant="secondary" data-testid={`badge-value-${i}`}>
-                      {v}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-visible" data-testid="card-be-yourself">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Heart className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="font-serif text-lg">Be Yourself</CardTitle>
-                  <CardDescription>What makes you uniquely you? Separated by commas — add as many as you like.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <VoiceTextarea
-                value={beYourself}
-                onChange={(val) => setBeYourself(val)}
-                placeholder="authentic, curious, playful, resilient, creative, empathetic"
-                className="min-h-[80px] resize-none"
-                data-testid="input-be-yourself"
-              />
-              {beYourselfArray.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {beYourselfArray.map((v, i) => (
-                    <Badge key={i} variant="secondary" data-testid={`badge-be-yourself-${i}`}>
-                      {v}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -212,8 +153,8 @@ export default function IdentityDocPage() {
                   <Users className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">How Others Will See Me</CardTitle>
-                  <CardDescription>Three qualities you want others to notice about you.</CardDescription>
+                  <CardTitle className="font-serif text-lg">Relational Intention</CardTitle>
+                  <CardDescription>How I want others to experience me.</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -240,19 +181,38 @@ export default function IdentityDocPage() {
             </CardContent>
           </Card>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !hasChanges}
-              data-testid="button-save-identity"
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save Identity Document"}
-            </Button>
-            {!hasChanges && doc?.identity && (
-              <span className="text-sm text-muted-foreground">All changes saved</span>
-            )}
-          </div>
+          <Card className="overflow-visible" data-testid="card-purpose">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Heart className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-lg">Purpose</CardTitle>
+                  <CardDescription>Your deeper reason for doing this work.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <VoiceTextarea
+                value={purpose}
+                onChange={setPurpose}
+                placeholder="I exist to create, to lead with empathy, and to leave things better than I found them..."
+                className="min-h-[120px] resize-none"
+                data-testid="input-purpose"
+              />
+            </CardContent>
+          </Card>
+
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !hasChanges}
+            className="w-full"
+            data-testid="button-save-identity"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {saveMutation.isPending ? "Saving..." : "Save Identity Document"}
+          </Button>
         </div>
       </div>
     </AppLayout>
