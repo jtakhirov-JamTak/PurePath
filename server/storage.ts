@@ -354,6 +354,10 @@ export class DatabaseStorage implements IStorage {
           todayReflection: doc.todayReflection,
           othersWillSee: doc.othersWillSee,
           beYourself: doc.beYourself,
+          strengths: doc.strengths,
+          helpingPatterns: doc.helpingPatterns,
+          hurtingPatterns: doc.hurtingPatterns,
+          stressResponses: doc.stressResponses,
           updatedAt: new Date(),
         },
       })
