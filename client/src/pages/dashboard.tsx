@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon, Check,
@@ -25,9 +24,10 @@ import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { CustomToolsCard, AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Q2TimeTracker, formatTime24to12 } from "@/components/dashboard/q2-time-tracker";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
+import { OverdueCard } from "@/components/dashboard/overdue-card";
+import { Q2BlocksCard } from "@/components/dashboard/q2-blocks-card";
 
 const SKIP_REASONS = [
   "Low Capacity (sleep / fatigue / depleted)",
@@ -480,145 +480,27 @@ export default function DashboardPage() {
         />
 
 
-        {overdueItems.length > 0 && (
-          <Card className="overflow-visible border-red-300 dark:border-red-500/50 bg-red-50/50 dark:bg-red-950/20" data-testid="card-overdue">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
-                <CardTitle className="text-base font-serif text-red-700 dark:text-red-400">Overdue</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <ul className="space-y-2">
-                {overdueItems.map((item) => {
-                  const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
-                  const isBin = item.isBinary || false;
-                  const lvl = item.completionLevel ?? null;
-                  const cycleOverdue = () => {
-                    if (isBin) {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
-                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                    } else {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
-                      else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
-                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                    }
-                  };
-                  const boxLabel = isBin
-                    ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
-                    : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
-                  const boxClass =
-                    (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-                    : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800"
-                    : lvl === 0 ? "bg-red-400 border-red-500 text-white"
-                    : "border-red-300 dark:border-red-500/50 text-muted-foreground";
-                  return (
-                    <li key={item.id} className="flex flex-col gap-1" data-testid={`overdue-item-${item.id}`}>
-                      <div className="flex items-center gap-3">
-                      <button
-                        onClick={cycleOverdue}
-                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
-                        data-testid={`overdue-level-${item.id}`}
-                      >
-                        {boxLabel}
-                      </button>
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
-                      <span className="text-sm flex-1">{item.task}</span>
-                      <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 dark:text-red-400">{item.quadrant?.toUpperCase()}</Badge>
-                      {(item.scheduledDate || item.deadline) && (
-                        <span className="text-xs text-red-500 dark:text-red-400">
-                          {item.scheduledDate || item.deadline}
-                        </span>
-                      )}
-                      {(item.scheduledTime || item.scheduledStartTime) && (
-                        <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
-                      )}
-                      </div>
-                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
-                        <Q2TimeTracker item={item} onSave={(fields) => {
-                          setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
-                        }} />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        <OverdueCard
+          overdueItems={overdueItems}
+          onUpdateLevel={(id, level, options) => {
+            setEisenhowerLevelMutation.mutate({ id, level, isBinary: options?.isBinary });
+          }}
+          onSkipDialog={(item) => setEisenhowerSkipDialog(item)}
+          onSaveTimeTracker={(id, level, fields) => {
+            setEisenhowerLevelMutation.mutate({ id, level, ...fields });
+          }}
+        />
 
-        {todayQ2Items.length > 0 && (
-          <Card className="overflow-visible" data-testid="card-q2-blocks">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-serif">Scheduled Q2 Blocks</CardTitle>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <ul className="space-y-2">
-                {todayQ2Items.map((item) => {
-                  const status = item.status || null;
-                  const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
-                  const isBin = item.isBinary || false;
-                  const lvl = item.completionLevel ?? null;
-                  const cycleQ2 = () => {
-                    if (isBin) {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
-                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                    } else {
-                      if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
-                      else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                      else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id, durationMinutes: item.durationMinutes, timeEstimate: item.timeEstimate });
-                      else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                    }
-                  };
-                  const boxLabel = isBin
-                    ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
-                    : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
-                  const boxClass =
-                    (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-                    : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                    : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                    : "border-border text-muted-foreground";
-                  return (
-                    <li key={item.id} className="flex flex-col gap-1" data-testid={`q2-block-${item.id}`}>
-                      <div className="flex items-center gap-3">
-                      <button
-                        onClick={cycleQ2}
-                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
-                        data-testid={`q2-level-${item.id}`}
-                      >
-                        {boxLabel}
-                      </button>
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
-                      <span className={`text-sm flex-1 ${
-                        status === "completed" ? "line-through text-muted-foreground"
-                        : status === "skipped" ? "text-muted-foreground italic"
-                        : ""
-                      }`}>{item.task}</span>
-                      {(item.scheduledTime || item.scheduledStartTime) && (
-                        <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
-                      )}
-                      {item.durationMinutes && (
-                        <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
-                      )}
-                      {status && (
-                        <span className="text-xs text-muted-foreground">{status}</span>
-                      )}
-                      </div>
-                      {(item.completionLevel === 1 || item.completionLevel === 2) && (
-                        <Q2TimeTracker item={item} onSave={(fields) => {
-                          setEisenhowerLevelMutation.mutate({ id: item.id, level: item.completionLevel!, ...fields });
-                        }} />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
+        <Q2BlocksCard
+          todayQ2Items={todayQ2Items}
+          onUpdateLevel={(id, level, options) => {
+            setEisenhowerLevelMutation.mutate({ id, level, isBinary: options?.isBinary });
+          }}
+          onSkipDialog={(item) => setEisenhowerSkipDialog(item)}
+          onSaveTimeTracker={(id, level, fields) => {
+            setEisenhowerLevelMutation.mutate({ id, level, ...fields });
+          }}
+        />
 
         <Card className="overflow-visible" data-testid="card-tools">
           <CardHeader className="pb-2">
