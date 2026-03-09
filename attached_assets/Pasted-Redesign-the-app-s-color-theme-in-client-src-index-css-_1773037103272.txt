@@ -1,0 +1,121 @@
+Redesign the app's color theme in client/src/index.css. The brand is "Leaf" — the visual metaphor is growing from roots into a great tree reaching toward a sunny sky. The feeling should be light, airy, warm, and natural — like morning sunlight through leaves.
+
+Replace the ENTIRE :root (light mode) CSS variables with:
+
+:root {
+  --button-outline: rgba(0,0,0, .08);
+  --badge-outline: rgba(0,0,0, .04);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0,0,0, .02);
+  --elevate-2: rgba(0,0,0, .06);
+  --background: 45 30% 97%;
+  --foreground: 30 15% 15%;
+  --border: 40 15% 88%;
+  --card: 40 25% 99%;
+  --card-foreground: 30 15% 15%;
+  --card-border: 40 15% 88%;
+  --sidebar: 42 25% 95%;
+  --sidebar-foreground: 30 15% 15%;
+  --sidebar-border: 40 15% 88%;
+  --sidebar-primary: 145 40% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 42 20% 92%;
+  --sidebar-accent-foreground: 30 15% 15%;
+  --sidebar-ring: 145 40% 42%;
+  --popover: 40 25% 99%;
+  --popover-foreground: 30 15% 15%;
+  --popover-border: 40 15% 88%;
+  --primary: 145 40% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 42 18% 93%;
+  --secondary-foreground: 30 15% 15%;
+  --muted: 40 12% 91%;
+  --muted-foreground: 30 10% 50%;
+  --accent: 42 18% 93%;
+  --accent-foreground: 30 15% 15%;
+  --destructive: 0 68% 52%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 40 15% 84%;
+  --ring: 145 40% 42%;
+  --chart-1: 145 40% 42%;
+  --chart-2: 170 45% 40%;
+  --chart-3: 85 40% 48%;
+  --chart-4: 38 65% 55%;
+  --chart-5: 200 45% 50%;
+  --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: Menlo, monospace;
+  --radius: .75rem;
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,.02);
+  --shadow-xs: 0 1px 2px 0 rgba(0,0,0,.03);
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.04), 0 1px 2px -1px rgba(0,0,0,.03);
+  --shadow: 0 2px 6px -1px rgba(0,0,0,.04), 0 1px 3px -1px rgba(0,0,0,.03);
+  --shadow-md: 0 4px 8px -2px rgba(0,0,0,.05), 0 2px 4px -2px rgba(0,0,0,.03);
+  --shadow-lg: 0 8px 16px -4px rgba(0,0,0,.06), 0 4px 6px -2px rgba(0,0,0,.03);
+  --shadow-xl: 0 16px 32px -8px rgba(0,0,0,.07), 0 8px 16px -4px rgba(0,0,0,.03);
+  --shadow-2xl: 0 24px 48px -12px rgba(0,0,0,.08);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+Replace the ENTIRE .dark CSS variables with:
+
+.dark {
+  --button-outline: rgba(255,255,255, .08);
+  --badge-outline: rgba(255,255,255, .04);
+  --opaque-button-border-intensity: 8;
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .07);
+  --background: 35 15% 10%;
+  --foreground: 40 15% 90%;
+  --border: 35 10% 18%;
+  --card: 35 12% 13%;
+  --card-foreground: 40 15% 90%;
+  --card-border: 35 10% 18%;
+  --sidebar: 35 12% 11%;
+  --sidebar-foreground: 40 15% 90%;
+  --sidebar-border: 35 10% 18%;
+  --sidebar-primary: 145 45% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 35 10% 16%;
+  --sidebar-accent-foreground: 40 15% 90%;
+  --sidebar-ring: 145 45% 48%;
+  --popover: 35 12% 14%;
+  --popover-foreground: 40 15% 90%;
+  --popover-border: 35 10% 20%;
+  --primary: 145 45% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 35 10% 18%;
+  --secondary-foreground: 40 15% 90%;
+  --muted: 35 8% 20%;
+  --muted-foreground: 35 10% 55%;
+  --accent: 35 10% 18%;
+  --accent-foreground: 40 15% 90%;
+  --destructive: 0 65% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --input: 35 10% 25%;
+  --ring: 145 45% 48%;
+  --chart-1: 145 45% 50%;
+  --chart-2: 170 42% 48%;
+  --chart-3: 85 38% 50%;
+  --chart-4: 38 60% 58%;
+  --chart-5: 200 42% 52%;
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,.15);
+  --shadow-xs: 0 1px 2px 0 rgba(0,0,0,.2);
+  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.25), 0 1px 2px -1px rgba(0,0,0,.15);
+  --shadow: 0 2px 6px -1px rgba(0,0,0,.3), 0 1px 3px -1px rgba(0,0,0,.2);
+  --shadow-md: 0 4px 8px -2px rgba(0,0,0,.3), 0 2px 4px -2px rgba(0,0,0,.2);
+  --shadow-lg: 0 8px 16px -4px rgba(0,0,0,.35), 0 4px 6px -2px rgba(0,0,0,.2);
+  --shadow-xl: 0 16px 32px -8px rgba(0,0,0,.4), 0 8px 16px -4px rgba(0,0,0,.2);
+  --shadow-2xl: 0 24px 48px -12px rgba(0,0,0,.5);
+}
+
+Keep ALL the --*-border fallback calculations that come after each theme block. Don't change those.
+
+What this achieves:
+- Light mode: Warm cream/parchment background (not cold white), soft sage green primary, warm amber undertones. Like sunlight on natural paper.
+- Dark mode: Warm charcoal with earth undertones (not cold black), slightly brighter green, cozy not harsh.
+- Shadows are softer in light mode (barely there) for an airy, floating feel.
+- The green stays as primary but is warmer and less saturated — more "living leaf" than "forest at night."
+
+Don't change any component files. The CSS variables cascade everywhere automatically.
