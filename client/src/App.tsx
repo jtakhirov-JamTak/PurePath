@@ -30,6 +30,7 @@ import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
 import ToolsHubPage from "@/pages/tools-hub";
 import IdentityDocPage from "@/pages/identity-doc";
+import DiscoveryProfilePage from "@/pages/discovery-profile";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
 
@@ -138,6 +139,9 @@ function Router() {
       </Route>
       <Route path="/identity">
         {() => <AuthenticatedRoute component={IdentityDocPage} />}
+      </Route>
+      <Route path="/discovery-profile">
+        {() => <AuthenticatedRoute component={DiscoveryProfilePage} />}
       </Route>
       <Route path="/monthly-goal">
         {() => <AuthenticatedRoute component={MonthlyGoalPage} />}
