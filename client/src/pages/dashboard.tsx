@@ -9,11 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon, Check,
-  Activity,
   Target,
-  Flame, Trophy,
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays } from "date-fns";
@@ -29,6 +26,7 @@ import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { OverdueCard } from "@/components/dashboard/overdue-card";
 import { Q2BlocksCard } from "@/components/dashboard/q2-blocks-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
+import { WeeklyProgressSidebar } from "@/components/dashboard/weekly-progress";
 
 const SKIP_REASONS = [
   "Low Capacity (sleep / fatigue / depleted)",
@@ -511,61 +509,7 @@ export default function DashboardPage() {
 
       </div>
 
-      <div className="w-full md:w-72 md:flex-shrink-0">
-        <div className="md:sticky md:top-6 space-y-4">
-          <Card className="overflow-visible border-2 border-emerald-200 dark:border-emerald-800" data-testid="card-progress-dashboard">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                <CardTitle className="text-base font-serif">Weekly Progress</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4 space-y-4">
-              <div className="rounded-lg bg-muted/50 p-3 space-y-2" data-testid="metric-consistency">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Flame className="h-4 w-4 text-orange-500" />
-                    <span className="text-xs font-semibold">Consistency</span>
-                  </div>
-                  <span className="text-sm font-bold" data-testid="text-consistency">
-                    {progressMetrics.consistencyPct}%
-                  </span>
-                </div>
-                <Progress
-                  value={progressMetrics.consistencyPct}
-                  className="h-2"
-                />
-              </div>
-
-              <div className="rounded-lg bg-muted/50 p-3" data-testid="metric-habits-week">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs font-semibold">Habits</span>
-                  </div>
-                  <span className="text-sm font-bold" data-testid="text-habits-week">
-                    {progressMetrics.habitsCompletedWeek}/{progressMetrics.habitsScheduledWeek}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">completed this week</p>
-              </div>
-
-              <div className="rounded-lg bg-muted/50 p-3" data-testid="metric-journal-days">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sun className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs font-semibold">Journal</span>
-                  </div>
-                  <span className="text-sm font-bold" data-testid="text-journal-days">
-                    {progressMetrics.journalDays}/{progressMetrics.daysElapsed}
-                  </span>
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">days journaled this week</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <WeeklyProgressSidebar progressMetrics={progressMetrics} />
       </div>
       </div>
 
