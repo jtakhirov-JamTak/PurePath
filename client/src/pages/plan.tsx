@@ -790,6 +790,30 @@ export default function PlanPage() {
             </CardContent>
           </Card>
 
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Your Documents</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/discovery-profile")} data-testid="card-nav-discovery">
+                <CardContent className="p-4">
+                  <p className="font-medium text-sm">Discovery Profile</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Who you are today</p>
+                </CardContent>
+              </Card>
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/identity")} data-testid="card-nav-identity">
+                <CardContent className="p-4">
+                  <p className="font-medium text-sm">Identity Document</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Who you're becoming</p>
+                </CardContent>
+              </Card>
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/scoreboard")} data-testid="card-nav-scoreboard">
+                <CardContent className="p-4">
+                  <p className="font-medium text-sm">1-Year Scoreboard</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">How you'll get there</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           <PlanVersioningPanel />
 
           <p className="text-center text-sm text-muted-foreground italic">
