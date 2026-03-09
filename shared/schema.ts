@@ -360,6 +360,10 @@ export const identityDocuments = pgTable("identity_documents", {
   todayReflection: text("today_reflection").default(""),
   othersWillSee: text("others_will_see").default(""),
   beYourself: text("be_yourself").default(""),
+  strengths: text("strengths").default(""),
+  helpingPatterns: text("helping_patterns").default(""),
+  hurtingPatterns: text("hurting_patterns").default(""),
+  stressResponses: text("stress_responses").default(""),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
