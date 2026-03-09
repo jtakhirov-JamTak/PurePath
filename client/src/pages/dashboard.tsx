@@ -5,12 +5,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Sun, Moon, Check, ArrowRight,
+  Sun, Moon, Check,
   Heart, Shield, Activity,
   Target, Minus, Plus, AlertTriangle,
   Brain, Pause, Flame, Trophy,
@@ -26,6 +25,8 @@ import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { CustomToolsCard, AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Q2TimeTracker, formatTime24to12 } from "@/components/dashboard/q2-time-tracker";
+import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 
 const SKIP_REASONS = [
   "Low Capacity (sleep / fatigue / depleted)",
@@ -53,151 +54,6 @@ const CATEGORY_STYLES: Record<string, string> = {
   learning: "bg-blue-500",
   leisure: "bg-slate-300 dark:bg-slate-400",
 };
-
-function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
-  if (!est) return null;
-  const lower = est.toLowerCase().trim();
-  const hMatch = lower.match(/(\d+)\s*h/);
-  const mMatch = lower.match(/(\d+)\s*m/);
-  let total = 0;
-  if (hMatch) total += parseInt(hMatch[1]) * 60;
-  if (mMatch) total += parseInt(mMatch[1]);
-  return total > 0 ? total : null;
-}
-
-function formatTime24to12(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-const DELAY_REASONS = [
-  "Low Capacity (sleep / fatigue / depleted)",
-  "Distraction / Poor Environment",
-  "Unexpected Interruption",
-  "Overcommitted / Too Many Tasks",
-  "Avoidance (emotion-driven)",
-  "Forgot / No Cue",
-  "Unclear Next Step",
-  "Low Motivation / Value Disconnect",
-  "Intentional Deprioritization",
-  "Other",
-];
-
-const MINUTE_INCREMENTS = [15, 30, 45, 60, 75, 90, 105, 120];
-
-function Q2TimeTracker({ item, onSave }: {
-  item: EisenhowerEntry;
-  onSave: (fields: Record<string, unknown>) => void;
-}) {
-  const [onTime, setOnTime] = useState<boolean | null>(item.startedOnTime ?? null);
-  const [delayMin, setDelayMin] = useState<number | null>(item.delayMinutes ?? null);
-  const [delayRsn, setDelayRsn] = useState(item.delayReason || "");
-  const [completedTime, setCompletedTime] = useState<boolean | null>(item.completedRequiredTime ?? null);
-  const [shortMin, setShortMin] = useState<number | null>(item.timeShortMinutes ?? null);
-  const [dirty, setDirty] = useState(false);
-
-  const derivedMinutes = item.durationMinutes || parseTimeEstimateMinutes(item.timeEstimate);
-
-  return (
-    <div className="ml-14 space-y-2 py-1" data-testid={`q2-time-${item.id}`}>
-      {item.scheduledStartTime && (
-        <p className="text-[10px] text-muted-foreground">Scheduled: {item.scheduledStartTime}</p>
-      )}
-      {(derivedMinutes || item.timeEstimate) && (
-        <p className="text-[10px] text-muted-foreground">Required: {derivedMinutes ? `${derivedMinutes} min` : item.timeEstimate}</p>
-      )}
-      <div>
-        <label className="text-[10px] text-muted-foreground block mb-1">Did you start on time?</label>
-        <div className="flex gap-1">
-          <Button size="sm" variant={onTime === true ? "default" : "outline"} className="h-6 text-xs px-3"
-            onClick={() => { setOnTime(true); setDelayMin(null); setDelayRsn(""); setDirty(true); }}
-            data-testid={`q2-ontime-yes-${item.id}`}
-          >Yes</Button>
-          <Button size="sm" variant={onTime === false ? "destructive" : "outline"} className="h-6 text-xs px-3"
-            onClick={() => { setOnTime(false); setDirty(true); }}
-            data-testid={`q2-ontime-no-${item.id}`}
-          >No</Button>
-        </div>
-      </div>
-      {onTime === false && (
-        <>
-          <div>
-            <label className="text-[10px] text-muted-foreground block mb-1">How many minutes delay?</label>
-            <Select value={delayMin != null ? String(delayMin) : ""} onValueChange={(v) => { setDelayMin(Number(v)); setDirty(true); }}>
-              <SelectTrigger className="h-7 text-xs w-32" data-testid={`q2-delay-min-${item.id}`}>
-                <SelectValue placeholder="Select..." />
-              </SelectTrigger>
-              <SelectContent>
-                {MINUTE_INCREMENTS.map(m => (
-                  <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-[10px] text-muted-foreground block mb-1">Reason for delay?</label>
-            <Select value={delayRsn} onValueChange={(v) => { setDelayRsn(v); setDirty(true); }}>
-              <SelectTrigger className="h-7 text-xs" data-testid={`q2-delay-reason-${item.id}`}>
-                <SelectValue placeholder="Select reason..." />
-              </SelectTrigger>
-              <SelectContent>
-                {DELAY_REASONS.map(r => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      )}
-      <div>
-        <label className="text-[10px] text-muted-foreground block mb-1">Did you complete required time?</label>
-        <div className="flex gap-1">
-          <Button size="sm" variant={completedTime === true ? "default" : "outline"} className="h-6 text-xs px-3"
-            onClick={() => { setCompletedTime(true); setShortMin(null); setDirty(true); }}
-            data-testid={`q2-completed-yes-${item.id}`}
-          >Yes</Button>
-          <Button size="sm" variant={completedTime === false ? "destructive" : "outline"} className="h-6 text-xs px-3"
-            onClick={() => { setCompletedTime(false); setDirty(true); }}
-            data-testid={`q2-completed-no-${item.id}`}
-          >No</Button>
-        </div>
-      </div>
-      {completedTime === false && (
-        <div>
-          <label className="text-[10px] text-muted-foreground block mb-1">How many minutes less?</label>
-          <Select value={shortMin != null ? String(shortMin) : ""} onValueChange={(v) => { setShortMin(Number(v)); setDirty(true); }}>
-            <SelectTrigger className="h-7 text-xs w-32" data-testid={`q2-short-min-${item.id}`}>
-              <SelectValue placeholder="Select..." />
-            </SelectTrigger>
-            <SelectContent>
-              {MINUTE_INCREMENTS.map(m => (
-                <SelectItem key={m} value={String(m)}>{m} min</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      {dirty && (
-        <div className="flex justify-end">
-          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => {
-            onSave({
-              startedOnTime: onTime,
-              delayMinutes: onTime === false ? delayMin : null,
-              delayReason: onTime === false ? (delayRsn || null) : null,
-              completedRequiredTime: completedTime,
-              timeShortMinutes: completedTime === false ? shortMin : null,
-            });
-            setDirty(false);
-          }} data-testid={`q2-time-save-${item.id}`}>
-            Save
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -1130,130 +986,5 @@ export default function DashboardPage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
-  );
-}
-
-function JournalQuickEntry({
-  todayStr,
-  hasMorning,
-  hasEvening,
-  hasAccess,
-  setLocation,
-  firstName,
-}: {
-  todayStr: string;
-  hasMorning: boolean;
-  hasEvening: boolean;
-  hasAccess: boolean;
-  setLocation: (path: string) => void;
-  firstName: string;
-}) {
-  if (!hasAccess) return null;
-
-  const bothDone = hasMorning && hasEvening;
-  const displayName = firstName || "there";
-
-  if (bothDone) {
-    return (
-      <Card className="overflow-visible" data-testid="card-journal-quick">
-        <CardContent className="py-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-emerald-500" />
-            <span data-testid="text-journals-complete">Journals complete for today</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!hasMorning) {
-    return (
-      <Card className="overflow-visible border-l-4 border-l-primary" data-testid="card-journal-quick">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <CardTitle className="text-lg font-serif" data-testid="text-journal-greeting">
-                <Sun className="h-5 w-5 inline mr-1.5 text-amber-500" />
-                Good morning, {displayName}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">Start your day with intention</p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pb-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">What are you grateful for?</label>
-              <Input
-                placeholder="Today I'm grateful for..."
-                className="text-sm"
-                readOnly
-                onFocus={() => {
-                  setLocation(`/journal/${todayStr}/morning`);
-                  window.scrollTo(0, 0);
-                }}
-                data-testid="input-gratitude-preview"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">What's your intention?</label>
-              <Input
-                placeholder="Today I intend to..."
-                className="text-sm"
-                readOnly
-                onFocus={() => {
-                  setLocation(`/journal/${todayStr}/morning`);
-                  window.scrollTo(0, 0);
-                }}
-                data-testid="input-intention-preview"
-              />
-            </div>
-          </div>
-          <Button
-            onClick={() => {
-              setLocation(`/journal/${todayStr}/morning`);
-              window.scrollTo(0, 0);
-            }}
-            className="w-full"
-            data-testid="button-start-morning-journal"
-          >
-            <Sun className="h-4 w-4 mr-2" />
-            Start Morning Journal
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="overflow-visible border-l-4 border-l-primary/50" data-testid="card-journal-quick">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <CardTitle className="text-base font-serif" data-testid="text-journal-greeting">
-              <Moon className="h-4 w-4 inline mr-1.5 text-indigo-400" />
-              How was your day?
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">Take a moment to reflect</p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <Button
-          variant="outline"
-          onClick={() => {
-            setLocation(`/journal/${todayStr}/evening`);
-            window.scrollTo(0, 0);
-          }}
-          className="w-full"
-          data-testid="button-start-evening-journal"
-        >
-          <Moon className="h-4 w-4 mr-2" />
-          Start Evening Journal
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
   );
 }
