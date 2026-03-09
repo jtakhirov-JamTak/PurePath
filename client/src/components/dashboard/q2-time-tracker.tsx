@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { EisenhowerEntry } from "@shared/schema";
 
-function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
+export function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
   if (!est) return null;
   const lower = est.toLowerCase().trim();
   const hMatch = lower.match(/(\d+)\s*h/);

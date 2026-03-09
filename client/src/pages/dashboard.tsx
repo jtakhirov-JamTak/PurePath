@@ -5,7 +5,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon, Check,
@@ -18,9 +17,9 @@ import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, Monthl
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
-import { CustomToolsCard, AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
+import { AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { parseTimeEstimateMinutes } from "@/components/dashboard/q2-time-tracker";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { OverdueCard } from "@/components/dashboard/overdue-card";
@@ -42,18 +41,6 @@ const SKIP_REASONS = [
 ];
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-const CATEGORY_STYLES: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
-  relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-300 dark:bg-slate-400",
-  career: "bg-blue-500",
-  mindfulness: "bg-blue-500",
-  learning: "bg-blue-500",
-  leisure: "bg-slate-300 dark:bg-slate-400",
-};
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
