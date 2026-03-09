@@ -9,9 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon, Check,
-  Heart, Shield, Activity,
-  Target, AlertTriangle,
-  Brain, Pause, Flame, Trophy,
+  Activity,
+  Target,
+  Flame, Trophy,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useLocation } from "wouter";
@@ -28,6 +28,7 @@ import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { OverdueCard } from "@/components/dashboard/overdue-card";
 import { Q2BlocksCard } from "@/components/dashboard/q2-blocks-card";
+import { ToolPalette } from "@/components/dashboard/tool-palette";
 
 const SKIP_REASONS = [
   "Low Capacity (sleep / fatigue / depleted)",
@@ -502,75 +503,11 @@ export default function DashboardPage() {
           }}
         />
 
-        <Card className="overflow-visible" data-testid="card-tools">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Tools</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4 space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => setQuickToolOpen("containment")}
-                data-testid="button-tool-containment"
-              >
-                <Heart className="h-6 w-6 text-rose-500" />
-                <span className="text-xs font-medium">Containment</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => setLocation("/meditation")}
-                data-testid="button-tool-meditation"
-              >
-                <Brain className="h-6 w-6 text-purple-500" />
-                <span className="text-xs font-medium">Meditation</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="flex flex-col items-center gap-2 h-auto py-4"
-                onClick={() => { setStillnessOpen(true); setStillnessSeconds(600); setStillnessRunning(false); }}
-                data-testid="button-tool-stillness"
-              >
-                <Pause className="h-6 w-6 text-slate-500" />
-                <span className="text-xs font-medium">Stillness</span>
-              </Button>
-            </div>
-
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">Use As Needed</p>
-              <div className="grid grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
-                  onClick={() => setLocation("/empathy")}
-                  data-testid="button-tool-eq-module"
-                >
-                  <Brain className="h-5 w-5 text-emerald-500" />
-                  <span className="text-xs">EQ Module</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
-                  onClick={() => setQuickToolOpen("trigger")}
-                  data-testid="button-tool-trigger"
-                >
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  <span className="text-xs">Trigger Log</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
-                  onClick={() => setQuickToolOpen("avoidance")}
-                  data-testid="button-tool-avoidance"
-                >
-                  <Shield className="h-5 w-5 text-blue-500" />
-                  <span className="text-xs">Avoidance</span>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ToolPalette
+          onToolOpen={setQuickToolOpen}
+          onNavigate={setLocation}
+          onStillnessOpen={() => { setStillnessOpen(true); setStillnessSeconds(600); setStillnessRunning(false); }}
+        />
 
       </div>
 
