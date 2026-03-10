@@ -12,8 +12,12 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, Power, BedDouble } from "lucide-react";
+import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, Power, BedDouble, AlertTriangle, ChevronDown } from "lucide-react";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
+import {
+  APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
+  Chip, IntensityDots,
+} from "@/components/tools/trigger-chips";
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -42,17 +46,30 @@ interface EveningContent {
   feedback: string;
   insight: string;
   lesson: string;
+  // Trigger log fields (chip-based)
+  triggerText: string;
+  triggerAppraisal: string[];
+  triggerAppraisalOther: string;
+  triggerEmotion: string;
+  triggerEmotionIntensity: number | null;
+  triggerUrge: string;
+  triggerUrgeIntensity: number | null;
+  triggerAction: string;
+  triggerActionOther: string;
+  triggerShowTier2: boolean;
+  triggerBodyState: string[];
+  triggerOutcome: string;
+  triggerRecoveryTime: string;
+  triggerReflection: string;
+  // Legacy trigger fields (kept for backward compat)
   trigger: string;
   triggerStory: string;
   triggerImpulse: string;
-  triggerEmotion: string;
   triggerEmotionOther: string;
   triggerEmotionLevel: string;
-  triggerUrge: string;
   triggerUrgeOther: string;
   triggerUrgeLevel: string;
   triggerBehavior: string;
-  triggerOutcome: string;
   triggerNextTime: string;
   satisfied: string;
   dissatisfied: string;
@@ -88,17 +105,30 @@ const emptyEvening: EveningContent = {
   feedback: "",
   insight: "",
   lesson: "",
+  // New chip-based trigger fields
+  triggerText: "",
+  triggerAppraisal: [],
+  triggerAppraisalOther: "",
+  triggerEmotion: "",
+  triggerEmotionIntensity: null,
+  triggerUrge: "",
+  triggerUrgeIntensity: null,
+  triggerAction: "",
+  triggerActionOther: "",
+  triggerShowTier2: false,
+  triggerBodyState: [],
+  triggerOutcome: "",
+  triggerRecoveryTime: "",
+  triggerReflection: "",
+  // Legacy
   trigger: "",
   triggerStory: "",
   triggerImpulse: "",
-  triggerEmotion: "",
   triggerEmotionOther: "",
   triggerEmotionLevel: "",
-  triggerUrge: "",
   triggerUrgeOther: "",
   triggerUrgeLevel: "",
   triggerBehavior: "",
-  triggerOutcome: "",
   triggerNextTime: "",
   satisfied: "",
   dissatisfied: "",
@@ -222,9 +252,37 @@ export default function JournalEntryPage() {
         intentions: isMorning ? morningData.intention : "",
         reflections: isMorning ? "" : eveningData.insight,
         highlights: isMorning ? "" : eveningData.review,
-        challenges: isMorning ? morningData.avoidance : eveningData.trigger,
+        challenges: isMorning ? morningData.avoidance : eveningData.triggerText,
         tomorrowGoals: isMorning ? "" : eveningData.shutdownTomorrow,
       });
+
+      // Also save trigger log entry if evening trigger data is filled
+      if (!isMorning && eveningData.triggerText.trim() && eveningData.triggerEmotion && eveningData.triggerUrge) {
+        const appraisalParts = [...eveningData.triggerAppraisal.filter((a) => a !== "Other")];
+        if (eveningData.triggerAppraisal.includes("Other") && eveningData.triggerAppraisalOther.trim()) {
+          appraisalParts.push(eveningData.triggerAppraisalOther.trim());
+        }
+        const actionValue = eveningData.triggerAction === "Other" && eveningData.triggerActionOther.trim()
+          ? eveningData.triggerActionOther.trim()
+          : eveningData.triggerAction || undefined;
+
+        await apiRequest("POST", "/api/trigger-logs", {
+          date,
+          triggerText: eveningData.triggerText,
+          appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
+          emotion: eveningData.triggerEmotion,
+          emotionIntensity: eveningData.triggerEmotionIntensity,
+          urge: eveningData.triggerUrge,
+          urgeIntensity: eveningData.triggerUrgeIntensity,
+          whatIDid: actionValue,
+          actionTaken: actionValue,
+          bodyState: eveningData.triggerBodyState.length > 0 ? eveningData.triggerBodyState.join(", ") : undefined,
+          outcome: eveningData.triggerOutcome.trim() || undefined,
+          recoveryTime: eveningData.triggerRecoveryTime || undefined,
+          reflection: eveningData.triggerReflection.trim() || undefined,
+        });
+      }
+
       return response.json();
     },
     onSuccess: () => {
@@ -234,6 +292,9 @@ export default function JournalEntryPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
+      if (!isMorning && eveningData.triggerText.trim()) {
+        queryClient.invalidateQueries({ queryKey: ["/api/trigger-logs"] });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -277,6 +338,17 @@ export default function JournalEntryPage() {
 
   const updateEvening = (field: keyof EveningContent, value: string) => {
     setEveningData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateEveningField = <K extends keyof EveningContent>(field: K, value: EveningContent[K]) => {
+    setEveningData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleEveningChip = (field: "triggerAppraisal" | "triggerBodyState", val: string) => {
+    setEveningData(prev => {
+      const arr = prev[field];
+      return { ...prev, [field]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
+    });
   };
 
   return (
@@ -729,6 +801,198 @@ export default function JournalEntryPage() {
                     data-testid="input-win-of-the-day"
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-trigger-check">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <CardTitle className="font-serif text-lg">Trigger Check</CardTitle>
+                    <CardDescription>Log any triggers from today <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 1. What happened */}
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">What happened?</Label>
+                  <Input
+                    value={eveningData.triggerText}
+                    onChange={(e) => updateEvening("triggerText", e.target.value)}
+                    placeholder="Brief description of the situation"
+                    className="text-sm"
+                    data-testid="input-journal-trigger-text"
+                  />
+                </div>
+
+                {eveningData.triggerText.trim() && (
+                  <>
+                    {/* 2. This felt like... */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">This felt like...</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {APPRAISALS.map((a) => (
+                          <Chip
+                            key={a}
+                            label={a}
+                            selected={eveningData.triggerAppraisal.includes(a)}
+                            onClick={() => toggleEveningChip("triggerAppraisal", a)}
+                          />
+                        ))}
+                      </div>
+                      {eveningData.triggerAppraisal.includes("Other") && (
+                        <Input
+                          value={eveningData.triggerAppraisalOther}
+                          onChange={(e) => updateEvening("triggerAppraisalOther", e.target.value)}
+                          placeholder="Describe..."
+                          className="text-sm mt-1.5"
+                        />
+                      )}
+                    </div>
+
+                    {/* 3. Emotion + intensity */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">Emotion</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {EMOTIONS.map((e) => (
+                          <Chip
+                            key={e}
+                            label={e}
+                            selected={eveningData.triggerEmotion === e}
+                            onClick={() => updateEvening("triggerEmotion", eveningData.triggerEmotion === e ? "" : e)}
+                          />
+                        ))}
+                      </div>
+                      {eveningData.triggerEmotion && (
+                        <IntensityDots
+                          value={eveningData.triggerEmotionIntensity}
+                          onChange={(n) => updateEveningField("triggerEmotionIntensity", n)}
+                          testIdPrefix="journal-emotion-intensity"
+                        />
+                      )}
+                    </div>
+
+                    {/* 4. Urge + intensity */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">Urge</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {URGES.map((u) => (
+                          <Chip
+                            key={u}
+                            label={u}
+                            selected={eveningData.triggerUrge === u}
+                            onClick={() => updateEvening("triggerUrge", eveningData.triggerUrge === u ? "" : u)}
+                          />
+                        ))}
+                      </div>
+                      {eveningData.triggerUrge && (
+                        <IntensityDots
+                          value={eveningData.triggerUrgeIntensity}
+                          onChange={(n) => updateEveningField("triggerUrgeIntensity", n)}
+                          testIdPrefix="journal-urge-intensity"
+                        />
+                      )}
+                    </div>
+
+                    {/* 5. What did you do? */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">What did you do?</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ACTIONS.map((a) => (
+                          <Chip
+                            key={a}
+                            label={a}
+                            selected={eveningData.triggerAction === a}
+                            onClick={() => updateEvening("triggerAction", eveningData.triggerAction === a ? "" : a)}
+                          />
+                        ))}
+                      </div>
+                      {eveningData.triggerAction === "Other" && (
+                        <Input
+                          value={eveningData.triggerActionOther}
+                          onChange={(e) => updateEvening("triggerActionOther", e.target.value)}
+                          placeholder="Describe..."
+                          className="text-sm mt-1.5"
+                        />
+                      )}
+                    </div>
+
+                    {/* Tier 2 expand */}
+                    {!eveningData.triggerShowTier2 && (
+                      <button
+                        type="button"
+                        onClick={() => updateEveningField("triggerShowTier2", true)}
+                        className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                      >
+                        Add more detail
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    )}
+
+                    {/* Tier 2 — Enrichment */}
+                    {eveningData.triggerShowTier2 && (
+                      <div className="space-y-4 pt-2 border-t border-border">
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">What did you feel in your body?</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {BODY_STATES.map((b) => (
+                              <Chip
+                                key={b}
+                                label={b}
+                                selected={eveningData.triggerBodyState.includes(b)}
+                                onClick={() => toggleEveningChip("triggerBodyState", b)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium">What happened right after?</Label>
+                          <Input
+                            value={eveningData.triggerOutcome}
+                            onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
+                            placeholder="Brief description..."
+                            className="text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">How long until you felt calm?</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {RECOVERY_TIMES.map((r) => (
+                              <Chip
+                                key={r}
+                                label={r}
+                                selected={eveningData.triggerRecoveryTime === r}
+                                onClick={() => updateEvening("triggerRecoveryTime", eveningData.triggerRecoveryTime === r ? "" : r)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-sm font-medium">
+                            Reflection <span className="text-xs text-muted-foreground">(optional)</span>
+                          </Label>
+                          <VoiceTextarea
+                            value={eveningData.triggerReflection}
+                            onChange={(val) => updateEvening("triggerReflection", val)}
+                            placeholder="Any insight about this pattern?"
+                            className="min-h-[60px] resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!eveningData.triggerText.trim() && (
+                  <p className="text-xs text-muted-foreground">No trigger? That's a win — skip this section.</p>
+                )}
               </CardContent>
             </Card>
 
