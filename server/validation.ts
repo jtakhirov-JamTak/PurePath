@@ -161,8 +161,8 @@ export const checkoutSchema = z.object({
 
 export const createTriggerLogSchema = z.object({
   date: dateString,
-  timeOfDay: z.enum(["morning", "afternoon", "evening"]),
-  context: z.enum(["Work", "Partner", "Family", "Friends", "Self"]),
+  timeOfDay: optionalString(20),
+  context: optionalString(50),
   triggerText: trimmedString(1, 2000),
   emotion: trimmedString(1, 50),
   emotionIntensity: z.number().int().min(1).max(5),
@@ -171,6 +171,11 @@ export const createTriggerLogSchema = z.object({
   whatIDid: optionalString(2000),
   outcome: optionalString(2000),
   recoveryMinutes: z.number().int().min(0).optional().nullable(),
+  appraisal: optionalString(500),
+  actionTaken: optionalString(100),
+  bodyState: optionalString(500),
+  recoveryTime: optionalString(50),
+  reflection: optionalString(2000),
 });
 
 export const createAvoidanceLogSchema = z.object({

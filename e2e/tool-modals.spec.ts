@@ -80,18 +80,18 @@ test.describe("Tool Modals", () => {
   });
 
   test.describe("Trigger Log Modal", () => {
-    test("opens and shows all form fields", async ({ page }) => {
+    test("opens and shows Tier 1 form fields", async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("button-tool-trigger").click();
 
       await expect(page.getByTestId("modal-trigger-log")).toBeVisible();
-      await expect(page.getByTestId("select-trigger-time")).toBeVisible();
-      await expect(page.getByTestId("select-trigger-context")).toBeVisible();
-      await expect(page.getByTestId("textarea-trigger-text")).toBeVisible();
-      await expect(page.getByTestId("select-trigger-emotion")).toBeVisible();
-      await expect(page.getByTestId("select-trigger-urge")).toBeVisible();
+      await expect(page.getByTestId("input-trigger-text")).toBeVisible();
       await expect(page.getByTestId("button-trigger-save")).toBeVisible();
-      await expect(page.getByTestId("button-trigger-cancel")).toBeVisible();
+      // Chip sections should be visible
+      await expect(page.getByText("This felt like...")).toBeVisible();
+      await expect(page.getByText("Emotion")).toBeVisible();
+      await expect(page.getByText("Urge")).toBeVisible();
+      await expect(page.getByText("What did you do?")).toBeVisible();
     });
 
     test("save is disabled when form is incomplete", async ({ page }) => {
@@ -101,32 +101,32 @@ test.describe("Tool Modals", () => {
       await expect(page.getByTestId("button-trigger-save")).toBeDisabled();
     });
 
-    test("can fill and submit the trigger log", async ({ page }) => {
+    test("can fill and submit the trigger log with chips", async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("button-tool-trigger").click();
 
-      // Fill required fields
-      await page.getByTestId("select-trigger-time").selectOption("morning");
-      await page.getByTestId("select-trigger-context").selectOption("Work");
-      await page.getByTestId("textarea-trigger-text").fill("Stressful meeting");
-      await page.getByTestId("select-trigger-emotion").selectOption("Anxiety/Worry");
-      await page.getByTestId("button-emotion-intensity-3").click();
-      await page.getByTestId("select-trigger-urge").selectOption("Avoid/Withdraw");
-      await page.getByTestId("button-urge-intensity-2").click();
+      // Fill required fields using chips
+      await page.getByTestId("input-trigger-text").fill("Stressful meeting");
+      await page.getByRole("button", { name: "Rejection" }).click();
+      await page.getByRole("button", { name: "Anger" }).click();
+      await page.getByTestId("emotion-intensity-3").click();
+      await page.getByRole("button", { name: "Withdraw" }).click();
+      await page.getByTestId("urge-intensity-2").click();
+      await page.getByRole("button", { name: "Contained it" }).click();
 
       // Save should now be enabled
       await expect(page.getByTestId("button-trigger-save")).toBeEnabled();
 
-      const apiRequest = page.waitForRequest("**/api/trigger-logs");
+      const apiReq = page.waitForRequest("**/api/trigger-logs");
       await page.getByTestId("button-trigger-save").click();
-      const req = await apiRequest;
+      const req = await apiReq;
 
       expect(req.method()).toBe("POST");
       const body = req.postDataJSON();
       expect(body.triggerText).toBe("Stressful meeting");
-      expect(body.emotion).toBe("Anxiety/Worry");
+      expect(body.emotion).toBe("Anger");
       expect(body.emotionIntensity).toBe(3);
-      expect(body.urge).toBe("Avoid/Withdraw");
+      expect(body.urge).toBe("Withdraw");
       expect(body.urgeIntensity).toBe(2);
     });
 
@@ -134,22 +134,30 @@ test.describe("Tool Modals", () => {
       await page.goto("/");
       await page.getByTestId("button-tool-trigger").click();
 
-      await page.getByTestId("button-trigger-cancel").click();
+      // Close via dialog overlay / escape
+      await page.keyboard.press("Escape");
       await expect(page.getByTestId("modal-trigger-log")).not.toBeVisible();
     });
 
-    test("optional fields can be filled", async ({ page }) => {
+    test("Tier 2 expands with additional fields", async ({ page }) => {
       await page.goto("/");
       await page.getByTestId("button-tool-trigger").click();
 
-      // Optional fields
-      await expect(page.getByTestId("textarea-trigger-what-i-did")).toBeVisible();
-      await expect(page.getByTestId("textarea-trigger-outcome")).toBeVisible();
-      await expect(page.getByTestId("input-trigger-recovery")).toBeVisible();
+      // Tier 2 should be hidden initially
+      await expect(page.getByText("What did you feel in your body?")).not.toBeVisible();
 
-      await page.getByTestId("textarea-trigger-what-i-did").fill("Took a walk");
-      await page.getByTestId("textarea-trigger-outcome").fill("Felt calmer");
-      await page.getByTestId("input-trigger-recovery").fill("15");
+      // Click "Add more detail"
+      await page.getByText("Add more detail").click();
+
+      // Tier 2 fields should now be visible
+      await expect(page.getByText("What did you feel in your body?")).toBeVisible();
+      await expect(page.getByText("What happened right after?")).toBeVisible();
+      await expect(page.getByText("How long until you felt calm?")).toBeVisible();
+      await expect(page.getByText("Reflection")).toBeVisible();
+
+      // Can select body state chips
+      await page.getByRole("button", { name: "Chest tightness" }).click();
+      await page.getByRole("button", { name: "Jaw clenching" }).click();
     });
   });
 

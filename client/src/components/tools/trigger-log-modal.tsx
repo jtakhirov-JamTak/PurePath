@@ -4,64 +4,156 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+// --- Chip options ---
+
+const APPRAISALS = [
+  "Rejection", "Disrespect", "Failure", "Loss of control",
+  "Being unseen", "Abandonment", "Shame", "Unfairness", "Overwhelm", "Other",
+];
 
 const EMOTIONS = [
-  "Anxiety / Worry",
-  "Fear",
-  "Anger / Irritation",
-  "Frustration",
-  "Shame",
-  "Guilt",
-  "Sadness",
-  "Hurt / Rejection",
-  "Overwhelm",
-  "Numb / Disconnected",
+  "Anger", "Shame", "Fear", "Sadness",
+  "Frustration", "Anxiety", "Disgust", "Hurt",
 ];
 
 const URGES = [
-  "Avoid / Withdraw",
-  "Delay / Procrastinate",
-  "Defend / Justify",
-  "Attack / Confront",
-  "Shut Down / Go Silent",
-  "Seek Reassurance",
-  "Control / Fix",
-  "Appease / People-Please",
-  "Ruminate / Overthink",
-  "Escape / Numb (scroll, eat, use, distract)",
+  "Yell/snap", "Withdraw", "Scroll/distract", "Eat/drink",
+  "Shut down", "People-please", "Avoid", "Other",
 ];
+
+const ACTIONS = [
+  "Acted on urge", "Paused then acted", "Contained it",
+  "Used a tool", "Talked to someone", "Other",
+];
+
+const BODY_STATES = [
+  "Chest tightness", "Stomach drop", "Heat/flushing", "Jaw clenching",
+  "Shallow breathing", "Numbness", "Trembling", "Nothing noticed",
+];
+
+const RECOVERY_TIMES = [
+  "Under 5 min", "5-15 min", "15-30 min",
+  "30-60 min", "Over an hour", "Still not calm",
+];
+
+// --- Reusable chip component ---
+
+function Chip({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+        selected
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+// --- Intensity dots (1-5) ---
+
+function IntensityDots({
+  value,
+  onChange,
+  testIdPrefix,
+}: {
+  value: number | null;
+  onChange: (n: number) => void;
+  testIdPrefix: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          data-testid={`${testIdPrefix}-${n}`}
+          className={cn(
+            "w-6 h-6 rounded-full border-2 transition-colors",
+            value !== null && n <= value
+              ? "bg-primary border-primary"
+              : "bg-transparent border-border hover:border-primary/50"
+          )}
+          aria-label={`Intensity ${n}`}
+        />
+      ))}
+      <span className="text-xs text-muted-foreground ml-1">
+        {value ? `${value}/5` : ""}
+      </span>
+    </div>
+  );
+}
+
+// --- Multi-select chip group ---
+
+function useMultiChips() {
+  const [selected, setSelected] = useState<string[]>([]);
+  const toggle = (val: string) =>
+    setSelected((prev) =>
+      prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
+    );
+  return { selected, toggle, setSelected };
+}
+
+// --- Main modal ---
 
 export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [timeOfDay, setTimeOfDay] = useState("");
-  const [context, setContext] = useState("");
+  // Tier 1
   const [triggerText, setTriggerText] = useState("");
+  const appraisal = useMultiChips();
+  const [appraisalOther, setAppraisalOther] = useState("");
   const [emotion, setEmotion] = useState("");
   const [emotionIntensity, setEmotionIntensity] = useState<number | null>(null);
   const [urge, setUrge] = useState("");
   const [urgeIntensity, setUrgeIntensity] = useState<number | null>(null);
-  const [whatIDid, setWhatIDid] = useState("");
+  const [actionTaken, setActionTaken] = useState("");
+  const [actionOther, setActionOther] = useState("");
+
+  // Tier 2
+  const [showTier2, setShowTier2] = useState(false);
+  const bodyState = useMultiChips();
   const [outcome, setOutcome] = useState("");
-  const [recoveryMinutes, setRecoveryMinutes] = useState<number | undefined>(undefined);
+  const [recoveryTime, setRecoveryTime] = useState("");
+  const [reflection, setReflection] = useState("");
 
   const resetForm = () => {
-    setTimeOfDay("");
-    setContext("");
     setTriggerText("");
+    appraisal.setSelected([]);
+    setAppraisalOther("");
     setEmotion("");
     setEmotionIntensity(null);
     setUrge("");
     setUrgeIntensity(null);
-    setWhatIDid("");
+    setActionTaken("");
+    setActionOther("");
+    setShowTier2(false);
+    bodyState.setSelected([]);
     setOutcome("");
-    setRecoveryMinutes(undefined);
+    setRecoveryTime("");
+    setReflection("");
   };
 
   const handleClose = () => {
@@ -71,18 +163,31 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Build appraisal string from chips + other
+      const appraisalParts = [...appraisal.selected.filter((a) => a !== "Other")];
+      if (appraisal.selected.includes("Other") && appraisalOther.trim()) {
+        appraisalParts.push(appraisalOther.trim());
+      }
+
+      const actionValue = actionTaken === "Other" && actionOther.trim()
+        ? actionOther.trim()
+        : actionTaken || undefined;
+
       const res = await apiRequest("POST", "/api/trigger-logs", {
         date: format(new Date(), "yyyy-MM-dd"),
-        timeOfDay,
-        context,
         triggerText,
+        appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
         emotion,
         emotionIntensity,
         urge,
         urgeIntensity,
-        whatIDid: whatIDid || undefined,
-        outcome: outcome || undefined,
-        recoveryMinutes: recoveryMinutes || undefined,
+        whatIDid: actionValue,
+        actionTaken: actionValue,
+        // Tier 2
+        bodyState: bodyState.selected.length > 0 ? bodyState.selected.join(", ") : undefined,
+        outcome: outcome.trim() || undefined,
+        recoveryTime: recoveryTime || undefined,
+        reflection: reflection.trim() || undefined,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -99,175 +204,218 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
     },
   });
 
-  const canSubmit = timeOfDay && context && triggerText.trim() && emotion && emotionIntensity && urge && urgeIntensity;
+  const canSubmit =
+    triggerText.trim() &&
+    appraisal.selected.length > 0 &&
+    emotion &&
+    emotionIntensity &&
+    urge &&
+    urgeIntensity &&
+    actionTaken;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-lg" data-testid="modal-trigger-log">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-4" data-testid="modal-trigger-log">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
             Log a Trigger
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Time of Day</label>
-            <Select value={timeOfDay} onValueChange={setTimeOfDay}>
-              <SelectTrigger data-testid="select-trigger-time">
-                <SelectValue placeholder="Select time of day" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="morning">Morning</SelectItem>
-                <SelectItem value="afternoon">Afternoon</SelectItem>
-                <SelectItem value="evening">Evening</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Context</label>
-            <Select value={context} onValueChange={setContext}>
-              <SelectTrigger data-testid="select-trigger-context">
-                <SelectValue placeholder="Select context" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Work">Work</SelectItem>
-                <SelectItem value="Partner">Partner</SelectItem>
-                <SelectItem value="Family">Family</SelectItem>
-                <SelectItem value="Friends">Friends</SelectItem>
-                <SelectItem value="Self">Self</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">What triggered you? (observable)</label>
-            <Textarea
+          {/* 1. What happened */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium">What happened?</label>
+            <Input
               value={triggerText}
               onChange={(e) => setTriggerText(e.target.value)}
-              placeholder="Describe the trigger..."
-              rows={2}
-              className="resize-none text-sm"
-              data-testid="textarea-trigger-text"
+              placeholder="Brief description of the situation"
+              className="text-sm"
+              data-testid="input-trigger-text"
             />
           </div>
 
+          {/* 2. This felt like... (multi-select) */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">This felt like...</label>
+            <div className="flex flex-wrap gap-1.5">
+              {APPRAISALS.map((a) => (
+                <Chip
+                  key={a}
+                  label={a}
+                  selected={appraisal.selected.includes(a)}
+                  onClick={() => appraisal.toggle(a)}
+                />
+              ))}
+            </div>
+            {appraisal.selected.includes("Other") && (
+              <Input
+                value={appraisalOther}
+                onChange={(e) => setAppraisalOther(e.target.value)}
+                placeholder="Describe..."
+                className="text-sm mt-1.5"
+              />
+            )}
+          </div>
+
+          {/* 3. Emotion (single select + intensity) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Emotion</label>
-            <Select value={emotion} onValueChange={setEmotion}>
-              <SelectTrigger data-testid="select-trigger-emotion">
-                <SelectValue placeholder="Select emotion" />
-              </SelectTrigger>
-              <SelectContent>
-                {EMOTIONS.map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Emotion Intensity</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Button
-                  key={n}
-                  variant={emotionIntensity === n ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setEmotionIntensity(n)}
-                  data-testid={`button-emotion-intensity-${n}`}
-                >
-                  {n}
-                </Button>
+            <div className="flex flex-wrap gap-1.5">
+              {EMOTIONS.map((e) => (
+                <Chip
+                  key={e}
+                  label={e}
+                  selected={emotion === e}
+                  onClick={() => setEmotion(emotion === e ? "" : e)}
+                />
               ))}
             </div>
+            {emotion && (
+              <IntensityDots
+                value={emotionIntensity}
+                onChange={setEmotionIntensity}
+                testIdPrefix="emotion-intensity"
+              />
+            )}
           </div>
 
+          {/* 4. Urge (single select + intensity) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Urge</label>
-            <Select value={urge} onValueChange={setUrge}>
-              <SelectTrigger data-testid="select-trigger-urge">
-                <SelectValue placeholder="Select urge" />
-              </SelectTrigger>
-              <SelectContent>
-                {URGES.map((u) => (
-                  <SelectItem key={u} value={u}>{u}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Urge Intensity</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Button
-                  key={n}
-                  variant={urgeIntensity === n ? "default" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => setUrgeIntensity(n)}
-                  data-testid={`button-urge-intensity-${n}`}
-                >
-                  {n}
-                </Button>
+            <div className="flex flex-wrap gap-1.5">
+              {URGES.map((u) => (
+                <Chip
+                  key={u}
+                  label={u}
+                  selected={urge === u}
+                  onClick={() => setUrge(urge === u ? "" : u)}
+                />
               ))}
             </div>
+            {urge && (
+              <IntensityDots
+                value={urgeIntensity}
+                onChange={setUrgeIntensity}
+                testIdPrefix="urge-intensity"
+              />
+            )}
           </div>
 
+          {/* 5. What did you do? (single select) */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">What I did <span className="text-xs text-muted-foreground">(optional)</span></label>
-            <Textarea
-              value={whatIDid}
-              onChange={(e) => setWhatIDid(e.target.value)}
-              placeholder="What action did you take?"
-              rows={2}
-              className="resize-none text-sm"
-              data-testid="textarea-trigger-what-i-did"
-            />
+            <label className="text-sm font-medium">What did you do?</label>
+            <div className="flex flex-wrap gap-1.5">
+              {ACTIONS.map((a) => (
+                <Chip
+                  key={a}
+                  label={a}
+                  selected={actionTaken === a}
+                  onClick={() => setActionTaken(actionTaken === a ? "" : a)}
+                />
+              ))}
+            </div>
+            {actionTaken === "Other" && (
+              <Input
+                value={actionOther}
+                onChange={(e) => setActionOther(e.target.value)}
+                placeholder="Describe..."
+                className="text-sm mt-1.5"
+              />
+            )}
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Outcome <span className="text-xs text-muted-foreground">(optional)</span></label>
-            <Textarea
-              value={outcome}
-              onChange={(e) => setOutcome(e.target.value)}
-              placeholder="What happened as a result?"
-              rows={2}
-              className="resize-none text-sm"
-              data-testid="textarea-trigger-outcome"
-            />
-          </div>
+          {/* Save button */}
+          <Button
+            className="w-full"
+            onClick={() => saveMutation.mutate()}
+            disabled={!canSubmit || saveMutation.isPending}
+            data-testid="button-trigger-save"
+          >
+            {saveMutation.isPending ? "Saving..." : "Save"}
+          </Button>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">Recovery time (minutes) <span className="text-xs text-muted-foreground">(optional)</span></label>
-            <Input
-              type="number"
-              min={0}
-              value={recoveryMinutes ?? ""}
-              onChange={(e) => setRecoveryMinutes(e.target.value ? Number(e.target.value) : undefined)}
-              placeholder="Minutes until calm"
-              className="text-sm"
-              data-testid="input-trigger-recovery"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <Button variant="ghost" size="sm" onClick={handleClose} data-testid="button-trigger-cancel">
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => saveMutation.mutate()}
-              disabled={!canSubmit || saveMutation.isPending}
-              data-testid="button-trigger-save"
+          {/* Tier 2 expand link */}
+          {!showTier2 && (
+            <button
+              type="button"
+              onClick={() => setShowTier2(true)}
+              className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
             >
-              {saveMutation.isPending ? "Saving..." : "Save"}
-            </Button>
-          </div>
+              Add more detail
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          )}
+
+          {/* Tier 2 — Enrichment */}
+          {showTier2 && (
+            <div className="space-y-4 pt-2 border-t border-border animate-in slide-in-from-top-2 duration-300">
+              {/* 6. Body state (multi-select) */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">What did you feel in your body?</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {BODY_STATES.map((b) => (
+                    <Chip
+                      key={b}
+                      label={b}
+                      selected={bodyState.selected.includes(b)}
+                      onClick={() => bodyState.toggle(b)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* 7. What happened right after */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">What happened right after?</label>
+                <Input
+                  value={outcome}
+                  onChange={(e) => setOutcome(e.target.value)}
+                  placeholder="Brief description..."
+                  className="text-sm"
+                />
+              </div>
+
+              {/* 8. Recovery time */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">How long until you felt calm?</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {RECOVERY_TIMES.map((r) => (
+                    <Chip
+                      key={r}
+                      label={r}
+                      selected={recoveryTime === r}
+                      onClick={() => setRecoveryTime(recoveryTime === r ? "" : r)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* 9. Reflection */}
+              <div className="space-y-1">
+                <label className="text-sm font-medium">
+                  Reflection <span className="text-xs text-muted-foreground">(optional)</span>
+                </label>
+                <Textarea
+                  value={reflection}
+                  onChange={(e) => setReflection(e.target.value)}
+                  placeholder="Any insight about this pattern?"
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+              </div>
+
+              {/* Second save button after Tier 2 */}
+              <Button
+                className="w-full"
+                onClick={() => saveMutation.mutate()}
+                disabled={!canSubmit || saveMutation.isPending}
+              >
+                {saveMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
