@@ -556,7 +556,14 @@ export default function EisenhowerPage() {
 
   const wizardQ2Items = wizardItems.filter(i => i.quadrant === "q2");
   const needsQ2Selection = wizardQ2Items.length > 3;
-  const wizardQ12Items = wizardItems.filter(i => isSchedulableQuadrant(i.quadrant));
+  // For Details step: only include Q2 items that were selected (or all if ≤3)
+  const isQ2ActiveForWeek = (idx: number) => {
+    const item = wizardItems[idx];
+    if (item.quadrant !== "q2") return true; // not Q2, irrelevant
+    if (!needsQ2Selection) return true; // ≤3 Q2 items, all active
+    return selectedQ2Indices.has(idx);
+  };
+  const wizardQ12Items = wizardItems.filter((i, idx) => isSchedulableQuadrant(i.quadrant) && isQ2ActiveForWeek(idx));
   const allQ12Complete = wizardQ12Items.every(i => i.deadline && i.startTime && i.endTime);
 
   const wizardStepLabels = needsQ2Selection
@@ -1097,6 +1104,8 @@ export default function EisenhowerPage() {
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
                       {wizardItems.map((item, idx) => {
                         if (!isSchedulableQuadrant(item.quadrant)) return null;
+                        // Skip unselected Q2 items — they're parked for next week
+                        if (!isQ2ActiveForWeek(idx)) return null;
                         const q = QUADRANTS.find(q => q.id === item.quadrant)!;
                         const dur = item.startTime && item.endTime ? calcDuration(item.startTime, item.endTime) : "";
                         const isMissing = !item.deadline || !item.startTime || !item.endTime;
@@ -1238,16 +1247,35 @@ export default function EisenhowerPage() {
                     </div>
                   )}
 
-                  {/* Show Q3/Q4 summary */}
-                  {wizardItems.some(i => !isSchedulableQuadrant(i.quadrant)) && (
+                  {/* Show parked Q2 items */}
+                  {needsQ2Selection && wizardItems.some((item, idx) => item.quadrant === "q2" && !selectedQ2Indices.has(idx)) && (
                     <div className="border-t pt-3">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Q3 & Q4 items (no additional details needed)</p>
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Parked Q2 items (saved without a date for next week)</p>
                       <div className="space-y-1">
-                        {wizardItems.filter(i => !isSchedulableQuadrant(i.quadrant)).map((item, i) => {
-                          const q = QUADRANTS.find(q => q.id === item.quadrant)!;
+                        {wizardItems.map((item, idx) => {
+                          if (item.quadrant !== "q2" || selectedQ2Indices.has(idx)) return null;
+                          return (
+                            <div key={idx} className="flex items-center gap-2 p-1.5 rounded-md text-xs bg-green-500/10 text-green-700 dark:text-green-400">
+                              <Badge variant="outline" className="text-[10px] shrink-0">Q2</Badge>
+                              <span className="opacity-60">{item.task}</span>
+                              <span className="ml-auto text-[10px] text-muted-foreground italic">next week</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show Q3 summary */}
+                  {wizardItems.some(i => i.quadrant === "q3") && (
+                    <div className="border-t pt-3">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Q3 items (no additional details needed)</p>
+                      <div className="space-y-1">
+                        {wizardItems.filter(i => i.quadrant === "q3").map((item, i) => {
+                          const q = QUADRANTS.find(q => q.id === "q3")!;
                           return (
                             <div key={i} className={`flex items-center gap-2 p-1.5 rounded-md text-xs ${q.color}`}>
-                              <Badge variant="outline" className="text-[10px] shrink-0">{q.shortName}</Badge>
+                              <Badge variant="outline" className="text-[10px] shrink-0">Q3</Badge>
                               <span>{item.task}</span>
                             </div>
                           );
