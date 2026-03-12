@@ -3,16 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
 import type { Habit } from "@shared/schema";
 
-const CATEGORY_STYLES: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
-  relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-300 dark:bg-slate-400",
-  career: "bg-blue-500",
-  mindfulness: "bg-blue-500",
-  learning: "bg-blue-500",
-  leisure: "bg-slate-300 dark:bg-slate-400",
+const TIMING_ORDER: Record<string, number> = {
+  morning: 0,
+  afternoon: 1,
+  evening: 2,
+};
+
+const TIMING_LABELS: Record<string, string> = {
+  morning: "AM",
+  afternoon: "PM",
+  evening: "Eve",
 };
 
 interface JournalHabitItem {
@@ -50,7 +50,12 @@ export function DailyHabitsCard({
   onHabitSkip,
   onNavigate,
 }: DailyHabitsCardProps) {
-  if (todaysHabits.length === 0 && journalHabitItems.length === 0) {
+  // Sort habits by time of day
+  const sortedHabits = [...todaysHabits]
+    .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1))
+    .slice(0, 3);
+
+  if (sortedHabits.length === 0 && journalHabitItems.length === 0) {
     return (
       <Card className="overflow-visible" data-testid="card-no-habits">
         <CardContent className="p-4">
@@ -105,40 +110,31 @@ export function DailyHabitsCard({
               {jh.skipped && <span className="text-xs text-muted-foreground">skipped</span>}
             </li>
           ))}
-          {todaysHabits.map((habit) => {
-            const status = habitStatusMap.get(habit.id) || null;
+          {sortedHabits.map((habit) => {
             const level = habitLevelMap.get(habit.id) ?? null;
-            const catStyle = CATEGORY_STYLES[(habit.category as string) || "health"] || CATEGORY_STYLES.health;
-            const isBin = habit.isBinary || false;
+            const status = habitStatusMap.get(habit.id) || null;
+            const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
+
+            // Unified 3-state cycle: Done (2) -> Min (1) -> Skip -> blank
             const cycleHabit = () => {
-              if (isBin) {
-                if (level === null || level === undefined) {
-                  onHabitLevel(habit.id, 1, { isBinary: true });
-                } else if (level === 1) {
-                  onHabitSkip(habit.id);
-                } else {
-                  onHabitLevel(habit.id, null);
-                }
+              if (level === null || level === undefined) {
+                onHabitLevel(habit.id, 2, { isBinary: false });
+              } else if (level === 2) {
+                onHabitLevel(habit.id, 1, { isBinary: false });
+              } else if (level === 1) {
+                onHabitSkip(habit.id);
               } else {
-                if (level === null || level === undefined) {
-                  onHabitLevel(habit.id, 2, { isBinary: false });
-                } else if (level === 2) {
-                  onHabitLevel(habit.id, 1, { isBinary: false });
-                } else if (level === 1) {
-                  onHabitSkip(habit.id);
-                } else {
-                  onHabitLevel(habit.id, null);
-                }
+                onHabitLevel(habit.id, null);
               }
             };
-            const boxLabel = isBin
-              ? (level === 1 ? "Done" : level === 0 ? "Skip" : "—")
-              : (level === 2 ? "Full" : level === 1 ? "Min" : level === 0 ? "Skip" : "—");
+
+            const boxLabel = level === 2 ? "Done" : level === 1 ? "Min" : level === 0 ? "Skip" : "\u2014";
             const boxClass =
-              (status === "completed" || (isBin && level === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+              status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
               : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
               : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
               : "border-border text-muted-foreground";
+
             return (
               <li key={habit.id} className="flex items-center gap-3" data-testid={`habit-item-${habit.id}`}>
                 <button
@@ -148,7 +144,7 @@ export function DailyHabitsCard({
                 >
                   {boxLabel}
                 </button>
-                <span className={`h-2 w-2 rounded-full shrink-0 ${catStyle}`} />
+                <span className="text-[10px] text-muted-foreground w-6 shrink-0">{timingLabel}</span>
                 <span className={`text-sm flex-1 ${
                   status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
                 }`}>

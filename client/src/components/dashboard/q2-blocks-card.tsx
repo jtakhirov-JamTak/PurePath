@@ -25,6 +25,10 @@ interface Q2BlocksCardProps {
 export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSaveTimeTracker }: Q2BlocksCardProps) {
   if (todayQ2Items.length === 0) return null;
 
+  const MAX_Q2_PER_DAY = 3;
+  const displayItems = todayQ2Items.slice(0, MAX_Q2_PER_DAY);
+  const hasOverflow = todayQ2Items.length > MAX_Q2_PER_DAY;
+
   return (
     <Card className="overflow-visible" data-testid="card-q2-blocks">
       <CardHeader className="pb-2">
@@ -32,7 +36,7 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
       </CardHeader>
       <CardContent className="pb-4">
         <ul className="space-y-2">
-          {todayQ2Items.map((item) => {
+          {displayItems.map((item) => {
             const status = item.status || null;
             const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
             const isBin = item.isBinary || false;
@@ -92,6 +96,9 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
             );
           })}
         </ul>
+        {hasOverflow && (
+          <p className="text-xs text-muted-foreground mt-2 text-center">3 Q2 blocks max per day.</p>
+        )}
       </CardContent>
     </Card>
   );

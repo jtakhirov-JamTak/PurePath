@@ -41,8 +41,8 @@ export function registerHabitRoutes(app: Express) {
       const existing = await storage.getHabitsByUser(userId);
       const activeHabits = existing.filter(h => h.active);
 
-      if (activeHabits.length >= 6) {
-        return res.status(400).json({ error: "Maximum 6 active habits allowed" });
+      if (activeHabits.length >= 3) {
+        return res.status(400).json({ error: "Maximum 3 active habits allowed" });
       }
 
       const name = parsed.data.name;

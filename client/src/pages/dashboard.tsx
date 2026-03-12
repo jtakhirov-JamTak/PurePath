@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon, Check,
-  Target,
+  Target, CalendarDays,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -388,6 +388,8 @@ export default function DashboardPage() {
 
   const currentHour = new Date().getHours();
   const morningSkipped = !hasMorning && currentHour >= 12;
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
+  const showPlanWeekPrompt = dayOfWeek === 0 || dayOfWeek === 1;
 
   const journalHabitItems = hasPhase12 ? [
     { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
@@ -439,6 +441,21 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {showPlanWeekPrompt && (
+          <div className="p-4 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-4" data-testid="card-plan-week-prompt">
+            <div className="flex items-center gap-3">
+              <CalendarDays className="h-6 w-6 text-primary shrink-0" />
+              <div>
+                <p className="font-medium text-sm">Time to plan your week</p>
+                <p className="text-xs text-muted-foreground">Pick your top priorities for the week ahead</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-plan-week-go">
+              Plan Week
+            </Button>
+          </div>
+        )}
 
         <JournalQuickEntry
           todayStr={todayStr}

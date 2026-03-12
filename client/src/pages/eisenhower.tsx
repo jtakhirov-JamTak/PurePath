@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar, Sparkles, Loader2 } from "lucide-react";
+import { Grid3X3, Plus, Download, ChevronLeft, ChevronRight, Trash2, Pencil, Check, Minus, Wand2, ArrowRight, GripVertical, Clock, Calendar, Sparkles, Loader2, X } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -149,6 +149,21 @@ export default function EisenhowerPage() {
   const [dragItem, setDragItem] = useState<number | null>(null);
   const [dragOverQuadrant, setDragOverQuadrant] = useState<string | null>(null);
   const [aiParsing, setAiParsing] = useState(false);
+  const [selectedQ2Indices, setSelectedQ2Indices] = useState<Set<number>>(new Set());
+  const [reclassifyHelper, setReclassifyHelper] = useState<number | null>(null);
+
+  const currentMonthKey = format(new Date(), "yyyy-MM");
+  const { data: monthlyGoal } = useQuery<{ goalStatement?: string; goalWhat?: string }>({
+    queryKey: ["/api/monthly-goal", currentMonthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+  const { data: identityDoc } = useQuery<{ identity?: string }>({
+    queryKey: ["/api/identity-document"],
+  });
 
   const wizardHasContent = brainDump.trim().length > 0 || wizardItems.length > 0;
   const [confirmClose, setConfirmClose] = useState(false);
@@ -539,10 +554,17 @@ export default function EisenhowerPage() {
     setDragOverQuadrant(null);
   };
 
+  const wizardQ2Items = wizardItems.filter(i => i.quadrant === "q2");
+  const needsQ2Selection = wizardQ2Items.length > 3;
   const wizardQ12Items = wizardItems.filter(i => isSchedulableQuadrant(i.quadrant));
   const allQ12Complete = wizardQ12Items.every(i => i.deadline && i.startTime && i.endTime);
 
-  const wizardStepLabels = ["Brain Dump", "Classify", "Details"];
+  const wizardStepLabels = needsQ2Selection
+    ? ["Brain Dump", "Classify", "Pick Top 3", "Details"]
+    : ["Brain Dump", "Classify", "Details"];
+  const STEP_CLASSIFY = 1;
+  const STEP_Q2_SELECT = needsQ2Selection ? 2 : -1;
+  const STEP_DETAILS = needsQ2Selection ? 3 : 2;
 
   return (
     <div className="min-h-screen bg-background">
@@ -743,8 +765,9 @@ export default function EisenhowerPage() {
               </DialogTitle>
               <DialogDescription>
                 {wizardStep === 0 && "Write everything on your mind — one task per line. Don't filter, just dump."}
-                {wizardStep === 1 && "Drag each task into the right quadrant. Use the reference below to guide you."}
-                {wizardStep === 2 && "Set a date and time for your Q1 and Q2 items. Q3 and Q4 items are ready to go."}
+                {wizardStep === STEP_CLASSIFY && "Drag each task into the right quadrant. Use the reference below to guide you."}
+                {wizardStep === STEP_Q2_SELECT && `You have ${wizardQ2Items.length} important items. Pick the 3 that matter most this week.`}
+                {wizardStep === STEP_DETAILS && "Set a date and time for your Q1 and Q2 items. Q3 and Q4 items are ready to go."}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -808,7 +831,7 @@ export default function EisenhowerPage() {
               )}
 
               {/* Step 2: Drag & Drop Classification */}
-              {wizardStep === 1 && (
+              {wizardStep === STEP_CLASSIFY && (
                 <div className="space-y-4">
                   {/* Unclassified items */}
                   {wizardItems.some(i => !i.quadrant || i.quadrant === "unclassified") && (
@@ -861,11 +884,16 @@ export default function EisenhowerPage() {
                                   key={realIdx}
                                   draggable
                                   onDragStart={() => handleDragStart(realIdx)}
-                                  className={`flex items-center gap-2 p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing ${q.color}`}
+                                  className={`flex items-center gap-2 p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing ${
+                                    q.id === "q4" ? "line-through opacity-60 " : ""
+                                  }${q.color}`}
                                   data-testid={`wizard-classified-${realIdx}`}
                                 >
                                   <GripVertical className="h-3 w-3 text-muted-foreground shrink-0" />
                                   <span className="truncate">{item.task}</span>
+                                  {q.id === "q4" && (
+                                    <span className="text-[9px] ml-auto shrink-0 opacity-80">Eliminated</span>
+                                  )}
                                 </div>
                               );
                             })}
@@ -873,38 +901,101 @@ export default function EisenhowerPage() {
                               <p className="text-[10px] text-muted-foreground text-center py-2">Drop here</p>
                             )}
                           </div>
+                          {q.id === "q3" && itemsInQ.length > 0 && (
+                            <p className="text-[10px] text-muted-foreground italic mt-2">Can someone else handle these?</p>
+                          )}
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Quick tap classification as fallback */}
+                  {/* Tap-to-classify with reclassification helper */}
                   <div className="border-t pt-3">
-                    <p className="text-xs text-muted-foreground mb-2">Or tap to classify:</p>
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                      {wizardItems.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-2" data-testid={`wizard-tap-item-${idx}`}>
-                          <span className="text-xs flex-1 truncate">{item.task}</span>
-                          <div className="flex gap-1 shrink-0">
-                            {QUADRANTS.map(q => (
-                              <Button
-                                key={q.id}
-                                variant={item.quadrant === q.id ? "default" : "outline"}
-                                size="sm"
-                                className="text-[10px] h-6 px-2"
-                                onClick={() => {
-                                  const updated = [...wizardItems];
-                                  updated[idx] = { ...updated[idx], quadrant: q.id };
-                                  setWizardItems(updated);
-                                }}
-                                data-testid={`wizard-classify-${idx}-${q.id}`}
+                    <p className="text-xs text-muted-foreground mb-2">Tap a quadrant to classify. Not sure? Tap the task name for help.</p>
+                    <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                      {wizardItems.map((item, idx) => {
+                        const isQ4 = item.quadrant === "q4";
+                        return (
+                          <div key={idx} data-testid={`wizard-tap-item-${idx}`}>
+                            <div className="flex items-center gap-2">
+                              <button
+                                className={`text-xs flex-1 text-left truncate hover:underline ${isQ4 ? "line-through text-muted-foreground" : ""}`}
+                                onClick={() => setReclassifyHelper(reclassifyHelper === idx ? null : idx)}
                               >
-                                {q.shortName}
-                              </Button>
-                            ))}
+                                {item.task}
+                                {isQ4 && <span className="ml-1 text-[10px] no-underline italic">Eliminated</span>}
+                              </button>
+                              {isQ4 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[10px] h-6 px-2 text-destructive"
+                                  onClick={() => {
+                                    setWizardItems(wizardItems.filter((_, i) => i !== idx));
+                                    if (reclassifyHelper === idx) setReclassifyHelper(null);
+                                  }}
+                                  data-testid={`wizard-remove-${idx}`}
+                                >
+                                  <X className="h-3 w-3 mr-0.5" />
+                                  Remove
+                                </Button>
+                              ) : (
+                                <div className="flex gap-1 shrink-0">
+                                  {QUADRANTS.map(q => (
+                                    <Button
+                                      key={q.id}
+                                      variant={item.quadrant === q.id ? "default" : "outline"}
+                                      size="sm"
+                                      className="text-[10px] h-6 px-2"
+                                      onClick={() => {
+                                        const updated = [...wizardItems];
+                                        updated[idx] = { ...updated[idx], quadrant: q.id };
+                                        setWizardItems(updated);
+                                        setReclassifyHelper(null);
+                                      }}
+                                      data-testid={`wizard-classify-${idx}-${q.id}`}
+                                    >
+                                      {q.shortName}
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            {reclassifyHelper === idx && !isQ4 && (
+                              <div className="ml-2 mt-1.5 p-2.5 bg-muted/50 rounded-lg border space-y-2" data-testid={`wizard-reclass-helper-${idx}`}>
+                                <p className="text-xs font-medium text-muted-foreground">If you didn't do this for a month, what would happen?</p>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {[
+                                    { label: "Something breaks in 48 hours", q: "q1" },
+                                    { label: "I fall behind on my goal", q: "q2" },
+                                    { label: "Someone else would be annoyed", q: "q3" },
+                                    { label: "Honestly, nothing", q: "q4" },
+                                  ].map((opt) => (
+                                    <button
+                                      key={opt.q}
+                                      className={`text-[11px] text-left p-2 rounded-md border transition-colors hover:bg-muted ${
+                                        item.quadrant === opt.q ? "border-primary bg-primary/10 font-medium" : "border-border"
+                                      }`}
+                                      onClick={() => {
+                                        const updated = [...wizardItems];
+                                        updated[idx] = { ...updated[idx], quadrant: opt.q };
+                                        setWizardItems(updated);
+                                        setReclassifyHelper(null);
+                                      }}
+                                      data-testid={`wizard-reclass-${idx}-${opt.q}`}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {item.quadrant === "q3" && reclassifyHelper !== idx && (
+                              <p className="text-[10px] text-muted-foreground italic ml-2 mt-0.5">Can someone else handle this?</p>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -921,8 +1012,81 @@ export default function EisenhowerPage() {
                 </div>
               )}
 
-              {/* Step 3: Q1/Q2 Details */}
-              {wizardStep === 2 && (
+              {/* Step: Q2 Selection (only if >3 Q2 items) */}
+              {wizardStep === STEP_Q2_SELECT && needsQ2Selection && (
+                <div className="space-y-4">
+                  {/* Context: monthly goal + identity */}
+                  {(monthlyGoal?.goalWhat || monthlyGoal?.goalStatement || identityDoc?.identity) && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
+                      {(monthlyGoal?.goalWhat || monthlyGoal?.goalStatement) && (
+                        <p className="text-xs">
+                          <span className="font-semibold">Monthly goal:</span>{" "}
+                          {monthlyGoal?.goalWhat || monthlyGoal?.goalStatement}
+                        </p>
+                      )}
+                      {identityDoc?.identity && (
+                        <p className="text-xs">
+                          <span className="font-semibold">Identity:</span>{" "}
+                          {identityDoc.identity}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground">
+                    Select up to 3. Unselected items stay in Q2 but won't be scheduled this week.
+                  </p>
+
+                  <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                    {wizardItems.map((item, idx) => {
+                      if (item.quadrant !== "q2") return null;
+                      const isSelected = selectedQ2Indices.has(idx);
+                      const atLimit = selectedQ2Indices.size >= 3 && !isSelected;
+                      return (
+                        <button
+                          key={idx}
+                          disabled={atLimit}
+                          onClick={() => {
+                            const next = new Set(selectedQ2Indices);
+                            if (isSelected) next.delete(idx);
+                            else next.add(idx);
+                            setSelectedQ2Indices(next);
+                          }}
+                          className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+                            isSelected
+                              ? "border-primary bg-primary/10"
+                              : atLimit
+                                ? "border-border opacity-40 cursor-not-allowed"
+                                : "border-border hover:border-primary/40 hover:bg-muted/50"
+                          }`}
+                          data-testid={`q2-select-${idx}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                              isSelected ? "bg-primary border-primary" : "border-border"
+                            }`}>
+                              {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{item.task}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {HABIT_CATEGORIES[item.role]?.label || item.role}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    {selectedQ2Indices.size}/3 selected
+                  </p>
+                </div>
+              )}
+
+              {/* Step: Q1/Q2 Details */}
+              {wizardStep === STEP_DETAILS && (
                 <div className="space-y-4">
                   {wizardQ12Items.length === 0 ? (
                     <div className="text-center py-6">
@@ -1103,7 +1267,7 @@ export default function EisenhowerPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                {wizardStep < 2 && (
+                {wizardStep < STEP_DETAILS && (
                   <Button
                     size="sm"
                     onClick={() => {
@@ -1121,23 +1285,41 @@ export default function EisenhowerPage() {
                           isBinary: false,
                         })));
                       }
+                      if (wizardStep === STEP_CLASSIFY && needsQ2Selection) {
+                        // Initialize Q2 selection — pre-select none
+                        setSelectedQ2Indices(new Set());
+                      }
+                      if (wizardStep === STEP_Q2_SELECT) {
+                        // Clear deadlines from unselected Q2 items (parking lot)
+                        const updated = wizardItems.map((item, idx) => {
+                          if (item.quadrant === "q2" && !selectedQ2Indices.has(idx)) {
+                            return { ...item, deadline: "", startTime: "", endTime: "" };
+                          }
+                          return item;
+                        });
+                        setWizardItems(updated);
+                      }
                       setWizardStep(s => s + 1);
                     }}
-                    disabled={wizardStep === 0 && !brainDump.trim()}
+                    disabled={
+                      (wizardStep === 0 && !brainDump.trim()) ||
+                      (wizardStep === STEP_Q2_SELECT && selectedQ2Indices.size === 0)
+                    }
                     data-testid="button-wizard-next"
                   >
                     Next
                     <ArrowRight className="ml-1 h-3 w-3" />
                   </Button>
                 )}
-                {wizardStep === 2 && (
+                {wizardStep === STEP_DETAILS && (
                   <Button
                     size="sm"
                     onClick={async () => {
                       setWizardSaving(true);
                       try {
                         for (const item of wizardItems) {
-                          if (item.quadrant === "unclassified") continue;
+                          // Skip unclassified and Q4 items
+                          if (item.quadrant === "unclassified" || item.quadrant === "q4") continue;
                           const isSchedulable = isSchedulableQuadrant(item.quadrant);
                           const scheduledTime = isSchedulable && item.startTime && item.endTime
                             ? `${formatTimeLabel(item.startTime)} - ${formatTimeLabel(item.endTime)}` : null;
@@ -1164,10 +1346,10 @@ export default function EisenhowerPage() {
                         setWizardSaving(false);
                       }
                     }}
-                    disabled={wizardItems.filter(i => i.quadrant !== "unclassified").length === 0 || wizardSaving || (wizardQ12Items.length > 0 && !allQ12Complete)}
+                    disabled={wizardItems.filter(i => i.quadrant !== "unclassified" && i.quadrant !== "q4").length === 0 || wizardSaving || (wizardQ12Items.length > 0 && !allQ12Complete)}
                     data-testid="button-wizard-save"
                   >
-                    {wizardSaving ? "Saving..." : `Add ${wizardItems.filter(i => i.quadrant !== "unclassified").length} Tasks`}
+                    {wizardSaving ? "Saving..." : `Add ${wizardItems.filter(i => i.quadrant !== "unclassified" && i.quadrant !== "q4").length} Tasks`}
                   </Button>
                 )}
               </div>
