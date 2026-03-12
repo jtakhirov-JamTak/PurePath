@@ -1021,8 +1021,13 @@ export default function EisenhowerPage() {
                 </div>
               )}
 
-              {/* Step: Q2 Selection (only if >3 Q2 items) */}
-              {wizardStep === STEP_Q2_SELECT && needsQ2Selection && (
+              {/* Step: Q2 Selection + Reclassify remainder */}
+              {wizardStep === STEP_Q2_SELECT && needsQ2Selection && (() => {
+                const unselectedQ2 = wizardItems
+                  .map((item, idx) => ({ item, idx }))
+                  .filter(({ item, idx }) => item.quadrant === "q2" && !selectedQ2Indices.has(idx));
+                const allReclassified = unselectedQ2.length === 0;
+                return (
                 <div className="space-y-4">
                   {/* Context: monthly goal + identity */}
                   {(monthlyGoal?.goalWhat || monthlyGoal?.goalStatement || identityDoc?.identity) && (
@@ -1043,10 +1048,11 @@ export default function EisenhowerPage() {
                   )}
 
                   <p className="text-sm text-muted-foreground">
-                    Select up to 3. Unselected items stay in Q2 but won't be scheduled this week.
+                    Pick the 3 that matter most this week. Then reclassify the rest.
                   </p>
 
-                  <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                  {/* Top 3 selection */}
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                     {wizardItems.map((item, idx) => {
                       if (item.quadrant !== "q2") return null;
                       const isSelected = selectedQ2Indices.has(idx);
@@ -1091,8 +1097,56 @@ export default function EisenhowerPage() {
                   <p className="text-xs text-muted-foreground text-center">
                     {selectedQ2Indices.size}/3 selected
                   </p>
+
+                  {/* Reclassify unselected Q2 items — only shows after 3 are picked */}
+                  {selectedQ2Indices.size >= 3 && !allReclassified && (
+                    <div className="border-t pt-4 space-y-3">
+                      <p className="text-sm font-medium">
+                        Now reclassify the remaining {unselectedQ2.length} item{unselectedQ2.length !== 1 ? "s" : ""}:
+                      </p>
+                      <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                        {unselectedQ2.map(({ item, idx }) => (
+                          <div key={idx} className="p-3 rounded-lg border space-y-2" data-testid={`q2-reclass-${idx}`}>
+                            <p className="text-sm font-medium">{item.task}</p>
+                            <p className="text-xs text-muted-foreground italic">
+                              If you didn't do this for a month, what would happen?
+                            </p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {[
+                                { label: "Something breaks in 48 hours", q: "q1" },
+                                { label: "Someone else would be annoyed", q: "q3" },
+                                { label: "Honestly, nothing", q: "q4" },
+                              ].map((opt) => (
+                                <button
+                                  key={opt.q}
+                                  className="text-[11px] text-left p-2 rounded-md border transition-colors hover:bg-muted border-border"
+                                  onClick={() => {
+                                    const updated = [...wizardItems];
+                                    updated[idx] = { ...updated[idx], quadrant: opt.q, deadline: "", startTime: "", endTime: "" };
+                                    setWizardItems(updated);
+                                  }}
+                                  data-testid={`q2-reclass-${idx}-${opt.q}`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedQ2Indices.size >= 3 && allReclassified && (
+                    <div className="border-t pt-3">
+                      <p className="text-sm text-muted-foreground text-center">
+                        All items classified. Continue to set dates and times.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+                );
+              })()}
 
               {/* Step: Q1/Q2 Details */}
               {wizardStep === STEP_DETAILS && (
@@ -1249,25 +1303,6 @@ export default function EisenhowerPage() {
                     </div>
                   )}
 
-                  {/* Show parked Q2 items */}
-                  {needsQ2Selection && wizardItems.some((item, idx) => item.quadrant === "q2" && !selectedQ2Indices.has(idx)) && (
-                    <div className="border-t pt-3">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Parked Q2 items (saved without a date for next week)</p>
-                      <div className="space-y-1">
-                        {wizardItems.map((item, idx) => {
-                          if (item.quadrant !== "q2" || selectedQ2Indices.has(idx)) return null;
-                          return (
-                            <div key={idx} className="flex items-center gap-2 p-1.5 rounded-md text-xs bg-green-500/10 text-green-700 dark:text-green-400">
-                              <Badge variant="outline" className="text-[10px] shrink-0">Q2</Badge>
-                              <span className="opacity-60">{item.task}</span>
-                              <span className="ml-auto text-[10px] text-muted-foreground italic">next week</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Show Q3 summary */}
                   {wizardItems.some(i => i.quadrant === "q3") && (
                     <div className="border-t pt-3">
@@ -1319,21 +1354,15 @@ export default function EisenhowerPage() {
                         // Initialize Q2 selection — pre-select none
                         setSelectedQ2Indices(new Set());
                       }
-                      if (wizardStep === STEP_Q2_SELECT) {
-                        // Clear deadlines from unselected Q2 items (parking lot)
-                        const updated = wizardItems.map((item, idx) => {
-                          if (item.quadrant === "q2" && !selectedQ2Indices.has(idx)) {
-                            return { ...item, deadline: "", startTime: "", endTime: "" };
-                          }
-                          return item;
-                        });
-                        setWizardItems(updated);
-                      }
+                      // No transition logic needed for Q2 select — items are already reclassified
                       setWizardStep(s => s + 1);
                     }}
                     disabled={
                       (wizardStep === 0 && !brainDump.trim()) ||
-                      (wizardStep === STEP_Q2_SELECT && selectedQ2Indices.size === 0)
+                      (wizardStep === STEP_Q2_SELECT && (
+                        selectedQ2Indices.size === 0 ||
+                        wizardItems.some((item, idx) => item.quadrant === "q2" && !selectedQ2Indices.has(idx))
+                      ))
                     }
                     data-testid="button-wizard-next"
                   >
