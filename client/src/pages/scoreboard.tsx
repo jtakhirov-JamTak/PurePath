@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
+import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -157,6 +158,7 @@ export default function ScoreboardPage() {
 
   return (
     <AppLayout>
+      <FlowBar fallback="/plan" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
         <div>
           <h1 className="text-2xl font-serif font-bold" data-testid="text-page-title">1-Year Scoreboard</h1>

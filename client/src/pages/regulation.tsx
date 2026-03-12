@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/app-layout";
+import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Wind, Activity, Play, Pause, RotateCcw, ChevronLeft } from "lucide-react";
-import { useLocation } from "wouter";
+import { Heart, Wind, Activity, Play, Pause, RotateCcw } from "lucide-react";
 import { useTimer, formatTime } from "@/hooks/use-timer";
 import type { LucideIcon } from "lucide-react";
 
@@ -107,7 +107,7 @@ function RegulationCard({ title, description, icon: Icon, iconColor, defaultDura
 }
 
 export default function RegulationPage() {
-  const [, setLocation] = useLocation();
+
 
   const tools: RegulationCardProps[] = [
     {
@@ -162,12 +162,9 @@ export default function RegulationPage() {
 
   return (
     <AppLayout>
+      <FlowBar fallback="/dashboard" />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-8">
-          <Button variant="ghost" size="sm" onClick={() => setLocation("/dashboard")} className="mb-4" data-testid="button-back-dashboard">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Today
-          </Button>
           <h1 className="font-serif text-3xl font-bold mb-3" data-testid="text-regulation-title">Regulation Now</h1>
           <p className="text-muted-foreground text-lg">
             Quick tools to regulate your nervous system when you need it most.

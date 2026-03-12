@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Repeat, Plus, Trash2, Timer, Pencil } from "lucide-react";
+import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Habit } from "@shared/schema";
@@ -64,6 +65,7 @@ export default function HabitsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
+      <FlowBar fallback="/plan" doneLabel="Done" />
 
       <main className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="flex items-center gap-4 mb-10">

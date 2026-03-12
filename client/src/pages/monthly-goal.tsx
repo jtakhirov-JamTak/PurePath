@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
+import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VoiceTextarea } from "@/components/voice-input";
@@ -193,6 +194,7 @@ export default function MonthlyGoalPage() {
 
   return (
     <AppLayout>
+      <FlowBar fallback="/plan" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-3">

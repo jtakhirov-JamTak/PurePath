@@ -710,21 +710,21 @@ export default function PlanPage() {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide" data-testid="text-your-documents">Your Documents</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/discovery-profile")} data-testid="card-nav-discovery">
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))} data-testid="card-nav-discovery">
                 <CardContent className="p-4">
                   <p className="font-medium text-sm" data-testid="text-nav-discovery-title">Discovery Profile</p>
                   <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-nav-discovery-desc">Who you are today</p>
                   <p className="text-[11px] text-muted-foreground/70 mt-1" data-testid="text-nav-discovery-detail">Values, strengths, patterns, triggers</p>
                 </CardContent>
               </Card>
-              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/identity")} data-testid="card-nav-identity">
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))} data-testid="card-nav-identity">
                 <CardContent className="p-4">
                   <p className="font-medium text-sm" data-testid="text-nav-identity-title">Identity Document</p>
                   <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-nav-identity-desc">Who you're becoming</p>
                   <p className="text-[11px] text-muted-foreground/70 mt-1" data-testid="text-nav-identity-detail">Vision, identity, purpose</p>
                 </CardContent>
               </Card>
-              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation("/scoreboard")} data-testid="card-nav-scoreboard">
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/scoreboard", "/plan"))} data-testid="card-nav-scoreboard">
                 <CardContent className="p-4">
                   <p className="font-medium text-sm" data-testid="text-nav-scoreboard-title">1-Year Scoreboard</p>
                   <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-nav-scoreboard-desc">How you'll get there</p>

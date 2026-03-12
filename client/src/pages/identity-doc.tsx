@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
+import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,7 @@ export default function IdentityDocPage() {
 
   return (
     <AppLayout>
+      <FlowBar fallback="/dashboard" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-10">
           <h1 className="font-serif text-2xl font-bold" data-testid="text-identity-title">Identity Document</h1>

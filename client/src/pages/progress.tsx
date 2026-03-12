@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/app-header";
+import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -160,6 +161,7 @@ export default function ProgressPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
+      <FlowBar fallback="/journal" />
 
       <main className="container mx-auto px-4 py-12 max-w-5xl">
         <header className="mb-10">
