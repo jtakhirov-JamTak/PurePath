@@ -232,9 +232,12 @@ export const habits = pgTable("habits", {
   sortOrder: integer("sort_order").default(0),
   isBinary: boolean("is_binary").default(false),
   active: boolean("active").default(true),
+  lineageId: varchar("lineage_id", { length: 36 }),
+  versionNumber: integer("version_number").default(1),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("habits_user_id_idx").on(table.userId),
+  index("habits_user_lineage_idx").on(table.userId, table.lineageId),
   check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'self-development', 'happiness')`),
   check("habit_timing_check", sql`${table.timing} IN ('morning', 'afternoon', 'evening')`),
 ]);

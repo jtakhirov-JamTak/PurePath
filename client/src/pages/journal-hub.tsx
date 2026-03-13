@@ -657,6 +657,7 @@ export default function JournalHubPage() {
                 <HabitTimingSection
                   timing="morning"
                   habits={habitsByTiming.morning}
+                  allHabits={habits}
                   days={days}
                   todayStr={today}
                   cellH={cellH}
@@ -675,6 +676,7 @@ export default function JournalHubPage() {
                 <HabitTimingSection
                   timing="afternoon"
                   habits={habitsByTiming.afternoon}
+                  allHabits={habits}
                   days={days}
                   todayStr={today}
                   cellH={cellH}
@@ -693,6 +695,7 @@ export default function JournalHubPage() {
                 <HabitTimingSection
                   timing="evening"
                   habits={habitsByTiming.evening}
+                  allHabits={habits}
                   days={days}
                   todayStr={today}
                   cellH={cellH}
@@ -1168,6 +1171,7 @@ function EisenhowerItemRow({
 function HabitTimingSection({
   timing,
   habits,
+  allHabits,
   days,
   todayStr,
   cellH,
@@ -1179,6 +1183,7 @@ function HabitTimingSection({
 }: {
   timing: TimeRange;
   habits: Habit[];
+  allHabits: Habit[];
   days: Date[];
   todayStr: string;
   cellH: string;
@@ -1195,19 +1200,23 @@ function HabitTimingSection({
   return (
     <SortableContext items={habitIds} strategy={verticalListSortingStrategy}>
       <div ref={setNodeRef} style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "subgrid" }}>
-        {habits.map((habit) => (
-          <SortableHabitRow
-            key={habit.id}
-            habit={habit}
-            days={days}
-            todayStr={todayStr}
-            cellH={cellH}
-            completionsByDate={completionsByDate}
-            onSetLevel={onSetLevel}
-            onEditHabit={onEditHabit}
-            onDeleteHabit={onDeleteHabit}
-          />
-        ))}
+        {habits.map((habit) => {
+          const siblingIds = allHabits.filter(h => h.lineageId && h.lineageId === habit.lineageId).map(h => h.id);
+          return (
+            <SortableHabitRow
+              key={habit.id}
+              habit={habit}
+              days={days}
+              todayStr={todayStr}
+              cellH={cellH}
+              completionsByDate={completionsByDate}
+              siblingIds={siblingIds.length > 0 ? siblingIds : [habit.id]}
+              onSetLevel={onSetLevel}
+              onEditHabit={onEditHabit}
+              onDeleteHabit={onDeleteHabit}
+            />
+          );
+        })}
 
         <div className="flex items-center gap-2 px-3 py-1 bg-muted/30 border-t">
           <button
@@ -1234,6 +1243,7 @@ function SortableHabitRow({
   todayStr,
   cellH,
   completionsByDate,
+  siblingIds,
   onSetLevel,
   onEditHabit,
   onDeleteHabit,
@@ -1243,6 +1253,7 @@ function SortableHabitRow({
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
+  siblingIds: number[];
   onSetLevel: (habitId: number, level: number | null, date: string) => void;
   onEditHabit: (id: number) => void;
   onDeleteHabit: (id: number) => void;
@@ -1302,7 +1313,7 @@ function SortableHabitRow({
         const inRange = (!habit.startDate || dateStr >= habit.startDate) && (!habit.endDate || dateStr <= habit.endDate);
         const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
-        const status = dateMap?.get(habit.id) || null;
+        const status = siblingIds.reduce<string | null>((found, id) => found || dateMap?.get(id) || null, null);
 
         const boxClass = status === "completed"
           ? "bg-emerald-500 border-emerald-600 dark:bg-emerald-600 dark:border-emerald-500 text-white"

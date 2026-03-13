@@ -81,6 +81,8 @@ export const createHabitSchema = z.object({
   sortOrder: z.number().int().min(0).optional().nullable(),
   isBinary: z.boolean().optional().nullable(),
   active: z.boolean().optional().nullable(),
+  lineageId: z.string().optional().nullable(),
+  versionNumber: z.number().int().optional().nullable(),
 });
 
 export const updateHabitSchema = createHabitSchema.partial();

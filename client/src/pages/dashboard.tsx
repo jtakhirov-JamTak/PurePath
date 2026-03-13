@@ -302,21 +302,38 @@ export default function DashboardPage() {
     let consistencyMax = 0;
     let habitsCompletedWeek = 0;
     let habitsScheduledWeek = 0;
+    // Build lineage→habitIds map for sibling matching
+    const lineageMap = new Map<string, number[]>();
+    habits.forEach(h => {
+      if (h.lineageId) {
+        if (!lineageMap.has(h.lineageId)) lineageMap.set(h.lineageId, []);
+        lineageMap.get(h.lineageId)!.push(h.id);
+      }
+    });
+
     for (const dayStr of pastDayStrs) {
       const day = new Date(dayStr + "T12:00:00");
       const dayCode = DAY_CODES[day.getDay()];
+      // Date-range-aware filtering instead of just h.active
       const scheduledHabits = habits.filter(h => {
-        if (!h.active) return false;
         if (!h.cadence.split(",").includes(dayCode)) return false;
         if (h.startDate && dayStr < h.startDate) return false;
         if (h.endDate && dayStr > h.endDate) return false;
         return true;
       });
+      // Deduplicate by lineage
+      const byLineage = new Map<string, typeof scheduledHabits[0]>();
       scheduledHabits.forEach(h => {
+        const key = h.lineageId || String(h.id);
+        if (!byLineage.has(key)) byLineage.set(key, h);
+      });
+      Array.from(byLineage.values()).forEach(h => {
         const maxPts = h.isBinary ? 1 : 2;
         consistencyMax += maxPts;
         habitsScheduledWeek++;
-        const hc = weekHabitCompletions.find(c => c.habitId === h.id && c.date === dayStr);
+        // Match completions across all sibling IDs
+        const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
+        const hc = weekHabitCompletions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
         if (hc) {
           if (h.isBinary) {
             if (hc.completionLevel === 1) { consistencyPoints += 1; habitsCompletedWeek++; }

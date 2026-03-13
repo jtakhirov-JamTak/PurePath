@@ -388,6 +388,7 @@ export default function Course2JournalPage() {
                 const habitRow = (habit: Habit) => {
                   const scheduledDays = new Set(habit.cadence.split(","));
                   const catDot = CATEGORY_DOTS[habit.category || "health"] || "bg-muted";
+                  const siblingIds = habits.filter(h => h.lineageId && h.lineageId === habit.lineageId).map(h => h.id);
                   return (
                     <HabitRow
                       key={habit.id}
@@ -398,6 +399,7 @@ export default function Course2JournalPage() {
                       todayStr={todayStr}
                       cellH={cellH}
                       completionsByDate={completionsByDate}
+                      siblingIds={siblingIds.length > 0 ? siblingIds : [habit.id]}
                       onSetLevel={(level, date) => setHabitLevelMutation.mutate({ habitId: habit.id, level, date, isBinary: habit.isBinary || false })}
                     />
                   );
@@ -470,6 +472,7 @@ function HabitRow({
   todayStr,
   cellH,
   completionsByDate,
+  siblingIds,
   onSetLevel,
 }: {
   habit: Habit;
@@ -479,6 +482,7 @@ function HabitRow({
   todayStr: string;
   cellH: string;
   completionsByDate: Map<string, Map<number, string>>;
+  siblingIds: number[];
   onSetLevel: (level: number | null, date: string) => void;
 }) {
   return (
@@ -493,7 +497,7 @@ function HabitRow({
         const inRange = (!habit.startDate || dateStr >= habit.startDate) && (!habit.endDate || dateStr <= habit.endDate);
         const isScheduled = scheduledDays.has(dayCode) && inRange;
         const dateMap = completionsByDate.get(dateStr);
-        const status = dateMap?.get(habit.id) || null;
+        const status = siblingIds.reduce<string | null>((found, id) => found || dateMap?.get(id) || null, null);
         const isBin = habit.isBinary || false;
         const currentLevel = isBin
           ? (status === "completed" ? 1 : status === "skipped" ? 0 : null)

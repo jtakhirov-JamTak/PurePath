@@ -1,9 +1,12 @@
 import type { Express, Response } from "express";
+import crypto from "crypto";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { HABIT_CATEGORIES } from "@shared/schema";
 import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema, reorderSchema } from "../validation";
 import { parseId, parseDateParam } from "./helpers";
+
+const VERSIONED_FIELDS = ["name", "category", "cadence", "timing", "duration", "isBinary"] as const;
 
 export function registerHabitRoutes(app: Express) {
   app.get("/api/habits", isAuthenticated, async (req: any, res: Response) => {
@@ -49,6 +52,7 @@ export function registerHabitRoutes(app: Express) {
         ...rest,
         name,
         cadence: rest.cadence || "mon,tue,wed,thu,fri,sat,sun",
+        lineageId: crypto.randomUUID(),
       });
       res.json(habit);
     } catch (error) {
@@ -71,11 +75,44 @@ export function registerHabitRoutes(app: Express) {
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const habit = await storage.updateHabit(id, parsedBody.data);
+
+      // Check if any versioned field actually changed
+      const data = parsedBody.data;
+      const hasVersionedChange = VERSIONED_FIELDS.some(field => {
+        if (!(field in data)) return false;
+        const oldVal = record[field];
+        const newVal = data[field as keyof typeof data];
+        return String(oldVal ?? "") !== String(newVal ?? "");
+      });
+
+      let habit;
+      if (hasVersionedChange && record.active) {
+        habit = await storage.versionHabit(id, data);
+      } else {
+        habit = await storage.updateHabit(id, data);
+      }
       res.json(habit);
     } catch (error) {
       console.error("Error updating habit:", error);
       res.status(500).json({ error: "Failed to update habit" });
+    }
+  });
+
+  app.post("/api/habits/:id/new-version", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const id = parseId(req.params.id);
+      if (!id) return res.status(400).json({ error: "Invalid ID" });
+      const existing = await storage.getHabitsByUser(userId);
+      const record = existing.find(r => r.id === id);
+      if (!record) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const newHabit = await storage.versionHabit(id, {});
+      res.json(newHabit);
+    } catch (error) {
+      console.error("Error creating new habit version:", error);
+      res.status(500).json({ error: "Failed to create new version" });
     }
   });
 

@@ -19,6 +19,7 @@ import {
   type UserSettings,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import crypto from "crypto";
 
 export interface IStorage {
   getPurchasesByUser(userId: string): Promise<Purchase[]>;
@@ -53,6 +54,7 @@ export interface IStorage {
   createHabit(habit: InsertHabit): Promise<Habit>;
   updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit>;
   deleteHabit(id: number): Promise<void>;
+  versionHabit(oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit>;
 
   // Habit Completions
   getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]>;
@@ -255,7 +257,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createHabit(habit: InsertHabit): Promise<Habit> {
-    const [newHabit] = await db.insert(habits).values(habit).returning();
+    const values = {
+      ...habit,
+      lineageId: habit.lineageId || crypto.randomUUID(),
+      versionNumber: habit.versionNumber ?? 1,
+    };
+    const [newHabit] = await db.insert(habits).values(values).returning();
     return newHabit;
   }
 
@@ -266,6 +273,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteHabit(id: number): Promise<void> {
     await db.delete(habits).where(eq(habits.id, id));
+  }
+
+  async versionHabit(oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit> {
+    return db.transaction(async (tx) => {
+      const [oldHabit] = await tx.select().from(habits).where(eq(habits.id, oldHabitId));
+      if (!oldHabit) throw new Error("Habit not found");
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      // Archive the old habit
+      await tx.update(habits).set({ endDate: todayStr, active: false }).where(eq(habits.id, oldHabitId));
+
+      // Create new version
+      const { id: _id, createdAt: _ca, ...oldFields } = oldHabit;
+      const [newHabit] = await tx.insert(habits).values({
+        ...oldFields,
+        ...newData,
+        lineageId: oldHabit.lineageId || crypto.randomUUID(),
+        versionNumber: (oldHabit.versionNumber ?? 1) + 1,
+        startDate: todayStr,
+        endDate: null,
+        active: true,
+      }).returning();
+
+      return newHabit;
+    });
   }
 
   // Habit Completions

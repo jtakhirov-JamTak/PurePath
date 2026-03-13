@@ -1,4 +1,5 @@
 import type { Express, Response } from "express";
+import crypto from "crypto";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
@@ -244,12 +245,15 @@ export function registerIdentityRoutes(app: Express) {
 
       if (snapshot.habits && Array.isArray(snapshot.habits)) {
         const currentHabits = await storage.getHabitsByUser(userId);
-        const activeNames = new Set(currentHabits.filter(h => h.active).map(h => h.name.toLowerCase()));
+        const activeLineages = new Set(currentHabits.filter(h => h.active).map(h => h.lineageId).filter(Boolean));
 
         for (const h of snapshot.habits) {
           const name = (h.name || "").trim();
-          if (!name || activeNames.has(name.toLowerCase())) continue;
+          if (!name) continue;
+          // Skip if this lineage is already active
+          if (h.lineageId && activeLineages.has(h.lineageId)) continue;
 
+          const lineageId = h.lineageId || crypto.randomUUID();
           await storage.createHabit({
             userId, name, category: h.category || "health",
             timing: h.timing || "afternoon",
@@ -257,9 +261,10 @@ export function registerIdentityRoutes(app: Express) {
             duration: h.duration,
             startDate: h.startDate, endDate: h.endDate,
             isBinary: h.isBinary,
+            lineageId,
             active: true,
           });
-          activeNames.add(name.toLowerCase());
+          if (lineageId) activeLineages.add(lineageId);
         }
       }
 

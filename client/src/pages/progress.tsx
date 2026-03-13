@@ -14,7 +14,20 @@ const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 function getHabitsForDate(habits: Habit[], date: Date): Habit[] {
   const dayCode = DAY_CODES[date.getDay()];
-  return habits.filter(h => h.cadence.split(",").includes(dayCode));
+  const dateStr = format(date, "yyyy-MM-dd");
+  const activeOnDate = habits.filter(h => {
+    if (!h.cadence.split(",").includes(dayCode)) return false;
+    if (h.startDate && dateStr < h.startDate) return false;
+    if (h.endDate && dateStr > h.endDate) return false;
+    return true;
+  });
+  // Deduplicate by lineage — keep the first match per lineage
+  const byLineage = new Map<string, Habit>();
+  activeOnDate.forEach(h => {
+    const key = h.lineageId || String(h.id);
+    if (!byLineage.has(key)) byLineage.set(key, h);
+  });
+  return Array.from(byLineage.values());
 }
 
 interface WeekData {
@@ -91,7 +104,12 @@ export default function ProgressPage() {
         const dayCompletions = habitCompletions.filter(hc => hc.date === dayStr);
         const completedIds = new Set(dayCompletions.map(hc => hc.habitId));
         scheduledHabits.forEach(h => {
-          if (completedIds.has(h.id)) habitCompleted++;
+          // Check completion across all sibling IDs in the same lineage
+          const siblingIds = habits.filter(sib => sib.lineageId && sib.lineageId === h.lineageId).map(sib => sib.id);
+          const matched = siblingIds.length > 0
+            ? siblingIds.some(id => completedIds.has(id))
+            : completedIds.has(h.id);
+          if (matched) habitCompleted++;
         });
       }
 

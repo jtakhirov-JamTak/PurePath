@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Repeat, Plus, Trash2, Timer, Pencil } from "lucide-react";
+import { Repeat, Plus, Trash2, Timer, Pencil, RefreshCw } from "lucide-react";
 import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +68,23 @@ export default function HabitsPage() {
     },
     onError: (error: Error) => {
       toast({ title: "Could not delete habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const newVersionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/habits/${id}/new-version`);
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to create new version");
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/habits"] });
+      toast({ title: "New version created", description: "Previous completions are preserved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not create new version", description: error.message, variant: "destructive" });
     },
   });
 
@@ -164,6 +181,15 @@ export default function HabitsPage() {
                           data-testid={`button-edit-habit-${habit.id}`}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => newVersionMutation.mutate(habit.id)}
+                          title="Start fresh version (preserves history)"
+                          data-testid={`button-new-version-${habit.id}`}
+                        >
+                          <RefreshCw className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
