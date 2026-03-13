@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,10 +65,8 @@ export default function MeditationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
+    <AppLayout>
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
@@ -258,7 +256,7 @@ export default function MeditationPage() {
             )}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

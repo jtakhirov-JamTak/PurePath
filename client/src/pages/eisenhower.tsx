@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -575,18 +575,10 @@ export default function EisenhowerPage() {
   const STEP_DETAILS = needsQ2Selection ? 3 : 2;
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader
-        rightContent={
-          <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        }
-      />
+    <AppLayout>
       <FlowBar fallback="/plan" doneLabel="Done" />
 
-      <main className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
@@ -597,6 +589,10 @@ export default function EisenhowerPage() {
               <p className="text-muted-foreground">Weekly priority planning</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
         </div>
 
         <div className="flex items-center justify-between gap-4 mb-6">
@@ -1434,7 +1430,7 @@ export default function EisenhowerPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

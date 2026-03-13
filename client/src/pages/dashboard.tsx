@@ -259,6 +259,7 @@ export default function DashboardPage() {
       !redirectedRef.current
     ) {
       redirectedRef.current = true;
+      toast({ title: "Monthly goal needed", description: "Let's set your goal for this month." });
       setLocation(buildProcessUrl("/goal-wizard", "/dashboard"));
     }
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
@@ -360,7 +361,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
-      window.location.href = "/setup";
+      toast({
+        title: "Setup required",
+        description: "Complete your setup to unlock all features.",
+      });
+      setLocation("/setup");
     }
   }, [onboarding, onboardingLoading]);
 

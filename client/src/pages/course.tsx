@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { LockedCourseModal } from "@/components/locked-course-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
@@ -50,15 +50,14 @@ export default function CoursePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <LockedCourseModal 
-        courseType="phase12" 
-        open={showLockedModal && !hasPhase12} 
+    <AppLayout>
+      <LockedCourseModal
+        courseType="phase12"
+        open={showLockedModal && !hasPhase12}
         onClose={() => setShowLockedModal(false)}
       />
-      <AppHeader />
 
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-12">
           <h1 className="font-serif text-3xl md:text-4xl font-bold mb-4">
             Your Growth Path
@@ -397,7 +396,7 @@ export default function CoursePage() {
             )}
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

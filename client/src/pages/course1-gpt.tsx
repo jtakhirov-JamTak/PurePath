@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { LockedCourseModal } from "@/components/locked-course-modal";
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
@@ -137,15 +137,14 @@ export default function Course1GPTPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <LockedCourseModal 
-        courseType="phase12" 
-        open={showLockedModal && !hasAccess} 
+    <AppLayout>
+      <LockedCourseModal
+        courseType="phase12"
+        open={showLockedModal && !hasAccess}
         onClose={handleCloseModal}
       />
-      <AppHeader />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-h-[calc(100vh-8rem)]">
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="container mx-auto max-w-3xl space-y-4">
             {messagesLoading ? (
@@ -257,6 +256,6 @@ export default function Course1GPTPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

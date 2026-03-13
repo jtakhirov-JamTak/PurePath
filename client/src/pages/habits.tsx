@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { HabitDialog } from "@/components/habit-dialog";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,11 +72,10 @@ export default function HabitsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
+    <AppLayout>
       <FlowBar fallback="/plan" doneLabel="Done" />
 
-      <main className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="flex items-center gap-4 mb-10">
           <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
             <Repeat className="h-7 w-7 text-primary" />
@@ -182,7 +181,7 @@ export default function HabitsPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

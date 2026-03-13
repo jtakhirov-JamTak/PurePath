@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useReturnTo } from "@/hooks/use-return-to";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { ArrowRight, ArrowLeft, Check, Sparkles, Crosshair, Eye, Timer } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Sparkles, Crosshair, Eye, Timer, X } from "lucide-react";
 import type { MonthlyGoal } from "@shared/schema";
 
 function getCurrentMonthKey() {
@@ -477,7 +477,14 @@ export default function GoalWizardPage() {
               Back
             </Button>
           ) : (
-            <div />
+            <Button
+              variant="ghost"
+              onClick={() => finishProcess()}
+              data-testid="button-wizard-exit"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Exit
+            </Button>
           )}
 
           {isLastStep ? (

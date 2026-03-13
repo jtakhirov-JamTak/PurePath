@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -430,18 +430,10 @@ export default function EmpathyPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader
-        rightContent={
-          <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        }
-      />
+    <AppLayout>
       <FlowBar fallback="/dashboard" />
 
-      <main className="container mx-auto px-4 py-12 max-w-4xl">
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
@@ -452,6 +444,10 @@ export default function EmpathyPage() {
               <p className="text-muted-foreground">Prepare for and reflect on conversations</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={handleExport} data-testid="button-export">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "prep" | "debrief")} className="space-y-6">
@@ -567,7 +563,7 @@ export default function EmpathyPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

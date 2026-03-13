@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AppHeader } from "@/components/app-header";
+import { AppLayout } from "@/components/app-layout";
 import { LockedCourseModal } from "@/components/locked-course-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,15 +151,14 @@ export default function Phase3Page() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <LockedCourseModal 
-        courseType="phase3" 
-        open={showLockedModal && !hasAccess} 
+    <AppLayout>
+      <LockedCourseModal
+        courseType="phase3"
+        open={showLockedModal && !hasAccess}
         onClose={() => setShowLockedModal(false)}
       />
-      <AppHeader />
 
-      <main className="container mx-auto px-4 py-10 max-w-4xl">
+      <div className="container mx-auto px-4 py-10 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-3">
             <Badge variant="secondary">Phase 3</Badge>
@@ -292,7 +291,7 @@ export default function Phase3Page() {
             </CardContent>
           </Card>
         )}
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
