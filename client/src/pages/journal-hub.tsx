@@ -389,12 +389,19 @@ export default function JournalHubPage() {
   };
 
   const activeHabits = useMemo(() => {
-    return habits.filter(h => {
-      if (h.active === false) return false;
+    const inRange = habits.filter(h => {
       if (h.startDate && h.startDate > weekEndStr) return false;
       if (h.endDate && h.endDate < weekStartStr) return false;
       return true;
     });
+    // Deduplicate by lineage — prefer active version
+    const byLineage = new Map<string, Habit>();
+    inRange.forEach(h => {
+      const key = h.lineageId || String(h.id);
+      const existing = byLineage.get(key);
+      if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
+    });
+    return Array.from(byLineage.values());
   }, [habits, weekStartStr, weekEndStr]);
 
   const habitsByTiming = useMemo(() => {

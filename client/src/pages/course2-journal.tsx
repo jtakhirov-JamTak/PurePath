@@ -328,12 +328,19 @@ export default function Course2JournalPage() {
 
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {(() => {
-                const activeHabits = habits.filter(h => {
-                  if (h.active === false) return false;
+                const inRangeHabits = habits.filter(h => {
                   if (h.startDate && h.startDate > weekEndStr) return false;
                   if (h.endDate && h.endDate < weekStartStr) return false;
                   return true;
                 });
+                // Deduplicate by lineage — prefer active version
+                const byLineage = new Map<string, typeof habits[0]>();
+                inRangeHabits.forEach(h => {
+                  const key = h.lineageId || String(h.id);
+                  const existing = byLineage.get(key);
+                  if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
+                });
+                const activeHabits = Array.from(byLineage.values());
                 const morningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "morning");
                 const afternoonHabits = activeHabits.filter(h => {
                   const t = h.timing || "afternoon";
