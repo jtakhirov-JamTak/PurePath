@@ -7,12 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { VoiceTextarea } from "@/components/voice-input";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Wind, Star, Target, Power, BedDouble, AlertTriangle, ChevronDown } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Star, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
@@ -27,25 +26,32 @@ interface MorningContent {
   sleepHours: string;
   energyLevel: string;
   stressLevel: string;
-  intention: string;
+  // Identity
+  todayValue: string;
+  proofAction: string;
+  ifThenObstacle: string;
+  ifThenResponse: string;
+  // Courage
+  avoidance: string;
+  courageAction: string;
+  lettingGo: string;
+  // Happiness
   gratitude: string;
+  // Legacy keys (kept for backward compat with old entries)
+  intention: string;
   joy: string;
   enjoy: string;
-  avoidance: string;
   understanding: string;
   understandingEmotion: string;
   understandingEmotionOther: string;
   counterEvidence: string;
-  courageAction: string;
   stress: string;
   perspectiveShift: string;
 }
 
 interface EveningContent {
-  review: string;
-  feedback: string;
-  insight: string;
-  lesson: string;
+  // Win of the Day
+  promiseProof: string;
   // Trigger log fields (chip-based)
   triggerText: string;
   triggerAppraisal: string[];
@@ -61,7 +67,21 @@ interface EveningContent {
   triggerOutcome: string;
   triggerRecoveryTime: string;
   triggerReflection: string;
-  // Legacy trigger fields (kept for backward compat)
+  // Step-Back Reflection
+  stepBackAdvice: string;
+  stepBackLesson: string;
+  // Shutdown
+  shutdownEnough: string;
+  shutdownTomorrow: string;
+  tomorrowStepTime: string;
+  // Quick mode
+  quickRating: number | null;
+  quickRemember: string;
+  // Legacy keys
+  review: string;
+  feedback: string;
+  insight: string;
+  lesson: string;
   trigger: string;
   triggerStory: string;
   triggerImpulse: string;
@@ -74,9 +94,6 @@ interface EveningContent {
   satisfied: string;
   dissatisfied: string;
   winOfTheDay: string;
-  shutdownEnough: string;
-  shutdownTomorrow: string;
-  tomorrowStepTime: string;
 }
 
 const energyLabels = ["Depleted", "Enough", "Good", "Strong", "Supercharged"];
@@ -86,26 +103,29 @@ const emptyMorning: MorningContent = {
   sleepHours: "",
   energyLevel: "",
   stressLevel: "",
-  intention: "",
+  todayValue: "",
+  proofAction: "",
+  ifThenObstacle: "",
+  ifThenResponse: "",
+  avoidance: "",
+  courageAction: "",
+  lettingGo: "",
   gratitude: "",
+  // Legacy
+  intention: "",
   joy: "",
   enjoy: "",
-  avoidance: "",
   understanding: "",
   understandingEmotion: "",
   understandingEmotionOther: "",
   counterEvidence: "",
-  courageAction: "",
   stress: "",
   perspectiveShift: "",
 };
 
 const emptyEvening: EveningContent = {
-  review: "",
-  feedback: "",
-  insight: "",
-  lesson: "",
-  // New chip-based trigger fields
+  promiseProof: "",
+  // Trigger fields
   triggerText: "",
   triggerAppraisal: [],
   triggerAppraisalOther: "",
@@ -120,7 +140,21 @@ const emptyEvening: EveningContent = {
   triggerOutcome: "",
   triggerRecoveryTime: "",
   triggerReflection: "",
+  // Step-Back
+  stepBackAdvice: "",
+  stepBackLesson: "",
+  // Shutdown
+  shutdownEnough: "",
+  shutdownTomorrow: "",
+  tomorrowStepTime: "08:00",
+  // Quick mode
+  quickRating: null,
+  quickRemember: "",
   // Legacy
+  review: "",
+  feedback: "",
+  insight: "",
+  lesson: "",
   trigger: "",
   triggerStory: "",
   triggerImpulse: "",
@@ -133,9 +167,6 @@ const emptyEvening: EveningContent = {
   satisfied: "",
   dissatisfied: "",
   winOfTheDay: "",
-  shutdownEnough: "",
-  shutdownTomorrow: "",
-  tomorrowStepTime: "08:00",
 };
 
 export default function JournalEntryPage() {
@@ -152,8 +183,14 @@ export default function JournalEntryPage() {
   const [morningData, setMorningData] = useState<MorningContent>(emptyMorning);
   const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
-  const [journalMode, setJournalMode] = useState<"quick" | "deep">("deep");
+  const [journalMode, setJournalMode] = useState<"quick" | "full">(() => {
+    return (localStorage.getItem("leaf-journal-mode") as "quick" | "full") || "full";
+  });
   const [avoidanceToolOpen, setAvoidanceToolOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("leaf-journal-mode", journalMode);
+  }, [journalMode]);
 
   const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
     queryKey: ["/api/purchases"],
@@ -188,8 +225,7 @@ export default function JournalEntryPage() {
     enabled: !!user,
   });
   const valuesItems = identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
-  const othersWillSeeItems = identityDoc?.othersWillSee?.split("|||").filter(s => s.trim()) || [];
-  const beYourselfItems = identityDoc?.beYourself?.split(",").map(s => s.trim()).filter(Boolean) || [];
+  const identityStatement = identityDoc?.identity?.trim() || "";
 
   useEffect(() => {
     if (existingJournal) {
@@ -351,6 +387,25 @@ export default function JournalEntryPage() {
     });
   };
 
+  // Identity context card shared between morning Identity section and evening Step-Back
+  const IdentityContext = () => {
+    if (!identityStatement && valuesItems.length === 0) return null;
+    return (
+      <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 space-y-1.5" data-testid="identity-context">
+        {identityStatement && (
+          <p className="text-sm text-muted-foreground italic">{identityStatement}</p>
+        )}
+        {valuesItems.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {valuesItems.map((item, i) => (
+              <Badge key={i} variant="outline" className="text-xs font-normal text-muted-foreground" data-testid={`badge-value-${i}`}>{item}</Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -399,23 +454,16 @@ export default function JournalEntryPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="flex items-center justify-center gap-1 mb-8 p-1 bg-muted rounded-lg w-fit mx-auto" data-testid="mode-toggle">
-          <Button
-            variant={journalMode === "quick" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setJournalMode("quick")}
-            data-testid="button-mode-quick"
+        {/* Quick mode toggle */}
+        <div className="flex justify-center mb-8">
+          <button
+            type="button"
+            onClick={() => setJournalMode(journalMode === "full" ? "quick" : "full")}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="button-toggle-quick"
           >
-            Quick (2 min)
-          </Button>
-          <Button
-            variant={journalMode === "deep" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setJournalMode("deep")}
-            data-testid="button-mode-deep"
-          >
-            Deep Dive
-          </Button>
+            {journalMode === "full" ? "Short on time? Try quick check-in" : "Switch to full journal"}
+          </button>
         </div>
 
         {journalLoading ? (
@@ -432,7 +480,9 @@ export default function JournalEntryPage() {
             ))}
           </div>
         ) : isMorning ? (
+          /* ==================== MORNING JOURNAL ==================== */
           <div className="space-y-10">
+            {/* Section 1 — Check-In */}
             <Card data-testid="card-check-in">
               <CardHeader>
                 <div className="flex items-center gap-3">
@@ -441,7 +491,7 @@ export default function JournalEntryPage() {
                   </div>
                   <div>
                     <CardTitle className="font-serif text-lg">Check-In</CardTitle>
-                    <CardDescription>How are you starting today? <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
+                    <CardDescription>How are you starting today?</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -553,495 +603,548 @@ export default function JournalEntryPage() {
               </CardContent>
             </Card>
 
-            <Card data-testid="card-self-awareness">
+            {/* Section 2 — Identity */}
+            <Card data-testid="card-identity">
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Target className="h-4 w-4 text-primary" />
+                    <Compass className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-lg">Self-Awareness</CardTitle>
-                    <CardDescription>Set your intention for the day <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
+                    <CardTitle className="font-serif text-lg">Identity</CardTitle>
+                    <CardDescription>Live from your values today</CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {valuesItems.length > 0 && (
-                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="identity-values">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">My Values</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {valuesItems.map((item, i) => (
-                        <Badge key={i} variant="default" className="text-xs font-normal" data-testid={`badge-value-${i}`}>{item}</Badge>
-                      ))}
+              <CardContent className="space-y-6">
+                <IdentityContext />
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Which value matters most today?</Label>
+                  {valuesItems.length > 0 ? (
+                    <div className="flex flex-wrap gap-2" data-testid="value-chips">
+                      {valuesItems.map((value, i) => {
+                        const selected = morningData.todayValue === value;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => updateMorning("todayValue", selected ? "" : value)}
+                            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
+                              selected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-primary/40 text-primary hover:bg-primary/[0.08]"
+                            }`}
+                            data-testid={`chip-value-${i}`}
+                          >
+                            {value}
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Intention — What value do I want to practice today?</Label>
-                  <VoiceTextarea
-                    value={morningData.intention}
-                    onChange={(val) => updateMorning("intention", val)}
-                    placeholder="Today I want to practice..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-intention"
-                  />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Set up your values in your <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button> first.
+                    </p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card data-testid="card-happiness">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Heart className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Happiness</CardTitle>
-                    <CardDescription>Cultivate gratitude and joy <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {othersWillSeeItems.length > 0 && (
-                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="identity-others">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">How Others Will See Me</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {othersWillSeeItems.map((item, i) => (
-                        <Badge key={i} variant="outline" className="text-xs font-normal" data-testid={`badge-others-${i}`}>{item}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Gratitude — Who or what am I grateful for today?</Label>
-                  <VoiceTextarea
-                    value={morningData.gratitude}
-                    onChange={(val) => updateMorning("gratitude", val)}
-                    placeholder="I am grateful for..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-gratitude"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Joy — What's one thing I'm looking forward to today?</Label>
-                  <VoiceTextarea
-                    value={morningData.joy}
-                    onChange={(val) => updateMorning("joy", val)}
-                    placeholder="I'm looking forward to..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-joy"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-courage">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Shield className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Courage</CardTitle>
-                    <CardDescription>Face what you're avoiding <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {hasGoal && (
-                  <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="goal-context">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
-                    <p className="text-sm">{goalDisplayText}</p>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">What am I avoiding?</Label>
-                  <VoiceTextarea
-                    value={morningData.avoidance}
-                    onChange={(val) => updateMorning("avoidance", val)}
-                    placeholder="The thing I'm avoiding is..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-avoidance"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">What is the smallest exposure rep?</Label>
-                  <VoiceTextarea
-                    value={morningData.courageAction}
-                    onChange={(val) => updateMorning("courageAction", val)}
-                    placeholder="My one small step will be..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-courage-action"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => setAvoidanceToolOpen(true)}
-                  className="mt-2"
-                  data-testid="button-open-avoidance-tool"
-                >
-                  <Shield className="mr-2 h-3.5 w-3.5" />
-                  Go to Avoidance Tool
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-release">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Wind className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Release</CardTitle>
-                    <CardDescription>Let go of what's weighing on you <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
-                  <VoiceTextarea
-                    value={morningData.stress}
-                    onChange={(val) => updateMorning("stress", val)}
-                    placeholder="Today I'm letting go of..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-stress"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="space-y-10">
-            {journalMode === "deep" && (
-            <Card data-testid="card-daily-review">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Star className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Daily Review</CardTitle>
-                    <CardDescription>Reflect on your most important moment <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Review — What was the most important moment today? (keep it simple)</Label>
-                  <VoiceTextarea
-                    value={eveningData.review}
-                    onChange={(val) => updateEvening("review", val)}
-                    placeholder="The most important moment was..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-review"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Feedback — What did I feel? What did I do?</Label>
-                  <VoiceTextarea
-                    value={eveningData.feedback}
-                    onChange={(val) => updateEvening("feedback", val)}
-                    placeholder="I felt... and I did..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-feedback"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Insight — What value or need was underneath that?</Label>
-                  <VoiceTextarea
-                    value={eveningData.insight}
-                    onChange={(val) => updateEvening("insight", val)}
-                    placeholder="Underneath that was..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-insight"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Lesson — What can I learn from this that will help me moving forward?</Label>
-                  <VoiceTextarea
-                    value={eveningData.lesson}
-                    onChange={(val) => updateEvening("lesson", val)}
-                    placeholder="Moving forward, I'll remember..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-lesson"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-            )}
-
-            <Card data-testid="card-win-of-the-day">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Star className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Win of the Day</CardTitle>
-                    <CardDescription>One small observable win <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <VoiceTextarea
-                    value={eveningData.winOfTheDay}
-                    onChange={(val) => updateEvening("winOfTheDay", val)}
-                    placeholder="My win today was..."
-                    className="min-h-[80px] resize-none"
-                    data-testid="input-win-of-the-day"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-trigger-check">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Trigger Check</CardTitle>
-                    <CardDescription>Log any triggers from today <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* 1. What happened */}
-                <div className="space-y-1">
-                  <Label className="text-sm font-medium">What happened?</Label>
+                  <Label className="text-sm font-medium">One observable action that would prove it today is...</Label>
                   <Input
-                    value={eveningData.triggerText}
-                    onChange={(e) => updateEvening("triggerText", e.target.value)}
-                    placeholder="Brief description of the situation"
-                    className="text-sm"
-                    data-testid="input-journal-trigger-text"
+                    value={morningData.proofAction}
+                    onChange={(e) => updateMorning("proofAction", e.target.value)}
+                    placeholder="e.g. Send the message I've been avoiding"
+                    data-testid="input-proof-action"
                   />
                 </div>
 
-                {eveningData.triggerText.trim() && (
-                  <>
-                    {/* 2. This felt like... */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">This felt like...</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {APPRAISALS.map((a) => (
-                          <Chip
-                            key={a}
-                            label={a}
-                            selected={eveningData.triggerAppraisal.includes(a)}
-                            onClick={() => toggleEveningChip("triggerAppraisal", a)}
-                          />
-                        ))}
-                      </div>
-                      {eveningData.triggerAppraisal.includes("Other") && (
-                        <Input
-                          value={eveningData.triggerAppraisalOther}
-                          onChange={(e) => updateEvening("triggerAppraisalOther", e.target.value)}
-                          placeholder="Describe..."
-                          className="text-sm mt-1.5"
-                        />
-                      )}
-                    </div>
-
-                    {/* 3. Emotion + intensity */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">Emotion</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {EMOTIONS.map((e) => (
-                          <Chip
-                            key={e}
-                            label={e}
-                            selected={eveningData.triggerEmotion === e}
-                            onClick={() => updateEvening("triggerEmotion", eveningData.triggerEmotion === e ? "" : e)}
-                          />
-                        ))}
-                      </div>
-                      {eveningData.triggerEmotion && (
-                        <IntensityDots
-                          value={eveningData.triggerEmotionIntensity}
-                          onChange={(n) => updateEveningField("triggerEmotionIntensity", n)}
-                          testIdPrefix="journal-emotion-intensity"
-                        />
-                      )}
-                    </div>
-
-                    {/* 4. Urge + intensity */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">Urge</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {URGES.map((u) => (
-                          <Chip
-                            key={u}
-                            label={u}
-                            selected={eveningData.triggerUrge === u}
-                            onClick={() => updateEvening("triggerUrge", eveningData.triggerUrge === u ? "" : u)}
-                          />
-                        ))}
-                      </div>
-                      {eveningData.triggerUrge && (
-                        <IntensityDots
-                          value={eveningData.triggerUrgeIntensity}
-                          onChange={(n) => updateEveningField("triggerUrgeIntensity", n)}
-                          testIdPrefix="journal-urge-intensity"
-                        />
-                      )}
-                    </div>
-
-                    {/* 5. What did you do? */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">What did you do?</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ACTIONS.map((a) => (
-                          <Chip
-                            key={a}
-                            label={a}
-                            selected={eveningData.triggerAction === a}
-                            onClick={() => updateEvening("triggerAction", eveningData.triggerAction === a ? "" : a)}
-                          />
-                        ))}
-                      </div>
-                      {eveningData.triggerAction === "Other" && (
-                        <Input
-                          value={eveningData.triggerActionOther}
-                          onChange={(e) => updateEvening("triggerActionOther", e.target.value)}
-                          placeholder="Describe..."
-                          className="text-sm mt-1.5"
-                        />
-                      )}
-                    </div>
-
-                    {/* Tier 2 expand */}
-                    {!eveningData.triggerShowTier2 && (
-                      <button
-                        type="button"
-                        onClick={() => updateEveningField("triggerShowTier2", true)}
-                        className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
-                      >
-                        Add more detail
-                        <ChevronDown className="h-3 w-3" />
-                      </button>
-                    )}
-
-                    {/* Tier 2 — Enrichment */}
-                    {eveningData.triggerShowTier2 && (
-                      <div className="space-y-4 pt-2 border-t border-border">
-                        <div className="space-y-1.5">
-                          <Label className="text-sm font-medium">What did you feel in your body?</Label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {BODY_STATES.map((b) => (
-                              <Chip
-                                key={b}
-                                label={b}
-                                selected={eveningData.triggerBodyState.includes(b)}
-                                onClick={() => toggleEveningChip("triggerBodyState", b)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-sm font-medium">What happened right after?</Label>
-                          <Input
-                            value={eveningData.triggerOutcome}
-                            onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
-                            placeholder="Brief description..."
-                            className="text-sm"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <Label className="text-sm font-medium">How long until you felt calm?</Label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {RECOVERY_TIMES.map((r) => (
-                              <Chip
-                                key={r}
-                                label={r}
-                                selected={eveningData.triggerRecoveryTime === r}
-                                onClick={() => updateEvening("triggerRecoveryTime", eveningData.triggerRecoveryTime === r ? "" : r)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label className="text-sm font-medium">
-                            Reflection <span className="text-xs text-muted-foreground">(optional)</span>
-                          </Label>
-                          <VoiceTextarea
-                            value={eveningData.triggerReflection}
-                            onChange={(val) => updateEvening("triggerReflection", val)}
-                            placeholder="Any insight about this pattern?"
-                            className="min-h-[60px] resize-none"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {!eveningData.triggerText.trim() && (
-                  <p className="text-xs text-muted-foreground">No trigger? That's a win — skip this section.</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-shutdown">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                    <Power className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="font-serif text-lg">Shutdown</CardTitle>
-                    <CardDescription>Close out your day with intention <Badge variant="outline" className="ml-2 text-xs">Core</Badge></CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Today was enough because:</Label>
-                  <VoiceTextarea
-                    value={eveningData.shutdownEnough}
-                    onChange={(val) => updateEvening("shutdownEnough", val)}
-                    placeholder="Today was enough because..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-shutdown-enough"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
-                    <span className="text-sm text-muted-foreground">at</span>
+                  <Label className="text-sm font-medium">If ___ gets in the way, then I will ___</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Input
-                      type="time"
-                      value={eveningData.tomorrowStepTime}
-                      onChange={(e) => updateEvening("tomorrowStepTime", e.target.value)}
-                      className="w-28"
-                      data-testid="input-tomorrow-step-time"
+                      value={morningData.ifThenObstacle}
+                      onChange={(e) => updateMorning("ifThenObstacle", e.target.value)}
+                      placeholder="The obstacle"
+                      data-testid="input-if-then-obstacle"
+                    />
+                    <Input
+                      value={morningData.ifThenResponse}
+                      onChange={(e) => updateMorning("ifThenResponse", e.target.value)}
+                      placeholder="My response"
+                      data-testid="input-if-then-response"
                     />
                   </div>
-                  <VoiceTextarea
-                    value={eveningData.shutdownTomorrow}
-                    onChange={(val) => updateEvening("shutdownTomorrow", val)}
-                    placeholder="Tomorrow I'll start with..."
-                    className="min-h-[60px] resize-none"
-                    data-testid="input-shutdown-tomorrow"
-                  />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Section 3 — Courage (full mode only) */}
+            {journalMode === "full" && (
+              <Card data-testid="card-courage">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <Shield className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="font-serif text-lg">Courage</CardTitle>
+                      <CardDescription>Face what you're avoiding</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {hasGoal && (
+                    <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="goal-context">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
+                      <p className="text-sm">{goalDisplayText}</p>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">What am I avoiding?</Label>
+                    <VoiceTextarea
+                      value={morningData.avoidance}
+                      onChange={(val) => updateMorning("avoidance", val)}
+                      placeholder="The thing I'm avoiding is..."
+                      className="min-h-[60px] resize-none"
+                      data-testid="input-avoidance"
+                    />
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">What is the smallest exposure rep?</Label>
+                    <VoiceTextarea
+                      value={morningData.courageAction}
+                      onChange={(val) => updateMorning("courageAction", val)}
+                      placeholder="My one small step will be..."
+                      className="min-h-[60px] resize-none"
+                      data-testid="input-courage-action"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => setAvoidanceToolOpen(true)}
+                    className="mt-2"
+                    data-testid="button-open-avoidance-tool"
+                  >
+                    <Shield className="mr-2 h-3.5 w-3.5" />
+                    Go to Avoidance Tool
+                  </Button>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
+                    <Input
+                      value={morningData.lettingGo}
+                      onChange={(e) => updateMorning("lettingGo", e.target.value)}
+                      placeholder="Today I'm letting go of..."
+                      data-testid="input-letting-go"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Section 4 — Happiness (full mode only) */}
+            {journalMode === "full" && (
+              <Card data-testid="card-happiness">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <Heart className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="font-serif text-lg">Happiness</CardTitle>
+                      <CardDescription className="italic">"Every day should be a happy day"</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Who or what am I grateful for today?</Label>
+                    <Textarea
+                      value={morningData.gratitude}
+                      onChange={(e) => updateMorning("gratitude", e.target.value)}
+                      placeholder="I am grateful for..."
+                      className="min-h-[60px] max-h-[80px] resize-none"
+                      data-testid="input-gratitude"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          /* ==================== EVENING JOURNAL ==================== */
+          <div className="space-y-10">
+            {journalMode === "quick" ? (
+              /* Evening Quick Mode */
+              <>
+                <Card data-testid="card-quick-evening">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Moon className="h-4 w-4 text-indigo-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-lg">Quick Close</CardTitle>
+                        <CardDescription>15-second evening check-in</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">How was today overall?</Label>
+                      <div className="flex items-center justify-center gap-3" data-testid="quick-rating">
+                        {[1, 2, 3, 4, 5].map((n) => {
+                          const selected = eveningData.quickRating === n;
+                          return (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => updateEveningField("quickRating", selected ? null : n)}
+                              className={`h-10 w-10 rounded-full border-2 text-sm font-bold transition-all cursor-pointer ${
+                                selected
+                                  ? "border-primary bg-primary text-primary-foreground scale-110"
+                                  : "border-border text-muted-foreground hover:border-primary/40"
+                              }`}
+                              data-testid={`button-quick-rating-${n}`}
+                            >
+                              {n}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground px-1">
+                        <span>Rough</span>
+                        <span>Great</span>
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">One thing to remember</Label>
+                      <Input
+                        value={eveningData.quickRemember}
+                        onChange={(e) => updateEvening("quickRemember", e.target.value)}
+                        placeholder="Today I learned..."
+                        data-testid="input-quick-remember"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              /* Evening Full Mode */
+              <>
+                {/* Section 1 — Win of the Day */}
+                <Card data-testid="card-win-of-the-day">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Star className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-lg">Win of the Day</CardTitle>
+                        <CardDescription>One proof you kept your promise</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">One proof I kept my promise today was...</Label>
+                      <VoiceTextarea
+                        value={eveningData.promiseProof}
+                        onChange={(val) => updateEvening("promiseProof", val)}
+                        placeholder="Today I proved it by..."
+                        className="min-h-[80px] max-h-[120px] resize-none"
+                        data-testid="input-promise-proof"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 2 — Trigger Check */}
+                <Card data-testid="card-trigger-check">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-lg">Trigger Check</CardTitle>
+                        <CardDescription>Log any triggers from today <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* 1. What happened */}
+                    <div className="space-y-1">
+                      <Label className="text-sm font-medium">What happened?</Label>
+                      <Input
+                        value={eveningData.triggerText}
+                        onChange={(e) => updateEvening("triggerText", e.target.value)}
+                        placeholder="Brief description of the situation"
+                        className="text-sm"
+                        data-testid="input-journal-trigger-text"
+                      />
+                    </div>
+
+                    {eveningData.triggerText.trim() && (
+                      <>
+                        {/* 2. This felt like... */}
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">This felt like...</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {APPRAISALS.map((a) => (
+                              <Chip
+                                key={a}
+                                label={a}
+                                selected={eveningData.triggerAppraisal.includes(a)}
+                                onClick={() => toggleEveningChip("triggerAppraisal", a)}
+                              />
+                            ))}
+                          </div>
+                          {eveningData.triggerAppraisal.includes("Other") && (
+                            <Input
+                              value={eveningData.triggerAppraisalOther}
+                              onChange={(e) => updateEvening("triggerAppraisalOther", e.target.value)}
+                              placeholder="Describe..."
+                              className="text-sm mt-1.5"
+                            />
+                          )}
+                        </div>
+
+                        {/* 3. Emotion + intensity */}
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">Emotion</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {EMOTIONS.map((e) => (
+                              <Chip
+                                key={e}
+                                label={e}
+                                selected={eveningData.triggerEmotion === e}
+                                onClick={() => updateEvening("triggerEmotion", eveningData.triggerEmotion === e ? "" : e)}
+                              />
+                            ))}
+                          </div>
+                          {eveningData.triggerEmotion && (
+                            <IntensityDots
+                              value={eveningData.triggerEmotionIntensity}
+                              onChange={(n) => updateEveningField("triggerEmotionIntensity", n)}
+                              testIdPrefix="journal-emotion-intensity"
+                            />
+                          )}
+                        </div>
+
+                        {/* 4. Urge + intensity */}
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">Urge</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {URGES.map((u) => (
+                              <Chip
+                                key={u}
+                                label={u}
+                                selected={eveningData.triggerUrge === u}
+                                onClick={() => updateEvening("triggerUrge", eveningData.triggerUrge === u ? "" : u)}
+                              />
+                            ))}
+                          </div>
+                          {eveningData.triggerUrge && (
+                            <IntensityDots
+                              value={eveningData.triggerUrgeIntensity}
+                              onChange={(n) => updateEveningField("triggerUrgeIntensity", n)}
+                              testIdPrefix="journal-urge-intensity"
+                            />
+                          )}
+                        </div>
+
+                        {/* 5. What did you do? */}
+                        <div className="space-y-1.5">
+                          <Label className="text-sm font-medium">What did you do?</Label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {ACTIONS.map((a) => (
+                              <Chip
+                                key={a}
+                                label={a}
+                                selected={eveningData.triggerAction === a}
+                                onClick={() => updateEvening("triggerAction", eveningData.triggerAction === a ? "" : a)}
+                              />
+                            ))}
+                          </div>
+                          {eveningData.triggerAction === "Other" && (
+                            <Input
+                              value={eveningData.triggerActionOther}
+                              onChange={(e) => updateEvening("triggerActionOther", e.target.value)}
+                              placeholder="Describe..."
+                              className="text-sm mt-1.5"
+                            />
+                          )}
+                        </div>
+
+                        {/* Tier 2 expand */}
+                        {!eveningData.triggerShowTier2 && (
+                          <button
+                            type="button"
+                            onClick={() => updateEveningField("triggerShowTier2", true)}
+                            className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                          >
+                            Add more detail
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                        )}
+
+                        {/* Tier 2 — Enrichment */}
+                        {eveningData.triggerShowTier2 && (
+                          <div className="space-y-4 pt-2 border-t border-border">
+                            <div className="space-y-1.5">
+                              <Label className="text-sm font-medium">What did you feel in your body?</Label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {BODY_STATES.map((b) => (
+                                  <Chip
+                                    key={b}
+                                    label={b}
+                                    selected={eveningData.triggerBodyState.includes(b)}
+                                    onClick={() => toggleEveningChip("triggerBodyState", b)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-sm font-medium">What happened right after?</Label>
+                              <Input
+                                value={eveningData.triggerOutcome}
+                                onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
+                                placeholder="Brief description..."
+                                className="text-sm"
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label className="text-sm font-medium">How long until you felt calm?</Label>
+                              <div className="flex flex-wrap gap-1.5">
+                                {RECOVERY_TIMES.map((r) => (
+                                  <Chip
+                                    key={r}
+                                    label={r}
+                                    selected={eveningData.triggerRecoveryTime === r}
+                                    onClick={() => updateEvening("triggerRecoveryTime", eveningData.triggerRecoveryTime === r ? "" : r)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-sm font-medium">
+                                Reflection <span className="text-xs text-muted-foreground">(optional)</span>
+                              </Label>
+                              <VoiceTextarea
+                                value={eveningData.triggerReflection}
+                                onChange={(val) => updateEvening("triggerReflection", val)}
+                                placeholder="Any insight about this pattern?"
+                                className="min-h-[60px] resize-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {!eveningData.triggerText.trim() && (
+                      <p className="text-xs text-muted-foreground">No trigger? That's a win — skip this section.</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Section 3 — Step-Back Reflection */}
+                <Card data-testid="card-step-back">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Eye className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-lg">Step-Back Reflection</CardTitle>
+                        <CardDescription>See your day through compassionate eyes</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <IdentityContext />
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">If someone I care about had my day today, what would I tell them?</Label>
+                      <VoiceTextarea
+                        value={eveningData.stepBackAdvice}
+                        onChange={(val) => updateEvening("stepBackAdvice", val)}
+                        placeholder="I would tell them..."
+                        className="min-h-[100px] max-h-[150px] resize-none"
+                        data-testid="input-step-back-advice"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">The lesson I would want them to remember:</Label>
+                      <Input
+                        value={eveningData.stepBackLesson}
+                        onChange={(e) => updateEvening("stepBackLesson", e.target.value)}
+                        placeholder="Remember that..."
+                        data-testid="input-step-back-lesson"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section 4 — Shutdown */}
+                <Card data-testid="card-shutdown">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                        <Power className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="font-serif text-lg">Shutdown</CardTitle>
+                        <CardDescription>Close out your day with intention</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Today was enough because:</Label>
+                      <VoiceTextarea
+                        value={eveningData.shutdownEnough}
+                        onChange={(val) => updateEvening("shutdownEnough", val)}
+                        placeholder="Today was enough because..."
+                        className="min-h-[60px] resize-none"
+                        data-testid="input-shutdown-enough"
+                      />
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
+                        <span className="text-sm text-muted-foreground">at</span>
+                        <Input
+                          type="time"
+                          value={eveningData.tomorrowStepTime}
+                          onChange={(e) => updateEvening("tomorrowStepTime", e.target.value)}
+                          className="w-28"
+                          data-testid="input-tomorrow-step-time"
+                        />
+                      </div>
+                      <VoiceTextarea
+                        value={eveningData.shutdownTomorrow}
+                        onChange={(val) => updateEvening("shutdownTomorrow", val)}
+                        placeholder="Tomorrow I'll start with..."
+                        className="min-h-[60px] resize-none"
+                        data-testid="input-shutdown-tomorrow"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         )}
 
