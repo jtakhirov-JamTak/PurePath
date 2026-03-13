@@ -252,11 +252,11 @@ export function registerIdentityRoutes(app: Express) {
 
           await storage.createHabit({
             userId, name, category: h.category || "health",
-            habitType: h.habitType || "maintenance", timing: h.timing || "afternoon",
-            cadence: h.cadence, recurring: h.recurring || "indefinite",
-            duration: h.duration, startTime: h.startTime, endTime: h.endTime,
-            time: h.time, motivatingReason: h.motivatingReason,
-            intervalWeeks: h.intervalWeeks || 1, startDate: h.startDate, endDate: h.endDate,
+            timing: h.timing || "afternoon",
+            cadence: h.cadence || "mon,tue,wed,thu,fri,sat,sun",
+            duration: h.duration,
+            startDate: h.startDate, endDate: h.endDate,
+            isBinary: h.isBinary,
             active: true,
           });
           activeNames.add(name.toLowerCase());

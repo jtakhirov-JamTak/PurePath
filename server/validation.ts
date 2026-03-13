@@ -8,8 +8,7 @@ const optionalString = (max: number) => z.string().max(max, `Must be at most ${m
 const optionalTrimmedString = (max: number) => z.string().trim().max(max, `Must be at most ${max} characters`).optional().nullable();
 
 const quadrantEnum = z.enum(["q1", "q2", "q3", "q4"]);
-const categoryEnum = z.enum(["health", "wealth", "relationships", "self-development", "happiness", "career", "mindfulness", "learning", "leisure"]);
-const habitTypeEnum = z.enum(["goal", "learning", "maintenance"]);
+const categoryEnum = z.enum(["health", "wealth", "relationships", "self-development", "happiness"]);
 const timingEnum = z.enum(["morning", "afternoon", "evening"]);
 const decisionEnum = z.enum(["do_today", "schedule", "delegate", "delete"]);
 const sessionEnum = z.enum(["morning", "evening"]);
@@ -74,22 +73,14 @@ export const updateEmpathySchema = createEmpathySchema.partial();
 export const createHabitSchema = z.object({
   name: trimmedString(1, 200),
   category: categoryEnum.optional().nullable(),
-  habitType: habitTypeEnum.optional().nullable(),
   timing: timingEnum.optional().nullable(),
   cadence: z.string().max(50, "Cadence must be at most 50 characters"),
-  recurring: optionalString(20),
   duration: z.number().int().positive("Must be a positive integer").optional().nullable(),
-  time: z.string().max(20, "Time must be at most 20 characters"),
-  motivatingReason: optionalString(1000),
-  intervalWeeks: z.number().int().positive("Must be a positive integer").optional().nullable(),
-  startTime: optionalString(10),
-  endTime: optionalString(10),
   startDate: optionalString(10),
   endDate: optionalString(10),
   sortOrder: z.number().int().min(0).optional().nullable(),
   isBinary: z.boolean().optional().nullable(),
   active: z.boolean().optional().nullable(),
-  googleCalendarEventId: optionalString(100),
 });
 
 export const updateHabitSchema = createHabitSchema.partial();

@@ -9,7 +9,16 @@ import { Repeat, Plus, Trash2, Timer, Pencil } from "lucide-react";
 import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { HABIT_CATEGORIES } from "@shared/schema";
 import type { Habit } from "@shared/schema";
+
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-yellow-400",
+  relationships: "bg-rose-500",
+  "self-development": "bg-blue-500",
+  happiness: "bg-slate-400",
+};
 
 const TIMING_ORDER: Record<string, number> = {
   morning: 0,
@@ -129,6 +138,10 @@ export default function HabitsPage() {
                             {habit.name}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs" data-testid={`badge-category-${habit.id}`}>
+                              <span className={`h-2 w-2 rounded-full mr-1 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
+                              {HABIT_CATEGORIES[(habit.category as keyof typeof HABIT_CATEGORIES) || "health"]?.label || "Health"}
+                            </Badge>
                             <Badge variant="outline" className="text-xs" data-testid={`badge-timing-${habit.id}`}>
                               {TIMING_LABELS[habit.timing || "afternoon"] || "Afternoon"}
                             </Badge>

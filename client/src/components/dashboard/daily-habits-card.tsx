@@ -3,6 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
 import type { Habit } from "@shared/schema";
 
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-yellow-400",
+  relationships: "bg-rose-500",
+  "self-development": "bg-blue-500",
+  happiness: "bg-slate-400",
+};
+
 const TIMING_ORDER: Record<string, number> = {
   morning: 0,
   afternoon: 1,
@@ -144,6 +152,7 @@ export function DailyHabitsCard({
                 >
                   {boxLabel}
                 </button>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
                 <span className="text-[10px] text-muted-foreground w-6 shrink-0">{timingLabel}</span>
                 <span className={`text-sm flex-1 ${
                   status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""

@@ -2,21 +2,8 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { HABIT_CATEGORIES } from "@shared/schema";
-import { z } from "zod";
-import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema } from "../validation";
+import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema, reorderSchema } from "../validation";
 import { parseId, parseDateParam } from "./helpers";
-
-const reorderItemSchema = z.object({
-  id: z.number().int().positive(),
-  sortOrder: z.number().int().min(0),
-  timing: z.enum(["morning", "afternoon", "evening"]).optional(),
-  timeRange: z.enum(["morning", "afternoon", "evening"]).optional(),
-  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-});
-
-const reorderSchema = z.object({
-  items: z.array(reorderItemSchema).min(1).max(100),
-});
 
 export function registerHabitRoutes(app: Express) {
   app.get("/api/habits", isAuthenticated, async (req: any, res: Response) => {
@@ -56,7 +43,13 @@ export function registerHabitRoutes(app: Express) {
 
       const { category, ...rest } = parsed.data;
       const validCategory = category && category in HABIT_CATEGORIES ? category : "health";
-      const habit = await storage.createHabit({ userId, category: validCategory, ...rest, name });
+      const habit = await storage.createHabit({
+        userId,
+        category: validCategory,
+        ...rest,
+        name,
+        cadence: rest.cadence || "mon,tue,wed,thu,fri,sat,sun",
+      });
       res.json(habit);
     } catch (error) {
       console.error("Error creating habit:", error);

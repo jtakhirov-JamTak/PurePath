@@ -7,7 +7,18 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import type { Habit } from "@shared/schema";
+
+const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
+
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-yellow-400",
+  relationships: "bg-rose-500",
+  "self-development": "bg-blue-500",
+  happiness: "bg-slate-400",
+};
 
 const TIMINGS = [
   { value: "morning", label: "Morning" },
@@ -43,6 +54,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
   const { toast } = useToast();
 
   const [name, setName] = useState("");
+  const [category, setCategory] = useState<HabitCategory>("health");
   const [timing, setTiming] = useState("morning");
   const [hasTimeCommitment, setHasTimeCommitment] = useState(true);
   const [duration, setDuration] = useState(15);
@@ -51,6 +63,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     if (!open) return;
     if (editingHabit) {
       setName(editingHabit.name);
+      setCategory((editingHabit.category as HabitCategory) || "health");
       setTiming(editingHabit.timing === "daily" ? "afternoon" : (editingHabit.timing || "afternoon"));
       const dur = editingHabit.duration;
       if (dur && dur > 0) {
@@ -62,6 +75,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
       }
     } else {
       setName("");
+      setCategory("health");
       setTiming(defaultTiming || "morning");
       setHasTimeCommitment(true);
       setDuration(15);
@@ -72,19 +86,11 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/habits", {
         name,
-        motivatingReason: null,
-        category: "health",
-        habitType: "maintenance",
+        category,
         timing,
         cadence: ALL_DAYS_CADENCE,
-        recurring: "indefinite",
         duration: hasTimeCommitment ? duration : null,
-        startTime: null,
-        endTime: null,
-        time: "09:00",
         startDate: formatDate(new Date()),
-        endDate: null,
-        intervalWeeks: 1,
         isBinary: !hasTimeCommitment,
       });
       if (!res.ok) {
@@ -107,11 +113,11 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     mutationFn: async (id: number) => {
       const res = await apiRequest("PATCH", `/api/habits/${id}`, {
         name,
+        category,
         timing,
         cadence: ALL_DAYS_CADENCE,
         duration: hasTimeCommitment ? duration : null,
         isBinary: !hasTimeCommitment,
-        intervalWeeks: 1,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -148,6 +154,28 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
               onChange={(e) => setName(e.target.value)}
               data-testid="input-habit-name"
             />
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Category</Label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORY_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCategory(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                    category === key
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  }`}
+                  data-testid={`chip-category-${key}`}
+                >
+                  <span className={`h-2 w-2 rounded-full ${CATEGORY_DOTS[key]}`} />
+                  {HABIT_CATEGORIES[key].label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>

@@ -251,7 +251,7 @@ export class DatabaseStorage implements IStorage {
 
   // Habits
   async getHabitsByUser(userId: string): Promise<Habit[]> {
-    return db.select().from(habits).where(eq(habits.userId, userId)).orderBy(habits.time);
+    return db.select().from(habits).where(eq(habits.userId, userId)).orderBy(habits.sortOrder);
   }
 
   async createHabit(habit: InsertHabit): Promise<Habit> {
