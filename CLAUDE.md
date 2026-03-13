@@ -88,6 +88,11 @@ Routes are split by domain: `billing`, `chat`, `journals`, `eisenhower`, `empath
 
 **Plan versioning** snapshots identity doc, monthly goal, quarterly goal, and active habits as JSONB in `plan_versions` table.
 
+## Lessons Learned
+
+### Habit Filtering is Date-Aware
+Never filter habits with just active=true. Historical views must show habits that were active during that specific time period using startDate/endDate ranges. Only the current week enforces max 3 active habits.
+
 ## Additional Documentation
 
 Detailed docs are in the `docs/` directory: `TECH-STACK.md`, `ROUTES.md`, `DATA-MODEL.md`, `SECURITY.md`, `PAYMENT-FLOW.md`, `PAYWALL-UX.md`, `EXPORTS.md`.

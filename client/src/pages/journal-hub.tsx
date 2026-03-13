@@ -389,7 +389,11 @@ export default function JournalHubPage() {
   };
 
   const activeHabits = useMemo(() => {
+    const isCurrentOrFuture = weekEndStr >= today;
     const inRange = habits.filter(h => {
+      // Current/future weeks: only show active habits
+      if (isCurrentOrFuture && !h.active) return false;
+      // Date-range filtering: habit must overlap the viewed week
       if (h.startDate && h.startDate > weekEndStr) return false;
       if (h.endDate && h.endDate < weekStartStr) return false;
       return true;
@@ -401,8 +405,14 @@ export default function JournalHubPage() {
       const existing = byLineage.get(key);
       if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
     });
-    return Array.from(byLineage.values());
-  }, [habits, weekStartStr, weekEndStr]);
+    const deduped = Array.from(byLineage.values());
+    // Current/future weeks: cap at 3 most recently created
+    if (isCurrentOrFuture && deduped.length > 3) {
+      deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return deduped.slice(0, 3);
+    }
+    return deduped;
+  }, [habits, weekStartStr, weekEndStr, today]);
 
   const habitsByTiming = useMemo(() => {
     const map: Record<TimeRange, Habit[]> = { morning: [], afternoon: [], evening: [] };

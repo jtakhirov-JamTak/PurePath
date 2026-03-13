@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const todayDayCode = DAY_CODES[today.getDay()];
   const todaysHabits = (() => {
     const scheduled = habits.filter((h) => {
+      if (!h.active) return false;
       if (!h.cadence.split(",").includes(todayDayCode)) return false;
       if (h.startDate && todayStr < h.startDate) return false;
       if (h.endDate && todayStr > h.endDate) return false;
@@ -129,7 +130,13 @@ export default function DashboardPage() {
       const existing = byLineage.get(key);
       if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
     });
-    return Array.from(byLineage.values());
+    // Cap at 3 most recently created active habits
+    const deduped = Array.from(byLineage.values());
+    if (deduped.length > 3) {
+      deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return deduped.slice(0, 3);
+    }
+    return deduped;
   })();
 
   const habitStatusMap = new Map<number, string>();
