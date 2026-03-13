@@ -17,7 +17,18 @@ import {
 } from "@/components/ui/select";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import { Loader2, ArrowLeft, ArrowRight, Check, Sparkles, User, Target, Repeat, BookOpen } from "lucide-react";
+
+const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
+
+const CATEGORY_DOTS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-yellow-400",
+  relationships: "bg-rose-500",
+  "self-development": "bg-blue-500",
+  happiness: "bg-slate-400",
+};
 
 const STEP_TITLES = [
   "Discovery Profile",
@@ -32,7 +43,7 @@ const STEP_ICONS = [User, Sparkles, Target, Repeat, BookOpen];
 interface HabitEntry {
   name: string;
   timing: string;
-  cadence: string;
+  category: HabitCategory;
 }
 
 export default function SetupWizardPage() {
@@ -500,7 +511,7 @@ function MonthlyGoalStep({ onNext, onBack }: { onNext: () => void; onBack: () =>
 function HabitsStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { toast } = useToast();
   const [habits, setHabits] = useState<HabitEntry[]>([
-    { name: "", timing: "morning", cadence: "daily" },
+    { name: "", timing: "morning", category: "health" },
   ]);
   const [saving, setSaving] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -516,7 +527,7 @@ function HabitsStep({ onNext, onBack }: { onNext: () => void; onBack: () => void
         setHabits(active.slice(0, 3).map((h: any) => ({
           name: h.name,
           timing: h.timing || "morning",
-          cadence: h.cadence || "daily",
+          category: h.category || "health",
         })));
       }
       setHydrated(true);
@@ -525,7 +536,7 @@ function HabitsStep({ onNext, onBack }: { onNext: () => void; onBack: () => void
 
   const addHabit = () => {
     if (habits.length < 3) {
-      setHabits([...habits, { name: "", timing: "morning", cadence: "daily" }]);
+      setHabits([...habits, { name: "", timing: "morning", category: "health" }]);
     }
   };
 
@@ -559,8 +570,10 @@ function HabitsStep({ onNext, onBack }: { onNext: () => void; onBack: () => void
         await apiRequest("POST", "/api/habits", {
           name: habit.name.trim(),
           timing: habit.timing,
-          cadence: habit.cadence,
-          time: habit.timing === "morning" ? "08:00" : habit.timing === "afternoon" ? "13:00" : "19:00",
+          cadence: "mon,tue,wed,thu,fri,sat,sun",
+          category: habit.category,
+          startDate: format(new Date(), "yyyy-MM-dd"),
+          isBinary: true,
         });
       }
       queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
@@ -608,6 +621,24 @@ function HabitsStep({ onNext, onBack }: { onNext: () => void; onBack: () => void
                 onChange={(e) => updateHabit(i, "name", e.target.value)}
                 data-testid={`input-habit-name-${i}`}
               />
+              <Select
+                value={habit.category}
+                onValueChange={(v) => updateHabit(i, "category", v)}
+              >
+                <SelectTrigger data-testid={`select-habit-category-${i}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_KEYS.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      <span className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${CATEGORY_DOTS[key]}`} />
+                        {HABIT_CATEGORIES[key].label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select
                 value={habit.timing}
                 onValueChange={(v) => updateHabit(i, "timing", v)}
