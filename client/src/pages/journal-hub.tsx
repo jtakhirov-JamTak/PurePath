@@ -814,7 +814,7 @@ export default function JournalHubPage() {
 
             <Card
               className="overflow-visible hover-elevate cursor-pointer"
-              onClick={() => setLocation("/tools")}
+              onClick={() => setLocation("/dashboard")}
               data-testid="card-link-tools"
             >
               <CardHeader className="flex flex-row items-center gap-4">

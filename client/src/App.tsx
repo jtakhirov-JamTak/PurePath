@@ -25,17 +25,17 @@ import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 
 import LearnPage from "@/pages/learn";
-import CoachPage from "@/pages/coach";
+
 import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
-import ToolsHubPage from "@/pages/tools-hub";
+
 import IdentityDocPage from "@/pages/identity-doc";
 import DiscoveryProfilePage from "@/pages/discovery-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
 
-import RegulationPage from "@/pages/regulation";
+
 import GoalWizardPage from "@/pages/goal-wizard";
 import SetupWizardPage from "@/pages/setup-wizard";
 import HistoryPage from "@/pages/history";
@@ -126,17 +126,11 @@ function Router() {
       <Route path="/learn">
         {() => <AuthenticatedRoute component={LearnPage} />}
       </Route>
-      <Route path="/coach">
-        {() => <AuthenticatedRoute component={CoachPage} />}
-      </Route>
       <Route path="/plan">
         {() => <AuthenticatedRoute component={PlanPage} />}
       </Route>
       <Route path="/journal">
         {() => <AuthenticatedRoute component={JournalHubPage} />}
-      </Route>
-      <Route path="/tools">
-        {() => <AuthenticatedRoute component={ToolsHubPage} />}
       </Route>
       <Route path="/identity">
         {() => <AuthenticatedRoute component={IdentityDocPage} />}
@@ -154,9 +148,6 @@ function Router() {
         {() => <AuthenticatedRoute component={Lesson2WorksheetPage} />}
       </Route>
 
-      <Route path="/regulation">
-        {() => <AuthenticatedRoute component={RegulationPage} />}
-      </Route>
       <Route path="/goal-wizard">
         {() => <AuthenticatedRoute component={GoalWizardPage} />}
       </Route>

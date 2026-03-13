@@ -90,4 +90,4 @@ Routes are split by domain: `billing`, `chat`, `journals`, `eisenhower`, `empath
 
 ## Additional Documentation
 
-Detailed docs are in the `docs/` directory: `TECH-STACK.md`, `ROUTES.md`, `DATA-MODEL.md`, `SECURITY.md`, `PAYMENT-FLOW.md`, `PAYWALL-UX.md`, `PRD.md`, `EXPORTS.md`, `MILESTONES.md`.
+Detailed docs are in the `docs/` directory: `TECH-STACK.md`, `ROUTES.md`, `DATA-MODEL.md`, `SECURITY.md`, `PAYMENT-FLOW.md`, `PAYWALL-UX.md`, `EXPORTS.md`.
