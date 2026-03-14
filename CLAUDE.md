@@ -93,6 +93,9 @@ Routes are split by domain: `billing`, `chat`, `journals`, `eisenhower`, `empath
 ### Habit Filtering is Date-Aware
 Never filter habits with just active=true. Historical views must show habits that were active during that specific time period using startDate/endDate ranges. Only the current week enforces max 3 active habits.
 
+### Habit Filtering Must Be Consistent Across All Views
+The canonical habit filtering logic lives in `journal-hub.tsx` (activeHabits useMemo). Any page that displays habits in a weekly calendar (e.g., `course2-journal.tsx`) **must** apply the same rules: (1) current/future weeks filter to `active === true` only, (2) cap at 3 most recent, (3) deduplicate by lineageId, (4) past weeks show all overlapping habits. When adding or modifying any habit display, always cross-check against `journal-hub.tsx` to prevent divergence.
+
 ## Additional Documentation
 
 Detailed docs are in the `docs/` directory: `TECH-STACK.md`, `ROUTES.md`, `DATA-MODEL.md`, `SECURITY.md`, `PAYMENT-FLOW.md`, `PAYWALL-UX.md`, `EXPORTS.md`.

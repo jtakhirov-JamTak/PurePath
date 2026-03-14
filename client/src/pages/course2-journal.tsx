@@ -328,7 +328,10 @@ export default function Course2JournalPage() {
 
               <SectionHeaderRow gridCols={gridCols} label="Habits" days={days} todayStr={todayStr} />
               {(() => {
+                const isCurrentOrFuture = weekEndStr >= todayStr;
                 const inRangeHabits = habits.filter(h => {
+                  // Current/future weeks: only show active habits
+                  if (isCurrentOrFuture && !h.active) return false;
                   if (h.startDate && h.startDate > weekEndStr) return false;
                   if (h.endDate && h.endDate < weekStartStr) return false;
                   return true;
@@ -340,7 +343,13 @@ export default function Course2JournalPage() {
                   const existing = byLineage.get(key);
                   if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
                 });
-                const activeHabits = Array.from(byLineage.values());
+                const deduped = Array.from(byLineage.values());
+                // Current/future weeks: cap at 3 most recently created
+                if (isCurrentOrFuture && deduped.length > 3) {
+                  deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                  deduped.length = 3;
+                }
+                const activeHabits = deduped;
                 const morningHabits = activeHabits.filter(h => (h.timing || "afternoon") === "morning");
                 const afternoonHabits = activeHabits.filter(h => {
                   const t = h.timing || "afternoon";

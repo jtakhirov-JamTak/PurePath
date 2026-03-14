@@ -411,7 +411,7 @@ export default function JournalEntryPage() {
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/course2")} data-testid="button-back">
+            <Button variant="ghost" size="icon" onClick={() => setLocation("/journal")} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3">
