@@ -1,9 +1,8 @@
 import { db } from "./db";
 import { 
-  purchases, journals, chatMessages, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
-  type Purchase, type InsertPurchase, 
-  type Journal, type InsertJournal, 
-  type ChatMessage, type InsertChatMessage,
+  purchases, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
+  type Purchase, type InsertPurchase,
+  type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
@@ -32,9 +31,6 @@ export interface IStorage {
   getJournalsByUser(userId: string): Promise<Journal[]>;
   getJournal(userId: string, date: string, session: string): Promise<Journal | undefined>;
   createOrUpdateJournal(journal: InsertJournal): Promise<Journal>;
-  
-  getChatMessagesByUser(userId: string): Promise<ChatMessage[]>;
-  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   
   // Eisenhower Matrix
   getEisenhowerEntriesByUser(userId: string): Promise<EisenhowerEntry[]>;
@@ -193,15 +189,6 @@ export class DatabaseStorage implements IStorage {
     
     const [newJournal] = await db.insert(journals).values(journal).returning();
     return newJournal;
-  }
-
-  async getChatMessagesByUser(userId: string): Promise<ChatMessage[]> {
-    return db.select().from(chatMessages).where(eq(chatMessages.userId, userId)).orderBy(chatMessages.createdAt);
-  }
-
-  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const [newMessage] = await db.insert(chatMessages).values(message).returning();
-    return newMessage;
   }
 
   // Eisenhower Matrix

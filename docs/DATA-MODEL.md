@@ -23,11 +23,6 @@ This document describes the database schema, relationships, and key design decis
 └─────────────┘                             └─────────────┘
       
 ┌─────────────┐       ┌─────────────┐
-│chat_messages│───────│    users    │
-│             │  N:1  │             │
-└─────────────┘       └─────────────┘
-
-┌─────────────┐       ┌─────────────┐
 │export_history│──────│    users    │
 │             │  N:1  │             │
 └─────────────┘       └─────────────┘
@@ -114,22 +109,6 @@ Stores daily journal entries for Course 2.
 - Morning entries typically use: gratitude, intentions
 - Evening entries typically use: highlights, reflections, challenges, tomorrow_goals
 
-### chat_messages
-
-Stores AI chat history for Course 1.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
-| user_id | VARCHAR | NOT NULL, FK → users | Message author |
-| role | VARCHAR | NOT NULL | 'user' or 'assistant' |
-| content | TEXT | NOT NULL | Message content |
-| created_at | TIMESTAMP | DEFAULT NOW() | Message time |
-
-**Notes:**
-- Messages ordered by `created_at` for conversation reconstruction
-- Consider adding conversation_id if supporting multiple separate chats
-
 ### export_history *(Planned)*
 
 Tracks export requests and generated files. **Not yet implemented.**
@@ -159,7 +138,6 @@ Tracks export requests and generated files. **Not yet implemented.**
 ```sql
 CREATE INDEX idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX idx_journals_user_date ON journals(user_id, date);
-CREATE INDEX idx_chat_messages_user ON chat_messages(user_id, created_at);
 CREATE INDEX idx_export_history_user ON export_history(user_id, created_at);
 CREATE INDEX idx_sessions_expire ON sessions(expire);
 ```
@@ -205,14 +183,6 @@ export const journals = pgTable('journals', {
   updatedAt: timestamp('updated_at'),
 });
 
-export const chatMessages = pgTable('chat_messages', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id').notNull(),
-  role: varchar('role').notNull(),
-  content: text('content').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 export const exportHistory = pgTable('export_history', {
   id: serial('id').primaryKey(),
   userId: varchar('user_id').notNull(),
@@ -228,14 +198,12 @@ export const exportHistory = pgTable('export_history', {
 // Insert schemas for validation
 export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
 export const insertJournalSchema = createInsertSchema(journals).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true });
 export const insertExportHistorySchema = createInsertSchema(exportHistory).omit({ id: true, createdAt: true });
 
 // Select types
 export type User = typeof users.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
 export type Journal = typeof journals.$inferSelect;
-export type ChatMessage = typeof chatMessages.$inferSelect;
 export type ExportHistory = typeof exportHistory.$inferSelect;
 ```
 

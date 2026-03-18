@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { getUncachableStripeClient } from "../stripeClient";
-import { COURSES } from "@shared/schema";
+import { COURSES } from "@shared/pricing";
 import { checkoutSchema } from "../validation";
 import type { AuthRequest } from "./helpers";
 

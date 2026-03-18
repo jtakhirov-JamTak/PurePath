@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { COURSES, type CourseType } from "@shared/schema";
+import { COURSES, type CourseType } from "@shared/pricing";
 import { ArrowLeft, Check, Loader2, Lock, Layers, Zap, Package } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
 import { useMutation } from "@tanstack/react-query";

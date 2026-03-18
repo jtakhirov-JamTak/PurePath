@@ -13,11 +13,7 @@ import CheckoutSuccessPage from "@/pages/checkout-success";
 import CheckoutCancelPage from "@/pages/checkout-cancel";
 import DashboardPage from "@/pages/dashboard";
 import BillingPage from "@/pages/billing";
-import CoursePage from "@/pages/course";
-import Course1GPTPage from "@/pages/course1-gpt";
-import Course2JournalPage from "@/pages/course2-journal";
 import JournalEntryPage from "@/pages/journal-entry";
-import Phase3Page from "@/pages/phase3";
 import MeditationPage from "@/pages/meditation";
 import EmotionalProcessingPage from "@/pages/emotional-processing";
 import EisenhowerPage from "@/pages/eisenhower";
@@ -33,12 +29,8 @@ import IdentityDocPage from "@/pages/identity-doc";
 import DiscoveryProfilePage from "@/pages/discovery-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
-import Lesson2WorksheetPage from "@/pages/lesson2-worksheet";
-
-
 import GoalWizardPage from "@/pages/goal-wizard";
 import SetupWizardPage from "@/pages/setup-wizard";
-import HistoryPage from "@/pages/history";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 
@@ -93,20 +85,8 @@ function Router() {
       <Route path="/billing">
         {() => <AuthenticatedRoute component={BillingPage} />}
       </Route>
-      <Route path="/course">
-        {() => <AuthenticatedRoute component={CoursePage} />}
-      </Route>
-      <Route path="/course1">
-        {() => <AuthenticatedRoute component={Course1GPTPage} />}
-      </Route>
-      <Route path="/course2">
-        {() => <AuthenticatedRoute component={Course2JournalPage} />}
-      </Route>
       <Route path="/journal/:date/:session">
         {() => <AuthenticatedRoute component={JournalEntryPage} />}
-      </Route>
-      <Route path="/phase3">
-        {() => <AuthenticatedRoute component={Phase3Page} />}
       </Route>
       <Route path="/meditation">
         {() => <AuthenticatedRoute component={MeditationPage} />}
@@ -144,15 +124,8 @@ function Router() {
       <Route path="/monthly-goal">
         {() => <AuthenticatedRoute component={MonthlyGoalPage} />}
       </Route>
-      <Route path="/lesson2-worksheet">
-        {() => <AuthenticatedRoute component={Lesson2WorksheetPage} />}
-      </Route>
-
       <Route path="/goal-wizard">
         {() => <AuthenticatedRoute component={GoalWizardPage} />}
-      </Route>
-      <Route path="/history">
-        {() => <AuthenticatedRoute component={HistoryPage} />}
       </Route>
       <Route path="/setup">
         {() => <AuthenticatedRoute component={SetupWizardPage} />}

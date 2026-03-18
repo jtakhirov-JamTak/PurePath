@@ -89,7 +89,7 @@ export default function LearnPage() {
                     <Card
                       key={lesson.id}
                       className={`overflow-visible ${unlocked ? "hover-elevate cursor-pointer" : "opacity-60"}`}
-                      onClick={() => unlocked && setLocation("/course")}
+                      onClick={() => unlocked && setLocation("/dashboard")}
                       data-testid={`card-${lesson.id}`}
                     >
                       <CardHeader className="pb-3">

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { COURSES, type CourseType } from "@shared/schema";
+import { COURSES, type CourseType } from "@shared/pricing";
 import { 
   Sparkles, BookOpen, Package, Check, ArrowRight, Heart, Star, 
   Layers, Brain, Zap, MessageSquare, Video, CheckSquare, Grid3X3, 

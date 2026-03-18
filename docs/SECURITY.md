@@ -82,13 +82,6 @@ app.get('/api/journals', (req, res) => {
   // ... handler
 });
 
-app.get('/api/chat', (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  // ... handler
-});
-
 // ✅ GOOD: Reusable middleware
 function isAuthenticated(req, res, next) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
@@ -98,7 +91,6 @@ function isAuthenticated(req, res, next) {
 }
 
 app.get('/api/journals', isAuthenticated, journalHandler);
-app.get('/api/chat', isAuthenticated, chatHandler);
 ```
 
 ### Session Security
@@ -133,8 +125,6 @@ if (user.hasCourse1) {
 }
 
 // ✅ GOOD: Server validates every request
-app.get('/api/chat', isAuthenticated, requireEntitlement('course1'), chatHandler);
-
 // Frontend check is UX only (prevents confusion), not security
 ```
 
@@ -343,7 +333,8 @@ const aiLimiter = rateLimit({
   message: { error: 'AI usage limit reached, please try again later' },
 });
 
-app.use('/api/chat', aiLimiter);
+// Apply to AI-powered endpoints as needed
+// app.use('/api/ai-endpoint', aiLimiter);
 ```
 
 ---

@@ -80,7 +80,7 @@ When adding or modifying process flows:
 
 ## Feature Domain Map
 
-Routes are split by domain: `billing`, `chat`, `journals`, `eisenhower`, `empathy`, `habits`, `identity`, `tools`, `phase3`, `onboarding`. Each has a corresponding file in `server/routes/`.
+Routes are split by domain: `billing`, `journals`, `eisenhower`, `empathy`, `habits`, `identity`, `tools`, `onboarding`. Each has a corresponding file in `server/routes/`.
 
 **Habit completion** uses click-through cycling (not dropdowns). Binary habits cycle: blank→Done→Skip→blank. Non-binary: blank→Full→Min→Skip→blank. Same system applies to Eisenhower Q1/Q2 items.
 
@@ -94,7 +94,7 @@ Routes are split by domain: `billing`, `chat`, `journals`, `eisenhower`, `empath
 Never filter habits with just active=true. Historical views must show habits that were active during that specific time period using startDate/endDate ranges. Only the current week enforces max 3 active habits.
 
 ### Habit Filtering Must Be Consistent Across All Views
-The canonical habit filtering logic lives in `journal-hub.tsx` (activeHabits useMemo). Any page that displays habits in a weekly calendar (e.g., `course2-journal.tsx`) **must** apply the same rules: (1) current/future weeks filter to `active === true` only, (2) cap at 3 most recent, (3) deduplicate by lineageId, (4) past weeks show all overlapping habits. When adding or modifying any habit display, always cross-check against `journal-hub.tsx` to prevent divergence.
+The canonical habit filtering logic lives in `journal-hub.tsx` (activeHabits useMemo). Any page that displays habits in a weekly calendar **must** apply the same rules: (1) current/future weeks filter to `active === true` only, (2) cap at 3 most recent, (3) deduplicate by lineageId, (4) past weeks show all overlapping habits. When adding or modifying any habit display, always cross-check against `journal-hub.tsx` to prevent divergence.
 
 ## Additional Documentation
 

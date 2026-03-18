@@ -12,7 +12,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Purchase } from "@shared/schema";
-import { COURSES } from "@shared/schema";
+import { COURSES } from "@shared/pricing";
 import { format } from "date-fns";
 
 export default function BillingPage() {

@@ -30,10 +30,6 @@ This document maps all routes, their access requirements, and the middleware pat
 
 | Route | Purpose | Middleware |
 |-------|---------|------------|
-| `/course1` | AI Chat interface | `isAuthenticated`, `hasCourse1` |
-| `/course2` | Journal interface | `isAuthenticated`, `hasCourse2` |
-| `/api/chat` | AI chat endpoint | `isAuthenticated`, `hasCourse1` |
-| `/api/chat/history` | Chat history | `isAuthenticated`, `hasCourse1` |
 | `/api/journals` | Journal CRUD | `isAuthenticated`, `hasCourse2` |
 | `/api/exports` | Export endpoints | `isAuthenticated`, `hasCourse2` |
 
@@ -84,7 +80,6 @@ function requireEntitlement(entitlement: 'course1' | 'course2') {
 
 **Usage:**
 ```typescript
-app.get('/api/chat', isAuthenticated, requireEntitlement('course1'), chatHandler);
 app.get('/api/journals', isAuthenticated, requireEntitlement('course2'), journalHandler);
 ```
 
