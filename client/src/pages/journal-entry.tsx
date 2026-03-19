@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
-import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
   Chip, IntensityDots,
@@ -33,15 +32,10 @@ interface MorningContent {
   ifThenResponse: string;
   // Courage / Avoidance
   avoidance: string;
-  avoidanceAppraisal: string[];
-  avoidanceAppraisalOther: string;
-  avoidanceEmotion: string;
-  avoidanceEmotionIntensity: number | null;
-  avoidanceUrge: string;
-  avoidanceUrgeIntensity: number | null;
-  avoidanceShowTier2: boolean;
-  avoidanceBodyState: string[];
-  avoidanceReflection: string;
+  avoidanceValue: string;
+  avoidanceDiscomfort: number | null;
+  avoidanceFear: string;
+  exposureTime: string;
   courageAction: string;
   lettingGo: string;
   // Happiness
@@ -117,15 +111,10 @@ const emptyMorning: MorningContent = {
   ifThenObstacle: "",
   ifThenResponse: "",
   avoidance: "",
-  avoidanceAppraisal: [],
-  avoidanceAppraisalOther: "",
-  avoidanceEmotion: "",
-  avoidanceEmotionIntensity: null,
-  avoidanceUrge: "",
-  avoidanceUrgeIntensity: null,
-  avoidanceShowTier2: false,
-  avoidanceBodyState: [],
-  avoidanceReflection: "",
+  avoidanceValue: "",
+  avoidanceDiscomfort: null,
+  avoidanceFear: "",
+  exposureTime: "",
   courageAction: "",
   lettingGo: "",
   gratitude: "",
@@ -204,8 +193,6 @@ export default function JournalEntryPage() {
   const [journalMode, setJournalMode] = useState<"quick" | "full">(() => {
     return (localStorage.getItem("leaf-journal-mode") as "quick" | "full") || "full";
   });
-  const [avoidanceToolOpen, setAvoidanceToolOpen] = useState(false);
-
   useEffect(() => {
     localStorage.setItem("leaf-journal-mode", journalMode);
   }, [journalMode]);
@@ -400,13 +387,6 @@ export default function JournalEntryPage() {
 
   const updateMorningField = <K extends keyof MorningContent>(field: K, value: MorningContent[K]) => {
     setMorningData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const toggleMorningChip = (field: "avoidanceAppraisal" | "avoidanceBodyState", val: string) => {
-    setMorningData(prev => {
-      const arr = prev[field];
-      return { ...prev, [field]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
-    });
   };
 
   const toggleEveningChip = (field: "triggerAppraisal" | "triggerBodyState", val: string) => {
@@ -711,137 +691,104 @@ export default function JournalEntryPage() {
                     </div>
                   )}
 
-                  {/* 1. What am I avoiding? */}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What am I avoiding?</Label>
-                    <Input
+                    <Textarea
                       value={morningData.avoidance}
                       onChange={(e) => updateMorning("avoidance", e.target.value)}
                       placeholder="The thing I'm avoiding is..."
-                      className="text-sm"
+                      rows={2}
+                      className="resize-none text-sm"
                       data-testid="input-avoidance"
                     />
                   </div>
 
-                  {/* 2. This avoidance feels like... */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">This avoidance feels like...</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {APPRAISALS.map((a) => (
-                        <Chip
-                          key={a}
-                          label={a}
-                          selected={morningData.avoidanceAppraisal.includes(a)}
-                          onClick={() => toggleMorningChip("avoidanceAppraisal", a)}
-                        />
-                      ))}
-                    </div>
-                    {morningData.avoidanceAppraisal.includes("Other") && (
-                      <Input
-                        value={morningData.avoidanceAppraisalOther}
-                        onChange={(e) => updateMorning("avoidanceAppraisalOther", e.target.value)}
-                        placeholder="Describe..."
-                        className="text-sm mt-1.5"
-                      />
-                    )}
-                  </div>
-
-                  {/* 3. The emotion underneath is... */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">The emotion underneath is...</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {EMOTIONS.map((e) => (
-                        <Chip
-                          key={e}
-                          label={e}
-                          selected={morningData.avoidanceEmotion === e}
-                          onClick={() => updateMorning("avoidanceEmotion", morningData.avoidanceEmotion === e ? "" : e)}
-                        />
-                      ))}
-                    </div>
-                    {morningData.avoidanceEmotion && (
-                      <IntensityDots
-                        value={morningData.avoidanceEmotionIntensity}
-                        onChange={(n) => updateMorningField("avoidanceEmotionIntensity", n)}
-                        testIdPrefix="avoidance-emotion-intensity"
-                      />
-                    )}
-                  </div>
-
-                  {/* 4. The urge is to... */}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">The urge is to...</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {URGES.map((u) => (
-                        <Chip
-                          key={u}
-                          label={u}
-                          selected={morningData.avoidanceUrge === u}
-                          onClick={() => updateMorning("avoidanceUrge", morningData.avoidanceUrge === u ? "" : u)}
-                        />
-                      ))}
-                    </div>
-                    {morningData.avoidanceUrge && (
-                      <IntensityDots
-                        value={morningData.avoidanceUrgeIntensity}
-                        onChange={(n) => updateMorningField("avoidanceUrgeIntensity", n)}
-                        testIdPrefix="avoidance-urge-intensity"
-                      />
-                    )}
-                  </div>
-
-                  {/* 5. Smallest exposure step */}
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">My smallest exposure step:</Label>
-                    <Input
-                      value={morningData.courageAction}
-                      onChange={(e) => updateMorning("courageAction", e.target.value)}
-                      placeholder="My one small step will be..."
-                      className="text-sm"
-                      data-testid="input-courage-action"
-                    />
-                  </div>
-
-                  {/* Tier 2 expand */}
-                  {!morningData.avoidanceShowTier2 && (
-                    <button
-                      type="button"
-                      onClick={() => updateMorningField("avoidanceShowTier2", true)}
-                      className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
-                    >
-                      More detail
-                      <ChevronDown className="h-3 w-3" />
-                    </button>
-                  )}
-
-                  {/* Tier 2 — Body state + Reflection */}
-                  {morningData.avoidanceShowTier2 && (
-                    <div className="space-y-4 pt-2 border-t border-border">
+                  {morningData.avoidance.trim() ? (
+                    <>
                       <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">What do you feel in your body?</Label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {BODY_STATES.map((b) => (
-                            <Chip
-                              key={b}
-                              label={b}
-                              selected={morningData.avoidanceBodyState.includes(b)}
-                              onClick={() => toggleMorningChip("avoidanceBodyState", b)}
-                            />
+                        <Label className="text-sm font-medium">Which value does facing this serve?</Label>
+                        {valuesItems.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {valuesItems.map((value, i) => {
+                              const selected = morningData.avoidanceValue === value;
+                              return (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => updateMorning("avoidanceValue", selected ? "" : value)}
+                                  className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
+                                    selected
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-primary/40 text-primary hover:bg-primary/[0.08]"
+                                  }`}
+                                  data-testid={`chip-avoidance-value-${i}`}
+                                >
+                                  {value}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            Set up your values in your <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button> first.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Discomfort level</Label>
+                        <div className="flex gap-2">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Button
+                              key={n}
+                              variant={morningData.avoidanceDiscomfort === n ? "default" : "outline"}
+                              size="sm"
+                              className="flex-1"
+                              type="button"
+                              onClick={() => updateMorningField("avoidanceDiscomfort", n)}
+                              data-testid={`button-avoidance-discomfort-${n}`}
+                            >
+                              {n}
+                            </Button>
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm font-medium">
-                          Reflection <span className="text-xs text-muted-foreground">(optional)</span>
-                        </Label>
-                        <Textarea
-                          value={morningData.avoidanceReflection}
-                          onChange={(e) => updateMorning("avoidanceReflection", e.target.value)}
-                          placeholder="Any insight about this pattern?"
-                          className="min-h-[60px] resize-none"
+
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">What do I think will happen if I do this?</Label>
+                        <Input
+                          value={morningData.avoidanceFear}
+                          onChange={(e) => updateMorning("avoidanceFear", e.target.value)}
+                          placeholder="My fear is that..."
+                          data-testid="input-avoidance-fear"
                         />
                       </div>
-                    </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Smallest exposure rep</Label>
+                        <Textarea
+                          value={morningData.courageAction}
+                          onChange={(e) => updateMorning("courageAction", e.target.value)}
+                          placeholder="The tiniest step I could take..."
+                          rows={2}
+                          className="resize-none text-sm"
+                          data-testid="input-courage-action"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">I'll do this at:</Label>
+                        <Input
+                          type="time"
+                          value={morningData.exposureTime}
+                          onChange={(e) => updateMorning("exposureTime", e.target.value)}
+                          className="w-32"
+                          data-testid="input-exposure-time"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Nothing to avoid? That's a win — skip this section.</p>
                   )}
                 </CardContent>
               </Card>
@@ -1252,9 +1199,6 @@ export default function JournalEntryPage() {
           </Button>
         </div>
       </main>
-      {session === "morning" && (
-        <AvoidanceToolModal open={avoidanceToolOpen} onClose={() => setAvoidanceToolOpen(false)} />
-      )}
     </div>
   );
 }
