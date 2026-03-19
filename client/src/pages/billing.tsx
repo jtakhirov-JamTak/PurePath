@@ -3,14 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function BillingPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   if (authLoading) {
     return (
@@ -90,6 +92,37 @@ export default function BillingPage() {
           <div className="flex items-center gap-3 pt-2 border-t">
             <span className="text-sm font-medium">Access status:</span>
             <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Active</Badge>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-lg border p-6 space-y-3">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-bark">Data</span>
+          <div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={async () => {
+                try {
+                  const response = await fetch("/api/export-all", { credentials: "include" });
+                  if (!response.ok) throw new Error("Export failed");
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `the-leaf-export-${new Date().toISOString().split("T")[0]}.md`;
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                } catch (error) {
+                  toast({ title: "Export failed", description: "Could not export your data.", variant: "destructive" });
+                }
+              }}
+              data-testid="button-export-all"
+            >
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export All Data
+            </Button>
+            <p className="text-[10px] text-muted-foreground mt-1.5">Downloads a Markdown file with all your data. Readable by ChatGPT.</p>
           </div>
         </div>
       </main>

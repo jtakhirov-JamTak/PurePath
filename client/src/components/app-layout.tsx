@@ -16,6 +16,7 @@ import {
   Sprout,
   TreePine,
   CalendarDays,
+  Download,
 } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation, Link } from "wouter";
@@ -120,6 +121,21 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <DropdownMenuItem onClick={() => safeNavigate("/billing")} data-testid="menu-billing">
                     <CreditCard className="h-4 w-4 mr-2" />
                     Billing
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    const response = await fetch("/api/export-all", { credentials: "include" });
+                    if (response.ok) {
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `the-leaf-export-${new Date().toISOString().split("T")[0]}.md`;
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                    }
+                  }} data-testid="menu-export">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Data
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => logout()} data-testid="menu-logout">

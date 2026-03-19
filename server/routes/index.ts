@@ -11,6 +11,7 @@ import { registerIdentityRoutes } from "./identity";
 import { registerToolRoutes } from "./tools";
 import { registerOnboardingRoutes } from "./onboarding";
 import { registerAccessRoutes } from "./access";
+import { registerExportRoutes } from "./export";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -28,6 +29,7 @@ export async function registerRoutes(
   registerToolRoutes(app);
   registerOnboardingRoutes(app);
   registerAccessRoutes(app);
+  registerExportRoutes(app);
 
   return httpServer;
 }
