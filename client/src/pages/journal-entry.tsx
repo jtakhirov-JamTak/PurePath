@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Star, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
@@ -31,8 +31,17 @@ interface MorningContent {
   proofAction: string;
   ifThenObstacle: string;
   ifThenResponse: string;
-  // Courage
+  // Courage / Avoidance
   avoidance: string;
+  avoidanceAppraisal: string[];
+  avoidanceAppraisalOther: string;
+  avoidanceEmotion: string;
+  avoidanceEmotionIntensity: number | null;
+  avoidanceUrge: string;
+  avoidanceUrgeIntensity: number | null;
+  avoidanceShowTier2: boolean;
+  avoidanceBodyState: string[];
+  avoidanceReflection: string;
   courageAction: string;
   lettingGo: string;
   // Happiness
@@ -108,6 +117,15 @@ const emptyMorning: MorningContent = {
   ifThenObstacle: "",
   ifThenResponse: "",
   avoidance: "",
+  avoidanceAppraisal: [],
+  avoidanceAppraisalOther: "",
+  avoidanceEmotion: "",
+  avoidanceEmotionIntensity: null,
+  avoidanceUrge: "",
+  avoidanceUrgeIntensity: null,
+  avoidanceShowTier2: false,
+  avoidanceBodyState: [],
+  avoidanceReflection: "",
   courageAction: "",
   lettingGo: "",
   gratitude: "",
@@ -380,6 +398,17 @@ export default function JournalEntryPage() {
     setEveningData(prev => ({ ...prev, [field]: value }));
   };
 
+  const updateMorningField = <K extends keyof MorningContent>(field: K, value: MorningContent[K]) => {
+    setMorningData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleMorningChip = (field: "avoidanceAppraisal" | "avoidanceBodyState", val: string) => {
+    setMorningData(prev => {
+      const arr = prev[field];
+      return { ...prev, [field]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
+    });
+  };
+
   const toggleEveningChip = (field: "triggerAppraisal" | "triggerBodyState", val: string) => {
     setEveningData(prev => {
       const arr = prev[field];
@@ -495,109 +524,76 @@ export default function JournalEntryPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Sleep — Approximate hours slept</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="14"
-                    step="0.5"
-                    value={morningData.sleepHours}
-                    onChange={(e) => updateMorning("sleepHours", e.target.value)}
-                    placeholder="Hours slept (0–14)"
-                    className="w-40"
-                    data-testid="input-sleep-hours"
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Energy — How charged do you feel?</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {energyLabels.map((label, i) => {
-                      const selected = morningData.energyLevel === String(i);
-                      const totalBars = i === 4 ? 5 : 4;
-                      const filledBars = i + 1;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => updateMorning("energyLevel", String(i))}
-                          className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
-                            selected
-                              ? "border-primary bg-primary/[0.08] text-foreground"
-                              : "border-border bg-background text-muted-foreground hover-elevate"
-                          }`}
-                          data-testid={`button-energy-${i}`}
-                        >
-                          <div className="flex items-end gap-px h-5">
-                            {Array.from({ length: totalBars }, (_, bar) => {
-                              const isBonusBar = i === 4 && bar === 4;
-                              const filled = bar < filledBars;
-                              return (
-                                <div
-                                  key={bar}
-                                  className={`w-1.5 rounded-sm ${
-                                    isBonusBar
-                                      ? selected ? "bg-yellow-400" : "bg-yellow-400/40"
-                                      : filled
-                                        ? selected ? "bg-emerald-500" : "bg-muted-foreground/60"
-                                        : "bg-muted-foreground/20"
-                                  }`}
-                                  style={{ height: `${8 + bar * 3}px` }}
-                                />
-                              );
-                            })}
-                          </div>
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Sleep */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Sleep</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="14"
+                      step="0.5"
+                      value={morningData.sleepHours}
+                      onChange={(e) => updateMorning("sleepHours", e.target.value)}
+                      placeholder="Hours"
+                      className="w-20"
+                      data-testid="input-sleep-hours"
+                    />
                   </div>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Stress — How much pressure do you feel?</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {stressLabels.map((label, i) => {
-                      const selected = morningData.stressLevel === String(i);
-                      const totalBars = i === 4 ? 5 : 4;
-                      const filledBars = i + 1;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => updateMorning("stressLevel", String(i))}
-                          className={`flex flex-col items-center gap-1.5 rounded-md border px-3 py-2 text-xs transition-colors cursor-pointer ${
-                            selected
-                              ? "border-orange-400 bg-orange-50 dark:bg-orange-950/30 text-foreground"
-                              : "border-border bg-background text-muted-foreground hover-elevate"
-                          }`}
-                          data-testid={`button-stress-${i}`}
-                        >
-                          <div className="flex items-end gap-px h-5">
-                            {Array.from({ length: totalBars }, (_, bar) => {
-                              const isBonusBar = i === 4 && bar === 4;
-                              const filled = bar < filledBars;
-                              return (
-                                <div
-                                  key={bar}
-                                  className={`w-1.5 rounded-sm ${
-                                    isBonusBar
-                                      ? selected ? "bg-red-500" : "bg-red-500/40"
-                                      : filled
-                                        ? selected ? "bg-orange-400" : "bg-muted-foreground/60"
-                                        : "bg-muted-foreground/20"
-                                  }`}
-                                  style={{ height: `${8 + bar * 3}px` }}
-                                />
-                              );
-                            })}
-                          </div>
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
+                  {/* Energy */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Energy</Label>
+                    <div className="flex items-center gap-1.5">
+                      {energyLabels.map((label, i) => {
+                        const selected = morningData.energyLevel === String(i);
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => updateMorning("energyLevel", String(i))}
+                            title={label}
+                            className={`w-5 h-5 rounded-full border-2 transition-colors cursor-pointer ${
+                              selected
+                                ? "bg-emerald-500 border-emerald-500"
+                                : "bg-transparent border-border hover:border-emerald-500/50"
+                            }`}
+                            data-testid={`button-energy-${i}`}
+                            aria-label={label}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {morningData.energyLevel ? energyLabels[Number(morningData.energyLevel)] : "Tap to select"}
+                    </p>
+                  </div>
+                  {/* Stress */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Stress</Label>
+                    <div className="flex items-center gap-1.5">
+                      {stressLabels.map((label, i) => {
+                        const selected = morningData.stressLevel === String(i);
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => updateMorning("stressLevel", String(i))}
+                            title={label}
+                            className={`w-5 h-5 rounded-full border-2 transition-colors cursor-pointer ${
+                              selected
+                                ? "bg-orange-400 border-orange-400"
+                                : "bg-transparent border-border hover:border-orange-400/50"
+                            }`}
+                            data-testid={`button-stress-${i}`}
+                            aria-label={label}
+                          />
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {morningData.stressLevel ? stressLabels[Number(morningData.stressLevel)] : "Tap to select"}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -617,8 +613,6 @@ export default function JournalEntryPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                <IdentityContext />
-
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Which value matters most today?</Label>
                   {valuesItems.length > 0 ? (
@@ -676,10 +670,26 @@ export default function JournalEntryPage() {
                     />
                   </div>
                 </div>
+
+                {/* Read this aloud — identity statement */}
+                {identityStatement ? (
+                  <div className="rounded-lg border-l-4 border-primary bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="identity-read-aloud">
+                    <p className="text-xs font-medium text-muted-foreground">Read this aloud:</p>
+                    <p className="text-base italic text-foreground">{identityStatement}</p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+                    <p className="text-sm text-muted-foreground">
+                      Set up your identity statement in your{" "}
+                      <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button>{" "}
+                      first.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Section 3 — Courage (full mode only) */}
+            {/* Section 3 — Avoidance (full mode only) */}
             {journalMode === "full" && (
               <Card data-testid="card-courage">
                 <CardHeader>
@@ -693,55 +703,146 @@ export default function JournalEntryPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-4">
                   {hasGoal && (
                     <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="goal-context">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
                       <p className="text-sm">{goalDisplayText}</p>
                     </div>
                   )}
-                  <div className="space-y-2">
+
+                  {/* 1. What am I avoiding? */}
+                  <div className="space-y-1">
                     <Label className="text-sm font-medium">What am I avoiding?</Label>
-                    <VoiceTextarea
+                    <Input
                       value={morningData.avoidance}
-                      onChange={(val) => updateMorning("avoidance", val)}
+                      onChange={(e) => updateMorning("avoidance", e.target.value)}
                       placeholder="The thing I'm avoiding is..."
-                      className="min-h-[60px] resize-none"
+                      className="text-sm"
                       data-testid="input-avoidance"
                     />
                   </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">What is the smallest exposure rep?</Label>
-                    <VoiceTextarea
+
+                  {/* 2. This avoidance feels like... */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">This avoidance feels like...</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {APPRAISALS.map((a) => (
+                        <Chip
+                          key={a}
+                          label={a}
+                          selected={morningData.avoidanceAppraisal.includes(a)}
+                          onClick={() => toggleMorningChip("avoidanceAppraisal", a)}
+                        />
+                      ))}
+                    </div>
+                    {morningData.avoidanceAppraisal.includes("Other") && (
+                      <Input
+                        value={morningData.avoidanceAppraisalOther}
+                        onChange={(e) => updateMorning("avoidanceAppraisalOther", e.target.value)}
+                        placeholder="Describe..."
+                        className="text-sm mt-1.5"
+                      />
+                    )}
+                  </div>
+
+                  {/* 3. The emotion underneath is... */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">The emotion underneath is...</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {EMOTIONS.map((e) => (
+                        <Chip
+                          key={e}
+                          label={e}
+                          selected={morningData.avoidanceEmotion === e}
+                          onClick={() => updateMorning("avoidanceEmotion", morningData.avoidanceEmotion === e ? "" : e)}
+                        />
+                      ))}
+                    </div>
+                    {morningData.avoidanceEmotion && (
+                      <IntensityDots
+                        value={morningData.avoidanceEmotionIntensity}
+                        onChange={(n) => updateMorningField("avoidanceEmotionIntensity", n)}
+                        testIdPrefix="avoidance-emotion-intensity"
+                      />
+                    )}
+                  </div>
+
+                  {/* 4. The urge is to... */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">The urge is to...</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {URGES.map((u) => (
+                        <Chip
+                          key={u}
+                          label={u}
+                          selected={morningData.avoidanceUrge === u}
+                          onClick={() => updateMorning("avoidanceUrge", morningData.avoidanceUrge === u ? "" : u)}
+                        />
+                      ))}
+                    </div>
+                    {morningData.avoidanceUrge && (
+                      <IntensityDots
+                        value={morningData.avoidanceUrgeIntensity}
+                        onChange={(n) => updateMorningField("avoidanceUrgeIntensity", n)}
+                        testIdPrefix="avoidance-urge-intensity"
+                      />
+                    )}
+                  </div>
+
+                  {/* 5. Smallest exposure step */}
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">My smallest exposure step:</Label>
+                    <Input
                       value={morningData.courageAction}
-                      onChange={(val) => updateMorning("courageAction", val)}
+                      onChange={(e) => updateMorning("courageAction", e.target.value)}
                       placeholder="My one small step will be..."
-                      className="min-h-[60px] resize-none"
+                      className="text-sm"
                       data-testid="input-courage-action"
                     />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => setAvoidanceToolOpen(true)}
-                    className="mt-2"
-                    data-testid="button-open-avoidance-tool"
-                  >
-                    <Shield className="mr-2 h-3.5 w-3.5" />
-                    Go to Avoidance Tool
-                  </Button>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
-                    <Input
-                      value={morningData.lettingGo}
-                      onChange={(e) => updateMorning("lettingGo", e.target.value)}
-                      placeholder="Today I'm letting go of..."
-                      data-testid="input-letting-go"
-                    />
-                  </div>
+
+                  {/* Tier 2 expand */}
+                  {!morningData.avoidanceShowTier2 && (
+                    <button
+                      type="button"
+                      onClick={() => updateMorningField("avoidanceShowTier2", true)}
+                      className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                    >
+                      More detail
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  )}
+
+                  {/* Tier 2 — Body state + Reflection */}
+                  {morningData.avoidanceShowTier2 && (
+                    <div className="space-y-4 pt-2 border-t border-border">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">What do you feel in your body?</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {BODY_STATES.map((b) => (
+                            <Chip
+                              key={b}
+                              label={b}
+                              selected={morningData.avoidanceBodyState.includes(b)}
+                              onClick={() => toggleMorningChip("avoidanceBodyState", b)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm font-medium">
+                          Reflection <span className="text-xs text-muted-foreground">(optional)</span>
+                        </Label>
+                        <Textarea
+                          value={morningData.avoidanceReflection}
+                          onChange={(e) => updateMorning("avoidanceReflection", e.target.value)}
+                          placeholder="Any insight about this pattern?"
+                          className="min-h-[60px] resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -760,7 +861,7 @@ export default function JournalEntryPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Who or what am I grateful for today?</Label>
                     <Textarea
@@ -769,6 +870,15 @@ export default function JournalEntryPage() {
                       placeholder="I am grateful for..."
                       className="min-h-[60px] max-h-[80px] resize-none"
                       data-testid="input-gratitude"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
+                    <Input
+                      value={morningData.lettingGo}
+                      onChange={(e) => updateMorning("lettingGo", e.target.value)}
+                      placeholder="Today I'm letting go of..."
+                      data-testid="input-letting-go"
                     />
                   </div>
                 </CardContent>
@@ -837,34 +947,7 @@ export default function JournalEntryPage() {
             ) : (
               /* Evening Full Mode */
               <>
-                {/* Section 1 — Win of the Day */}
-                <Card data-testid="card-win-of-the-day">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                        <Star className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <CardTitle className="font-serif text-lg">Win of the Day</CardTitle>
-                        <CardDescription>One proof you kept your promise</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">One proof I kept my promise today was...</Label>
-                      <VoiceTextarea
-                        value={eveningData.promiseProof}
-                        onChange={(val) => updateEvening("promiseProof", val)}
-                        placeholder="Today I proved it by..."
-                        className="min-h-[80px] max-h-[120px] resize-none"
-                        data-testid="input-promise-proof"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Section 2 — Trigger Check */}
+                {/* Section 1 — Trigger Check */}
                 <Card data-testid="card-trigger-check">
                   <CardHeader>
                     <div className="flex items-center gap-3">
