@@ -349,7 +349,7 @@ function PlanVersioningPanel() {
             <Save className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <CardTitle className="font-serif text-lg">Plan Versions</CardTitle>
+            <CardTitle className="text-sm">Plan Versions</CardTitle>
             <CardDescription>Save your current plan, restore previous ones, or start fresh</CardDescription>
           </div>
         </div>
@@ -697,7 +697,7 @@ export default function PlanPage() {
     <AppLayout>
       <div className="container mx-auto px-4 py-12">
         <div className="mb-8 max-w-2xl mx-auto">
-          <h1 className="font-serif text-3xl font-bold mb-2" data-testid="text-plan-title">Plan</h1>
+          <h1 className="text-lg font-medium mb-2" data-testid="text-plan-title">Plan</h1>
           <p className="text-muted-foreground">
             Build your plan step by step. Each step unlocks when the previous one is complete.
           </p>
@@ -771,7 +771,7 @@ export default function PlanPage() {
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-1">
                   {(() => { const Icon = WIZARD_STEPS[wizardStep].icon; return <Icon className="h-5 w-5 text-primary" />; })()}
-                  <h3 className="font-serif text-lg font-semibold">{WIZARD_STEPS[wizardStep].label}</h3>
+                  <h3 className="text-sm font-semibold">{WIZARD_STEPS[wizardStep].label}</h3>
                   {stepCompletion[wizardStep] && <Badge variant="secondary" className="text-[10px]">Complete</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground">{WIZARD_STEPS[wizardStep].description}</p>

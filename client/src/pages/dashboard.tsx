@@ -426,12 +426,12 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-6 max-w-5xl">
-        <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 min-w-0 space-y-5">
+      <div className="container mx-auto px-4 py-4 max-w-5xl">
+        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 min-w-0 space-y-3">
         <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
           <div>
-            <h1 className="font-serif text-2xl font-bold" data-testid="text-today-title">
+            <h1 className="text-base font-medium" data-testid="text-today-title">
               {format(today, "EEEE, MMM d")}
             </h1>
             {goalDisplay && (
@@ -469,7 +469,7 @@ export default function DashboardPage() {
         {showPlanWeekPrompt && (
           <div className="p-4 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-4" data-testid="card-plan-week-prompt">
             <div className="flex items-center gap-3">
-              <CalendarDays className="h-6 w-6 text-primary shrink-0" />
+              <CalendarDays className="h-4 w-4 text-primary shrink-0" />
               <div>
                 <p className="font-medium text-sm">Time to plan your week</p>
                 <p className="text-xs text-muted-foreground">Pick your top priorities for the week ahead</p>
@@ -612,7 +612,7 @@ export default function DashboardPage() {
       }}>
         <DialogContent className="max-w-sm text-center" data-testid="dialog-stillness">
           <DialogHeader>
-            <DialogTitle className="text-lg font-serif">Stillness Exercise</DialogTitle>
+            <DialogTitle className="text-lg">Stillness Exercise</DialogTitle>
           </DialogHeader>
           <div className="space-y-6 py-4">
             <p className="text-sm text-muted-foreground leading-relaxed italic">

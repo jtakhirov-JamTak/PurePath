@@ -161,7 +161,7 @@ export default function ScoreboardPage() {
       <FlowBar fallback="/plan" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-serif font-bold" data-testid="text-page-title">1-Year Scoreboard</h1>
+          <h1 className="text-base font-medium" data-testid="text-page-title">1-Year Scoreboard</h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-subtitle">
             Your realistic 1-year outcome and execution plan
           </p>
@@ -170,11 +170,11 @@ export default function ScoreboardPage() {
         <Card className="overflow-visible" data-testid="card-year-vision">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                 <Target className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="font-serif text-lg">1-Year Vision</CardTitle>
+                <CardTitle className="text-sm">1-Year Vision</CardTitle>
                 <CardDescription>What does the next year look like if you follow through?</CardDescription>
               </div>
             </div>
@@ -193,11 +193,11 @@ export default function ScoreboardPage() {
         <Card className="overflow-visible" data-testid="card-proof-points">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                 <Target className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="font-serif text-lg">Proof Points</CardTitle>
+                <CardTitle className="text-sm">Proof Points</CardTitle>
                 <CardDescription>How you'll know you're on track.</CardDescription>
               </div>
             </div>
@@ -242,11 +242,11 @@ export default function ScoreboardPage() {
         <Card className="overflow-visible" data-testid="card-inner-obstacles">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                 <ShieldAlert className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="font-serif text-lg">Inner Obstacles</CardTitle>
+                <CardTitle className="text-sm">Inner Obstacles</CardTitle>
                 <CardDescription>The patterns that get in your way.</CardDescription>
               </div>
             </div>
@@ -313,11 +313,11 @@ export default function ScoreboardPage() {
         <Card className="overflow-visible" data-testid="card-if-then-plans">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                 <Zap className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="font-serif text-lg">IF-THEN Plans</CardTitle>
+                <CardTitle className="text-sm">IF-THEN Plans</CardTitle>
                 <CardDescription>Pre-committed responses when obstacles appear.</CardDescription>
               </div>
             </div>

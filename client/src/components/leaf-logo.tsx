@@ -15,11 +15,11 @@ export function LeafLogo({ className = "", size = 32 }: LeafLogoProps) {
     >
       <path
         d="M32 4C32 4 8 16 8 36C8 49.255 18.745 60 32 60C45.255 60 56 49.255 56 36C56 16 32 4 32 4Z"
-        fill="hsl(142, 50%, 40%)"
+        fill="#50C878"
       />
       <path
         d="M32 4C32 4 8 16 8 36C8 49.255 18.745 60 32 60C45.255 60 56 49.255 56 36C56 16 32 4 32 4Z"
-        stroke="hsl(142, 45%, 32%)"
+        stroke="#3DA660"
         strokeWidth="1.5"
       />
       <path
@@ -48,13 +48,13 @@ export function LeafLogo({ className = "", size = 32 }: LeafLogoProps) {
       />
       <path
         d="M32 58C32 58 28 54 28 50"
-        stroke="hsl(142, 45%, 32%)"
+        stroke="#3DA660"
         strokeWidth="2"
         strokeLinecap="round"
       />
       <path
         d="M32 58C32 58 36 54 36 50"
-        stroke="hsl(142, 45%, 32%)"
+        stroke="#3DA660"
         strokeWidth="2"
         strokeLinecap="round"
       />

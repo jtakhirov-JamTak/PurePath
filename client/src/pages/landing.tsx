@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LeafLogo } from "@/components/leaf-logo";
 
-const SAGE = "#5a8a5c";
+const SAGE = "#50C878";
 
 export default function LandingPage() {
   return (
@@ -27,7 +27,7 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="pt-16 pb-14">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-3">One session. Real change.</p>
-          <h1 className="font-serif text-2xl font-bold mb-3 leading-tight">
+          <h1 className="text-base font-medium mb-3 leading-tight">
             Clarity <span className="text-muted-foreground font-normal mx-1">&rarr;</span> Commitment <span className="text-muted-foreground font-normal mx-1">&rarr;</span> System
           </h1>
           <p className="text-muted-foreground leading-relaxed mb-6 max-w-lg">

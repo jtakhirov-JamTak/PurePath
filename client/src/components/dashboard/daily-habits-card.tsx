@@ -79,7 +79,7 @@ export function DailyHabitsCard({
     <Card className="overflow-visible" data-testid="card-daily-habits">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <CardTitle className="text-base font-serif">Daily Habits</CardTitle>
+          <CardTitle className="text-[13px]">Daily Habits</CardTitle>
           <span className="text-xs text-muted-foreground" data-testid="text-habits-progress">
             {completedHabits}/{totalHabits} done
           </span>

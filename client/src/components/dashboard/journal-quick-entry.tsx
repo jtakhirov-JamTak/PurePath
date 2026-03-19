@@ -34,11 +34,11 @@ export function JournalQuickEntry({
 
   if (!hasMorning) {
     return (
-      <Card className="overflow-visible border-l-4 border-l-primary" data-testid="card-journal-quick">
+      <Card className="overflow-visible border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B]" data-testid="card-journal-quick">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <CardTitle className="text-lg font-serif" data-testid="text-journal-greeting">
+              <CardTitle className="text-lg" data-testid="text-journal-greeting">
                 <Sun className="h-5 w-5 inline mr-1.5 text-amber-500" />
                 Good morning, {displayName}
               </CardTitle>
@@ -93,11 +93,11 @@ export function JournalQuickEntry({
   }
 
   return (
-    <Card className="overflow-visible border-l-4 border-l-primary/50" data-testid="card-journal-quick">
+    <Card className="overflow-visible border-l-4 border-l-[#6B4226]/50 dark:border-l-[#A67B5B]/50" data-testid="card-journal-quick">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle className="text-base font-serif" data-testid="text-journal-greeting">
+            <CardTitle className="text-[13px]" data-testid="text-journal-greeting">
               <Moon className="h-4 w-4 inline mr-1.5 text-indigo-400" />
               How was your day?
             </CardTitle>

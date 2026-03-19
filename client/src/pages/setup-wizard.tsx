@@ -133,7 +133,7 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
   return (
     <div className="text-center space-y-8 py-12">
       <div className="space-y-3">
-        <h1 className="text-3xl font-bold tracking-tight" data-testid="text-welcome-heading">Welcome to Leaf</h1>
+        <h1 className="text-lg font-medium" data-testid="text-welcome-heading">Welcome to Leaf</h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto" data-testid="text-welcome-subtext">
           Let's set up your daily system using what you created in the workshop. This takes about 10 minutes.
         </p>
@@ -713,7 +713,7 @@ function JournalStep({ onComplete, onBack }: { onComplete: () => void; onBack: (
         </Button>
       </div>
       <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-bold tracking-tight" data-testid="text-step-heading">Your First Morning Journal</h2>
+        <h2 className="text-base font-medium" data-testid="text-step-heading">Your First Morning Journal</h2>
         <p className="text-muted-foreground" data-testid="text-step-subtext">Start your daily practice right now.</p>
       </div>
       <div className="space-y-4">
@@ -768,7 +768,7 @@ function StepShell({
         </Button>
       </div>
       <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-bold tracking-tight" data-testid="text-step-heading">{heading}</h2>
+        <h2 className="text-base font-medium" data-testid="text-step-heading">{heading}</h2>
         <p className="text-muted-foreground" data-testid="text-step-subtext">{subtext}</p>
       </div>
       {children}

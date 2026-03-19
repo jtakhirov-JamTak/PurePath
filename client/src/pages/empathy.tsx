@@ -324,7 +324,7 @@ export default function EmpathyPage() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <CardTitle className="font-serif text-lg">{exercise.who}</CardTitle>
+                <CardTitle className="text-sm">{exercise.who}</CardTitle>
                 <Badge variant={isPrep ? "default" : "secondary"} className="text-[10px]">
                   {isPrep ? "PREP" : "DEBRIEF"}
                 </Badge>
@@ -436,11 +436,11 @@ export default function EmpathyPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Users className="h-7 w-7 text-primary" />
+            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-serif text-3xl font-bold">EQ Module</h1>
+              <h1 className="text-lg font-medium">EQ Module</h1>
               <p className="text-muted-foreground">Prepare for and reflect on conversations</p>
             </div>
           </div>

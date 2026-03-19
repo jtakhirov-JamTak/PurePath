@@ -96,7 +96,7 @@ export default function DiscoveryProfilePage() {
       <FlowBar fallback="/plan" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
         <div>
-          <h1 className="text-2xl font-serif font-bold" data-testid="text-page-title">Discovery Profile</h1>
+          <h1 className="text-base font-medium" data-testid="text-page-title">Discovery Profile</h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-subtitle">
             A snapshot of your current self — from Lesson 1: Discover
           </p>
@@ -104,7 +104,7 @@ export default function DiscoveryProfilePage() {
 
         <Card className="overflow-visible" data-testid="card-values">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Values</CardTitle>
+            <CardTitle className="text-[13px]">Values</CardTitle>
           </CardHeader>
           <CardContent>
             <VoiceTextarea
@@ -120,7 +120,7 @@ export default function DiscoveryProfilePage() {
 
         <Card className="overflow-visible" data-testid="card-strengths">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Strengths</CardTitle>
+            <CardTitle className="text-[13px]">Strengths</CardTitle>
           </CardHeader>
           <CardContent>
             <VoiceTextarea
@@ -136,7 +136,7 @@ export default function DiscoveryProfilePage() {
 
         <Card className="overflow-visible" data-testid="card-behavioral-patterns">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Behavioral Patterns</CardTitle>
+            <CardTitle className="text-[13px]">Behavioral Patterns</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,7 +168,7 @@ export default function DiscoveryProfilePage() {
 
         <Card className="overflow-visible" data-testid="card-stress-responses">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-serif">Stress Responses</CardTitle>
+            <CardTitle className="text-[13px]">Stress Responses</CardTitle>
           </CardHeader>
           <CardContent>
             <VoiceTextarea

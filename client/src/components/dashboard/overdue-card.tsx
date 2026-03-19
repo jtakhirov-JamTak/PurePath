@@ -31,7 +31,7 @@ export function OverdueCard({ overdueItems, onUpdateLevel, onSkipDialog, onSaveT
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-red-500" />
-          <CardTitle className="text-base font-serif text-red-700 dark:text-red-400">Overdue</CardTitle>
+          <CardTitle className="text-[13px] text-red-700 dark:text-red-400">Overdue</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="pb-4">

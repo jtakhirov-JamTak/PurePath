@@ -9,11 +9,11 @@ export default function EmotionalProcessingPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Heart className="h-7 w-7 text-primary" />
+            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Heart className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-serif text-3xl font-bold">Emotional Containment</h1>
+              <h1 className="text-lg font-medium">Emotional Containment</h1>
               <p className="text-muted-foreground">Real emotional processing in 4 steps</p>
             </div>
           </div>
@@ -33,7 +33,7 @@ export default function EmotionalProcessingPage() {
                   <Eye className="h-5 w-5 text-rose-500" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif">1. FEEL (10-20 seconds)</CardTitle>
+                  <CardTitle className="">1. FEEL (10-20 seconds)</CardTitle>
                   <CardDescription>Notice the emotion in your body</CardDescription>
                 </div>
               </div>
@@ -52,7 +52,7 @@ export default function EmotionalProcessingPage() {
                   <Tag className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif">2. LABEL (1 sentence)</CardTitle>
+                  <CardTitle className="">2. LABEL (1 sentence)</CardTitle>
                   <CardDescription>Name what you're feeling</CardDescription>
                 </div>
               </div>
@@ -79,7 +79,7 @@ export default function EmotionalProcessingPage() {
                   <Wind className="h-5 w-5 text-cyan-500" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif">3. REGULATE (2-3 slow exhales)</CardTitle>
+                  <CardTitle className="">3. REGULATE (2-3 slow exhales)</CardTitle>
                   <CardDescription>Stabilize your nervous system</CardDescription>
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default function EmotionalProcessingPage() {
                   <MoveRight className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif">4. MOVE</CardTitle>
+                  <CardTitle className="">4. MOVE</CardTitle>
                   <CardDescription>Take a small, grounding action</CardDescription>
                 </div>
               </div>

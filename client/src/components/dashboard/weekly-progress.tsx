@@ -18,7 +18,7 @@ export function WeeklyProgressSidebar({ progressMetrics }: { progressMetrics: Pr
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" />
-              <CardTitle className="text-base font-serif">Weekly Progress</CardTitle>
+              <CardTitle className="text-[13px]">Weekly Progress</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="pb-4 space-y-4">

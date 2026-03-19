@@ -12,36 +12,36 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
   return (
     <Card className="overflow-visible" data-testid="card-tools">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-serif">Tools</CardTitle>
+        <CardTitle className="text-[13px]">Tools</CardTitle>
       </CardHeader>
       <CardContent className="pb-4 space-y-4">
         <div className="grid grid-cols-3 gap-3">
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-2 h-auto py-3"
             onClick={() => onToolOpen("containment")}
             data-testid="button-tool-containment"
           >
-            <Heart className="h-6 w-6 text-rose-500" />
-            <span className="text-xs font-medium">Containment</span>
+            <Heart className="h-4 w-4 text-rose-500" />
+            <span className="text-[10px] font-medium">Containment</span>
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-2 h-auto py-3"
             onClick={() => onNavigate("/meditation")}
             data-testid="button-tool-meditation"
           >
-            <Brain className="h-6 w-6 text-purple-500" />
-            <span className="text-xs font-medium">Meditation</span>
+            <Brain className="h-4 w-4 text-purple-500" />
+            <span className="text-[10px] font-medium">Meditation</span>
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-4"
+            className="flex flex-col items-center gap-2 h-auto py-3"
             onClick={onStillnessOpen}
             data-testid="button-tool-stillness"
           >
-            <Pause className="h-6 w-6 text-slate-500" />
-            <span className="text-xs font-medium">Stillness</span>
+            <Pause className="h-4 w-4 text-slate-500" />
+            <span className="text-[10px] font-medium">Stillness</span>
           </Button>
         </div>
 
@@ -55,7 +55,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
               data-testid="button-tool-eq-module"
             >
               <Brain className="h-5 w-5 text-emerald-500" />
-              <span className="text-xs">EQ Module</span>
+              <span className="text-[10px]">EQ Module</span>
             </Button>
             <Button
               variant="outline"
@@ -64,7 +64,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
               data-testid="button-tool-trigger"
             >
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <span className="text-xs">Trigger Log</span>
+              <span className="text-[10px]">Trigger Log</span>
             </Button>
             <Button
               variant="outline"
@@ -73,7 +73,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
               data-testid="button-tool-avoidance"
             >
               <Shield className="h-5 w-5 text-blue-500" />
-              <span className="text-xs">Avoidance</span>
+              <span className="text-[10px]">Avoidance</span>
             </Button>
           </div>
         </div>

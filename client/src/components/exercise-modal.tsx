@@ -126,7 +126,7 @@ export function ExerciseModal({
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
       <DialogContent className={className} data-testid={testId}>
         <DialogHeader>
-          <DialogTitle className="font-serif flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
             {icon}
             {title}
           </DialogTitle>

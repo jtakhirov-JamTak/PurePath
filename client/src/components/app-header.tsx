@@ -43,7 +43,7 @@ export function AppHeader({ showBackButton, backTo, backLabel, rightContent }: A
           data-testid="link-home"
         >
           <LeafLogo size={28} />
-          <span className="font-serif text-xl font-semibold text-primary">Leaf</span>
+          <span className="text-sm font-medium text-primary">Leaf</span>
         </Link>
 
         <div className="flex items-center gap-3">

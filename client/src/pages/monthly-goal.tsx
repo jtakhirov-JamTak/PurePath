@@ -206,7 +206,7 @@ export default function MonthlyGoalPage() {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h1 className="font-serif text-3xl font-bold" data-testid="text-month-label">
+            <h1 className="text-lg font-medium" data-testid="text-month-label">
               {formatMonthLabel(monthKey)}
             </h1>
             <Button
@@ -231,7 +231,7 @@ export default function MonthlyGoalPage() {
                   <Eye className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Your Vision & Identity</CardTitle>
+                  <CardTitle className="text-sm">Your Vision & Identity</CardTitle>
                   <CardDescription>Let this anchor every answer below</CardDescription>
                 </div>
               </div>
@@ -259,7 +259,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">What do I value?</CardTitle>
+                  <CardTitle className="text-sm">What do I value?</CardTitle>
                   <CardDescription>What matters most to you right now? What value does this month serve?</CardDescription>
                 </div>
               </div>
@@ -280,7 +280,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">What am I already good at?</CardTitle>
+                  <CardTitle className="text-sm">What am I already good at?</CardTitle>
                   <CardDescription>What do people compliment you on? What comes naturally to you?</CardDescription>
                 </div>
               </div>
@@ -301,7 +301,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">How can I use that to my advantage?</CardTitle>
+                  <CardTitle className="text-sm">How can I use that to my advantage?</CardTitle>
                   <CardDescription>How can your strengths move you toward your vision?</CardDescription>
                 </div>
               </div>
@@ -322,7 +322,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Select a Goal</CardTitle>
+                  <CardTitle className="text-sm">Select a Goal</CardTitle>
                   <CardDescription>Be precise. A real goal answers all four.</CardDescription>
                 </div>
               </div>
@@ -352,7 +352,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Deadline</CardTitle>
+                  <CardTitle className="text-sm">Deadline</CardTitle>
                   <CardDescription>Set a specific date. One month is concrete and forces focus.</CardDescription>
                 </div>
               </div>
@@ -367,7 +367,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Success Proof</CardTitle>
+                  <CardTitle className="text-sm">Success Proof</CardTitle>
                   <CardDescription>Observable proof a stranger would agree is real.</CardDescription>
                 </div>
               </div>
@@ -393,7 +393,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Best Result</CardTitle>
+                  <CardTitle className="text-sm">Best Result</CardTitle>
                   <CardDescription>Visualize the best possible outcome of achieving this proof point.</CardDescription>
                 </div>
               </div>
@@ -408,7 +408,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Inner Obstacle</CardTitle>
+                  <CardTitle className="text-sm">Inner Obstacle</CardTitle>
                   <CardDescription>Identify the internal block \u2014 not external circumstances. Visualize the exact moment it happens.</CardDescription>
                 </div>
               </div>
@@ -442,7 +442,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Implementation Plans</CardTitle>
+                  <CardTitle className="text-sm">Implementation Plans</CardTitle>
                   <CardDescription>Write 2 IF-THEN plans. Small beats big. Immediate beats delayed.</CardDescription>
                 </div>
               </div>
@@ -464,7 +464,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">Prize</CardTitle>
+                  <CardTitle className="text-sm">Prize</CardTitle>
                   <CardDescription>What reward are you giving yourself when you hit this goal?</CardDescription>
                 </div>
               </div>
@@ -479,7 +479,7 @@ export default function MonthlyGoalPage() {
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className="shrink-0 no-default-active-elevate">{nextCard()}</Badge>
                 <div>
-                  <CardTitle className="font-serif text-lg">How can I have fun with this?</CardTitle>
+                  <CardTitle className="text-sm">How can I have fun with this?</CardTitle>
                   <CardDescription>Happiness lives in the pursuit, not the arrival. Make it enjoyable.</CardDescription>
                 </div>
               </div>

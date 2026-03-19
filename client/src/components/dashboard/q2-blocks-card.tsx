@@ -32,7 +32,7 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
   return (
     <Card className="overflow-visible" data-testid="card-q2-blocks">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-serif">Scheduled Q2 Blocks</CardTitle>
+        <CardTitle className="text-[13px]">Scheduled Q2 Blocks</CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
         <ul className="space-y-2">

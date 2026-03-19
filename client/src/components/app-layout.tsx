@@ -63,14 +63,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 backdrop-blur-md bg-background/95 border-b" data-testid="top-nav">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+        <div className="container mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <button
             onClick={() => safeNavigate("/")}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             data-testid="link-home-logo"
           >
-            <LeafLogo size={28} />
-            <span className="font-serif text-xl font-semibold hidden sm:inline text-primary">Leaf</span>
+            <LeafLogo size={20} />
+            <span className="text-sm font-medium hidden sm:inline text-primary">Leaf</span>
           </button>
 
           <nav className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
@@ -81,14 +81,14 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <button
                   key={item.path}
                   onClick={() => safeNavigate(item.path)}
-                  className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-md transition-colors ${
                     active
                       ? "text-primary bg-primary/[0.08]"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid={`nav-link-${item.label.toLowerCase()}`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5" />
                   {item.label}
                 </button>
               );
@@ -102,7 +102,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 pl-2 pr-3" data-testid="button-user-menu">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-7 w-7">
                       <AvatarImage src={user?.profileImageUrl || undefined} />
                       <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
                     </Avatar>
@@ -145,7 +145,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden"
         data-testid="mobile-bottom-nav"
       >
-        <div className="flex items-center justify-around h-[60px]">
+        <div className="flex items-center justify-around h-[52px]">
           {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;

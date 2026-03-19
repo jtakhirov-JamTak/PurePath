@@ -415,13 +415,13 @@ export default function GoalWizardPage() {
           </div>
         </div>
 
-        <h1 className="font-serif text-3xl font-bold mb-6" data-testid="text-wizard-title">
+        <h1 className="text-lg font-medium mb-6" data-testid="text-wizard-title">
           {currentStep.title}
         </h1>
 
         <Card className="overflow-visible mb-8">
           <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base text-muted-foreground">Teaching</CardTitle>
+            <CardTitle className="text-[13px] text-muted-foreground">Teaching</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm leading-relaxed">{currentStep.content}</p>

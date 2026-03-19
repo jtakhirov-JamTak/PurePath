@@ -405,7 +405,7 @@ export default function JournalEntryPage() {
                 )}
               </div>
               <div>
-                <span className="font-serif text-lg font-medium capitalize">
+                <span className="text-sm font-medium capitalize">
                   {isEditing ? "Edit" : "New"} {session} Journal
                 </span>
                 <p className="text-xs text-muted-foreground">{formattedDate}</p>
@@ -463,16 +463,16 @@ export default function JournalEntryPage() {
           </div>
         ) : isMorning ? (
           /* ==================== MORNING JOURNAL ==================== */
-          <div className="space-y-10">
+          <div className="space-y-6">
             {/* Section 1 — Check-In */}
             <Card data-testid="card-check-in">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                     <BedDouble className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-lg">Check-In</CardTitle>
+                    <CardTitle className="text-sm">Check-In</CardTitle>
                     <CardDescription>How are you starting today?</CardDescription>
                   </div>
                 </div>
@@ -556,11 +556,11 @@ export default function JournalEntryPage() {
             <Card data-testid="card-identity">
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                     <Compass className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-lg">Identity</CardTitle>
+                    <CardTitle className="text-sm">Identity</CardTitle>
                     <CardDescription>Live from your values today</CardDescription>
                   </div>
                 </div>
@@ -626,7 +626,7 @@ export default function JournalEntryPage() {
 
                 {/* Read this aloud — identity statement */}
                 {identityStatement ? (
-                  <div className="rounded-lg border-l-4 border-primary bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="identity-read-aloud">
+                  <div className="rounded-lg border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B] bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="identity-read-aloud">
                     <p className="text-xs font-medium text-muted-foreground">Read this aloud:</p>
                     <p className="text-base italic text-foreground">{identityStatement}</p>
                   </div>
@@ -647,11 +647,11 @@ export default function JournalEntryPage() {
               <Card data-testid="card-courage">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                       <Shield className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="font-serif text-lg">Courage</CardTitle>
+                      <CardTitle className="text-sm">Courage</CardTitle>
                       <CardDescription>Face what you're avoiding</CardDescription>
                     </div>
                   </div>
@@ -772,11 +772,11 @@ export default function JournalEntryPage() {
               <Card data-testid="card-happiness">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                    <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                       <Heart className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="font-serif text-lg">Happiness</CardTitle>
+                      <CardTitle className="text-sm">Happiness</CardTitle>
                       <CardDescription className="italic">"Every day should be a happy day"</CardDescription>
                     </div>
                   </div>
@@ -807,18 +807,18 @@ export default function JournalEntryPage() {
           </div>
         ) : (
           /* ==================== EVENING JOURNAL ==================== */
-          <div className="space-y-10">
+          <div className="space-y-6">
             {journalMode === "quick" ? (
               /* Evening Quick Mode */
               <>
                 <Card data-testid="card-quick-evening">
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                         <Moon className="h-4 w-4 text-indigo-500" />
                       </div>
                       <div>
-                        <CardTitle className="font-serif text-lg">Quick Close</CardTitle>
+                        <CardTitle className="text-sm">Quick Close</CardTitle>
                         <CardDescription>15-second evening check-in</CardDescription>
                       </div>
                     </div>
@@ -871,11 +871,11 @@ export default function JournalEntryPage() {
                 <Card data-testid="card-trigger-check">
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
                         <AlertTriangle className="h-4 w-4 text-amber-500" />
                       </div>
                       <div>
-                        <CardTitle className="font-serif text-lg">Trigger Check</CardTitle>
+                        <CardTitle className="text-sm">Trigger Check</CardTitle>
                         <CardDescription>Log any triggers from today <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
                       </div>
                     </div>
@@ -1064,11 +1064,11 @@ export default function JournalEntryPage() {
                 <Card data-testid="card-step-back">
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                         <Eye className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="font-serif text-lg">Step-Back Reflection</CardTitle>
+                        <CardTitle className="text-sm">Step-Back Reflection</CardTitle>
                         <CardDescription>See your day through compassionate eyes</CardDescription>
                       </div>
                     </div>
@@ -1103,11 +1103,11 @@ export default function JournalEntryPage() {
                 <Card data-testid="card-shutdown">
                   <CardHeader>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                      <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                         <Power className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <CardTitle className="font-serif text-lg">Shutdown</CardTitle>
+                        <CardTitle className="text-sm">Shutdown</CardTitle>
                         <CardDescription>Close out your day with intention</CardDescription>
                       </div>
                     </div>

@@ -95,7 +95,7 @@ export default function IdentityDocPage() {
       <FlowBar fallback="/dashboard" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-10">
-          <h1 className="font-serif text-2xl font-bold" data-testid="text-identity-title">Identity Document</h1>
+          <h1 className="text-base font-medium" data-testid="text-identity-title">Identity Document</h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-identity-subtitle">
             Who you're choosing to become — from Lesson 2: Decide
           </p>
@@ -105,11 +105,11 @@ export default function IdentityDocPage() {
           <Card className="overflow-visible" data-testid="card-vision">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <Eye className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Vision</CardTitle>
+                  <CardTitle className="text-sm">Vision</CardTitle>
                   <CardDescription>Your 10+ year vision. Where are you headed?</CardDescription>
                 </div>
               </div>
@@ -128,11 +128,11 @@ export default function IdentityDocPage() {
           <Card className="overflow-visible" data-testid="card-identity">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <User className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Identity Statement</CardTitle>
+                  <CardTitle className="text-sm">Identity Statement</CardTitle>
                   <CardDescription>Who are you becoming? Write it as if it's already true.</CardDescription>
                 </div>
               </div>
@@ -151,11 +151,11 @@ export default function IdentityDocPage() {
           <Card className="overflow-visible" data-testid="card-others-will-see">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <Users className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Relational Intention</CardTitle>
+                  <CardTitle className="text-sm">Relational Intention</CardTitle>
                   <CardDescription>How I want others to experience me.</CardDescription>
                 </div>
               </div>
@@ -186,11 +186,11 @@ export default function IdentityDocPage() {
           <Card className="overflow-visible" data-testid="card-purpose">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <Heart className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="font-serif text-lg">Purpose</CardTitle>
+                  <CardTitle className="text-sm">Purpose</CardTitle>
                   <CardDescription>Your deeper reason for doing this work.</CardDescription>
                 </div>
               </div>

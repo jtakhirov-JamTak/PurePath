@@ -39,7 +39,7 @@ export default function BillingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <LeafLogo size={28} />
-            <span className="font-serif text-xl font-semibold text-primary">Leaf</span>
+            <span className="text-sm font-medium text-primary">Leaf</span>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -68,12 +68,12 @@ export default function BillingPage() {
         </Button>
 
         <div className="mb-8">
-          <h1 className="font-serif text-3xl font-bold mb-2">Account</h1>
+          <h1 className="text-lg font-medium mb-2">Account</h1>
         </div>
 
         <div className="rounded-lg border p-6 space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14">
+            <Avatar className="h-10 w-10">
               <AvatarImage src={user?.profileImageUrl || undefined} />
               <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
             </Avatar>

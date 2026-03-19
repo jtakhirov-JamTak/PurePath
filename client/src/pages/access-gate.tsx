@@ -41,7 +41,7 @@ export default function AccessGatePage() {
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-3">
           <LeafLogo size={48} />
-          <h1 className="font-serif text-2xl font-bold text-foreground">Enter Access Code</h1>
+          <h1 className="text-base font-medium text-foreground">Enter Access Code</h1>
           <p className="text-sm text-muted-foreground text-center">
             Enter the code you received at the workshop
           </p>
@@ -65,7 +65,7 @@ export default function AccessGatePage() {
           <Button
             type="submit"
             className="w-full"
-            style={{ backgroundColor: "#5a8a5c" }}
+            style={{ backgroundColor: "#50C878" }}
             disabled={!code.trim() || verifyMutation.isPending}
             data-testid="button-verify-code"
           >

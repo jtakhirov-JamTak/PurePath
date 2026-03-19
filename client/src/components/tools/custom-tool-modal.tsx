@@ -40,7 +40,7 @@ export function CustomToolsCard({
   return (
     <Card className="overflow-visible" data-testid="card-custom-tools">
       <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
-        <CardTitle className="text-base font-serif">My Tools</CardTitle>
+        <CardTitle className="text-[13px]">My Tools</CardTitle>
         <Badge variant="secondary" className="text-[10px]">{activeTools.length}/3</Badge>
       </CardHeader>
       <CardContent className="pb-4">
@@ -149,7 +149,7 @@ export function AddCustomToolModal({
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetAndClose(); }}>
       <DialogContent className="sm:max-w-md" data-testid="modal-add-custom-tool">
         <DialogHeader>
-          <DialogTitle className="font-serif flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
             Add Custom Tool
           </DialogTitle>

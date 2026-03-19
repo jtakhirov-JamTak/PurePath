@@ -576,7 +576,7 @@ export default function JournalHubPage() {
             <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => subWeeks(w, 1))} data-testid="button-prev-week">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h1 className="font-serif text-xl font-bold" data-testid="text-week-label">
+            <h1 className="text-sm font-medium" data-testid="text-week-label">
               {format(weekStart, "MMM d")} — {format(weekEnd, "MMM d, yyyy")}
             </h1>
             <Button size="icon" variant="ghost" onClick={() => setWeekStart((w) => addWeeks(w, 1))} data-testid="button-next-week">
@@ -741,11 +741,11 @@ export default function JournalHubPage() {
             >
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-md bg-amber-500/10 flex items-center justify-center shrink-0">
                     <Sun className="h-5 w-5 text-amber-500" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-base">Morning Check-in</CardTitle>
+                    <CardTitle className="text-[13px]">Morning Check-in</CardTitle>
                     <CardDescription className="text-sm">Set your intention for today</CardDescription>
                   </div>
                 </div>
@@ -766,11 +766,11 @@ export default function JournalHubPage() {
             >
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-md bg-indigo-500/10 flex items-center justify-center shrink-0">
+                  <div className="h-8 w-8 rounded-md bg-indigo-500/10 flex items-center justify-center shrink-0">
                     <Moon className="h-5 w-5 text-indigo-500" />
                   </div>
                   <div>
-                    <CardTitle className="font-serif text-base">Evening Review</CardTitle>
+                    <CardTitle className="text-[13px]">Evening Review</CardTitle>
                     <CardDescription className="text-sm">Reflect on your day</CardDescription>
                   </div>
                 </div>
@@ -792,11 +792,11 @@ export default function JournalHubPage() {
               data-testid="card-link-progress"
             >
               <CardHeader className="flex flex-row items-center gap-4">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="font-serif text-base">Progress</CardTitle>
+                  <CardTitle className="text-[13px]">Progress</CardTitle>
                   <CardDescription className="text-sm">Track your habits, goals, and overall growth</CardDescription>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -809,11 +809,11 @@ export default function JournalHubPage() {
               data-testid="card-link-tools"
             >
               <CardHeader className="flex flex-row items-center gap-4">
-                <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                   <Wrench className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <CardTitle className="font-serif text-base">Tools</CardTitle>
+                  <CardTitle className="text-[13px]">Tools</CardTitle>
                   <CardDescription className="text-sm">Meditation, emotional processing, empathy, and regulation</CardDescription>
                 </div>
                 <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />

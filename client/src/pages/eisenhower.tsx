@@ -581,11 +581,11 @@ export default function EisenhowerPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Grid3X3 className="h-7 w-7 text-primary" />
+            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Grid3X3 className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-serif text-3xl font-bold">Eisenhower Matrix</h1>
+              <h1 className="text-lg font-medium">Eisenhower Matrix</h1>
               <p className="text-muted-foreground">Weekly priority planning</p>
             </div>
           </div>
@@ -662,7 +662,7 @@ export default function EisenhowerPage() {
             <Card key={quadrant.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="font-serif text-lg">{quadrant.name}</CardTitle>
+                  <CardTitle className="text-sm">{quadrant.name}</CardTitle>
                   <Badge variant="outline">{quadrant.description}</Badge>
                 </div>
               </CardHeader>
@@ -749,7 +749,7 @@ export default function EisenhowerPage() {
 
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle className="font-serif">Quick Reference</CardTitle>
+            <CardTitle className="">Quick Reference</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p><strong>Q1 (Urgent + Important):</strong> Crises, deadlines, pressing problems. Requires date & time.</p>
@@ -764,7 +764,7 @@ export default function EisenhowerPage() {
         <Dialog open={wizardOpen} onOpenChange={handleWizardOpenChange}>
           <DialogContent className="sm:max-w-4xl" data-testid="modal-plan-wizard">
             <DialogHeader>
-              <DialogTitle className="font-serif flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
                 <Wand2 className="h-5 w-5 text-primary" />
                 Plan Your Week
               </DialogTitle>

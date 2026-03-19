@@ -69,11 +69,11 @@ export default function MeditationPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-14 w-14 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Brain className="h-7 w-7 text-primary" />
+            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Brain className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="font-serif text-3xl font-bold">Integrative Meditation</h1>
+              <h1 className="text-lg font-medium">Integrative Meditation</h1>
               <p className="text-muted-foreground">Let your subconscious integrate thoughts freely</p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function MeditationPage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <Sofa className="h-5 w-5" />
               Setup
             </CardTitle>
@@ -103,7 +103,7 @@ export default function MeditationPage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="font-serif">Black Noise Audio</CardTitle>
+            <CardTitle className="">Black Noise Audio</CardTitle>
             <CardDescription>Use this 12-hour black noise track during meditation</CardDescription>
           </CardHeader>
           <CardContent>
@@ -124,7 +124,7 @@ export default function MeditationPage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
               Meditation Process (20-30 minutes)
             </CardTitle>
@@ -156,14 +156,14 @@ export default function MeditationPage() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="font-serif">Post-Meditation Integration (2 minutes)</CardTitle>
+            <CardTitle className="">Post-Meditation Integration (2 minutes)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="p-4 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
               <p className="text-lg text-center font-medium">
                 Write one sentence only:
               </p>
-              <p className="text-xl text-center text-primary mt-2 font-serif">
+              <p className="text-xl text-center text-primary mt-2">
                 "The insight I gained was ______."
               </p>
             </div>
@@ -172,7 +172,7 @@ export default function MeditationPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-primary/[0.08] flex items-center justify-center">
                 <Calendar className="h-4 w-4 text-primary" />
               </div>
