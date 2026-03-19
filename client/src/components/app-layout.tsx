@@ -15,7 +15,6 @@ import {
   ChevronDown,
   Sprout,
   TreePine,
-  BookOpen,
   CalendarDays,
 } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
@@ -32,7 +31,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Today", path: "/dashboard", icon: Sprout },
   { label: "Plan", path: "/plan", icon: TreePine },
-  { label: "Learn", path: "/learn", icon: BookOpen },
   { label: "Journal", path: "/journal", icon: CalendarDays },
 ];
 

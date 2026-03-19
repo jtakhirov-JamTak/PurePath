@@ -18,8 +18,6 @@ import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 
-import LearnPage from "@/pages/learn";
-
 import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
 
@@ -130,9 +128,6 @@ function Router() {
       </Route>
       <Route path="/habits">
         {() => <AccessGatedRoute component={HabitsPage} />}
-      </Route>
-      <Route path="/learn">
-        {() => <AccessGatedRoute component={LearnPage} />}
       </Route>
       <Route path="/plan">
         {() => <AccessGatedRoute component={PlanPage} />}
