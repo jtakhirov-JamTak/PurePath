@@ -148,10 +148,6 @@ export const visionBoardSchema = z.object({
   imageData: z.string().max(10 * 1024 * 1024, "Image data must be at most 10MB").optional().nullable(),
 });
 
-export const checkoutSchema = z.object({
-  courseType: z.enum(["phase12", "phase3", "allinone"]),
-});
-
 export const createTriggerLogSchema = z.object({
   date: dateString,
   timeOfDay: optionalString(20),

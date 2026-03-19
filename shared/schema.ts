@@ -425,6 +425,7 @@ export const userSettings = pgTable("user_settings", {
   userId: varchar("user_id").notNull().unique(),
   onboardingStep: integer("onboarding_step").default(0).notNull(),
   onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
+  hasAccess: boolean("has_access").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [

@@ -1,16 +1,14 @@
 import { useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
-import CheckoutPage from "@/pages/checkout";
-import CheckoutSuccessPage from "@/pages/checkout-success";
-import CheckoutCancelPage from "@/pages/checkout-cancel";
+import AccessGatePage from "@/pages/access-gate";
 import DashboardPage from "@/pages/dashboard";
 import BillingPage from "@/pages/billing";
 import JournalEntryPage from "@/pages/journal-entry";
@@ -54,6 +52,36 @@ function AuthenticatedRoute({ component: Component }: { component: React.Compone
   return <Component />;
 }
 
+function AccessGatedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { data: accessStatus, isLoading: accessLoading } = useQuery<{ hasAccess: boolean }>({
+    queryKey: ["/api/access-status"],
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      window.location.href = "/api/login";
+    }
+  }, [authLoading, isAuthenticated]);
+
+  useEffect(() => {
+    if (!accessLoading && accessStatus && !accessStatus.hasAccess) {
+      window.location.href = "/access";
+    }
+  }, [accessLoading, accessStatus]);
+
+  if (authLoading || accessLoading || !isAuthenticated || !accessStatus?.hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return <Component />;
+}
+
 function HomePage() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -76,59 +104,59 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
-      <Route path="/checkout/success" component={CheckoutSuccessPage} />
-      <Route path="/checkout/cancel" component={CheckoutCancelPage} />
-      <Route path="/checkout/:courseType" component={CheckoutPage} />
+      <Route path="/access">
+        {() => <AuthenticatedRoute component={AccessGatePage} />}
+      </Route>
       <Route path="/dashboard">
-        {() => <AuthenticatedRoute component={DashboardPage} />}
+        {() => <AccessGatedRoute component={DashboardPage} />}
       </Route>
       <Route path="/billing">
-        {() => <AuthenticatedRoute component={BillingPage} />}
+        {() => <AccessGatedRoute component={BillingPage} />}
       </Route>
       <Route path="/journal/:date/:session">
-        {() => <AuthenticatedRoute component={JournalEntryPage} />}
+        {() => <AccessGatedRoute component={JournalEntryPage} />}
       </Route>
       <Route path="/meditation">
-        {() => <AuthenticatedRoute component={MeditationPage} />}
+        {() => <AccessGatedRoute component={MeditationPage} />}
       </Route>
       <Route path="/emotional-processing">
-        {() => <AuthenticatedRoute component={EmotionalProcessingPage} />}
+        {() => <AccessGatedRoute component={EmotionalProcessingPage} />}
       </Route>
       <Route path="/eisenhower">
-        {() => <AuthenticatedRoute component={EisenhowerPage} />}
+        {() => <AccessGatedRoute component={EisenhowerPage} />}
       </Route>
       <Route path="/empathy">
-        {() => <AuthenticatedRoute component={EmpathyPage} />}
+        {() => <AccessGatedRoute component={EmpathyPage} />}
       </Route>
       <Route path="/habits">
-        {() => <AuthenticatedRoute component={HabitsPage} />}
+        {() => <AccessGatedRoute component={HabitsPage} />}
       </Route>
       <Route path="/learn">
-        {() => <AuthenticatedRoute component={LearnPage} />}
+        {() => <AccessGatedRoute component={LearnPage} />}
       </Route>
       <Route path="/plan">
-        {() => <AuthenticatedRoute component={PlanPage} />}
+        {() => <AccessGatedRoute component={PlanPage} />}
       </Route>
       <Route path="/journal">
-        {() => <AuthenticatedRoute component={JournalHubPage} />}
+        {() => <AccessGatedRoute component={JournalHubPage} />}
       </Route>
       <Route path="/identity">
-        {() => <AuthenticatedRoute component={IdentityDocPage} />}
+        {() => <AccessGatedRoute component={IdentityDocPage} />}
       </Route>
       <Route path="/discovery-profile">
-        {() => <AuthenticatedRoute component={DiscoveryProfilePage} />}
+        {() => <AccessGatedRoute component={DiscoveryProfilePage} />}
       </Route>
       <Route path="/scoreboard">
-        {() => <AuthenticatedRoute component={ScoreboardPage} />}
+        {() => <AccessGatedRoute component={ScoreboardPage} />}
       </Route>
       <Route path="/monthly-goal">
-        {() => <AuthenticatedRoute component={MonthlyGoalPage} />}
+        {() => <AccessGatedRoute component={MonthlyGoalPage} />}
       </Route>
       <Route path="/goal-wizard">
-        {() => <AuthenticatedRoute component={GoalWizardPage} />}
+        {() => <AccessGatedRoute component={GoalWizardPage} />}
       </Route>
       <Route path="/setup">
-        {() => <AuthenticatedRoute component={SetupWizardPage} />}
+        {() => <AccessGatedRoute component={SetupWizardPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
@@ -139,7 +167,7 @@ function RedirectToHome() {
   const [location, setLocation] = useLocation();
   useEffect(() => {
     const alreadyRedirected = sessionStorage.getItem("ij-session-started");
-    if (!alreadyRedirected && location !== "/" && location !== "/checkout/success" && location !== "/checkout/cancel" && !location.startsWith("/checkout/")) {
+    if (!alreadyRedirected && location !== "/" && location !== "/access") {
       sessionStorage.setItem("ij-session-started", "1");
       setLocation("/");
     } else {

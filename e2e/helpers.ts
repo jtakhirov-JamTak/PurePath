@@ -44,7 +44,12 @@ export async function mockAuthenticatedUser(page: Page, opts: {
     return route.fulfill({ json: { onboardingStep: onboardingStep + 1, onboardingComplete: true } });
   });
 
-  // Purchases
+  // Access status
+  await page.route("**/api/access-status", (route) =>
+    route.fulfill({ json: { hasAccess: hasPurchases } }),
+  );
+
+  // Purchases (legacy — kept for backward compat)
   const purchases = hasPurchases
     ? [{ id: 1, userId: TEST_USER.id, courseType: "allinone", amount: 0, status: "completed", createdAt: new Date().toISOString() }]
     : [];

@@ -39,7 +39,6 @@ interface DailyHabitsCardProps {
   habitLevelMap: Map<number, number>;
   completedHabits: number;
   totalHabits: number;
-  hasPhase12: boolean;
   onHabitLevel: (habitId: number, level: number | null, options?: { isBinary?: boolean }) => void;
   onHabitSkip: (habitId: number) => void;
   onNavigate: (path: string) => void;
@@ -53,7 +52,6 @@ export function DailyHabitsCard({
   habitLevelMap,
   completedHabits,
   totalHabits,
-  hasPhase12,
   onHabitLevel,
   onHabitSkip,
   onNavigate,

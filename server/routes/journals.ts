@@ -10,9 +10,9 @@ export function registerJournalRoutes(app: Express) {
     try {
       const userId = req.user.claims.sub;
       
-      const hasAccess = await storage.hasCourseAccess(userId, "course2");
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Course access required" });
+      const hasUserAccess = await storage.hasAccess(userId);
+      if (!hasUserAccess) {
+        return res.status(403).json({ error: "Access code required" });
       }
 
       const journals = await storage.getJournalsByUser(userId);
@@ -28,9 +28,9 @@ export function registerJournalRoutes(app: Express) {
       const userId = req.user.claims.sub;
       const { date, session } = req.params;
 
-      const hasAccess = await storage.hasCourseAccess(userId, "course2");
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Course access required" });
+      const hasUserAccess = await storage.hasAccess(userId);
+      if (!hasUserAccess) {
+        return res.status(403).json({ error: "Access code required" });
       }
 
       const journal = await storage.getJournal(userId, date, session);
@@ -49,9 +49,9 @@ export function registerJournalRoutes(app: Express) {
       }
       const userId = req.user.claims.sub;
 
-      const hasAccess = await storage.hasCourseAccess(userId, "course2");
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Course access required" });
+      const hasUserAccess = await storage.hasAccess(userId);
+      if (!hasUserAccess) {
+        return res.status(403).json({ error: "Access code required" });
       }
 
       const journal = await storage.createOrUpdateJournal({
@@ -108,9 +108,9 @@ export function registerJournalRoutes(app: Express) {
       const startDate = req.query.startDate as string | undefined;
       const endDate = req.query.endDate as string | undefined;
 
-      const hasAccess = await storage.hasCourseAccess(userId, "course2");
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Course access required" });
+      const hasUserAccess = await storage.hasAccess(userId);
+      if (!hasUserAccess) {
+        return res.status(403).json({ error: "Access code required" });
       }
 
       let journals = await storage.getJournalsByUser(userId);

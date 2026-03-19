@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sun, Moon, Save, Loader2, Lock, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
   Chip, IntensityDots,
@@ -19,7 +19,7 @@ import {
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, Purchase, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { Journal, MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 interface MorningContent {
   sleepHours: string;
@@ -197,19 +197,9 @@ export default function JournalEntryPage() {
     localStorage.setItem("leaf-journal-mode", journalMode);
   }, [journalMode]);
 
-  const { data: purchases, isLoading: purchasesLoading } = useQuery<Purchase[]>({
-    queryKey: ["/api/purchases"],
-    enabled: !!user,
-  });
-
-  const hasAccess = purchases?.some(p =>
-    p.courseType === "phase12" || p.courseType === "allinone" ||
-    p.courseType === "course2" || p.courseType === "bundle"
-  );
-
   const { data: existingJournal, isLoading: journalLoading } = useQuery<Journal | null>({
     queryKey: ["/api/journals", date, session],
-    enabled: !!user && hasAccess,
+    enabled: !!user,
   });
 
   const currentMonthKey = date ? date.substring(0, 7) : format(new Date(), "yyyy-MM");
@@ -346,27 +336,10 @@ export default function JournalEntryPage() {
     },
   });
 
-  if (authLoading || purchasesLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="max-w-md p-8 text-center">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h1 className="font-serif text-2xl font-bold mb-2">Access Required</h1>
-          <p className="text-muted-foreground mb-6">
-            You need to purchase the Transformation Journal course to access this feature.
-          </p>
-          <Button onClick={() => setLocation("/checkout/phase12")} data-testid="button-purchase">
-            Purchase Course
-          </Button>
-        </Card>
       </div>
     );
   }

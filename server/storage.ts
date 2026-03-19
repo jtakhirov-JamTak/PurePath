@@ -26,8 +26,8 @@ export interface IStorage {
   createPurchase(purchase: InsertPurchase): Promise<Purchase>;
   createPurchaseIfNotExists(purchase: InsertPurchase): Promise<{ purchase: Purchase; created: boolean }>;
   updatePurchaseStatus(purchaseId: number, status: string): Promise<void>;
-  hasCourseAccess(userId: string, courseType: string): Promise<boolean>;
-  
+  hasAccess(userId: string): Promise<boolean>;
+
   getJournalsByUser(userId: string): Promise<Journal[]>;
   getJournal(userId: string, date: string, session: string): Promise<Journal | undefined>;
   createOrUpdateJournal(journal: InsertJournal): Promise<Journal>;
@@ -106,7 +106,7 @@ export interface IStorage {
 
   // User Settings
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
-  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean }): Promise<UserSettings>;
+  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean }): Promise<UserSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -139,24 +139,9 @@ export class DatabaseStorage implements IStorage {
     await db.update(purchases).set({ status }).where(eq(purchases.id, purchaseId));
   }
 
-  async hasCourseAccess(userId: string, courseType: string): Promise<boolean> {
-    const userPurchases = await this.getPurchasesByUser(userId);
-    return userPurchases.some(p => {
-      if (p.status !== "completed") return false;
-      // "allinone" and legacy "bundle" grant access to everything
-      if (p.courseType === "allinone" || p.courseType === "bundle") return true;
-      // Map new phase types to old course types for backward compatibility
-      if (courseType === "course1" || courseType === "phase12") {
-        return p.courseType === "phase12" || p.courseType === "course1";
-      }
-      if (courseType === "course2") {
-        return p.courseType === "phase12" || p.courseType === "course2";
-      }
-      if (courseType === "phase3") {
-        return p.courseType === "phase3";
-      }
-      return p.courseType === courseType;
-    });
+  async hasAccess(userId: string): Promise<boolean> {
+    const settings = await this.getUserSettings(userId);
+    return settings?.hasAccess === true;
   }
 
   async getJournalsByUser(userId: string): Promise<Journal[]> {
@@ -524,7 +509,7 @@ export class DatabaseStorage implements IStorage {
     return settings;
   }
 
-  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean }): Promise<UserSettings> {
+  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean }): Promise<UserSettings> {
     const [result] = await db
       .insert(userSettings)
       .values({ userId, ...updates, updatedAt: new Date() })

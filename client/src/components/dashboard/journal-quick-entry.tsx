@@ -7,19 +7,15 @@ export function JournalQuickEntry({
   todayStr,
   hasMorning,
   hasEvening,
-  hasAccess,
   setLocation,
   firstName,
 }: {
   todayStr: string;
   hasMorning: boolean;
   hasEvening: boolean;
-  hasAccess: boolean;
   setLocation: (path: string) => void;
   firstName: string;
 }) {
-  if (!hasAccess) return null;
-
   const bothDone = hasMorning && hasEvening;
   const displayName = firstName || "there";
 

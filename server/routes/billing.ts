@@ -2,11 +2,9 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { getUncachableStripeClient } from "../stripeClient";
-import { COURSES } from "@shared/pricing";
-import { checkoutSchema } from "../validation";
-import type { AuthRequest } from "./helpers";
 
 export function registerBillingRoutes(app: Express) {
+  // TODO: remove Stripe routes once all users migrated to access code model
   app.get("/api/purchases", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
@@ -18,64 +16,12 @@ export function registerBillingRoutes(app: Express) {
     }
   });
 
-  app.post("/api/checkout", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const parsed = checkoutSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.issues[0].message });
-      }
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const { courseType } = parsed.data;
-
-      if (!COURSES[courseType]) {
-        return res.status(400).json({ error: "Invalid course type" });
-      }
-
-      const course = COURSES[courseType];
-      const stripe = await getUncachableStripeClient();
-      
-      const stripePriceId = process.env[course.stripePriceEnvVar];
-      
-      const lineItems = stripePriceId
-        ? [{ price: stripePriceId, quantity: 1 }]
-        : [{
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: course.name,
-                description: course.description,
-              },
-              unit_amount: course.price,
-            },
-            quantity: 1,
-          }];
-
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
-        mode: "payment",
-        customer_email: userEmail,
-        line_items: lineItems,
-        metadata: {
-          userId,
-          courseType,
-        },
-        success_url: `${req.protocol}://${req.get("host")}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.protocol}://${req.get("host")}/checkout/cancel`,
-      });
-
-      res.json({ url: session.url });
-    } catch (error) {
-      console.error("Checkout error:", error);
-      res.status(500).json({ error: "Failed to create checkout session" });
-    }
-  });
-
+  // TODO: remove Stripe routes once all users migrated to access code model
   app.post("/api/stripe/webhook", async (req: any, res: Response) => {
     try {
       const stripe = await getUncachableStripeClient();
       const sig = req.headers["stripe-signature"];
-      
+
       if (!sig) {
         return res.status(400).json({ error: "Missing signature" });
       }
@@ -108,7 +54,7 @@ export function registerBillingRoutes(app: Express) {
             amount: session.amount_total || 0,
             status: "completed",
           });
-          
+
           if (created) {
             console.log(`Purchase created for user ${userId}, course ${courseType}`);
           } else {
@@ -121,49 +67,6 @@ export function registerBillingRoutes(app: Express) {
     } catch (error) {
       console.error("Webhook error:", error);
       res.status(400).json({ error: "Webhook error" });
-    }
-  });
-
-  app.post("/api/billing/refresh", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const stripe = await getUncachableStripeClient();
-
-      const purchases = await storage.getPurchasesByUser(userId);
-      
-      if (purchases.length === 0) {
-        return res.json({ 
-          updated: false, 
-          message: "No purchases found. If you just completed a payment, please wait a moment and try again." 
-        });
-      }
-
-      let updated = false;
-      
-      for (const purchase of purchases) {
-        if (purchase.stripeSessionId) {
-          try {
-            const session = await stripe.checkout.sessions.retrieve(purchase.stripeSessionId);
-            
-            if (session.payment_status === "paid" && purchase.status !== "completed") {
-              await storage.updatePurchaseStatus(purchase.id, "completed");
-              updated = true;
-            }
-          } catch (stripeError) {
-            console.log(`Could not retrieve session ${purchase.stripeSessionId}:`, stripeError);
-          }
-        }
-      }
-
-      res.json({ 
-        updated, 
-        message: updated 
-          ? "Your access has been refreshed successfully." 
-          : "Your access is already up to date."
-      });
-    } catch (error) {
-      console.error("Billing refresh error:", error);
-      res.status(500).json({ error: "Failed to refresh access" });
     }
   });
 }

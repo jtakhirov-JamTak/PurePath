@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Sun, Moon, ArrowRight, Lock, BarChart3, Wrench,
+  Sun, Moon, ArrowRight, BarChart3, Wrench,
   ChevronLeft, ChevronRight, Download, Check, Minus,
   GripVertical, Pencil, Trash2, Plus, X,
 } from "lucide-react";
@@ -19,7 +19,7 @@ import { useLocation } from "wouter";
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Purchase, Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 import {
   DndContext,
   closestCenter,
@@ -102,11 +102,6 @@ export default function JournalHubPage() {
     return result;
   }, [weekStart]);
 
-  const { data: purchases = [] } = useQuery<Purchase[]>({
-    queryKey: ["/api/purchases"],
-    enabled: !!user,
-  });
-
   const { data: journals = [], isLoading: journalsLoading } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
     enabled: !!user,
@@ -128,11 +123,6 @@ export default function JournalHubPage() {
     staleTime: 0,
     refetchOnMount: "always",
   });
-
-  const hasAccess = purchases.some(p =>
-    p.courseType === "phase12" || p.courseType === "allinone" ||
-    p.courseType === "course1" || p.courseType === "course2" || p.courseType === "bundle"
-  );
 
   const todayJournals = journals.filter(j => j.date === today);
   const hasMorning = todayJournals.some(j => j.session === "morning");
@@ -745,8 +735,8 @@ export default function JournalHubPage() {
         <div className="max-w-3xl mx-auto w-full mt-10 space-y-6">
           <div className="grid sm:grid-cols-2 gap-4">
             <Card
-              className={`overflow-visible ${hasAccess ? "hover-elevate cursor-pointer" : "opacity-60"}`}
-              onClick={() => hasAccess && setLocation(`/journal/${today}/morning`)}
+              className="overflow-visible hover-elevate cursor-pointer"
+              onClick={() => setLocation(`/journal/${today}/morning`)}
               data-testid="card-morning-journal"
             >
               <CardHeader>
@@ -770,8 +760,8 @@ export default function JournalHubPage() {
             </Card>
 
             <Card
-              className={`overflow-visible ${hasAccess ? "hover-elevate cursor-pointer" : "opacity-60"}`}
-              onClick={() => hasAccess && setLocation(`/journal/${today}/evening`)}
+              className="overflow-visible hover-elevate cursor-pointer"
+              onClick={() => setLocation(`/journal/${today}/evening`)}
               data-testid="card-evening-journal"
             >
               <CardHeader>
@@ -794,15 +784,6 @@ export default function JournalHubPage() {
               </CardContent>
             </Card>
           </div>
-
-          {!hasAccess && (
-            <div className="text-center py-4">
-              <Button onClick={() => setLocation("/checkout/phase12")} data-testid="button-unlock-journal">
-                <Lock className="h-4 w-4 mr-2" />
-                Unlock Journaling — Phase 1 & 2
-              </Button>
-            </div>
-          )}
 
           <div className="pt-6 border-t space-y-3">
             <Card

@@ -13,7 +13,7 @@ import {
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays } from "date-fns";
-import type { Purchase, Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, CustomTool } from "@shared/schema";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
@@ -58,11 +58,6 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const { data: purchases } = useQuery<Purchase[]>({
-    queryKey: ["/api/purchases"],
-    enabled: !!user,
-  });
-
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
     enabled: !!user,
@@ -104,15 +99,6 @@ export default function DashboardPage() {
     },
     enabled: !!user,
   });
-
-  const hasPhase12 = purchases?.some(
-    (p) =>
-      p.courseType === "phase12" ||
-      p.courseType === "allinone" ||
-      p.courseType === "course1" ||
-      p.courseType === "course2" ||
-      p.courseType === "bundle"
-  );
 
   const todayDayCode = DAY_CODES[today.getDay()];
   const todaysHabits = (() => {
@@ -429,10 +415,10 @@ export default function DashboardPage() {
   const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon
   const showPlanWeekPrompt = dayOfWeek === 0 || dayOfWeek === 1;
 
-  const journalHabitItems = hasPhase12 ? [
+  const journalHabitItems = [
     { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
     { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening, skipped: false },
-  ] : [];
+  ];
 
   const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
   const totalHabits = todaysHabits.length + journalHabitItems.length;
@@ -456,7 +442,7 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {!hasMorning && hasPhase12 && (
+            {!hasMorning && (
               <Button
                 size="sm"
                 onClick={() => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); }}
@@ -466,7 +452,7 @@ export default function DashboardPage() {
                 Morning
               </Button>
             )}
-            {hasMorning && !hasEvening && hasPhase12 && (
+            {hasMorning && !hasEvening && (
               <Button
                 size="sm"
                 variant="outline"
@@ -499,7 +485,6 @@ export default function DashboardPage() {
           todayStr={todayStr}
           hasMorning={hasMorning}
           hasEvening={hasEvening}
-          hasAccess={!!hasPhase12}
           setLocation={setLocation}
           firstName={user?.firstName || ""}
         />
@@ -512,7 +497,6 @@ export default function DashboardPage() {
           habitLevelMap={habitLevelMap}
           completedHabits={completedHabits}
           totalHabits={totalHabits}
-          hasPhase12={!!hasPhase12}
           onHabitLevel={(habitId, level, options) => {
             setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
           }}
