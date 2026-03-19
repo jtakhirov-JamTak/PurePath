@@ -397,11 +397,11 @@ export default function JournalEntryPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/[0.08] flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-primary/[0.08] flex items-center justify-center">
                 {isMorning ? (
-                  <Sun className="h-5 w-5 text-amber-500" />
+                  <Sun className="h-4 w-4 text-amber-500" />
                 ) : (
-                  <Moon className="h-5 w-5 text-indigo-500" />
+                  <Moon className="h-4 w-4 text-indigo-500" />
                 )}
               </div>
               <div>

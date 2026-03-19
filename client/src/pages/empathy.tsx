@@ -413,9 +413,9 @@ export default function EmpathyPage() {
     <Card>
       <CardContent className="py-12 text-center">
         {type === "prep" ? (
-          <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+          <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/50 mb-4" />
         ) : (
-          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+          <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-4" />
         )}
         <p className="text-muted-foreground">
           {type === "prep" ? "No prep entries yet" : "No debrief entries yet"}
@@ -436,8 +436,8 @@ export default function EmpathyPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Users className="h-5 w-5 text-primary" />
+            <div className="h-8 w-8 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Users className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-lg font-medium">EQ Module</h1>

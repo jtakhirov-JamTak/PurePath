@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Brain, Pause, AlertTriangle, Shield } from "lucide-react";
 
@@ -11,14 +11,14 @@ interface ToolPaletteProps {
 export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPaletteProps) {
   return (
     <Card className="overflow-visible" data-testid="card-tools">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-[13px]">Tools</CardTitle>
+      <CardHeader className="pb-1.5 px-3 pt-2.5">
+        <span className="text-xs font-medium uppercase tracking-wide text-bark">Tools</span>
       </CardHeader>
-      <CardContent className="pb-4 space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+      <CardContent className="pb-3 px-3 space-y-3">
+        <div className="grid grid-cols-3 gap-2">
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-3"
+            className="flex flex-col items-center gap-1.5 h-auto py-2"
             onClick={() => onToolOpen("containment")}
             data-testid="button-tool-containment"
           >
@@ -27,7 +27,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-3"
+            className="flex flex-col items-center gap-1.5 h-auto py-2"
             onClick={() => onNavigate("/meditation")}
             data-testid="button-tool-meditation"
           >
@@ -36,7 +36,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
           </Button>
           <Button
             variant="outline"
-            className="flex flex-col items-center gap-2 h-auto py-3"
+            className="flex flex-col items-center gap-1.5 h-auto py-2"
             onClick={onStillnessOpen}
             data-testid="button-tool-stillness"
           >
@@ -46,33 +46,33 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
         </div>
 
         <div>
-          <p className="text-xs text-muted-foreground mb-2">Use As Needed</p>
-          <div className="grid grid-cols-3 gap-3">
+          <p className="text-[10px] text-muted-foreground mb-1.5">Use As Needed</p>
+          <div className="grid grid-cols-3 gap-2">
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
+              className="flex flex-col items-center gap-1 h-auto py-2 opacity-80"
               onClick={() => onNavigate("/empathy")}
               data-testid="button-tool-eq-module"
             >
-              <Brain className="h-5 w-5 text-emerald-500" />
+              <Brain className="h-4 w-4 text-emerald-500" />
               <span className="text-[10px]">EQ Module</span>
             </Button>
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
+              className="flex flex-col items-center gap-1 h-auto py-2 opacity-80"
               onClick={() => onToolOpen("trigger")}
               data-testid="button-tool-trigger"
             >
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
               <span className="text-[10px]">Trigger Log</span>
             </Button>
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-1.5 h-auto py-3 opacity-80"
+              className="flex flex-col items-center gap-1 h-auto py-2 opacity-80"
               onClick={() => onToolOpen("avoidance")}
               data-testid="button-tool-avoidance"
             >
-              <Shield className="h-5 w-5 text-blue-500" />
+              <Shield className="h-4 w-4 text-blue-500" />
               <span className="text-[10px]">Avoidance</span>
             </Button>
           </div>

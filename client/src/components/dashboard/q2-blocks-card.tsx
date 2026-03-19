@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Q2TimeTracker, formatTime24to12 } from "./q2-time-tracker";
 import type { EisenhowerEntry } from "@shared/schema";
@@ -31,11 +31,11 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
 
   return (
     <Card className="overflow-visible" data-testid="card-q2-blocks">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-[13px]">Scheduled Q2 Blocks</CardTitle>
+      <CardHeader className="pb-1.5 px-3 pt-2.5">
+        <span className="text-xs font-medium uppercase tracking-wide text-bark">Scheduled Q2 Blocks</span>
       </CardHeader>
-      <CardContent className="pb-4">
-        <ul className="space-y-2">
+      <CardContent className="pb-3 px-3">
+        <ul className="space-y-0.5">
           {displayItems.map((item) => {
             const status = item.status || null;
             const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
@@ -63,7 +63,7 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
               : "border-border text-muted-foreground";
             return (
               <li key={item.id} className="flex flex-col gap-1" data-testid={`q2-block-${item.id}`}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 py-1.5">
                 <button
                   onClick={cycleQ2}
                   className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
@@ -72,19 +72,19 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
                   {boxLabel}
                 </button>
                 <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
-                <span className={`text-sm flex-1 ${
+                <span className={`text-xs flex-1 ${
                   status === "completed" ? "line-through text-muted-foreground"
                   : status === "skipped" ? "text-muted-foreground italic"
                   : ""
                 }`}>{item.task}</span>
                 {(item.scheduledTime || item.scheduledStartTime) && (
-                  <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
+                  <span className="text-[10px] text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
                 )}
                 {item.durationMinutes && (
                   <Badge variant="outline" className="text-[10px]">{item.durationMinutes}m</Badge>
                 )}
                 {status && (
-                  <span className="text-xs text-muted-foreground">{status}</span>
+                  <span className="text-[10px] text-muted-foreground">{status}</span>
                 )}
                 </div>
                 {(item.completionLevel === 1 || item.completionLevel === 2) && (
@@ -97,7 +97,7 @@ export function Q2BlocksCard({ todayQ2Items, onUpdateLevel, onSkipDialog, onSave
           })}
         </ul>
         {hasOverflow && (
-          <p className="text-xs text-muted-foreground mt-2 text-center">3 Q2 blocks max per day.</p>
+          <p className="text-[10px] text-muted-foreground mt-1.5 text-center">3 Q2 blocks max per day.</p>
         )}
       </CardContent>
     </Card>

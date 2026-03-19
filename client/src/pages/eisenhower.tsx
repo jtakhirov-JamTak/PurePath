@@ -581,8 +581,8 @@ export default function EisenhowerPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Grid3X3 className="h-5 w-5 text-primary" />
+            <div className="h-8 w-8 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Grid3X3 className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-lg font-medium">Eisenhower Matrix</h1>

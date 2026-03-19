@@ -345,8 +345,8 @@ function PlanVersioningPanel() {
     <Card className="overflow-visible" data-testid="card-plan-versioning">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="h-10 w-10 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-            <Save className="h-5 w-5 text-primary" />
+          <div className="h-8 w-8 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+            <Save className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <CardTitle className="text-sm">Plan Versions</CardTitle>

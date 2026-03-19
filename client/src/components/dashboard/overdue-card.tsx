@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import { Q2TimeTracker, formatTime24to12 } from "./q2-time-tracker";
@@ -28,14 +28,14 @@ export function OverdueCard({ overdueItems, onUpdateLevel, onSkipDialog, onSaveT
 
   return (
     <Card className="overflow-visible border-red-300 dark:border-red-500/50 bg-red-50/50 dark:bg-red-950/20" data-testid="card-overdue">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-1.5 px-3 pt-2.5">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-red-500" />
-          <CardTitle className="text-[13px] text-red-700 dark:text-red-400">Overdue</CardTitle>
+          <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
+          <span className="text-xs font-medium uppercase tracking-wide text-red-700 dark:text-red-400">Overdue</span>
         </div>
       </CardHeader>
-      <CardContent className="pb-4">
-        <ul className="space-y-2">
+      <CardContent className="pb-3 px-3">
+        <ul className="space-y-0.5">
           {overdueItems.map((item) => {
             const roleDot = CATEGORY_STYLES[(item.role as string) || "health"] || CATEGORY_STYLES.health;
             const isBin = item.isBinary || false;
@@ -62,7 +62,7 @@ export function OverdueCard({ overdueItems, onUpdateLevel, onSkipDialog, onSaveT
               : "border-red-300 dark:border-red-500/50 text-muted-foreground";
             return (
               <li key={item.id} className="flex flex-col gap-1" data-testid={`overdue-item-${item.id}`}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 py-1.5">
                 <button
                   onClick={cycleOverdue}
                   className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
@@ -71,15 +71,15 @@ export function OverdueCard({ overdueItems, onUpdateLevel, onSkipDialog, onSaveT
                   {boxLabel}
                 </button>
                 <span className={`h-2 w-2 rounded-full shrink-0 ${roleDot}`} />
-                <span className="text-sm flex-1">{item.task}</span>
+                <span className="text-xs flex-1">{item.task}</span>
                 <Badge variant="outline" className="text-[10px] border-red-300 text-red-600 dark:text-red-400">{item.quadrant?.toUpperCase()}</Badge>
                 {(item.scheduledDate || item.deadline) && (
-                  <span className="text-xs text-red-500 dark:text-red-400">
+                  <span className="text-[10px] text-red-500 dark:text-red-400">
                     {item.scheduledDate || item.deadline}
                   </span>
                 )}
                 {(item.scheduledTime || item.scheduledStartTime) && (
-                  <span className="text-xs text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
+                  <span className="text-[10px] text-muted-foreground">{item.scheduledTime || formatTime24to12(item.scheduledStartTime!)}</span>
                 )}
                 </div>
                 {(item.completionLevel === 1 || item.completionLevel === 2) && (

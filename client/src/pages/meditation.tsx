@@ -69,8 +69,8 @@ export default function MeditationPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Brain className="h-5 w-5 text-primary" />
+            <div className="h-8 w-8 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Brain className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-lg font-medium">Integrative Meditation</h1>

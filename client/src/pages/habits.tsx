@@ -94,8 +94,8 @@ export default function HabitsPage() {
 
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="flex items-center gap-4 mb-10">
-          <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-            <Repeat className="h-5 w-5 text-primary" />
+          <div className="h-8 w-8 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+            <Repeat className="h-4 w-4 text-primary" />
           </div>
           <div>
             <h1 className="text-lg font-medium" data-testid="text-page-title">Habits</h1>
@@ -134,7 +134,7 @@ export default function HabitsPage() {
           {activeHabits.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
-                <Repeat className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <Repeat className="h-8 w-8 mx-auto text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">No habits yet</p>
                 <p className="text-sm text-muted-foreground mt-1">Add up to 3 daily habits to get started</p>
               </CardContent>
@@ -146,8 +146,8 @@ export default function HabitsPage() {
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 shrink-0 rounded-lg bg-primary/[0.08] flex items-center justify-center">
-                          <Repeat className="h-4 w-4 text-primary" />
+                        <div className="h-8 w-8 shrink-0 rounded-lg bg-primary/[0.08] flex items-center justify-center">
+                          <Repeat className="h-3.5 w-3.5 text-primary" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium truncate" data-testid={`text-habit-name-${habit.id}`}>

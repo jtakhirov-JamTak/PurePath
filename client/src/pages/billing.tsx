@@ -73,7 +73,7 @@ export default function BillingPage() {
 
         <div className="rounded-lg border p-6 space-y-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-8 w-8">
               <AvatarImage src={user?.profileImageUrl || undefined} />
               <AvatarFallback className="text-lg">{getInitials()}</AvatarFallback>
             </Avatar>

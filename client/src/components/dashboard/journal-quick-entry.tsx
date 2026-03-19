@@ -1,7 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Sun, Moon, Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 
 export function JournalQuickEntry({
   todayStr,
@@ -22,9 +21,9 @@ export function JournalQuickEntry({
   if (bothDone) {
     return (
       <Card className="overflow-visible" data-testid="card-journal-quick">
-        <CardContent className="py-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Check className="h-4 w-4 text-emerald-500" />
+        <CardContent className="py-2 px-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
             <span data-testid="text-journals-complete">Journals complete for today</span>
           </div>
         </CardContent>
@@ -35,57 +34,28 @@ export function JournalQuickEntry({
   if (!hasMorning) {
     return (
       <Card className="overflow-visible border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B]" data-testid="card-journal-quick">
-        <CardHeader className="pb-2">
+        <CardHeader className="py-2 px-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
-              <CardTitle className="text-lg" data-testid="text-journal-greeting">
-                <Sun className="h-5 w-5 inline mr-1.5 text-amber-500" />
+              <p className="text-sm font-medium" data-testid="text-journal-greeting">
                 Good morning, {displayName}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">Start your day with intention</p>
+              </p>
+              <p className="text-xs text-muted-foreground">Start your day with intention</p>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pb-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">What are you grateful for?</label>
-              <Input
-                placeholder="Today I'm grateful for..."
-                className="text-sm"
-                readOnly
-                onFocus={() => {
-                  setLocation(`/journal/${todayStr}/morning`);
-                  window.scrollTo(0, 0);
-                }}
-                data-testid="input-gratitude-preview"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">What's your intention?</label>
-              <Input
-                placeholder="Today I intend to..."
-                className="text-sm"
-                readOnly
-                onFocus={() => {
-                  setLocation(`/journal/${todayStr}/morning`);
-                  window.scrollTo(0, 0);
-                }}
-                data-testid="input-intention-preview"
-              />
-            </div>
-          </div>
+        <CardContent className="pb-3 px-3">
           <Button
+            size="sm"
+            className="text-xs"
             onClick={() => {
               setLocation(`/journal/${todayStr}/morning`);
               window.scrollTo(0, 0);
             }}
-            className="w-full"
             data-testid="button-start-morning-journal"
           >
-            <Sun className="h-4 w-4 mr-2" />
             Start Morning Journal
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
           </Button>
         </CardContent>
       </Card>
@@ -94,30 +64,29 @@ export function JournalQuickEntry({
 
   return (
     <Card className="overflow-visible border-l-4 border-l-[#6B4226]/50 dark:border-l-[#A67B5B]/50" data-testid="card-journal-quick">
-      <CardHeader className="pb-2">
+      <CardHeader className="py-2 px-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle className="text-[13px]" data-testid="text-journal-greeting">
-              <Moon className="h-4 w-4 inline mr-1.5 text-indigo-400" />
+            <p className="text-sm font-medium" data-testid="text-journal-greeting">
               How was your day?
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-0.5">Take a moment to reflect</p>
+            </p>
+            <p className="text-xs text-muted-foreground">Take a moment to reflect</p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pb-4">
+      <CardContent className="pb-3 px-3">
         <Button
           variant="outline"
+          size="sm"
+          className="text-xs"
           onClick={() => {
             setLocation(`/journal/${todayStr}/evening`);
             window.scrollTo(0, 0);
           }}
-          className="w-full"
           data-testid="button-start-evening-journal"
         >
-          <Moon className="h-4 w-4 mr-2" />
           Start Evening Journal
-          <ArrowRight className="ml-2 h-4 w-4" />
+          <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
         </Button>
       </CardContent>
     </Card>

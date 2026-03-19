@@ -9,8 +9,8 @@ export default function EmotionalProcessingPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-primary/[0.08] flex items-center justify-center">
-              <Heart className="h-5 w-5 text-primary" />
+            <div className="h-8 w-8 rounded-xl bg-primary/[0.08] flex items-center justify-center">
+              <Heart className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-lg font-medium">Emotional Containment</h1>
@@ -29,8 +29,8 @@ export default function EmotionalProcessingPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-rose-500/20 flex items-center justify-center">
-                  <Eye className="h-5 w-5 text-rose-500" />
+                <div className="h-8 w-8 rounded-full bg-rose-500/20 flex items-center justify-center">
+                  <Eye className="h-4 w-4 text-rose-500" />
                 </div>
                 <div>
                   <CardTitle className="">1. FEEL (10-20 seconds)</CardTitle>
@@ -48,8 +48,8 @@ export default function EmotionalProcessingPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <Tag className="h-5 w-5 text-amber-500" />
+                <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <Tag className="h-4 w-4 text-amber-500" />
                 </div>
                 <div>
                   <CardTitle className="">2. LABEL (1 sentence)</CardTitle>
@@ -75,8 +75,8 @@ export default function EmotionalProcessingPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                  <Wind className="h-5 w-5 text-cyan-500" />
+                <div className="h-8 w-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                  <Wind className="h-4 w-4 text-cyan-500" />
                 </div>
                 <div>
                   <CardTitle className="">3. REGULATE (2-3 slow exhales)</CardTitle>
@@ -94,8 +94,8 @@ export default function EmotionalProcessingPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <MoveRight className="h-5 w-5 text-emerald-500" />
+                <div className="h-8 w-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <MoveRight className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div>
                   <CardTitle className="">4. MOVE</CardTitle>

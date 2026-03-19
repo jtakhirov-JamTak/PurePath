@@ -397,7 +397,7 @@ export default function DashboardPage() {
               <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
               <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
             </div>
-            <div className="w-full md:w-72 md:flex-shrink-0">
+            <div className="w-full md:w-56 md:flex-shrink-0">
               <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
             </div>
           </div>
@@ -426,16 +426,16 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-4 max-w-5xl">
-        <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 min-w-0 space-y-3">
+      <div className="container mx-auto px-4 py-3 max-w-5xl">
+        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex-1 min-w-0 space-y-2">
         <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
           <div>
-            <h1 className="text-base font-medium" data-testid="text-today-title">
+            <h1 className="text-sm font-medium" data-testid="text-today-title">
               {format(today, "EEEE, MMM d")}
             </h1>
             {goalDisplay && (
-              <p className="text-sm text-muted-foreground mt-0.5" data-testid="text-monthly-promise">
+              <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-monthly-promise">
                 <Target className="h-3 w-3 inline mr-1" />
                 {goalDisplay}
               </p>
@@ -445,10 +445,11 @@ export default function DashboardPage() {
             {!hasMorning && (
               <Button
                 size="sm"
+                className="text-xs py-1 px-3 h-auto"
                 onClick={() => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); }}
                 data-testid="button-morning-journal"
               >
-                <Sun className="h-4 w-4 mr-1" />
+                <Sun className="h-3.5 w-3.5 mr-1" />
                 Morning
               </Button>
             )}
@@ -456,10 +457,11 @@ export default function DashboardPage() {
               <Button
                 size="sm"
                 variant="outline"
+                className="text-xs py-1 px-3 h-auto"
                 onClick={() => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); }}
                 data-testid="button-evening-journal"
               >
-                <Moon className="h-4 w-4 mr-1" />
+                <Moon className="h-3.5 w-3.5 mr-1" />
                 Evening
               </Button>
             )}
@@ -467,15 +469,15 @@ export default function DashboardPage() {
         </div>
 
         {showPlanWeekPrompt && (
-          <div className="p-4 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-4" data-testid="card-plan-week-prompt">
-            <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-3" data-testid="card-plan-week-prompt">
+            <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-primary shrink-0" />
               <div>
-                <p className="font-medium text-sm">Time to plan your week</p>
-                <p className="text-xs text-muted-foreground">Pick your top priorities for the week ahead</p>
+                <p className="text-xs font-medium">Time to plan your week</p>
+                <p className="text-[10px] text-muted-foreground">Pick your top priorities for the week ahead</p>
               </div>
             </div>
-            <Button size="sm" onClick={() => setLocation("/eisenhower")} data-testid="button-plan-week-go">
+            <Button size="sm" className="text-xs" onClick={() => setLocation("/eisenhower")} data-testid="button-plan-week-go">
               Plan Week
             </Button>
           </div>
@@ -556,13 +558,13 @@ export default function DashboardPage() {
       <Dialog open={!!habitSkipDialog} onOpenChange={(open) => { if (!open) setHabitSkipDialog(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+            <DialogTitle className="text-sm font-medium">Why was this skipped?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          <div className="space-y-1 max-h-72 overflow-y-auto">
             {SKIP_REASONS.map((reason, i) => (
               <button
                 key={i}
-                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                className="w-full text-left text-xs px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (habitSkipDialog) {
                     setHabitLevelMutation.mutate({ habitId: habitSkipDialog.habitId, level: 0, skipReason: reason });
@@ -581,13 +583,13 @@ export default function DashboardPage() {
       <Dialog open={!!eisenhowerSkipDialog} onOpenChange={(open) => { if (!open) setEisenhowerSkipDialog(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
+            <DialogTitle className="text-sm font-medium">Why was this skipped?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          <div className="space-y-1 max-h-72 overflow-y-auto">
             {SKIP_REASONS.map((reason, i) => (
               <button
                 key={i}
-                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
+                className="w-full text-left text-xs px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
                     const mins = eisenhowerSkipDialog.durationMinutes || parseTimeEstimateMinutes(eisenhowerSkipDialog.timeEstimate);
@@ -612,30 +614,30 @@ export default function DashboardPage() {
       }}>
         <DialogContent className="max-w-sm text-center" data-testid="dialog-stillness">
           <DialogHeader>
-            <DialogTitle className="text-lg">Stillness Exercise</DialogTitle>
+            <DialogTitle className="text-sm font-medium">Stillness Exercise</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <p className="text-sm text-muted-foreground leading-relaxed italic">
+          <div className="space-y-4 py-3">
+            <p className="text-xs text-muted-foreground leading-relaxed italic">
               Be still for 10 minutes. When thinking, say to yourself:
             </p>
-            <p className="text-base font-medium px-4">
+            <p className="text-xs font-medium px-4">
               "This is just my nervous system, not my identity."
             </p>
             <div className="flex flex-col items-center gap-4">
-              <div className="relative w-28 h-28 rounded-full border-4 border-slate-200 dark:border-slate-700 flex items-center justify-center" data-testid="stillness-timer-circle">
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 112 112">
+              <div className="relative w-20 h-20 rounded-full border-4 border-slate-200 dark:border-slate-700 flex items-center justify-center" data-testid="stillness-timer-circle">
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 80 80">
                   <circle
-                    cx="56" cy="56" r="52"
+                    cx="40" cy="40" r="36"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="4"
                     className="text-emerald-500"
-                    strokeDasharray={2 * Math.PI * 52}
-                    strokeDashoffset={2 * Math.PI * 52 * (stillnessSeconds / 600)}
+                    strokeDasharray={2 * Math.PI * 36}
+                    strokeDashoffset={2 * Math.PI * 36 * (stillnessSeconds / 600)}
                     strokeLinecap="round"
                   />
                 </svg>
-                <span className="text-2xl font-bold tabular-nums" data-testid="text-stillness-time">
+                <span className="text-lg font-bold tabular-nums" data-testid="text-stillness-time">
                   {Math.floor(stillnessSeconds / 60)}:{String(stillnessSeconds % 60).padStart(2, "0")}
                 </span>
               </div>
