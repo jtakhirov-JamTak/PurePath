@@ -1,22 +1,13 @@
-import { useState } from "react";
 import { AppLayout } from "@/components/app-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Pencil, Save, Trash2, RotateCcw, Copy, Clock, ChevronDown, ChevronUp,
-} from "lucide-react";
+import { Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, PlanVersion } from "@shared/schema";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
 
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
@@ -25,150 +16,6 @@ const CATEGORY_DOTS: Record<string, string> = {
   "self-development": "bg-blue-500",
   happiness: "bg-slate-300 dark:bg-slate-400",
 };
-
-function PlanVersioningPanel() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [expanded, setExpanded] = useState(false);
-  const [showVersions, setShowVersions] = useState(false);
-  const [versionName, setVersionName] = useState("");
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
-
-  const { data: versions = [] } = useQuery<PlanVersion[]>({
-    queryKey: ["/api/plan-versions"],
-  });
-
-  const saveMutation = useMutation({
-    mutationFn: async (mode: string) => {
-      const res = await apiRequest("POST", "/api/plan-versions/save", { mode, versionName: versionName || undefined });
-      if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed to save plan"); }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      setVersionName("");
-      toast({ title: "Plan saved successfully" });
-    },
-    onError: (error: Error) => { toast({ title: "Could not save plan", description: error.message, variant: "destructive" }); },
-  });
-
-  const clearMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/plan-versions/clear", {});
-      if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed to clear plan"); }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      setConfirmClear(false);
-      toast({ title: "Plan data cleared" });
-    },
-    onError: (error: Error) => { toast({ title: "Could not clear plan", description: error.message, variant: "destructive" }); },
-  });
-
-  const restoreMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/plan-versions/${id}/restore`, {});
-      if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed to restore plan"); }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/habits"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      setConfirmRestore(null);
-      toast({ title: "Plan restored from saved version" });
-    },
-    onError: (error: Error) => { toast({ title: "Could not restore plan", description: error.message, variant: "destructive" }); },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/plan-versions/${id}`, undefined);
-      if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed to delete version"); }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/plan-versions"] });
-      toast({ title: "Version deleted" });
-    },
-    onError: (error: Error) => { toast({ title: "Could not delete version", description: error.message, variant: "destructive" }); },
-  });
-
-  return (
-    <div data-testid="card-plan-versioning">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-      >
-        Plan Versions
-        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-      </button>
-      {expanded && (
-        <div className="mt-3 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Input value={versionName} onChange={(e) => setVersionName(e.target.value)} placeholder="Version name (optional)" className="flex-1 min-w-[150px] text-xs" data-testid="input-version-name" />
-            <Button size="sm" className="text-xs" onClick={() => saveMutation.mutate("save")} disabled={saveMutation.isPending} data-testid="button-save-plan">
-              <Save className="h-3 w-3 mr-1" />Save
-            </Button>
-            <Button size="sm" variant="outline" className="text-xs" onClick={() => saveMutation.mutate("save_and_copy")} disabled={saveMutation.isPending} data-testid="button-save-copy">
-              <Copy className="h-3 w-3 mr-1" />Copy
-            </Button>
-            <Button size="sm" variant="outline" className="text-xs" onClick={() => setConfirmClear(true)} data-testid="button-clear-plan">
-              <Trash2 className="h-3 w-3 mr-1" />Clear
-            </Button>
-          </div>
-          {versions.length > 0 && (
-            <div>
-              <Button variant="ghost" size="sm" onClick={() => setShowVersions(!showVersions)} className="w-full justify-between text-xs" data-testid="button-toggle-versions">
-                <span>{versions.length} saved version{versions.length !== 1 ? "s" : ""}</span>
-                {showVersions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-              </Button>
-              {showVersions && (
-                <div className="space-y-1.5 mt-2">
-                  {versions.map(v => (
-                    <div key={v.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-xs" data-testid={`version-row-${v.id}`}>
-                      <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{v.versionName}</p>
-                        <p className="text-[10px] text-muted-foreground">{format(new Date(v.createdAt), "MMM d, yyyy h:mm a")}</p>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setConfirmRestore(v.id)} data-testid={`button-restore-${v.id}`}><RotateCcw className="h-3 w-3" /></Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(v.id)} data-testid={`button-delete-version-${v.id}`}><Trash2 className="h-3 w-3" /></Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Clear Plan Data?</DialogTitle><DialogDescription>This will clear your current vision board, monthly goal, and deactivate all habits.</DialogDescription></DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmClear(false)}>Cancel</Button>
-            <Button variant="outline" onClick={() => { saveMutation.mutate("save_and_clear"); setConfirmClear(false); }} disabled={saveMutation.isPending}>Save First, Then Clear</Button>
-            <Button variant="destructive" onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending} data-testid="button-confirm-clear">Clear Now</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={confirmRestore !== null} onOpenChange={(o) => { if (!o) setConfirmRestore(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Restore This Version?</DialogTitle><DialogDescription>This will overwrite your current plan data with the saved version.</DialogDescription></DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setConfirmRestore(null)}>Cancel</Button>
-            <Button onClick={() => confirmRestore !== null && restoreMutation.mutate(confirmRestore)} disabled={restoreMutation.isPending} data-testid="button-confirm-restore">Restore</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
 
 export default function PlanPage() {
   const { user } = useAuth();
@@ -294,11 +141,6 @@ export default function PlanPage() {
                 Figure out what matters →
               </button>
             )}
-          </div>
-
-          {/* Plan Versions */}
-          <div className="pt-4 border-t">
-            <PlanVersioningPanel />
           </div>
         </div>
       </div>

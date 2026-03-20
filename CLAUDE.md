@@ -86,8 +86,6 @@ Routes are split by domain: `billing`, `journals`, `eisenhower`, `empathy`, `hab
 
 **Journals** store structured data as JSON with morning/evening session types.
 
-**Plan versioning** snapshots identity doc, monthly goal, quarterly goal, and active habits as JSONB in `plan_versions` table.
-
 ## Lessons Learned
 
 ### Habit Filtering is Date-Aware

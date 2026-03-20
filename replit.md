@@ -38,7 +38,6 @@ Preferred communication style: Simple, everyday language.
   - **Dashboard (Today)**: Redesigned vertical flow: 1-Year Vision → Q1-Q4 quarterly goals row → Monthly Promise → North Star (identity/values/intention with voice input) → Daily Habits (journals + habits with cycling status) → Weekly Items (Q2 focus + mini calendar) → Evening Reflection → Regulation Now link → Library link.
   - **Vision Board** (`/plan`): Single image upload stored as base64 in identity_documents table (visionBoardMain). Upload, replace, and remove functionality.
   - **Plan Wizard** (`/plan`): 5-step gated wizard (Vision→Quarterly→Monthly→Habits→Eisenhower) with step completion checks and navigation gating. Each step must be completed before the next unlocks.
-  - **Plan Versioning**: Save/restore/clear plan data via `plan_versions` table. Snapshot stores identity doc, monthly goal, quarterly goal, and active habits as JSONB. Modes: save, save_and_copy, save_and_clear. Version list with restore/delete.
   - **Journaling as Habits**: AM/PM journal entries appear as system habits in dashboard's "Due Today" card with click-to-navigate and auto-complete status based on journal existence.
   - **Course Curriculum**: Collapsible phases with lesson overviews and video placeholders.
   - **Phase 3 Transformation**: Document upload for AI pattern analysis and downloadable reports.
@@ -70,7 +69,7 @@ See `.local/skills/process-framework/SKILL.md` for code patterns and examples.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM.
-- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`, `plan_versions`, `tool_usage_logs`, `custom_tools`.
+- **Key Tables**: `users`, `sessions`, `purchases`, `journals`, `chatMessages`, `eisenhower_entries`, `empathy_exercises`, `habits`, `habit_completions`, `tasks`, `monthly_goals`, `quarterly_goals`, `identity_documents`, `tool_usage_logs`, `custom_tools`.
 - **Shared Types**: TypeScript types and Zod schemas shared between client and server.
 
 ### Key Design Patterns

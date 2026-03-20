@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { 
-  purchases, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, planVersions, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
+  purchases, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
   type Purchase, type InsertPurchase,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
@@ -10,7 +10,6 @@ import {
   type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
-  type PlanVersion, type InsertPlanVersion,
   type ToolUsageLog, type InsertToolUsageLog,
   type CustomTool, type InsertCustomTool,
   type TriggerLog, type InsertTriggerLog,
@@ -72,14 +71,6 @@ export interface IStorage {
   // Monthly Goals
   getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
   upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal>;
-
-  // Plan Versions
-  getPlanVersionsByUser(userId: string): Promise<PlanVersion[]>;
-  createPlanVersion(version: InsertPlanVersion): Promise<PlanVersion>;
-  deletePlanVersion(id: number): Promise<void>;
-
-  // Bulk clear for plan versioning
-  clearUserPlanData(userId: string, monthKey: string): Promise<void>;
 
   // Tool Usage Logs
   getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]>;
@@ -417,31 +408,6 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result;
   }
-  async getPlanVersionsByUser(userId: string): Promise<PlanVersion[]> {
-    return db.select().from(planVersions).where(eq(planVersions.userId, userId)).orderBy(desc(planVersions.createdAt));
-  }
-
-  async createPlanVersion(version: InsertPlanVersion): Promise<PlanVersion> {
-    const [newVersion] = await db.insert(planVersions).values(version).returning();
-    return newVersion;
-  }
-
-  async deletePlanVersion(id: number): Promise<void> {
-    await db.delete(planVersions).where(eq(planVersions.id, id));
-  }
-
-  async clearUserPlanData(userId: string, monthKey: string): Promise<void> {
-    await db.update(identityDocuments).set({
-      yearVision: "", yearVisualization: "",
-      visionBoardMain: "", visionBoardLeft: "", visionBoardRight: "",
-      updatedAt: new Date(),
-    }).where(eq(identityDocuments.userId, userId));
-    await db.delete(monthlyGoals).where(
-      and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
-    );
-    await db.update(habits).set({ active: false }).where(eq(habits.userId, userId));
-  }
-
   async getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]> {
     return db.select().from(toolUsageLogs).where(eq(toolUsageLogs.userId, userId)).orderBy(desc(toolUsageLogs.createdAt));
   }

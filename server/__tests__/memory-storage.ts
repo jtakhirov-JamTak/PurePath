@@ -14,7 +14,6 @@ let _avoidanceLogs: any[] = [];
 let _meditationInsights: any[] = [];
 let _customTools: any[] = [];
 let _monthlyGoals: any[] = [];
-let _planVersions: any[] = [];
 let _journals: any[] = [];
 let _userSettings: any[] = [];
 let _purchases: any[] = [];
@@ -34,7 +33,6 @@ export function resetStorage() {
   _meditationInsights = [];
   _customTools = [];
   _monthlyGoals = [];
-  _planVersions = [];
   _journals = [];
   _userSettings = [];
   _purchases = [];
@@ -138,16 +136,6 @@ export const storage = {
     _monthlyGoals.push(g);
     return g;
   },
-
-  // Plan versions
-  getPlanVersionsByUser: async (userId: string) => _planVersions.filter(p => p.userId === userId),
-  createPlanVersion: async (data: any) => {
-    const p = { id: nextId(), ...data, createdAt: new Date().toISOString() };
-    _planVersions.push(p);
-    return p;
-  },
-  deletePlanVersion: async (id: number) => { _planVersions = _planVersions.filter(p => p.id !== id); },
-  clearUserPlanData: async () => {},
 
   // Journals
   getJournalsByUser: async (userId: string) => _journals.filter(j => j.userId === userId),
