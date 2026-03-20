@@ -93,6 +93,8 @@ export const createHabitCompletionSchema = z.object({
   status: z.enum(["completed", "skipped", "minimum"]).optional().nullable(),
   completionLevel: z.number().int().min(0).max(2).optional().nullable(),
   skipReason: optionalString(100),
+  skipReasonSource: z.enum(["reflection", "in_moment"]).optional().nullable(),
+  skipReasonTimestamp: z.string().datetime().optional().nullable(),
 });
 
 

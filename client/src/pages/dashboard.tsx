@@ -23,19 +23,6 @@ import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
 import { WeeklyProgressSidebar } from "@/components/dashboard/weekly-progress";
 
-const SKIP_REASONS = [
-  "Low Capacity (sleep / fatigue / depleted)",
-  "High System Load",
-  "Avoidance (emotion-driven)",
-  "Forgot / No Cue",
-  "Unclear Next Step",
-  "Overcommitted / Too Many Tasks",
-  "Distraction / Poor Environment",
-  "Unexpected Interruption",
-  "Low Motivation / Value Disconnect",
-  "Intentional Deprioritization",
-];
-
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export default function DashboardPage() {
@@ -234,8 +221,6 @@ export default function DashboardPage() {
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
-  const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
   const [stillnessOpen, setStillnessOpen] = useState(false);
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
@@ -467,7 +452,7 @@ export default function DashboardPage() {
           onHabitLevel={(habitId, level, options) => {
             setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
           }}
-          onHabitSkip={(habitId) => setHabitSkipDialog({ habitId })}
+          onHabitSkip={(habitId) => setHabitLevelMutation.mutate({ habitId, level: 0 })}
           onNavigate={(path) => { setLocation(path.startsWith("/journal/") ? path : buildProcessUrl(path, "/dashboard")); window.scrollTo(0, 0); }}
         />
 
@@ -482,12 +467,12 @@ export default function DashboardPage() {
                 const cycleFocus = () => {
                   if (isBin) {
                     if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                    else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                    else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
                     else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                   } else {
                     if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
                     else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                    else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                    else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
                     else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
                   }
                 };
@@ -555,56 +540,6 @@ export default function DashboardPage() {
         onClose={() => setCustomToolExercise(null)}
         tool={customToolExercise}
       />
-
-      <Dialog open={!!habitSkipDialog} onOpenChange={(open) => { if (!open) setHabitSkipDialog(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-medium">Why was this skipped?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1 max-h-72 overflow-y-auto">
-            {SKIP_REASONS.map((reason, i) => (
-              <button
-                key={i}
-                className="w-full text-left text-xs px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
-                onClick={() => {
-                  if (habitSkipDialog) {
-                    setHabitLevelMutation.mutate({ habitId: habitSkipDialog.habitId, level: 0, skipReason: reason });
-                    setHabitSkipDialog(null);
-                  }
-                }}
-                data-testid={`habit-skip-reason-${i}`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!eisenhowerSkipDialog} onOpenChange={(open) => { if (!open) setEisenhowerSkipDialog(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-medium">Why was this skipped?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1 max-h-72 overflow-y-auto">
-            {SKIP_REASONS.map((reason, i) => (
-              <button
-                key={i}
-                className="w-full text-left text-xs px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
-                onClick={() => {
-                  if (eisenhowerSkipDialog) {
-                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
-                    setEisenhowerSkipDialog(null);
-                  }
-                }}
-                data-testid={`eisenhower-skip-reason-${i}`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={stillnessOpen} onOpenChange={(open) => {
         if (!open) { setStillnessOpen(false); setStillnessRunning(false); }

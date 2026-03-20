@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, Shield, Target, Power, BedDouble, AlertTriangle, ChevronDown, Compass, Eye, MinusCircle } from "lucide-react";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
   Chip, IntensityDots,
@@ -19,7 +19,8 @@ import {
 import { useLocation, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { Journal, MonthlyGoal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import { startOfWeek } from "date-fns";
 
 interface MorningContent {
   sleepHours: string;
@@ -97,7 +98,11 @@ interface EveningContent {
   satisfied: string;
   dissatisfied: string;
   winOfTheDay: string;
+  // Skip reasons (chip-based, set in evening reflection)
+  skipReasons: Record<string, string>;
 }
+
+const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have the energy", "Avoided it"];
 
 const energyLabels = ["Depleted", "Enough", "Good", "Strong", "Supercharged"];
 const stressLabels = ["Calm", "Noticeable", "Moderate", "Heavy", "Overloaded"];
@@ -174,6 +179,7 @@ const emptyEvening: EveningContent = {
   satisfied: "",
   dissatisfied: "",
   winOfTheDay: "",
+  skipReasons: {},
 };
 
 export default function JournalEntryPage() {
@@ -221,6 +227,42 @@ export default function JournalEntryPage() {
   });
   const valuesItems = identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
   const identityStatement = identityDoc?.identity?.trim() || "";
+
+  // Queries for skipped items (evening journal)
+  const { data: habits = [] } = useQuery<Habit[]>({
+    queryKey: ["/api/habits"],
+    enabled: !!user && !isMorning,
+  });
+
+  const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions", date],
+    enabled: !!user && !isMorning,
+  });
+
+  const weekStartStr = date ? format(startOfWeek(new Date(date + "T12:00:00"), { weekStartsOn: 1 }), "yyyy-MM-dd") : "";
+  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
+    queryKey: ["/api/eisenhower"],
+    enabled: !!user && !isMorning,
+  });
+
+  const skippedItems = (() => {
+    if (isMorning) return [];
+    const items: { id: string; name: string; type: "habit" | "eisenhower" }[] = [];
+    habitCompletions.forEach(hc => {
+      if (hc.completionLevel === 0 || hc.status === "skipped") {
+        const habit = habits.find(h => h.id === hc.habitId);
+        if (habit) items.push({ id: `habit_${hc.habitId}`, name: habit.name, type: "habit" });
+      }
+    });
+    eisenhowerEntries.forEach(e => {
+      if (e.weekStart !== weekStartStr) return;
+      if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return;
+      if (e.completionLevel === 0 || e.status === "skipped") {
+        items.push({ id: `eisenhower_${e.id}`, name: e.task, type: "eisenhower" });
+      }
+    });
+    return items;
+  })();
 
   useEffect(() => {
     if (existingJournal) {
@@ -314,6 +356,28 @@ export default function JournalEntryPage() {
         });
       }
 
+      // Write skip reasons back to habit completions and eisenhower entries
+      if (!isMorning && eveningData.skipReasons) {
+        for (const [key, reason] of Object.entries(eveningData.skipReasons)) {
+          if (!reason) continue;
+          if (key.startsWith("habit_")) {
+            const habitId = key.replace("habit_", "");
+            await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, {
+              status: "skipped",
+              completionLevel: 0,
+              skipReason: reason,
+              skipReasonSource: "reflection",
+              skipReasonTimestamp: new Date().toISOString(),
+            });
+          } else if (key.startsWith("eisenhower_")) {
+            const eisId = key.replace("eisenhower_", "");
+            await apiRequest("PATCH", `/api/eisenhower/${eisId}`, {
+              skipReason: reason,
+            });
+          }
+        }
+      }
+
       return response.json();
     },
     onSuccess: () => {
@@ -325,6 +389,10 @@ export default function JournalEntryPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
       if (!isMorning && eveningData.triggerText.trim()) {
         queryClient.invalidateQueries({ queryKey: ["/api/trigger-logs"] });
+      }
+      if (!isMorning) {
+        queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       }
     },
     onError: (error: Error) => {
@@ -867,6 +935,59 @@ export default function JournalEntryPage() {
             ) : (
               /* Evening Full Mode */
               <>
+                {/* Section 0 — Skipped Today (conditional) */}
+                {skippedItems.length > 0 && (
+                  <Card data-testid="card-skipped-today">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-md bg-muted/50 flex items-center justify-center shrink-0">
+                          <MinusCircle className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm">Skipped today</CardTitle>
+                          <CardDescription>Quick check — what got in the way? <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {skippedItems.map((item) => (
+                        <div key={item.id} className="space-y-1.5" data-testid={`skipped-item-${item.id}`}>
+                          <p className="text-xs font-medium">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground">What most got in the way?</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {SKIP_CHIPS.map((chip) => {
+                              const selected = eveningData.skipReasons[item.id] === chip;
+                              return (
+                                <button
+                                  key={chip}
+                                  type="button"
+                                  onClick={() => {
+                                    setEveningData(prev => ({
+                                      ...prev,
+                                      skipReasons: {
+                                        ...prev.skipReasons,
+                                        [item.id]: selected ? "" : chip,
+                                      },
+                                    }));
+                                  }}
+                                  className={`rounded-full px-3 py-1 text-xs border transition-colors cursor-pointer ${
+                                    selected
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border text-muted-foreground hover:border-primary/40"
+                                  }`}
+                                  data-testid={`skip-chip-${item.id}-${chip.toLowerCase().replace(/\s+/g, "-")}`}
+                                >
+                                  {chip}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Section 1 — Trigger Check */}
                 <Card data-testid="card-trigger-check">
                   <CardHeader>

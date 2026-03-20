@@ -188,6 +188,8 @@ export const habitCompletions = pgTable("habit_completions", {
   status: varchar("status", { length: 20 }).default("completed").notNull(),
   completionLevel: integer("completion_level"),
   skipReason: varchar("skip_reason", { length: 100 }),
+  skipReasonSource: varchar("skip_reason_source", { length: 20 }),
+  skipReasonTimestamp: timestamp("skip_reason_timestamp"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("habit_completions_user_habit_date_idx").on(table.userId, table.habitId, table.date),

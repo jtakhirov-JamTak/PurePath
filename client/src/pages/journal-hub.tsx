@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Sun, Moon, ArrowRight, BarChart3, Wrench,
   ChevronLeft, ChevronRight, Download, Check, Minus,
@@ -56,18 +55,6 @@ const CATEGORY_DOTS: Record<string, string> = {
 
 const TIME_RANGES = ["morning", "afternoon", "evening"] as const;
 
-const SKIP_REASONS = [
-  "Low Capacity (sleep / fatigue / depleted)",
-  "High System Load",
-  "Avoidance (emotion-driven)",
-  "Forgot / No Cue",
-  "Unclear Next Step",
-  "Overcommitted / Too Many Tasks",
-  "Distraction / Poor Environment",
-  "Unexpected Interruption",
-  "Low Motivation / Value Disconnect",
-  "Intentional Deprioritization",
-];
 type TimeRange = (typeof TIME_RANGES)[number];
 
 export default function JournalHubPage() {
@@ -131,8 +118,6 @@ export default function JournalHubPage() {
     });
     return map;
   }, [habitCompletions]);
-
-  const [skipReasonDialog, setSkipReasonDialog] = useState<{ habitId: number; date: string } | null>(null);
 
   const setHabitLevelMutation = useMutation({
     mutationFn: async ({ habitId, date, level, skipReason, isBinary }: { habitId: number; date: string; level: number | null; skipReason?: string; isBinary?: boolean }) => {
@@ -501,7 +486,6 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
-                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
                     const h = habits.find(hb => hb.id === habitId);
                     setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
@@ -520,7 +504,6 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
-                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
                     const h = habits.find(hb => hb.id === habitId);
                     setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
@@ -539,7 +522,6 @@ export default function JournalHubPage() {
                   cellH={cellH}
                   completionsByDate={completionsByDate}
                   onSetLevel={(habitId, level, date) => {
-                    if (level === 0) { setSkipReasonDialog({ habitId, date }); return; }
                     const h = habits.find(hb => hb.id === habitId);
                     setHabitLevelMutation.mutate({ habitId, date, level, isBinary: h?.isBinary || false });
                   }}
@@ -662,31 +644,6 @@ export default function JournalHubPage() {
         editingHabit={habitDialogEditing}
         defaultTiming={habitDialogTiming}
       />
-
-      <Dialog open={!!skipReasonDialog} onOpenChange={(open) => { if (!open) setSkipReasonDialog(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
-            {SKIP_REASONS.map((reason, i) => (
-              <button
-                key={i}
-                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
-                onClick={() => {
-                  if (skipReasonDialog) {
-                    setHabitLevelMutation.mutate({ habitId: skipReasonDialog.habitId, date: skipReasonDialog.date, level: 0, skipReason: reason });
-                    setSkipReasonDialog(null);
-                  }
-                }}
-                data-testid={`skip-reason-${i}`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
     </AppLayout>
   );

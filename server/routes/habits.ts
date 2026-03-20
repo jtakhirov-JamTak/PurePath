@@ -212,13 +212,16 @@ export function registerHabitRoutes(app: Express) {
     try {
       const userId = req.user.claims.sub;
       const { habitId, date } = req.params;
-      const { status, completionLevel, skipReason } = req.body;
+      const { status, completionLevel, skipReason, skipReasonSource, skipReasonTimestamp } = req.body;
       const validStatus = status === "skipped" ? "skipped" : status === "minimum" ? "minimum" : "completed";
-      await storage.updateHabitCompletionFull(userId, parseInt(habitId), date, {
+      const updates: Record<string, unknown> = {
         status: validStatus,
         completionLevel: completionLevel ?? null,
         skipReason: skipReason ?? null,
-      });
+      };
+      if (skipReasonSource !== undefined) updates.skipReasonSource = skipReasonSource;
+      if (skipReasonTimestamp !== undefined) updates.skipReasonTimestamp = skipReasonTimestamp ? new Date(skipReasonTimestamp) : null;
+      await storage.updateHabitCompletionFull(userId, parseInt(habitId), date, updates as any);
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating habit completion:", error);
