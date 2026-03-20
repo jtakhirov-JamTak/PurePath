@@ -16,14 +16,10 @@ import { format, startOfWeek, addDays } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, CustomTool } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
-import { AvoidanceToolModal } from "@/components/tools/avoidance-tool-modal";
 import { AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { parseTimeEstimateMinutes } from "@/components/dashboard/q2-time-tracker";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
-import { OverdueCard } from "@/components/dashboard/overdue-card";
-import { Q2BlocksCard } from "@/components/dashboard/q2-blocks-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
 import { WeeklyProgressSidebar } from "@/components/dashboard/weekly-progress";
 
@@ -142,41 +138,10 @@ export default function DashboardPage() {
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
 
-  const todayQ2Items = eisenhowerEntries.filter((e) => {
-    if (e.quadrant !== "q2") return false;
-    if (e.scheduledDate) return e.scheduledDate === todayStr;
-    if (e.deadline) return e.deadline === todayStr;
-    return false;
-  });
-
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-  const overdueItems = eisenhowerEntries.filter((e) => {
-    if (e.status === "completed" || e.status === "minimum" || e.status === "skipped" || e.completed) return false;
-    if (e.quadrant !== "q1" && e.quadrant !== "q2") return false;
-    const itemDate = e.scheduledDate || e.deadline;
-    if (!itemDate) return false;
-    if (itemDate > todayStr) return false;
-    if (itemDate < todayStr) return true;
-    if (e.scheduledStartTime) {
-      const [h, m] = e.scheduledStartTime.split(":").map(Number);
-      const scheduledTime = new Date(today);
-      scheduledTime.setHours(h, m, 0, 0);
-      return scheduledTime < oneHourAgo;
-    }
-    if (e.scheduledTime) {
-      const match = e.scheduledTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (match) {
-        let h = parseInt(match[1]);
-        const m = parseInt(match[2]);
-        const ampm = match[3].toUpperCase();
-        if (ampm === "PM" && h !== 12) h += 12;
-        if (ampm === "AM" && h === 12) h = 0;
-        const scheduledTime = new Date(today);
-        scheduledTime.setHours(h, m, 0, 0);
-        return scheduledTime < oneHourAgo;
-      }
-    }
+  const focusItems = eisenhowerEntries.filter((e) => {
+    if (e.weekStart !== weekStartStr) return false;
+    if (e.quadrant === "q1") return true;
+    if (e.quadrant === "q2" && e.blocksGoal) return true;
     return false;
   });
 
@@ -270,7 +235,7 @@ export default function DashboardPage() {
   const [showAddCustomTool, setShowAddCustomTool] = useState(false);
   const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
   const [habitSkipDialog, setHabitSkipDialog] = useState<{ habitId: number } | null>(null);
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null; timeEstimate?: string | null } | null>(null);
+  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number } | null>(null);
   const [stillnessOpen, setStillnessOpen] = useState(false);
   const [stillnessSeconds, setStillnessSeconds] = useState(600);
   const [stillnessRunning, setStillnessRunning] = useState(false);
@@ -507,27 +472,64 @@ export default function DashboardPage() {
         />
 
 
-        <OverdueCard
-          overdueItems={overdueItems}
-          onUpdateLevel={(id, level, options) => {
-            setEisenhowerLevelMutation.mutate({ id, level, isBinary: options?.isBinary });
-          }}
-          onSkipDialog={(item) => setEisenhowerSkipDialog(item)}
-          onSaveTimeTracker={(id, level, fields) => {
-            setEisenhowerLevelMutation.mutate({ id, level, ...fields });
-          }}
-        />
-
-        <Q2BlocksCard
-          todayQ2Items={todayQ2Items}
-          onUpdateLevel={(id, level, options) => {
-            setEisenhowerLevelMutation.mutate({ id, level, isBinary: options?.isBinary });
-          }}
-          onSkipDialog={(item) => setEisenhowerSkipDialog(item)}
-          onSaveTimeTracker={(id, level, fields) => {
-            setEisenhowerLevelMutation.mutate({ id, level, ...fields });
-          }}
-        />
+        {focusItems.length > 0 ? (
+          <div data-testid="card-focus">
+            <p className="text-[11px] uppercase text-bark font-medium mb-1.5">Focus</p>
+            <ul className="space-y-0.5">
+              {focusItems.map((item) => {
+                const isBin = item.isBinary || false;
+                const lvl = item.completionLevel ?? null;
+                const cycleFocus = () => {
+                  if (isBin) {
+                    if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
+                    else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                    else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                  } else {
+                    if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
+                    else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+                    else if (lvl === 1) setEisenhowerSkipDialog({ id: item.id });
+                    else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+                  }
+                };
+                const boxLabel = isBin
+                  ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
+                  : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
+                const boxClass =
+                  (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+                  : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                  : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                  : "border-border text-muted-foreground";
+                return (
+                  <li key={item.id} className="flex items-center gap-2.5 py-1.5" data-testid={`focus-item-${item.id}`}>
+                    <button
+                      onClick={cycleFocus}
+                      className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                      data-testid={`focus-level-${item.id}`}
+                    >
+                      {boxLabel}
+                    </button>
+                    <span className={`text-xs flex-1 ${
+                      item.status === "completed" ? "line-through text-muted-foreground"
+                      : item.status === "skipped" ? "text-muted-foreground italic"
+                      : ""
+                    }`}>{item.task}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : (
+          <div data-testid="card-focus-empty">
+            <p className="text-[11px] uppercase text-bark font-medium mb-1.5">Focus</p>
+            <button
+              className="text-xs text-primary hover:underline cursor-pointer"
+              onClick={() => setLocation("/eisenhower")}
+              data-testid="link-plan-week"
+            >
+              Plan your week →
+            </button>
+          </div>
+        )}
 
         <ToolPalette
           onToolOpen={setQuickToolOpen}
@@ -543,7 +545,6 @@ export default function DashboardPage() {
 
       <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
       <TriggerLogModal open={quickToolOpen === "trigger"} onClose={() => setQuickToolOpen(null)} />
-      <AvoidanceToolModal open={quickToolOpen === "avoidance"} onClose={() => setQuickToolOpen(null)} />
       <AddCustomToolModal
         open={showAddCustomTool}
         onClose={() => setShowAddCustomTool(false)}
@@ -592,11 +593,7 @@ export default function DashboardPage() {
                 className="w-full text-left text-xs px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
                 onClick={() => {
                   if (eisenhowerSkipDialog) {
-                    const mins = eisenhowerSkipDialog.durationMinutes || parseTimeEstimateMinutes(eisenhowerSkipDialog.timeEstimate);
-                    const timeFields = mins
-                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: mins }
-                      : {};
-                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
+                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason });
                     setEisenhowerSkipDialog(null);
                   }
                 }}

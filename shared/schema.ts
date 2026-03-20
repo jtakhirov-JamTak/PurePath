@@ -91,7 +91,7 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("eisenhower_user_id_idx").on(table.userId),
-  check("eisenhower_quadrant_check", sql`${table.quadrant} IN ('q1', 'q2', 'q3', 'q4')`),
+  check("eisenhower_quadrant_check", sql`${table.quadrant} IN ('q1', 'q2', 'q3', 'q4', 'unsorted')`),
 ]);
 
 export const insertEisenhowerEntrySchema = createInsertSchema(eisenhowerEntries).omit({

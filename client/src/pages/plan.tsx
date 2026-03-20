@@ -244,7 +244,7 @@ const WIZARD_STEPS = [
   { key: "vision", label: "Vision", icon: Eye, description: "Define who you want to become" },
   { key: "monthly", label: "Monthly Goal", icon: Target, description: "Set your monthly goal" },
   { key: "habits", label: "Habits", icon: Repeat, description: "Set up recurring habits" },
-  { key: "eisenhower", label: "Weekly Plan", icon: Grid3X3, description: "Plan this week's priorities" },
+  { key: "eisenhower", label: "This Week", icon: Grid3X3, description: "Figure out what actually matters this week" },
 ];
 
 function PlanVersioningPanel() {

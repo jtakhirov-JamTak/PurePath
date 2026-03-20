@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { HabitDialog } from "@/components/habit-dialog";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ import { useLocation } from "wouter";
 import { format, addWeeks, subWeeks, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, Habit, HabitCompletion } from "@shared/schema";
 import {
   DndContext,
   closestCenter,
@@ -41,17 +41,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-function parseTimeEstimateMinutes(est: string | null | undefined): number | null {
-  if (!est) return null;
-  const lower = est.toLowerCase().trim();
-  const hMatch = lower.match(/(\d+)\s*h/);
-  const mMatch = lower.match(/(\d+)\s*m/);
-  let total = 0;
-  if (hMatch) total += parseInt(hMatch[1]) * 60;
-  if (mMatch) total += parseInt(mMatch[1]);
-  return total > 0 ? total : null;
-}
 
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
@@ -109,11 +98,6 @@ export default function JournalHubPage() {
 
   const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ["/api/habits"],
-    enabled: !!user,
-  });
-
-  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
-    queryKey: ["/api/eisenhower"],
     enabled: !!user,
   });
 
@@ -185,47 +169,6 @@ export default function JournalHubPage() {
     },
   });
 
-  const [eisenhowerSkipDialog, setEisenhowerSkipDialog] = useState<{ id: number; durationMinutes?: number | null; timeEstimate?: string | null } | null>(null);
-
-  const setEisenhowerLevelMutation = useMutation({
-    mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
-      startedOnTime, delayMinutes, delayReason, completedRequiredTime, timeShortMinutes }: {
-      id: number; level: number | null; skipReason?: string; isBinary?: boolean;
-      scheduledStartTime?: string | null; actualStartTime?: string | null;
-      durationMinutes?: number | null; actualDuration?: number | null;
-      startedOnTime?: boolean | null; delayMinutes?: number | null; delayReason?: string | null;
-      completedRequiredTime?: boolean | null; timeShortMinutes?: number | null;
-    }) => {
-      let status: string | null;
-      if (level === null) { status = null; }
-      else if (level === 0) { status = "skipped"; }
-      else if (isBinary && level === 1) { status = "completed"; }
-      else if (level === 1) { status = "minimum"; }
-      else { status = "completed"; }
-      const body: Record<string, unknown> = { status, completionLevel: level };
-      if (skipReason) body.skipReason = skipReason;
-      if (scheduledStartTime !== undefined) body.scheduledStartTime = scheduledStartTime;
-      if (actualStartTime !== undefined) body.actualStartTime = actualStartTime;
-      if (durationMinutes !== undefined) body.durationMinutes = durationMinutes;
-      if (actualDuration !== undefined) body.actualDuration = actualDuration;
-      if (startedOnTime !== undefined) body.startedOnTime = startedOnTime;
-      if (delayMinutes !== undefined) body.delayMinutes = delayMinutes;
-      if (delayReason !== undefined) body.delayReason = delayReason;
-      if (completedRequiredTime !== undefined) body.completedRequiredTime = completedRequiredTime;
-      if (timeShortMinutes !== undefined) body.timeShortMinutes = timeShortMinutes;
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, body);
-      if (!res.ok) {
-        const errBody = await res.json();
-        throw new Error(errBody.error || "Failed to update status");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
-    },
-  });
 
   const reorderHabitsMutation = useMutation({
     mutationFn: async (items: Array<{ id: number; sortOrder: number; timing?: string }>) => {
@@ -240,18 +183,6 @@ export default function JournalHubPage() {
     },
   });
 
-  const reorderEisenhowerMutation = useMutation({
-    mutationFn: async (items: Array<{ id: number; sortOrder: number; timeRange?: string }>) => {
-      const res = await apiRequest("POST", "/api/eisenhower/reorder", { items });
-      if (!res.ok) throw new Error("Failed to reorder");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not reorder items", description: error.message, variant: "destructive" });
-    },
-  });
 
   const deleteHabitMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -270,95 +201,8 @@ export default function JournalHubPage() {
     },
   });
 
-  const createEisenhowerMutation = useMutation({
-    mutationFn: async (data: { task: string; scheduledDate: string }) => {
-      const res = await apiRequest("POST", "/api/eisenhower", {
-        task: data.task,
-        weekStart: weekStartStr,
-        role: "",
-        quadrant: "q2",
-        scheduledDate: data.scheduledDate,
-      });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to create item");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-      toast({ title: "Item created" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not create item", description: error.message, variant: "destructive" });
-    },
-  });
 
-  const updateEisenhowerMutation = useMutation({
-    mutationFn: async ({ id, task }: { id: number; task: string }) => {
-      const res = await apiRequest("PATCH", `/api/eisenhower/${id}`, { task });
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update item");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update item", description: error.message, variant: "destructive" });
-    },
-  });
 
-  const deleteEisenhowerMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to delete item");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-      toast({ title: "Item deleted" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not delete item", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const q2Items = useMemo(
-    () => eisenhowerEntries.filter((e) => e.quadrant === "q2" && e.weekStart === weekStartStr),
-    [eisenhowerEntries, weekStartStr]
-  );
-  const q1Items = useMemo(
-    () => eisenhowerEntries.filter((e) => e.quadrant === "q1" && e.weekStart === weekStartStr),
-    [eisenhowerEntries, weekStartStr]
-  );
-
-  const eisenhowerByDate = useMemo(() => {
-    const map = new Map<string, EisenhowerEntry[]>();
-    [...q2Items, ...q1Items].forEach((e) => {
-      const d = e.scheduledDate || e.deadline || "";
-      if (!d) return;
-      if (!map.has(d)) map.set(d, []);
-      map.get(d)!.push(e);
-    });
-    const parseTime = (t: string | null): number => {
-      if (!t) return 9999;
-      const match = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!match) return 9999;
-      let h = parseInt(match[1]);
-      const m = parseInt(match[2]);
-      const ampm = match[3].toUpperCase();
-      if (ampm === "PM" && h !== 12) h += 12;
-      if (ampm === "AM" && h === 12) h = 0;
-      return h * 60 + m;
-    };
-    map.forEach((arr) => {
-      arr.sort((a: EisenhowerEntry, b: EisenhowerEntry) => parseTime(a.scheduledTime) - parseTime(b.scheduledTime));
-    });
-    return map;
-  }, [q2Items, q1Items]);
 
   const [showExport, setShowExport] = useState(false);
   const [exportStart, setExportStart] = useState("");
@@ -637,19 +481,6 @@ export default function JournalHubPage() {
                 );
               })}
 
-              <SectionHeaderRow label="Scheduled Items" days={days} todayStr={today} />
-              <ScheduledItemsSection
-                days={days}
-                todayStr={today}
-                cellH={cellH}
-                eisenhowerByDate={eisenhowerByDate}
-                setEisenhowerLevelMutation={setEisenhowerLevelMutation}
-                createEisenhowerMutation={createEisenhowerMutation}
-                updateEisenhowerMutation={updateEisenhowerMutation}
-                deleteEisenhowerMutation={deleteEisenhowerMutation}
-                onSkipRequest={(id, durationMinutes, timeEstimate) => setEisenhowerSkipDialog({ id, durationMinutes, timeEstimate })}
-              />
-
               <SectionHeaderRow label="Habits" days={days} todayStr={today} />
 
               <DndContext
@@ -857,34 +688,6 @@ export default function JournalHubPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!eisenhowerSkipDialog} onOpenChange={(open) => { if (!open) setEisenhowerSkipDialog(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">Why was this skipped?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
-            {SKIP_REASONS.map((reason, i) => (
-              <button
-                key={i}
-                className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-muted transition-colors"
-                onClick={() => {
-                  if (eisenhowerSkipDialog) {
-                    const mins = eisenhowerSkipDialog.durationMinutes || parseTimeEstimateMinutes(eisenhowerSkipDialog.timeEstimate);
-                    const timeFields = mins
-                      ? { startedOnTime: false, completedRequiredTime: false, timeShortMinutes: mins }
-                      : {};
-                    setEisenhowerLevelMutation.mutate({ id: eisenhowerSkipDialog.id, level: 0, skipReason: reason, ...timeFields });
-                    setEisenhowerSkipDialog(null);
-                  }
-                }}
-                data-testid={`eisenhower-skip-reason-${i}`}
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }
@@ -911,257 +714,6 @@ function DayCell({ dateStr, todayStr, cellH, children }: { dateStr: string; toda
   return (
     <div className={`border-l border-t px-1.5 flex items-center justify-center ${cellH} ${isToday ? "bg-primary/[0.03]" : ""}`}>
       {children}
-    </div>
-  );
-}
-
-function ScheduledItemsSection({
-  days,
-  todayStr,
-  cellH,
-  eisenhowerByDate,
-  setEisenhowerLevelMutation,
-  createEisenhowerMutation,
-  updateEisenhowerMutation,
-  deleteEisenhowerMutation,
-  onSkipRequest,
-}: {
-  days: Date[];
-  todayStr: string;
-  cellH: string;
-  eisenhowerByDate: Map<string, EisenhowerEntry[]>;
-  setEisenhowerLevelMutation: any;
-  createEisenhowerMutation: any;
-  updateEisenhowerMutation: any;
-  deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
-}) {
-  return (
-    <>
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/50 border-t-2 border-t-primary/20">
-        <div>
-          <p className="text-sm font-bold leading-snug">Scheduled Items</p>
-          <p className="text-[10px] text-muted-foreground leading-snug">Q1 & Q2</p>
-        </div>
-      </div>
-      {days.map((day) => {
-        const dateStr = format(day, "yyyy-MM-dd");
-        const items = eisenhowerByDate.get(dateStr) || [];
-        return (
-          <ScheduledDayCell
-            key={dateStr}
-            dateStr={dateStr}
-            todayStr={todayStr}
-            cellH={items.length > 0 ? "" : cellH}
-            items={items}
-            setEisenhowerLevelMutation={setEisenhowerLevelMutation}
-            createEisenhowerMutation={createEisenhowerMutation}
-            updateEisenhowerMutation={updateEisenhowerMutation}
-            deleteEisenhowerMutation={deleteEisenhowerMutation}
-            onSkipRequest={onSkipRequest}
-          />
-        );
-      })}
-    </>
-  );
-}
-
-function ScheduledDayCell({
-  dateStr,
-  todayStr,
-  cellH,
-  items,
-  setEisenhowerLevelMutation,
-  createEisenhowerMutation,
-  updateEisenhowerMutation,
-  deleteEisenhowerMutation,
-  onSkipRequest,
-}: {
-  dateStr: string;
-  todayStr: string;
-  cellH: string;
-  items: EisenhowerEntry[];
-  setEisenhowerLevelMutation: any;
-  createEisenhowerMutation: any;
-  updateEisenhowerMutation: any;
-  deleteEisenhowerMutation: any;
-  onSkipRequest: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
-}) {
-  const isToday = dateStr === todayStr;
-  const [showAdd, setShowAdd] = useState(false);
-  const [addValue, setAddValue] = useState("");
-  const addInputRef = useRef<HTMLInputElement>(null);
-
-  const handleAddSubmit = () => {
-    const val = addValue.trim();
-    if (!val) return;
-    createEisenhowerMutation.mutate({ task: val, scheduledDate: dateStr });
-    setAddValue("");
-    setShowAdd(false);
-  };
-
-  return (
-    <div className={`border-l border-t px-1.5 flex flex-col ${cellH} ${isToday ? "bg-primary/[0.05]" : "bg-muted/20"} group/daycell relative`}>
-      {items.length > 0 && (
-        <div className="space-y-1.5 py-2 w-full">
-          {items.map((entry) => (
-            <EisenhowerItemRow
-              key={entry.id}
-              entry={entry}
-              setEisenhowerLevelMutation={setEisenhowerLevelMutation}
-              updateEisenhowerMutation={updateEisenhowerMutation}
-              deleteEisenhowerMutation={deleteEisenhowerMutation}
-              onSkipRequest={onSkipRequest}
-            />
-          ))}
-        </div>
-      )}
-      {showAdd ? (
-        <div className="flex items-center gap-1 py-1 w-full">
-          <Input
-            ref={addInputRef}
-            value={addValue}
-            onChange={(e) => setAddValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddSubmit();
-              if (e.key === "Escape") { setShowAdd(false); setAddValue(""); }
-            }}
-            placeholder="New item..."
-            className="h-6 text-[11px] px-1.5 flex-1"
-            autoFocus
-            data-testid={`input-add-eisenhower-${dateStr}`}
-          />
-          <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={handleAddSubmit} data-testid={`button-submit-eisenhower-${dateStr}`}>
-            <Check className="h-3 w-3" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0" onClick={() => { setShowAdd(false); setAddValue(""); }}>
-            <X className="h-3 w-3" />
-          </Button>
-        </div>
-      ) : (
-        <button
-          className="invisible group-hover/daycell:visible flex items-center justify-center w-full py-0.5 text-muted-foreground/50 cursor-pointer"
-          onClick={() => setShowAdd(true)}
-          data-testid={`button-add-eisenhower-${dateStr}`}
-        >
-          <Plus className="h-3 w-3" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-function EisenhowerItemRow({
-  entry,
-  setEisenhowerLevelMutation,
-  updateEisenhowerMutation,
-  deleteEisenhowerMutation,
-  onSkipRequest,
-}: {
-  entry: EisenhowerEntry;
-  setEisenhowerLevelMutation: any;
-  updateEisenhowerMutation: any;
-  deleteEisenhowerMutation: any;
-  onSkipRequest?: (id: number, durationMinutes?: number | null, timeEstimate?: string | null) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(entry.task);
-
-  const handleEditSubmit = () => {
-    const val = editValue.trim();
-    if (!val || val === entry.task) { setEditing(false); return; }
-    updateEisenhowerMutation.mutate({ id: entry.id, task: val });
-    setEditing(false);
-  };
-
-  const handleDelete = () => {
-    if (window.confirm(`Delete "${entry.task}"?`)) {
-      deleteEisenhowerMutation.mutate(entry.id);
-    }
-  };
-
-  return (
-    <div className="flex items-start gap-1.5 px-1 group/eitem" data-testid={`eisenhower-${entry.id}`}>
-      {(() => {
-        const isBin = entry.isBinary || false;
-        const lvl = entry.completionLevel ?? null;
-        const cycleEis = () => {
-          if (isBin) {
-            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1, isBinary: true });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes, entry.timeEstimate); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
-            else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
-          } else {
-            if (lvl === null) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 2 });
-            else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: entry.id, level: 1 });
-            else if (lvl === 1) { if (onSkipRequest) onSkipRequest(entry.id, entry.durationMinutes, entry.timeEstimate); else setEisenhowerLevelMutation.mutate({ id: entry.id, level: 0 }); }
-            else setEisenhowerLevelMutation.mutate({ id: entry.id, level: null });
-          }
-        };
-        const boxLabel = isBin
-          ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
-          : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
-        const boxClass =
-          (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-          : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-          : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-          : "border-muted-foreground/30 text-muted-foreground";
-        return (
-          <button
-            onClick={cycleEis}
-            className={`mt-0.5 h-5 w-12 text-[10px] shrink-0 rounded border-2 font-medium cursor-pointer ${boxClass}`}
-            data-testid={`eisenhower-level-${entry.id}`}
-          >
-            {boxLabel}
-          </button>
-        );
-      })()}
-      <div className="flex-1 min-w-0">
-        {editing ? (
-          <div className="flex items-center gap-1">
-            <Input
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleEditSubmit();
-                if (e.key === "Escape") setEditing(false);
-              }}
-              className="h-5 text-[11px] px-1 flex-1"
-              autoFocus
-              data-testid={`input-edit-eisenhower-${entry.id}`}
-            />
-            <Button size="icon" variant="ghost" className="h-4 w-4 shrink-0" onClick={handleEditSubmit}>
-              <Check className="h-2.5 w-2.5" />
-            </Button>
-          </div>
-        ) : (
-          <>
-            <p className={`text-[11px] leading-tight ${entry.status === "completed" ? "line-through text-muted-foreground" : entry.status === "skipped" ? "text-muted-foreground italic" : ""}`}>
-              {entry.task}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-              <span className={`text-[10px] font-bold uppercase ${entry.quadrant === "q1" ? "text-orange-500" : "text-blue-500"}`}>
-                {entry.quadrant}
-              </span>
-              {entry.scheduledTime && (
-                <span className="text-[10px] text-muted-foreground font-medium">{entry.scheduledTime}</span>
-              )}
-              {entry.blocksGoal && (
-                <span className="text-[10px] text-primary font-bold">Success Catalyst</span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-      {!editing && (
-        <div className="invisible group-hover/eitem:visible flex items-center gap-0.5 shrink-0 mt-0.5">
-          <button className="cursor-pointer" onClick={() => { setEditValue(entry.task); setEditing(true); }} data-testid={`button-edit-eisenhower-${entry.id}`}>
-            <Pencil className="h-2.5 w-2.5 text-muted-foreground" />
-          </button>
-          <button className="cursor-pointer" onClick={handleDelete} data-testid={`button-delete-eisenhower-${entry.id}`}>
-            <Trash2 className="h-2.5 w-2.5 text-muted-foreground" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

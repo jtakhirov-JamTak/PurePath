@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, Brain, Pause, AlertTriangle, Shield } from "lucide-react";
+import { Heart, Brain, Pause, AlertTriangle } from "lucide-react";
 
 interface ToolPaletteProps {
   onToolOpen: (tool: string) => void;
@@ -47,7 +47,7 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
 
         <div>
           <p className="text-[10px] text-muted-foreground mb-1.5">Use As Needed</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               variant="outline"
               className="flex flex-col items-center gap-1 h-auto py-2 opacity-80"
@@ -65,15 +65,6 @@ export function ToolPalette({ onToolOpen, onNavigate, onStillnessOpen }: ToolPal
             >
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <span className="text-[10px]">Trigger Log</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex flex-col items-center gap-1 h-auto py-2 opacity-80"
-              onClick={() => onToolOpen("avoidance")}
-              data-testid="button-tool-avoidance"
-            >
-              <Shield className="h-4 w-4 text-blue-500" />
-              <span className="text-[10px]">Avoidance</span>
             </Button>
           </div>
         </div>
