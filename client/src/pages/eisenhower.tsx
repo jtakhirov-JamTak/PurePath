@@ -137,13 +137,17 @@ export default function EisenhowerPage() {
   const unselectedItems = items.filter(i => !i.selected);
   const gutTop5 = selectedItems.slice(0, 5);
 
-  // Step 6: classify all selected items
-  const classifiedItems = selectedItems.map(item => ({
-    ...item,
-    quadrant: item.goalAlignment && item.decision
-      ? classifyQuadrant(item.goalAlignment, item.decision)
-      : "unsorted",
-  }));
+  // Step 6: classify all selected items, preserving original index
+  const classifiedItems = selectedItems.map(item => {
+    const originalIdx = items.indexOf(item);
+    return {
+      ...item,
+      _originalIdx: originalIdx,
+      quadrant: item.goalAlignment && item.decision
+        ? classifyQuadrant(item.goalAlignment, item.decision)
+        : "unsorted",
+    };
+  });
 
   const q1Items = classifiedItems.filter(i => i.quadrant === "q1");
   const q2Items = classifiedItems.filter(i => i.quadrant === "q2");
@@ -168,6 +172,13 @@ export default function EisenhowerPage() {
         ...droppedItems.map(i => ({ ...i, quadrant: "q4" })),
       ];
 
+      const quadrantToDecision: Record<string, string> = {
+        q1: "do_today",
+        q2: "schedule",
+        q3: "delegate",
+        q4: "delete",
+      };
+
       for (const item of allItems) {
         const payload = {
           task: item.task,
@@ -175,7 +186,7 @@ export default function EisenhowerPage() {
           role: "",
           quadrant: item.quadrant,
           goalAlignment: item.goalAlignment || null,
-          decision: item.decision || null,
+          decision: quadrantToDecision[item.quadrant] || null,
           blocksGoal: item.blocksGoal,
           sortOrder: item.sortOrder,
           isBinary: false,
@@ -516,7 +527,7 @@ export default function EisenhowerPage() {
                 <summary className="text-muted-foreground cursor-pointer">Consider dropping ({q4Items.length + droppedItems.length})</summary>
                 <ul className="mt-1 space-y-0.5 pl-4">
                   {[...q4Items, ...droppedItems].map((item, idx) => {
-                    const globalIdx = items.indexOf(item);
+                    const globalIdx = '_originalIdx' in item ? (item as any)._originalIdx as number : items.indexOf(item);
                     return (
                       <li key={idx} className="flex items-center gap-1.5" data-testid={`q4-item-${idx}`}>
                         <span className="h-2 w-2 rounded-full bg-red-400/60 shrink-0" />
@@ -548,7 +559,7 @@ export default function EisenhowerPage() {
             {commitQ2Items.length > 0 ? (
               <div className="space-y-1.5">
                 {commitQ2Items.map((item, idx) => {
-                  const globalIdx = items.indexOf(item);
+                  const globalIdx = item._originalIdx;
                   const isSelected = commitSelected.has(globalIdx);
                   const atLimit = commitSelected.size >= 2 && !isSelected;
                   return (
