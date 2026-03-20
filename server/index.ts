@@ -31,15 +31,14 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-const isProd = process.env.NODE_ENV === "production";
 app.use(
   helmet({
     contentSecurityPolicy: false, // Vite injects inline scripts/styles; Replit Auth uses external redirects
-    // Disabled in dev for Replit canvas iframe embedding; re-enabled in production
-    frameguard: isProd,
-    crossOriginOpenerPolicy: isProd,
-    crossOriginResourcePolicy: isProd,
-    crossOriginEmbedderPolicy: isProd,
+    // Disabled for Replit canvas iframe embedding; re-enable when hosting on own domain
+    frameguard: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
   }),
 );
 
