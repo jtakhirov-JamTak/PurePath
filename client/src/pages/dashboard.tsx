@@ -12,14 +12,15 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
-import { WeeklyProgressSidebar } from "@/components/dashboard/weekly-progress";
+import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
+import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
@@ -33,6 +34,13 @@ export default function DashboardPage() {
   const todayStr = format(today, "yyyy-MM-dd");
   const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+  const weekEndDate = addDays(weekStartDate, 6);
+  const weekLabel = format(weekStartDate, "MMM d") + " – " + format(weekEndDate, "d");
+
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
 
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
     queryKey: ["/api/onboarding"],
@@ -55,6 +63,11 @@ export default function DashboardPage() {
 
   const { data: weekHabitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/range", weekStartStr, weekEndStr],
+    enabled: !!user,
+  });
+
+  const { data: monthHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range", monthStartStr, monthEndStr],
     enabled: !!user,
   });
 
@@ -218,16 +231,7 @@ export default function DashboardPage() {
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
 
-  const progressMetrics = useMemo(() => {
-    const weekDays: Date[] = [];
-    for (let d = 0; d < 7; d++) weekDays.push(addDays(weekStartDate, d));
-    const weekDayStrs = weekDays.map(d => format(d, "yyyy-MM-dd"));
-    const pastDayStrs = weekDayStrs.filter(d => d <= todayStr);
-
-    let consistencyPoints = 0;
-    let consistencyMax = 0;
-    let habitsCompletedWeek = 0;
-    let habitsScheduledWeek = 0;
+  const progressMetrics: ProgressMetrics = useMemo(() => {
     // Build lineage→habitIds map for sibling matching
     const lineageMap = new Map<string, number[]>();
     habits.forEach(h => {
@@ -237,69 +241,76 @@ export default function DashboardPage() {
       }
     });
 
-    for (const dayStr of pastDayStrs) {
-      const day = new Date(dayStr + "T12:00:00");
-      const dayCode = DAY_CODES[day.getDay()];
-      // Date-range-aware filtering instead of just h.active
-      const scheduledHabits = habits.filter(h => {
-        if (!h.cadence.split(",").includes(dayCode)) return false;
-        if (h.startDate && dayStr < h.startDate) return false;
-        if (h.endDate && dayStr > h.endDate) return false;
-        return true;
-      });
-      // Deduplicate by lineage
-      const byLineage = new Map<string, typeof scheduledHabits[0]>();
-      scheduledHabits.forEach(h => {
-        const key = h.lineageId || String(h.id);
-        if (!byLineage.has(key)) byLineage.set(key, h);
-      });
-      Array.from(byLineage.values()).forEach(h => {
-        const maxPts = h.isBinary ? 1 : 2;
-        consistencyMax += maxPts;
-        habitsScheduledWeek++;
-        // Match completions across all sibling IDs
-        const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
-        const hc = weekHabitCompletions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
-        if (hc) {
-          if (h.isBinary) {
-            if (hc.completionLevel === 1) { consistencyPoints += 1; habitsCompletedWeek++; }
-          } else {
-            if (hc.completionLevel === 2) { consistencyPoints += 2; habitsCompletedWeek++; }
-            else if (hc.completionLevel === 1) { consistencyPoints += 1; }
+    function countHabits(dayStrs: string[], completions: HabitCompletion[]) {
+      let completed = 0;
+      let scheduled = 0;
+      for (const dayStr of dayStrs) {
+        if (dayStr > todayStr) continue;
+        const day = new Date(dayStr + "T12:00:00");
+        const dayCode = DAY_CODES[day.getDay()];
+        const scheduledHabits = habits.filter(h => {
+          if (!h.cadence.split(",").includes(dayCode)) return false;
+          if (h.startDate && dayStr < h.startDate) return false;
+          if (h.endDate && dayStr > h.endDate) return false;
+          return true;
+        });
+        const byLineage = new Map<string, typeof scheduledHabits[0]>();
+        scheduledHabits.forEach(h => {
+          const key = h.lineageId || String(h.id);
+          if (!byLineage.has(key)) byLineage.set(key, h);
+        });
+        Array.from(byLineage.values()).forEach(h => {
+          scheduled++;
+          const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
+          const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
+          if (hc) {
+            if (h.isBinary) {
+              if (hc.completionLevel === 1) completed++;
+            } else {
+              if (hc.completionLevel === 2) completed++;
+            }
           }
-        }
-      });
-    }
-    const weekEisenhower = eisenhowerEntries.filter(e =>
-      e.quadrant === "q1" && e.weekStart === weekStartStr
-    );
-    weekEisenhower.forEach(e => {
-      const maxPts = e.isBinary ? 1 : 2;
-      consistencyMax += maxPts;
-      if (e.isBinary) {
-        if (e.completionLevel === 1) consistencyPoints += 1;
-      } else {
-        if (e.completionLevel === 2) consistencyPoints += 2;
-        else if (e.completionLevel === 1) consistencyPoints += 1;
+        });
       }
-    });
-    const consistencyPct = consistencyMax > 0 ? Math.round((consistencyPoints / consistencyMax) * 100) : 0;
-
-    const journalDaysSet = new Set<string>();
-    for (const dayStr of pastDayStrs) {
-      const hasEntry = journals.some(j => j.date === dayStr && (j.session === "morning" || j.session === "evening"));
-      if (hasEntry) journalDaysSet.add(dayStr);
+      return { completed, scheduled };
     }
-    const journalDays = journalDaysSet.size;
+
+    // Week days
+    const weekDayStrs: string[] = [];
+    for (let d = 0; d < 7; d++) weekDayStrs.push(format(addDays(weekStartDate, d), "yyyy-MM-dd"));
+
+    // Month days
+    const monthDayStrs: string[] = [];
+    let cursor = monthStart;
+    while (cursor <= monthEnd) {
+      monthDayStrs.push(format(cursor, "yyyy-MM-dd"));
+      cursor = addDays(cursor, 1);
+    }
+
+    const weekHabits = countHabits(weekDayStrs, weekHabitCompletions);
+    const monthHabits = countHabits(monthDayStrs, monthHabitCompletions);
+
+    // Q2 items for the week
+    const weekQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
+    const q2CompletedWeek = weekQ2.filter(e => e.status === "completed").length;
+    const q2TotalWeek = weekQ2.length;
+
+    // Q2 items for the month
+    const monthQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart! >= monthStartStr && e.weekStart! <= monthEndStr);
+    const q2CompletedMonth = monthQ2.filter(e => e.status === "completed").length;
+    const q2TotalMonth = monthQ2.length;
 
     return {
-      consistencyPct,
-      habitsCompletedWeek,
-      habitsScheduledWeek,
-      journalDays,
-      daysElapsed: pastDayStrs.length,
+      habitsCompletedWeek: weekHabits.completed,
+      habitsScheduledWeek: weekHabits.scheduled,
+      habitsCompletedMonth: monthHabits.completed,
+      habitsScheduledMonth: monthHabits.scheduled,
+      q2CompletedWeek,
+      q2TotalWeek,
+      q2CompletedMonth,
+      q2TotalMonth,
     };
-  }, [journals, habits, weekHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr]);
+  }, [habits, weekHabitCompletions, monthHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr, monthStartStr, monthEndStr, monthStart, monthEnd]);
 
 
   useEffect(() => {
@@ -315,16 +326,9 @@ export default function DashboardPage() {
   if (authLoading || onboardingLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-4 py-8 max-w-5xl">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-1 min-w-0 space-y-6">
-              <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
-              <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
-            </div>
-            <div className="w-full md:w-56 md:flex-shrink-0">
-              <Skeleton className="h-64 w-full" data-testid="skeleton-progress" />
-            </div>
-          </div>
+        <div className="container mx-auto px-4 py-3 max-w-2xl space-y-2">
+          <Skeleton className="h-24 w-full" data-testid="skeleton-header" />
+          <Skeleton className="h-48 w-full" data-testid="skeleton-habits" />
         </div>
       </AppLayout>
     );
@@ -350,9 +354,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto px-4 py-3 max-w-5xl">
-        <div className="flex flex-col md:flex-row gap-3">
-        <div className="flex-1 min-w-0 space-y-2">
+      <div className="container mx-auto px-4 py-3 max-w-2xl space-y-2">
         <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
           <div>
             <h1 className="text-sm font-medium" data-testid="text-today-title">
@@ -392,48 +394,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {showPlanWeekPrompt && (
-          <div className="p-2.5 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-3" data-testid="card-plan-week-prompt">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary shrink-0" />
-              <div>
-                <p className="text-xs font-medium">Time to plan your week</p>
-                <p className="text-[10px] text-muted-foreground">Pick your top priorities for the week ahead</p>
-              </div>
-            </div>
-            <Button size="sm" className="text-xs" onClick={() => setLocation("/eisenhower")} data-testid="button-plan-week-go">
-              Plan Week
-            </Button>
-          </div>
-        )}
-
-        <JournalQuickEntry
-          todayStr={todayStr}
-          hasMorning={hasMorning}
-          hasEvening={hasEvening}
-          setLocation={setLocation}
-          firstName={user?.firstName || ""}
-        />
-
-        <DailyHabitsCard
-          todayStr={todayStr}
-          todaysHabits={todaysHabits}
-          journalHabitItems={journalHabitItems}
-          habitStatusMap={habitStatusMap}
-          habitLevelMap={habitLevelMap}
-          completedHabits={completedHabits}
-          totalHabits={totalHabits}
-          onHabitLevel={(habitId, level, options) => {
-            setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
-          }}
-          onHabitSkip={(habitId) => setHabitLevelMutation.mutate({ habitId, level: 0 })}
-          onNavigate={(path) => { setLocation(path.startsWith("/journal/") ? path : buildProcessUrl(path, "/dashboard")); window.scrollTo(0, 0); }}
-        />
-
-
         {focusItems.length > 0 ? (
           <div data-testid="card-focus">
-            <p className="text-[11px] uppercase text-bark font-medium mb-1.5">Focus</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
+              <span className="text-[11px] text-muted-foreground">{weekLabel}</span>
+            </div>
             <ul className="space-y-0.5">
               {focusItems.map((item) => {
                 const isBin = item.isBinary || false;
@@ -479,7 +445,10 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div data-testid="card-focus-empty">
-            <p className="text-[11px] uppercase text-bark font-medium mb-1.5">Focus</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
+              <span className="text-[11px] text-muted-foreground">{weekLabel}</span>
+            </div>
             <button
               className="text-xs text-primary hover:underline cursor-pointer"
               onClick={() => setLocation("/eisenhower")}
@@ -490,15 +459,50 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {showPlanWeekPrompt && (
+          <div className="p-2.5 rounded-xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-3" data-testid="card-plan-week-prompt">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary shrink-0" />
+              <div>
+                <p className="text-xs font-medium">Time to plan your week</p>
+                <p className="text-[10px] text-muted-foreground">Pick your top priorities for the week ahead</p>
+              </div>
+            </div>
+            <Button size="sm" className="text-xs" onClick={() => setLocation("/eisenhower")} data-testid="button-plan-week-go">
+              Plan Week
+            </Button>
+          </div>
+        )}
+
+        <JournalQuickEntry
+          todayStr={todayStr}
+          hasMorning={hasMorning}
+          hasEvening={hasEvening}
+          setLocation={setLocation}
+          firstName={user?.firstName || ""}
+        />
+
+        <DailyHabitsCard
+          todayStr={todayStr}
+          todaysHabits={todaysHabits}
+          journalHabitItems={journalHabitItems}
+          habitStatusMap={habitStatusMap}
+          habitLevelMap={habitLevelMap}
+          completedHabits={completedHabits}
+          totalHabits={totalHabits}
+          onHabitLevel={(habitId, level, options) => {
+            setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
+          }}
+          onHabitSkip={(habitId) => setHabitLevelMutation.mutate({ habitId, level: 0 })}
+          onNavigate={(path) => { setLocation(path.startsWith("/journal/") ? path : buildProcessUrl(path, "/dashboard")); window.scrollTo(0, 0); }}
+        />
+
+        <WeeklyProgress progressMetrics={progressMetrics} />
+
         <ToolPalette
           onToolOpen={setQuickToolOpen}
           onNavigate={setLocation}
         />
-
-      </div>
-
-      <WeeklyProgressSidebar progressMetrics={progressMetrics} />
-      </div>
       </div>
 
       <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
