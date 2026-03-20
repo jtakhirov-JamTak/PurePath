@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import { Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -23,6 +23,7 @@ export default function JournalHubPage() {
   const todayDayCode = DAY_CODES[todayDate.getDay()];
 
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(todayDate));
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -121,6 +122,108 @@ export default function JournalHubPage() {
       setHabitLevelMutation.mutate({ habitId: habit.id, level: 0 });
     } else {
       setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
+    }
+  };
+
+  // Selected date data
+  const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/" + selectedDate],
+    enabled: !!user && !!selectedDate,
+  });
+
+  const selectedDateHabitLevelMap = useMemo(() => {
+    const map = new Map<number, number>();
+    selectedDateCompletions.forEach((hc) => {
+      if (hc.completionLevel != null) {
+        map.set(hc.habitId, hc.completionLevel);
+      } else {
+        const fallback = hc.status === "completed" ? 2 : hc.status === "minimum" ? 1 : hc.status === "skipped" ? 0 : null;
+        if (fallback != null) map.set(hc.habitId, fallback);
+      }
+    });
+    return map;
+  }, [selectedDateCompletions]);
+
+  const selectedDateHabitStatusMap = useMemo(() => {
+    const map = new Map<number, string>();
+    selectedDateCompletions.forEach((hc) => {
+      map.set(hc.habitId, hc.status || "completed");
+    });
+    return map;
+  }, [selectedDateCompletions]);
+
+  const selectedDateHabits = useMemo(() => {
+    if (!selectedDate) return [];
+    const day = new Date(selectedDate + "T12:00:00");
+    const dayCode = DAY_CODES[day.getDay()];
+    const scheduled = habits.filter((h) => {
+      if (!h.cadence.split(",").includes(dayCode)) return false;
+      if (h.startDate && selectedDate < h.startDate) return false;
+      if (h.endDate && selectedDate > h.endDate) return false;
+      if (!h.active) {
+        if (!h.startDate || !h.endDate) return false;
+      }
+      return true;
+    });
+    const byLineage = new Map<string, (typeof habits)[0]>();
+    scheduled.forEach((h) => {
+      const key = h.lineageId || String(h.id);
+      const existing = byLineage.get(key);
+      if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
+    });
+    return Array.from(byLineage.values());
+  }, [habits, selectedDate]);
+
+  const selectedDateJournals = useMemo(() => {
+    if (!selectedDate) return { morning: false, evening: false };
+    const dayJournals = journals.filter((j) => j.date === selectedDate);
+    return {
+      morning: dayJournals.some((j) => j.session === "morning"),
+      evening: dayJournals.some((j) => j.session === "evening"),
+    };
+  }, [journals, selectedDate]);
+
+  const setSelectedDateHabitLevelMutation = useMutation({
+    mutationFn: async ({ habitId, level, skipReason, isBinary, date }: { habitId: number; level: number | null; skipReason?: string; isBinary?: boolean; date: string }) => {
+      let res;
+      if (level === null) {
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
+      } else {
+        const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
+        const existing = selectedDateCompletions.some((hc) => hc.habitId === habitId);
+        const payload: Record<string, unknown> = { status, completionLevel: level };
+        if (skipReason) payload.skipReason = skipReason;
+        if (existing) {
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, payload);
+        } else {
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date, ...payload });
+        }
+      }
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update habit status");
+      }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/" + variables.date] });
+      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/") });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cycleSelectedDateHabit = (habit: Habit) => {
+    if (!selectedDate) return;
+    const level = selectedDateHabitLevelMap.get(habit.id) ?? null;
+    if (level === null || level === undefined) {
+      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 2, isBinary: false, date: selectedDate });
+    } else if (level === 2) {
+      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 1, isBinary: false, date: selectedDate });
+    } else if (level === 1) {
+      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 0, date: selectedDate });
+    } else {
+      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: null, date: selectedDate });
     }
   };
 
@@ -320,8 +423,8 @@ export default function JournalHubPage() {
               return (
                 <button
                   key={dateStr}
-                  onClick={clickable ? () => setLocation(`/journal/${dateStr}/morning`) : undefined}
-                  className={`h-7 w-7 flex items-center justify-center text-[10px] ${bgClass} ${textClass} ${isToday ? "ring-1 ring-primary" : ""} ${clickable ? "cursor-pointer" : "cursor-default"}`}
+                  onClick={clickable ? () => setSelectedDate(dateStr === selectedDate ? null : dateStr) : undefined}
+                  className={`h-7 w-7 flex items-center justify-center text-[10px] ${bgClass} ${textClass} ${isToday ? "ring-1 ring-primary" : ""} ${dateStr === selectedDate ? "ring-2 ring-primary" : ""} ${clickable ? "cursor-pointer" : "cursor-default"}`}
                   disabled={!clickable}
                   data-testid={`cal-day-${dateStr}`}
                 >
@@ -335,6 +438,94 @@ export default function JournalHubPage() {
           <p className="text-[11px] text-muted-foreground mt-3" data-testid="text-month-summary">
             {daysJournaled} of {daysElapsed} days journaled
           </p>
+
+          {/* Day detail panel */}
+          {selectedDate && (
+            <div className="mt-4 rounded-lg bg-bark/5 p-3" data-testid="day-detail-panel">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium" data-testid="day-detail-header">
+                  {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
+                </p>
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="p-0.5 rounded hover:bg-muted cursor-pointer"
+                  data-testid="button-close-detail"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+
+              {!selectedDateJournals.morning && !selectedDateJournals.evening && selectedDateHabits.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground" data-testid="day-detail-empty">No activity on this day</p>
+              ) : (
+                <div className="space-y-1">
+                  {/* Journal rows */}
+                  <button
+                    className="flex items-center gap-2 w-full py-1 text-left hover:bg-bark/5 rounded px-1 -mx-1"
+                    onClick={() => setLocation(`/journal/${selectedDate}/morning`)}
+                    data-testid="detail-morning-row"
+                  >
+                    <Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span className="text-[11px] flex-1">Morning</span>
+                    <Badge
+                      variant="secondary"
+                      className={`text-[10px] px-1.5 py-0 ${selectedDateJournals.morning ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {selectedDateJournals.morning ? "Completed" : "Not started"}
+                    </Badge>
+                  </button>
+
+                  <button
+                    className="flex items-center gap-2 w-full py-1 text-left hover:bg-bark/5 rounded px-1 -mx-1"
+                    onClick={() => setLocation(`/journal/${selectedDate}/evening`)}
+                    data-testid="detail-evening-row"
+                  >
+                    <Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                    <span className="text-[11px] flex-1">Evening</span>
+                    <Badge
+                      variant="secondary"
+                      className={`text-[10px] px-1.5 py-0 ${selectedDateJournals.evening ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {selectedDateJournals.evening ? "Completed" : "Not started"}
+                    </Badge>
+                  </button>
+
+                  {/* Habits section */}
+                  {selectedDateHabits.length > 0 && (
+                    <div className="pt-2 mt-1 border-t border-border/30" data-testid="detail-habits-section">
+                      {selectedDateHabits.map((habit) => {
+                        const level = selectedDateHabitLevelMap.get(habit.id) ?? null;
+                        const status = selectedDateHabitStatusMap.get(habit.id) || null;
+                        const boxLabel = level === 2 ? "Done" : level === 1 ? "Min" : level === 0 ? "Skip" : "\u2014";
+                        const boxClass =
+                          status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
+                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+                          : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+                          : "border-border text-muted-foreground";
+
+                        return (
+                          <div key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`detail-habit-item-${habit.id}`}>
+                            <button
+                              onClick={() => cycleSelectedDateHabit(habit)}
+                              className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                              data-testid={`detail-habit-level-${habit.id}`}
+                            >
+                              {boxLabel}
+                            </button>
+                            <span className={`text-xs flex-1 ${
+                              status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
+                            }`}>
+                              {habit.name}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </AppLayout>
