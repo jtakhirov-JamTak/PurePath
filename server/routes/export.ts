@@ -1,10 +1,11 @@
 import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
+import { exportRateLimit } from "./helpers";
 import { format } from "date-fns";
 
 export function registerExportRoutes(app: Express) {
-  app.get("/api/export-all", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/export-all", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const userName = req.user.claims.first_name || req.user.claims.email || "User";
