@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Repeat, Plus, Trash2, Timer, Pencil, RefreshCw } from "lucide-react";
+import { Repeat, Plus, Trash2, Timer, Pencil, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +48,12 @@ export default function HabitsPage() {
     .filter(h => h.active)
     .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1));
 
+  const pastHabits = habits
+    .filter(h => !h.active)
+    .sort((a, b) => new Date(b.endDate || b.createdAt).getTime() - new Date(a.endDate || a.createdAt).getTime());
+
   const atLimit = activeHabits.length >= MAX_HABITS;
+  const [showPastHabits, setShowPastHabits] = useState(false);
 
   const openEdit = (habit: Habit) => {
     setEditingHabit(habit);
@@ -105,12 +110,12 @@ export default function HabitsPage() {
 
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground" data-testid="text-habit-count">
+            <p className="text-[11px] text-muted-foreground" data-testid="text-habit-count">
               {activeHabits.length}/{MAX_HABITS} habits
             </p>
             {atLimit ? (
-              <p className="text-sm text-muted-foreground italic">
-                You have 3 habits. Remove one to add another.
+              <p className="text-[11px] text-muted-foreground italic">
+                3 habit maximum reached
               </p>
             ) : (
               <Button
@@ -204,6 +209,32 @@ export default function HabitsPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {pastHabits.length > 0 && (
+            <div className="pt-4 border-t" data-testid="section-past-habits">
+              <button
+                onClick={() => setShowPastHabits(!showPastHabits)}
+                className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-bark font-medium cursor-pointer"
+                data-testid="button-toggle-past-habits"
+              >
+                Past Habits ({pastHabits.length})
+                {showPastHabits ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {showPastHabits && (
+                <div className="mt-2 space-y-1">
+                  {pastHabits.map(habit => (
+                    <div key={habit.id} className="flex items-center gap-2 py-1" data-testid={`past-habit-${habit.id}`}>
+                      <div className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
+                      <span className="text-[13px] text-muted-foreground flex-1 truncate">{habit.name}</span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        {habit.startDate || "—"} – {habit.endDate || "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
