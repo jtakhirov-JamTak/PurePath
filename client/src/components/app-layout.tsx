@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -43,6 +44,31 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const { safeNavigate } = useUnsavedGuard();
+
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+      if (!isStandalone) {
+        setShowInstallBanner(true);
+      }
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    }
+  };
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -152,6 +178,20 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </div>
       </header>
+
+      {showInstallBanner && (
+        <div className="bg-bark/5 border-b border-bark/20 px-4 py-2 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Add Leaf to your home screen for the best experience</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setShowInstallBanner(false)} className="text-[10px] h-6 px-2">
+              Dismiss
+            </Button>
+            <Button size="sm" onClick={handleInstall} className="text-[10px] h-6 px-2">
+              Install
+            </Button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 pb-16 md:pb-0" data-testid="main-content">
         {children}

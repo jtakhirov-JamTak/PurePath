@@ -306,3 +306,10 @@
   .dark .border-bark\/20 { border-color: rgba(166, 123, 91, 0.2); }
   .dark .border-bark\/30 { border-color: rgba(166, 123, 91, 0.3); }
 }
+
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
