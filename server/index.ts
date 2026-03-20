@@ -34,6 +34,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(
   helmet({
     contentSecurityPolicy: false, // Vite injects inline scripts/styles; Replit Auth uses external redirects
+    frameguard: false, // Allow Replit canvas iframe embedding
   }),
 );
 
