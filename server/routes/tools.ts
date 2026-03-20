@@ -3,7 +3,6 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import {
   createToolUsageSchema, updateToolUsageSchema,
-  createCustomToolSchema, updateCustomToolSchema,
   createTriggerLogSchema, createAvoidanceLogSchema,
 } from "../validation";
 import { parseId, csvEscape, exportRateLimit } from "./helpers";
@@ -87,85 +86,6 @@ export function registerToolRoutes(app: Express) {
     } catch (error) {
       console.error("Error exporting tool usage logs:", error);
       res.status(500).json({ error: "Failed to export tool usage logs" });
-    }
-  });
-
-  app.get("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const tools = await storage.getCustomToolsByUser(userId);
-      res.json(tools);
-    } catch (error) {
-      console.error("Error fetching custom tools:", error);
-      res.status(500).json({ error: "Failed to fetch custom tools" });
-    }
-  });
-
-  app.post("/api/custom-tools", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const parsed = createCustomToolSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.issues[0].message });
-      }
-      const userId = req.user.claims.sub;
-      const { name } = parsed.data;
-      if (!name || !name.trim()) {
-        return res.status(400).json({ error: "Tool name is required" });
-      }
-      const existing = await storage.getCustomToolsByUser(userId);
-      const activeCount = existing.filter(t => t.active).length;
-      if (activeCount >= 3) {
-        return res.status(400).json({ error: "Maximum 3 active custom tools allowed. Deactivate one first." });
-      }
-      const duplicate = existing.find(t => t.active && t.name.toLowerCase() === name.trim().toLowerCase());
-      if (duplicate) {
-        return res.status(409).json({ error: "A tool with this name already exists" });
-      }
-      const tool = await storage.createCustomTool({ ...parsed.data, userId });
-      res.json(tool);
-    } catch (error) {
-      console.error("Error creating custom tool:", error);
-      res.status(500).json({ error: "Failed to create custom tool" });
-    }
-  });
-
-  app.patch("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ error: "Invalid ID" });
-      const tools = await storage.getCustomToolsByUser(userId);
-      const tool = tools.find(t => t.id === id);
-      if (!tool) {
-        return res.status(404).json({ error: "Custom tool not found" });
-      }
-      const parsedBody = updateCustomToolSchema.safeParse(req.body);
-      if (!parsedBody.success) {
-        return res.status(400).json({ error: parsedBody.error.issues[0].message });
-      }
-      const updated = await storage.updateCustomTool(id, parsedBody.data);
-      res.json(updated);
-    } catch (error) {
-      console.error("Error updating custom tool:", error);
-      res.status(500).json({ error: "Failed to update custom tool" });
-    }
-  });
-
-  app.delete("/api/custom-tools/:id", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ error: "Invalid ID" });
-      const tools = await storage.getCustomToolsByUser(userId);
-      const tool = tools.find(t => t.id === id);
-      if (!tool) {
-        return res.status(404).json({ error: "Custom tool not found" });
-      }
-      await storage.deleteCustomTool(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting custom tool:", error);
-      res.status(500).json({ error: "Failed to delete custom tool" });
     }
   });
 

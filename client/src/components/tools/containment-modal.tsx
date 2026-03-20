@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Heart, ArrowRight, Play, Pause, RotateCcw, Plus,
+  Heart, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 const CONTAINMENT_STEPS = [
@@ -65,6 +65,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
   const [becauseText, setBecauseText] = useState("");
   const [validationChip, setValidationChip] = useState<string>("");
   const [moveAction, setMoveAction] = useState("");
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const mood = useMoodTracking("Containment");
 
 
@@ -104,6 +105,28 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
       testId="modal-containment"
     >
       <div className="space-y-4">
+        <button
+          type="button"
+          onClick={() => setShowHowItWorks(!showHowItWorks)}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          data-testid="button-how-it-works"
+        >
+          How this works
+          {showHowItWorks ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+        {showHowItWorks && (
+          <div className="text-xs text-muted-foreground space-y-1 pb-2" data-testid="how-it-works-content">
+            <p>Containment is a 4-step process for regulating intense emotions:</p>
+            <ol className="list-decimal list-inside space-y-0.5 pl-1">
+              <li><strong>FEEL</strong> — Notice where the emotion lives in your body</li>
+              <li><strong>LABEL</strong> — Name the emotion to reduce its grip</li>
+              <li><strong>REGULATE</strong> — Use slow breathing to shift your nervous system</li>
+              <li><strong>MOVE</strong> — Take one small action to change your state</li>
+            </ol>
+            <p className="italic pt-1">Naming emotions can reduce limbic reactivity. This isn't therapy — it's a regulation tool.</p>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mb-2">
           {CONTAINMENT_STEPS.map((_, i) => (
             <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />

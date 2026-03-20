@@ -12,8 +12,6 @@ import AccessGatePage from "@/pages/access-gate";
 import DashboardPage from "@/pages/dashboard";
 import BillingPage from "@/pages/billing";
 import JournalEntryPage from "@/pages/journal-entry";
-import MeditationPage from "@/pages/meditation";
-import EmotionalProcessingPage from "@/pages/emotional-processing";
 import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
@@ -113,12 +111,6 @@ function Router() {
       </Route>
       <Route path="/journal/:date/:session">
         {() => <AccessGatedRoute component={JournalEntryPage} />}
-      </Route>
-      <Route path="/meditation">
-        {() => <AccessGatedRoute component={MeditationPage} />}
-      </Route>
-      <Route path="/emotional-processing">
-        {() => <AccessGatedRoute component={EmotionalProcessingPage} />}
       </Route>
       <Route path="/eisenhower">
         {() => <AccessGatedRoute component={EisenhowerPage} />}

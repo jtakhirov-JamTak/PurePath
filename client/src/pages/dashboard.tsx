@@ -7,17 +7,15 @@ import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Sun, Moon, Check,
+  Sun, Moon,
   Target, CalendarDays,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays } from "date-fns";
-import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, CustomTool } from "@shared/schema";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal } from "@shared/schema";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
-import { AddCustomToolModal, CustomToolExerciseModal } from "@/components/tools/custom-tool-modal";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
@@ -219,30 +217,6 @@ export default function DashboardPage() {
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
-  const [showAddCustomTool, setShowAddCustomTool] = useState(false);
-  const [customToolExercise, setCustomToolExercise] = useState<CustomTool | null>(null);
-  const [stillnessOpen, setStillnessOpen] = useState(false);
-  const [stillnessSeconds, setStillnessSeconds] = useState(600);
-  const [stillnessRunning, setStillnessRunning] = useState(false);
-  useEffect(() => {
-    if (stillnessRunning) {
-      const id = setInterval(() => {
-        setStillnessSeconds(prev => {
-          if (prev <= 1) {
-            setStillnessRunning(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(id);
-    }
-  }, [stillnessRunning]);
-
-  const { data: customTools = [] } = useQuery<CustomTool[]>({
-    queryKey: ["/api/custom-tools"],
-    enabled: !!user,
-  });
 
   const progressMetrics = useMemo(() => {
     const weekDays: Date[] = [];
@@ -519,7 +493,6 @@ export default function DashboardPage() {
         <ToolPalette
           onToolOpen={setQuickToolOpen}
           onNavigate={setLocation}
-          onStillnessOpen={() => { setStillnessOpen(true); setStillnessSeconds(600); setStillnessRunning(false); }}
         />
 
       </div>
@@ -530,87 +503,6 @@ export default function DashboardPage() {
 
       <ContainmentModal open={quickToolOpen === "containment"} onClose={() => setQuickToolOpen(null)} />
       <TriggerLogModal open={quickToolOpen === "trigger"} onClose={() => setQuickToolOpen(null)} />
-      <AddCustomToolModal
-        open={showAddCustomTool}
-        onClose={() => setShowAddCustomTool(false)}
-        existingCount={customTools.filter(t => t.active).length}
-      />
-      <CustomToolExerciseModal
-        open={!!customToolExercise}
-        onClose={() => setCustomToolExercise(null)}
-        tool={customToolExercise}
-      />
-
-      <Dialog open={stillnessOpen} onOpenChange={(open) => {
-        if (!open) { setStillnessOpen(false); setStillnessRunning(false); }
-      }}>
-        <DialogContent className="max-w-sm text-center" data-testid="dialog-stillness">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-medium">Stillness Exercise</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-3">
-            <p className="text-xs text-muted-foreground leading-relaxed italic">
-              Be still for 10 minutes. When thinking, say to yourself:
-            </p>
-            <p className="text-xs font-medium px-4">
-              "This is just my nervous system, not my identity."
-            </p>
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative w-20 h-20 rounded-full border-4 border-slate-200 dark:border-slate-700 flex items-center justify-center" data-testid="stillness-timer-circle">
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 80 80">
-                  <circle
-                    cx="40" cy="40" r="36"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    className="text-emerald-500"
-                    strokeDasharray={2 * Math.PI * 36}
-                    strokeDashoffset={2 * Math.PI * 36 * (stillnessSeconds / 600)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="text-lg font-bold tabular-nums" data-testid="text-stillness-time">
-                  {Math.floor(stillnessSeconds / 60)}:{String(stillnessSeconds % 60).padStart(2, "0")}
-                </span>
-              </div>
-              <div className="flex gap-3">
-                {!stillnessRunning && stillnessSeconds > 0 && (
-                  <Button
-                    onClick={() => setStillnessRunning(true)}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    data-testid="button-stillness-start"
-                  >
-                    {stillnessSeconds < 600 ? "Resume" : "Begin"}
-                  </Button>
-                )}
-                {stillnessRunning && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setStillnessRunning(false)}
-                    data-testid="button-stillness-pause"
-                  >
-                    Pause
-                  </Button>
-                )}
-                {stillnessSeconds === 0 && (
-                  <Button
-                    onClick={() => { setStillnessSeconds(600); setStillnessRunning(false); }}
-                    data-testid="button-stillness-reset"
-                  >
-                    Reset
-                  </Button>
-                )}
-              </div>
-              {stillnessSeconds === 0 && (
-                <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium" data-testid="text-stillness-complete">
-                  <Check className="h-4 w-4 inline mr-1" />
-                  Well done. Stillness complete.
-                </p>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </AppLayout>
   );
 }
