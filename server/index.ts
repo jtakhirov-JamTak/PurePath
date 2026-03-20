@@ -35,6 +35,8 @@ app.use(
   helmet({
     contentSecurityPolicy: false, // Vite injects inline scripts/styles; Replit Auth uses external redirects
     frameguard: false, // Allow Replit canvas iframe embedding
+    crossOriginOpenerPolicy: false, // Allow Replit canvas cross-origin embedding
+    crossOriginResourcePolicy: false, // Allow Replit canvas cross-origin resources
   }),
 );
 
