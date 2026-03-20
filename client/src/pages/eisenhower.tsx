@@ -88,17 +88,20 @@ export default function EisenhowerPage() {
   }, [existingEntries, items.length]);
 
   const addItem = () => {
-    const text = newItemText.trim();
-    if (!text) return;
-    setItems(prev => [...prev, {
-      task: text,
-      quadrant: "unsorted",
-      goalAlignment: "",
-      decision: "",
-      sortOrder: prev.length,
-      selected: false,
-      blocksGoal: false,
-    }]);
+    const pieces = newItemText.split(",").map(s => s.trim()).filter(Boolean);
+    if (pieces.length === 0) return;
+    setItems(prev => [
+      ...prev,
+      ...pieces.map<WizardItem>((text, i) => ({
+        task: text,
+        quadrant: "unsorted",
+        goalAlignment: "",
+        decision: "",
+        sortOrder: prev.length + i,
+        selected: false,
+        blocksGoal: false,
+      })),
+    ]);
     setNewItemText("");
   };
 

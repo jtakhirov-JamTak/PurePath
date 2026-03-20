@@ -27,6 +27,7 @@ export default function IdentityDocPage() {
   const [identity, setIdentity] = useState("");
   const [othersWillSee, setOthersWillSee] = useState<string[]>(["", "", ""]);
   const [purpose, setPurpose] = useState("");
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (doc) {
@@ -35,11 +36,13 @@ export default function IdentityDocPage() {
       const parsed = doc.othersWillSee ? doc.othersWillSee.split("|||") : ["", "", ""];
       setOthersWillSee(parsed.length === 3 ? parsed : [parsed[0] || "", parsed[1] || "", parsed[2] || ""]);
       setPurpose(doc.purpose || "");
+      setInitialized(true);
     }
   }, [doc]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!initialized) return;
       await apiRequest("PUT", "/api/identity-document", {
         vision: vision.trim(),
         identity: identity.trim(),
@@ -70,11 +73,12 @@ export default function IdentityDocPage() {
     },
   });
 
-  const hasChanges =
+  const hasChanges = initialized && (
     vision !== (doc?.vision || "") ||
     identity !== (doc?.identity || "") ||
     othersWillSee.map(s => s.trim()).join("|||") !== (doc?.othersWillSee || "||") ||
-    purpose !== (doc?.purpose || "");
+    purpose !== (doc?.purpose || "")
+  );
 
   if (isLoading) {
     return (
@@ -208,7 +212,7 @@ export default function IdentityDocPage() {
 
           <Button
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !hasChanges}
+            disabled={!initialized || isLoading || saveMutation.isPending || !hasChanges}
             className="w-full"
             data-testid="button-save-identity"
           >

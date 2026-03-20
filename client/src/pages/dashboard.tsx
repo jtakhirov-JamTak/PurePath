@@ -252,6 +252,11 @@ export default function DashboardPage() {
           if (!h.cadence.split(",").includes(dayCode)) return false;
           if (h.startDate && dayStr < h.startDate) return false;
           if (h.endDate && dayStr > h.endDate) return false;
+          // Active habits always count; archived habits only count within their date range
+          if (!h.active) {
+            if (!h.startDate || !h.endDate) return false;
+            if (dayStr < h.startDate || dayStr > h.endDate) return false;
+          }
           return true;
         });
         const byLineage = new Map<string, typeof scheduledHabits[0]>();
@@ -264,11 +269,7 @@ export default function DashboardPage() {
           const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
           const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
           if (hc) {
-            if (h.isBinary) {
-              if (hc.completionLevel === 1) completed++;
-            } else {
-              if (hc.completionLevel === 2) completed++;
-            }
+            if (hc.completionLevel != null && hc.completionLevel >= 1) completed++;
           }
         });
       }
