@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Sun, Moon, Check, Minus } from "lucide-react";
+import { Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Journal, Habit, HabitCompletion } from "@shared/schema";
@@ -23,7 +22,7 @@ export default function JournalHubPage() {
   const todayStr = format(todayDate, "yyyy-MM-dd");
   const todayDayCode = DAY_CODES[todayDate.getDay()];
 
-  const [visibleDays, setVisibleDays] = useState(30);
+  const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(todayDate));
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -125,30 +124,55 @@ export default function JournalHubPage() {
     }
   };
 
-  // History: group journals by date, sorted descending
-  const historyDates = useMemo(() => {
+  // Calendar heatmap data
+  const isCurrentMonth = isSameMonth(selectedMonth, todayDate);
+  const canGoForward = !isCurrentMonth;
+
+  const monthJournalMap = useMemo(() => {
     const map = new Map<string, { morning: boolean; evening: boolean }>();
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+    const startStr = format(monthStart, "yyyy-MM-dd");
+    const endStr = format(monthEnd, "yyyy-MM-dd");
+
     journals.forEach((j) => {
-      if (j.date === todayStr) return; // Skip today
+      if (j.date < startStr || j.date > endStr) return;
       if (!map.has(j.date)) map.set(j.date, { morning: false, evening: false });
       const entry = map.get(j.date)!;
       if (j.session === "morning") entry.morning = true;
       if (j.session === "evening") entry.evening = true;
     });
+    return map;
+  }, [journals, selectedMonth]);
 
-    // Also include dates without entries for the last N days
-    const dates = new Set<string>(map.keys());
-    for (let i = 1; i <= visibleDays; i++) {
-      const d = new Date(todayDate);
-      d.setDate(d.getDate() - i);
-      const ds = format(d, "yyyy-MM-dd");
-      dates.add(ds);
-      if (!map.has(ds)) map.set(ds, { morning: false, evening: false });
+  const calendarCells = useMemo(() => {
+    const daysInMonth = getDaysInMonth(selectedMonth);
+    const firstDay = startOfMonth(selectedMonth);
+    // getDay: 0=Sun. Convert to Mon=0: (getDay()+6)%7
+    const offset = (getDay(firstDay) + 6) % 7;
+
+    const cells: Array<{ day: number; dateStr: string } | null> = [];
+    for (let i = 0; i < offset; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = addDays(firstDay, d - 1);
+      cells.push({ day: d, dateStr: format(date, "yyyy-MM-dd") });
     }
+    return cells;
+  }, [selectedMonth]);
 
-    const sorted = Array.from(dates).sort((a, b) => b.localeCompare(a)).slice(0, visibleDays);
-    return sorted.map((date) => ({ date, ...map.get(date)! }));
-  }, [journals, todayStr, visibleDays]);
+  // Month summary
+  const daysElapsed = useMemo(() => {
+    if (isCurrentMonth) return todayDate.getDate();
+    return getDaysInMonth(selectedMonth);
+  }, [selectedMonth, isCurrentMonth]);
+
+  const daysJournaled = useMemo(() => {
+    let count = 0;
+    monthJournalMap.forEach((entry, dateStr) => {
+      if (dateStr <= todayStr && (entry.morning || entry.evening)) count++;
+    });
+    return count;
+  }, [monthJournalMap, todayStr]);
 
   return (
     <AppLayout>
@@ -228,57 +252,89 @@ export default function JournalHubPage() {
           </div>
         </section>
 
-        {/* HISTORY section */}
+        {/* HISTORY section — Calendar Heatmap */}
         <section data-testid="journal-history-section">
           <p className="text-[11px] uppercase text-bark font-medium mb-2">History</p>
 
-          <div className="space-y-0">
-            {historyDates.map(({ date, morning, evening }) => (
-              <div key={date} className="py-2 border-b border-border/30" data-testid={`history-date-${date}`}>
-                <p className="text-xs font-medium mb-1">
-                  {format(new Date(date + "T12:00:00"), "MMMM d, yyyy")}
-                </p>
-                <div className="space-y-0.5 pl-1">
-                  <button
-                    className="flex items-center gap-2 w-full py-1 text-left hover:bg-muted/50 rounded px-1 -mx-1"
-                    onClick={() => setLocation(`/journal/${date}/morning`)}
-                    data-testid={`history-morning-${date}`}
-                  >
-                    <Sun className="h-3 w-3 text-amber-500 shrink-0" />
-                    <span className="text-[11px] flex-1">Morning</span>
-                    {morning ? (
-                      <Check className="h-3 w-3 text-emerald-500" />
-                    ) : (
-                      <Minus className="h-3 w-3 text-muted-foreground" />
-                    )}
-                  </button>
-                  <button
-                    className="flex items-center gap-2 w-full py-1 text-left hover:bg-muted/50 rounded px-1 -mx-1"
-                    onClick={() => setLocation(`/journal/${date}/evening`)}
-                    data-testid={`history-evening-${date}`}
-                  >
-                    <Moon className="h-3 w-3 text-indigo-500 shrink-0" />
-                    <span className="text-[11px] flex-1">Evening</span>
-                    {evening ? (
-                      <Check className="h-3 w-3 text-emerald-500" />
-                    ) : (
-                      <Minus className="h-3 w-3 text-muted-foreground" />
-                    )}
-                  </button>
-                </div>
+          {/* Month navigation */}
+          <div className="flex items-center justify-between mb-3" data-testid="month-navigation">
+            <button
+              onClick={() => setSelectedMonth(subMonths(selectedMonth, 1))}
+              className="p-1 rounded hover:bg-muted cursor-pointer"
+              data-testid="button-prev-month"
+            >
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <span className="text-[13px] font-medium" data-testid="text-current-month">
+              {format(selectedMonth, "MMMM yyyy")}
+            </span>
+            <button
+              onClick={() => canGoForward && setSelectedMonth(addMonths(selectedMonth, 1))}
+              className={`p-1 rounded ${canGoForward ? "hover:bg-muted cursor-pointer" : "opacity-30 cursor-default"}`}
+              disabled={!canGoForward}
+              data-testid="button-next-month"
+            >
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Day labels */}
+          <div className="grid grid-cols-7 gap-[2px] mb-[2px]">
+            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+              <div key={i} className="h-7 flex items-center justify-center text-[10px] text-muted-foreground">
+                {d}
               </div>
             ))}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full mt-3 text-xs text-muted-foreground"
-            onClick={() => setVisibleDays((d) => d + 30)}
-            data-testid="show-more-history"
-          >
-            Show more
-          </Button>
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-[2px]" data-testid="calendar-grid">
+            {calendarCells.map((cell, i) => {
+              if (!cell) return <div key={`empty-${i}`} className="h-7 w-7" />;
+
+              const { day, dateStr } = cell;
+              const isFuture = dateStr > todayStr;
+              const isToday = dateStr === todayStr;
+              const entry = monthJournalMap.get(dateStr);
+              const hasBoth = entry?.morning && entry?.evening;
+              const hasOne = entry && (entry.morning || entry.evening) && !hasBoth;
+              const clickable = !isFuture;
+
+              let bgClass: string;
+              let textClass: string;
+
+              if (isFuture) {
+                bgClass = "";
+                textClass = "text-muted-foreground/30";
+              } else if (hasBoth) {
+                bgClass = "bg-emerald-500 rounded-sm";
+                textClass = "text-white";
+              } else if (hasOne) {
+                bgClass = "bg-emerald-500/40 rounded-sm";
+                textClass = "text-foreground";
+              } else {
+                bgClass = "border border-border/30 rounded-sm";
+                textClass = "text-foreground";
+              }
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={clickable ? () => setLocation(`/journal/${dateStr}/morning`) : undefined}
+                  className={`h-7 w-7 flex items-center justify-center text-[10px] ${bgClass} ${textClass} ${isToday ? "ring-1 ring-primary" : ""} ${clickable ? "cursor-pointer" : "cursor-default"}`}
+                  disabled={!clickable}
+                  data-testid={`cal-day-${dateStr}`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Month summary */}
+          <p className="text-[11px] text-muted-foreground mt-3" data-testid="text-month-summary">
+            {daysJournaled} of {daysElapsed} days journaled
+          </p>
         </section>
       </div>
     </AppLayout>
