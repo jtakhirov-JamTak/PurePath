@@ -33,6 +33,16 @@ const DURATIONS = [
 ] as const;
 
 const ALL_DAYS_CADENCE = "mon,tue,wed,thu,fri,sat,sun";
+const ALL_DAYS_SET = new Set(ALL_DAYS_CADENCE.split(","));
+const DAY_BUTTONS = [
+  { code: "mon", label: "M" },
+  { code: "tue", label: "T" },
+  { code: "wed", label: "W" },
+  { code: "thu", label: "T" },
+  { code: "fri", label: "F" },
+  { code: "sat", label: "S" },
+  { code: "sun", label: "S" },
+] as const;
 
 function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -58,6 +68,8 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
   const [timing, setTiming] = useState("morning");
   const [hasTimeCommitment, setHasTimeCommitment] = useState(true);
   const [duration, setDuration] = useState(15);
+  const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">("daily");
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set(ALL_DAYS_SET));
 
   useEffect(() => {
     if (!open) return;
@@ -73,12 +85,21 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         setHasTimeCommitment(false);
         setDuration(15);
       }
+      const days = new Set(editingHabit.cadence ? editingHabit.cadence.split(",") : ALL_DAYS_SET);
+      if (days.size === 7 && Array.from(ALL_DAYS_SET).every(d => days.has(d))) {
+        setScheduleMode("daily");
+      } else {
+        setScheduleMode("custom");
+      }
+      setSelectedDays(days);
     } else {
       setName("");
       setCategory("health");
       setTiming(defaultTiming || "morning");
       setHasTimeCommitment(true);
       setDuration(15);
+      setScheduleMode("daily");
+      setSelectedDays(new Set(ALL_DAYS_SET));
     }
   }, [open, editingHabit, defaultTiming]);
 
@@ -88,7 +109,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         name,
         category,
         timing,
-        cadence: ALL_DAYS_CADENCE,
+        cadence,
         duration: hasTimeCommitment ? duration : null,
         startDate: formatDate(new Date()),
         isBinary: !hasTimeCommitment,
@@ -115,7 +136,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         name,
         category,
         timing,
-        cadence: ALL_DAYS_CADENCE,
+        cadence,
         duration: hasTimeCommitment ? duration : null,
         isBinary: !hasTimeCommitment,
       });
@@ -134,7 +155,8 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     },
   });
 
-  const canSubmit = name.trim() !== "";
+  const cadence = scheduleMode === "daily" ? ALL_DAYS_CADENCE : DAY_BUTTONS.map(d => d.code).filter(c => selectedDays.has(c)).join(",");
+  const canSubmit = name.trim() !== "" && (scheduleMode === "daily" || selectedDays.size > 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -154,6 +176,61 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
               onChange={(e) => setName(e.target.value)}
               data-testid="input-habit-name"
             />
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase text-muted-foreground mb-1.5">Schedule</p>
+            <div className="flex gap-1 mb-2">
+              <button
+                type="button"
+                onClick={() => { setScheduleMode("daily"); setSelectedDays(new Set(ALL_DAYS_SET)); }}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  scheduleMode === "daily" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                }`}
+                data-testid="button-schedule-daily"
+              >
+                Daily
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduleMode("custom")}
+                className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                  scheduleMode === "custom" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                }`}
+                data-testid="button-schedule-custom"
+              >
+                Custom
+              </button>
+            </div>
+            {scheduleMode === "custom" && (
+              <div className="flex gap-1.5">
+                {DAY_BUTTONS.map((d) => (
+                  <button
+                    key={d.code}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDays(prev => {
+                        const next = new Set(prev);
+                        if (next.has(d.code)) {
+                          if (next.size > 1) next.delete(d.code);
+                        } else {
+                          next.add(d.code);
+                        }
+                        return next;
+                      });
+                    }}
+                    className={`h-7 w-7 text-[11px] font-medium rounded-sm transition-colors ${
+                      selectedDays.has(d.code)
+                        ? "bg-primary text-white"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                    data-testid={`button-day-${d.code}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
