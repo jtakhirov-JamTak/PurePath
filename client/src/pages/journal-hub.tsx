@@ -104,7 +104,7 @@ export default function JournalHubPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/range"] });
+      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/") });
     },
     onError: (error: Error) => {
       toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
