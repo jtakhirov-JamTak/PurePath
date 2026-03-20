@@ -212,7 +212,7 @@ export default function DashboardPage() {
     ) {
       redirectedRef.current = true;
       toast({ title: "Monthly goal needed", description: "Let's set your goal for this month." });
-      setLocation(buildProcessUrl("/goal-wizard", "/dashboard"));
+      setLocation(buildProcessUrl("/monthly-goal", "/dashboard"));
     }
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 

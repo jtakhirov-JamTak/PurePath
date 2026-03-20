@@ -8,13 +8,13 @@ export interface ProcessEntry {
 }
 
 export const processRegistry: Record<string, ProcessEntry> = {
-  "goal-wizard": {
-    id: "goal-wizard",
-    title: "Set a Real Goal",
-    path: "/goal-wizard",
+  "monthly-goal-flow": {
+    id: "monthly-goal-flow",
+    title: "Monthly Goal",
+    path: "/monthly-goal",
     defaultReturnTo: "/dashboard",
     viewPath: "/plan",
-    requiresDirtyGuard: true,
+    requiresDirtyGuard: false,
   },
   "eisenhower-wizard": {
     id: "eisenhower-wizard",

@@ -23,7 +23,6 @@ import IdentityDocPage from "@/pages/identity-doc";
 import DiscoveryProfilePage from "@/pages/discovery-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
-import GoalWizardPage from "@/pages/goal-wizard";
 import SetupWizardPage from "@/pages/setup-wizard";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
@@ -138,9 +137,6 @@ function Router() {
       </Route>
       <Route path="/monthly-goal">
         {() => <AccessGatedRoute component={MonthlyGoalPage} />}
-      </Route>
-      <Route path="/goal-wizard">
-        {() => <AccessGatedRoute component={GoalWizardPage} />}
       </Route>
       <Route path="/setup">
         {() => <AccessGatedRoute component={SetupWizardPage} />}
