@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import type { Habit } from "@shared/schema";
 
@@ -60,8 +59,6 @@ interface HabitDialogProps {
 }
 
 export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, onSuccess }: HabitDialogProps) {
-  const qc = useQueryClient();
-  const { toast } = useToast();
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<HabitCategory>("health");
@@ -103,7 +100,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     }
   }, [open, editingHabit, defaultTiming]);
 
-  const createHabitMutation = useMutation({
+  const createHabitMutation = useToastMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/habits", {
         name,
@@ -120,18 +117,16 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
       }
       return res.json();
     },
+    invalidateKeys: ["/api/habits"],
+    errorToast: "Could not add habit",
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
       onOpenChange(false);
       onSuccess?.();
     },
-    onError: (error: Error) => {
-      toast({ title: "Could not add habit", description: error.message, variant: "destructive" });
-    },
   });
 
-  const updateHabitMutation = useMutation({
-    mutationFn: async (id: number) => {
+  const updateHabitMutation = useToastMutation<number>({
+    mutationFn: async (id) => {
       const res = await apiRequest("PATCH", `/api/habits/${id}`, {
         name,
         category,
@@ -145,13 +140,11 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         throw new Error(body.error || "Failed to update habit");
       }
     },
+    invalidateKeys: ["/api/habits"],
+    errorToast: "Could not update habit",
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
       onOpenChange(false);
       onSuccess?.();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
     },
   });
 

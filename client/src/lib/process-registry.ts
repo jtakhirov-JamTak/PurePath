@@ -58,10 +58,3 @@ export const processRegistry: Record<string, ProcessEntry> = {
   },
 };
 
-export function getProcess(id: string): ProcessEntry | undefined {
-  return processRegistry[id];
-}
-
-export function getProcessByPath(path: string): ProcessEntry | undefined {
-  return Object.values(processRegistry).find((p) => p.path === path);
-}

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,8 +12,6 @@ import { useLocation } from "wouter";
 import type { IdentityDocument } from "@shared/schema";
 
 export function AvoidanceToolModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [, setLocation] = useLocation();
 
   const [avoidingWhat, setAvoidingWhat] = useState("");
@@ -43,7 +41,7 @@ export function AvoidanceToolModal({ open, onClose }: { open: boolean; onClose: 
     onClose();
   };
 
-  const saveMutation = useMutation({
+  const saveMutation = useToastMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/avoidance-logs", {
         date: format(new Date(), "yyyy-MM-dd"),
@@ -57,13 +55,11 @@ export function AvoidanceToolModal({ open, onClose }: { open: boolean; onClose: 
         throw new Error(body.error || "Failed to save avoidance log");
       }
     },
+    invalidateKeys: ["/api/avoidance-logs"],
+    successToast: { title: "Avoidance logged" },
+    errorToast: "Could not save",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/avoidance-logs"] });
-      toast({ title: "Avoidance logged" });
       handleClose();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not save", description: error.message, variant: "destructive" });
     },
   });
 

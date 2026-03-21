@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +13,6 @@ import {
 } from "./trigger-chips";
 
 export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   // Tier 1
   const [triggerText, setTriggerText] = useState("");
@@ -57,7 +54,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
     onClose();
   };
 
-  const saveMutation = useMutation({
+  const saveMutation = useToastMutation({
     mutationFn: async () => {
       // Build appraisal string from chips + other
       const appraisalParts = [...appraisal.selected.filter((a) => a !== "Other")];
@@ -90,13 +87,11 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
         throw new Error(body.error || "Failed to save trigger log");
       }
     },
+    invalidateKeys: ["/api/trigger-logs"],
+    successToast: { title: "Trigger logged" },
+    errorToast: "Could not save",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trigger-logs"] });
-      toast({ title: "Trigger logged" });
       handleClose();
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not save", description: error.message, variant: "destructive" });
     },
   });
 

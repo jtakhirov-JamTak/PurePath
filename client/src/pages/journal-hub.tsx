@@ -3,24 +3,21 @@ import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
 import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
+import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import type { Journal, Habit, HabitCompletion } from "@shared/schema";
-
-const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export default function JournalHubPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const todayDate = new Date();
   const todayStr = format(todayDate, "yyyy-MM-dd");
-  const todayDayCode = DAY_CODES[todayDate.getDay()];
 
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(todayDate));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -46,27 +43,7 @@ export default function JournalHubPage() {
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
   // Today's scheduled habits (active, matching cadence, within date range, deduped, max 3)
-  const todaysHabits = useMemo(() => {
-    const scheduled = habits.filter((h) => {
-      if (!h.active) return false;
-      if (!h.cadence.split(",").includes(todayDayCode)) return false;
-      if (h.startDate && todayStr < h.startDate) return false;
-      if (h.endDate && todayStr > h.endDate) return false;
-      return true;
-    });
-    const byLineage = new Map<string, (typeof habits)[0]>();
-    scheduled.forEach((h) => {
-      const key = h.lineageId || String(h.id);
-      const existing = byLineage.get(key);
-      if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
-    });
-    const deduped = Array.from(byLineage.values());
-    if (deduped.length > 3) {
-      deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return deduped.slice(0, 3);
-    }
-    return deduped;
-  }, [habits, todayDayCode, todayStr]);
+  const todaysHabits = useMemo(() => getTodaysHabits(habits, todayStr), [habits, todayStr]);
 
   // Habit completion maps
   const habitLevelMap = new Map<number, number>();
@@ -82,8 +59,8 @@ export default function JournalHubPage() {
   });
 
   // Habit level cycling mutation
-  const setHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, level, skipReason, isBinary }: { habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }) => {
+  const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
+    mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
@@ -103,13 +80,9 @@ export default function JournalHubPage() {
         throw new Error(body.error || "Failed to update habit status");
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
-      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/") });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: [["/api/habit-completions", todayStr]],
+    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/")],
+    errorToast: "Could not update habit",
   });
 
   const cycleHabit = (habit: Habit) => {
@@ -154,24 +127,7 @@ export default function JournalHubPage() {
 
   const selectedDateHabits = useMemo(() => {
     if (!selectedDate) return [];
-    const day = new Date(selectedDate + "T12:00:00");
-    const dayCode = DAY_CODES[day.getDay()];
-    const scheduled = habits.filter((h) => {
-      if (!h.cadence.split(",").includes(dayCode)) return false;
-      if (h.startDate && selectedDate < h.startDate) return false;
-      if (h.endDate && selectedDate > h.endDate) return false;
-      if (!h.active) {
-        if (!h.startDate || !h.endDate) return false;
-      }
-      return true;
-    });
-    const byLineage = new Map<string, (typeof habits)[0]>();
-    scheduled.forEach((h) => {
-      const key = h.lineageId || String(h.id);
-      const existing = byLineage.get(key);
-      if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
-    });
-    return Array.from(byLineage.values());
+    return getDateHabits(habits, selectedDate);
   }, [habits, selectedDate]);
 
   const selectedDateJournals = useMemo(() => {
@@ -183,8 +139,8 @@ export default function JournalHubPage() {
     };
   }, [journals, selectedDate]);
 
-  const setSelectedDateHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, level, skipReason, isBinary, date }: { habitId: number; level: number | null; skipReason?: string; isBinary?: boolean; date: string }) => {
+  const setSelectedDateHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean; date: string }>({
+    mutationFn: async ({ habitId, level, skipReason, isBinary, date }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${date}`);
@@ -204,12 +160,10 @@ export default function JournalHubPage() {
         throw new Error(body.error || "Failed to update habit status");
       }
     },
+    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/")],
+    errorToast: "Could not update habit",
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/habit-completions/" + variables.date] });
-      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/") });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
     },
   });
 

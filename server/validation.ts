@@ -127,24 +127,6 @@ export const createToolUsageSchema = z.object({
 
 export const updateToolUsageSchema = createToolUsageSchema.partial();
 
-export const createCustomToolSchema = z.object({
-  name: trimmedString(1, 100),
-  description: optionalString(1000),
-  instructions: optionalString(5000),
-  icon: optionalString(50),
-  active: z.boolean().optional().nullable(),
-});
-
-export const updateCustomToolSchema = createCustomToolSchema.partial();
-
-export const chatMessageSchema = z.object({
-  content: trimmedString(1, 10000),
-});
-
-export const phase3AnalyzeSchema = z.object({
-  documentText: z.string().min(50, "Please provide at least 50 characters of text to analyze"),
-});
-
 export const visionBoardSchema = z.object({
   slot: z.enum(["main", "left", "right"]),
   imageData: z.string().max(10 * 1024 * 1024, "Image data must be at most 10MB").optional().nullable(),

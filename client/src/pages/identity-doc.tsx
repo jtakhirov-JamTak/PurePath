@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VoiceTextarea } from "@/components/voice-input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Save, Eye, User, Users, Heart } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
 
 export default function IdentityDocPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: doc, isLoading } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
@@ -40,7 +38,7 @@ export default function IdentityDocPage() {
     }
   }, [doc]);
 
-  const saveMutation = useMutation({
+  const saveMutation = useToastMutation({
     mutationFn: async () => {
       if (!initialized) return;
       await apiRequest("PUT", "/api/identity-document", {
@@ -64,13 +62,9 @@ export default function IdentityDocPage() {
         stressResponses: doc?.stressResponses || "",
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
-      toast({ title: "Saved", description: "Your Identity Document has been updated." });
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Could not save. Please try again.", variant: "destructive" });
-    },
+    invalidateKeys: ["/api/identity-document"],
+    successToast: { title: "Saved", description: "Your Identity Document has been updated." },
+    errorToast: "Could not save. Please try again.",
   });
 
   const hasChanges = initialized && (

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal } from "@shared/schema";
+import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
@@ -22,12 +24,10 @@ import { ToolPalette } from "@/components/dashboard/tool-palette";
 import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
 import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
 
-const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const today = new Date();
@@ -94,30 +94,7 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const todayDayCode = DAY_CODES[today.getDay()];
-  const todaysHabits = (() => {
-    const scheduled = habits.filter((h) => {
-      if (!h.active) return false;
-      if (!h.cadence.split(",").includes(todayDayCode)) return false;
-      if (h.startDate && todayStr < h.startDate) return false;
-      if (h.endDate && todayStr > h.endDate) return false;
-      return true;
-    });
-    // Deduplicate by lineage — prefer active version
-    const byLineage = new Map<string, typeof habits[0]>();
-    scheduled.forEach(h => {
-      const key = h.lineageId || String(h.id);
-      const existing = byLineage.get(key);
-      if (!existing || (h.active && !existing.active)) byLineage.set(key, h);
-    });
-    // Cap at 3 most recently created active habits
-    const deduped = Array.from(byLineage.values());
-    if (deduped.length > 3) {
-      deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      return deduped.slice(0, 3);
-    }
-    return deduped;
-  })();
+  const todaysHabits = getTodaysHabits(habits, todayStr);
 
   const habitStatusMap = new Map<number, string>();
   const habitLevelMap = new Map<number, number>();
@@ -143,8 +120,8 @@ export default function DashboardPage() {
     return false;
   });
 
-  const setHabitLevelMutation = useMutation({
-    mutationFn: async ({ habitId, level, skipReason, isBinary }: { habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }) => {
+  const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
+    mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
       let res;
       if (level === null) {
         res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
@@ -164,25 +141,20 @@ export default function DashboardPage() {
         throw new Error(body.error || "Failed to update habit status");
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-completions", todayStr] });
-      queryClient.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/") });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update habit", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: [["/api/habit-completions", todayStr]],
+    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/")],
+    errorToast: "Could not update habit",
   });
 
-
-  const setEisenhowerLevelMutation = useMutation({
+  const setEisenhowerLevelMutation = useToastMutation<{
+    id: number; level: number | null; skipReason?: string; isBinary?: boolean;
+    scheduledStartTime?: string | null; actualStartTime?: string | null;
+    durationMinutes?: number | null; actualDuration?: number | null;
+    startedOnTime?: boolean | null; delayMinutes?: number | null; delayReason?: string | null;
+    completedRequiredTime?: boolean | null; timeShortMinutes?: number | null;
+  }>({
     mutationFn: async ({ id, level, skipReason, scheduledStartTime, actualStartTime, durationMinutes, actualDuration, isBinary,
-      startedOnTime, delayMinutes, delayReason, completedRequiredTime, timeShortMinutes }: {
-      id: number; level: number | null; skipReason?: string; isBinary?: boolean;
-      scheduledStartTime?: string | null; actualStartTime?: string | null;
-      durationMinutes?: number | null; actualDuration?: number | null;
-      startedOnTime?: boolean | null; delayMinutes?: number | null; delayReason?: string | null;
-      completedRequiredTime?: boolean | null; timeShortMinutes?: number | null;
-    }) => {
+      startedOnTime, delayMinutes, delayReason, completedRequiredTime, timeShortMinutes }) => {
       let status: string | null;
       if (level === null) { status = null; }
       else if (level === 0) { status = "skipped"; }
@@ -206,12 +178,8 @@ export default function DashboardPage() {
         throw new Error(errBody.error || "Failed to update status");
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update status", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: ["/api/eisenhower"],
+    errorToast: "Could not update status",
   });
 
   const redirectedRef = useRef(false);
@@ -246,25 +214,8 @@ export default function DashboardPage() {
       let scheduled = 0;
       for (const dayStr of dayStrs) {
         if (dayStr > todayStr) continue;
-        const day = new Date(dayStr + "T12:00:00");
-        const dayCode = DAY_CODES[day.getDay()];
-        const scheduledHabits = habits.filter(h => {
-          if (!h.cadence.split(",").includes(dayCode)) return false;
-          if (h.startDate && dayStr < h.startDate) return false;
-          if (h.endDate && dayStr > h.endDate) return false;
-          // Active habits always count; archived habits only count within their date range
-          if (!h.active) {
-            if (!h.startDate || !h.endDate) return false;
-            if (dayStr < h.startDate || dayStr > h.endDate) return false;
-          }
-          return true;
-        });
-        const byLineage = new Map<string, typeof scheduledHabits[0]>();
-        scheduledHabits.forEach(h => {
-          const key = h.lineageId || String(h.id);
-          if (!byLineage.has(key)) byLineage.set(key, h);
-        });
-        Array.from(byLineage.values()).forEach(h => {
+        const dayHabits = getDateHabits(habits, dayStr);
+        dayHabits.forEach(h => {
           scheduled++;
           const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
           const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);

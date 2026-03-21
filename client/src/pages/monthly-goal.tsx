@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { format, startOfWeek, addDays } from "date-fns";
 import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
 
@@ -18,8 +18,6 @@ const DEFAULT_OBSTACLES = ["Time", "Energy", "Avoidance", "Distraction", "Perfec
 export default function MonthlyGoalPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const [step, setStep] = useState(1);
   const [showIdentity, setShowIdentity] = useState(false);
@@ -88,7 +86,7 @@ export default function MonthlyGoalPage() {
 
   const innerObstacleValue = [...selectedObstacles, customObstacle].filter(Boolean).join(", ");
 
-  const saveMutation = useMutation({
+  const saveMutation = useToastMutation({
     mutationFn: async () => {
       const res = await apiRequest("PUT", "/api/monthly-goal", {
         monthKey: currentMonthKey,
@@ -127,14 +125,11 @@ export default function MonthlyGoalPage() {
 
       return res.json();
     },
+    invalidateKeys: ["/api/monthly-goal", "/api/eisenhower"],
+    successToast: { title: "Goal saved" },
+    errorToast: "Could not save goal",
     onSuccess: () => {
-      toast({ title: "Goal saved" });
-      queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       setLocation("/dashboard");
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not save goal", description: error.message, variant: "destructive" });
     },
   });
 

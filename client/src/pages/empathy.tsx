@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Plus, Download, Trash2, Calendar, Pencil, Sparkles, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import type { EmpathyExercise } from "@shared/schema";
 
 type PrepFormData = {
@@ -196,8 +196,7 @@ function DebriefFormFields({ data, onChange }: { data: DebriefFormData; onChange
 }
 
 export default function EmpathyPage() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+
   const [activeTab, setActiveTab] = useState<"prep" | "debrief">("prep");
   const [prepDialogOpen, setPrepDialogOpen] = useState(false);
   const [debriefDialogOpen, setDebriefDialogOpen] = useState(false);
@@ -216,8 +215,8 @@ export default function EmpathyPage() {
   const prepExercises = exercises.filter(e => e.exerciseType === "prep");
   const debriefExercises = exercises.filter(e => e.exerciseType !== "prep");
 
-  const createMutation = useMutation({
-    mutationFn: async (exercise: PrepFormData | DebriefFormData) => {
+  const createMutation = useToastMutation<PrepFormData | DebriefFormData>({
+    mutationFn: async (exercise) => {
       const res = await apiRequest("POST", "/api/empathy", exercise);
       if (!res.ok) {
         const body = await res.json();
@@ -225,20 +224,18 @@ export default function EmpathyPage() {
       }
       return res.json();
     },
+    invalidateKeys: ["/api/empathy"],
+    errorToast: "Could not save",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/empathy"] });
       setPrepDialogOpen(false);
       setDebriefDialogOpen(false);
       setNewPrep({ ...emptyPrep, date: format(new Date(), "yyyy-MM-dd") });
       setNewDebrief({ ...emptyDebrief, date: format(new Date(), "yyyy-MM-dd") });
     },
-    onError: (error: Error) => {
-      toast({ title: "Could not save", description: error.message, variant: "destructive" });
-    },
   });
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: PrepFormData | DebriefFormData }) => {
+  const updateMutation = useToastMutation<{ id: number; data: PrepFormData | DebriefFormData }>({
+    mutationFn: async ({ id, data }) => {
       const res = await apiRequest("PATCH", `/api/empathy/${id}`, data);
       if (!res.ok) {
         const body = await res.json();
@@ -246,31 +243,25 @@ export default function EmpathyPage() {
       }
       return res.json();
     },
+    invalidateKeys: ["/api/empathy"],
+    successToast: { title: "Updated successfully" },
+    errorToast: "Could not update",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/empathy"] });
       setEditDialogOpen(false);
       setEditingId(null);
-      toast({ title: "Updated successfully" });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not update", description: error.message, variant: "destructive" });
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+  const deleteMutation = useToastMutation<number>({
+    mutationFn: async (id) => {
       const res = await apiRequest("DELETE", `/api/empathy/${id}`);
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to delete");
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/empathy"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not delete", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: ["/api/empathy"],
+    errorToast: "Could not delete",
   });
 
   const openEdit = (exercise: EmpathyExercise) => {

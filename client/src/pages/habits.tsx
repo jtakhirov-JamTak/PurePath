@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { HabitDialog } from "@/components/habit-dialog";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Repeat, Plus, Trash2, Timer, Pencil, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { HABIT_CATEGORIES } from "@shared/schema";
 import type { Habit } from "@shared/schema";
 
@@ -35,8 +35,6 @@ const TIMING_LABELS: Record<string, string> = {
 const MAX_HABITS = 3;
 
 export default function HabitsPage() {
-  const qc = useQueryClient();
-  const { toast } = useToast();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
@@ -60,37 +58,29 @@ export default function HabitsPage() {
     setHabitDialogOpen(true);
   };
 
-  const deleteHabitMutation = useMutation({
-    mutationFn: async (id: number) => {
+  const deleteHabitMutation = useToastMutation<number>({
+    mutationFn: async (id) => {
       const res = await apiRequest("DELETE", `/api/habits/${id}`);
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to delete habit");
       }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not delete habit", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: ["/api/habits"],
+    errorToast: "Could not delete habit",
   });
 
-  const newVersionMutation = useMutation({
-    mutationFn: async (id: number) => {
+  const newVersionMutation = useToastMutation<number>({
+    mutationFn: async (id) => {
       const res = await apiRequest("POST", `/api/habits/${id}/new-version`);
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to create new version");
       }
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/habits"] });
-      toast({ title: "New version created", description: "Previous completions are preserved." });
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not create new version", description: error.message, variant: "destructive" });
-    },
+    invalidateKeys: ["/api/habits"],
+    successToast: { title: "New version created", description: "Previous completions are preserved." },
+    errorToast: "Could not create new version",
   });
 
   return (
