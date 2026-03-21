@@ -1,99 +1,104 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
+Leaf — 3-phase personal growth course platform for workshop cohorts (launch: April 2026).
+Users journal, track habits, set goals, and build self-awareness through structured exercises.
+Data is mechanistic/structured for future AI pattern analysis.
 
-Leaf is a 3-phase self-discovery and personal growth course platform with AI-powered features. It uses a natural green leaf theme (primary: HSL 142 50% 40%) with nature-inspired iconography (Leaf, Sprout, TreePine from lucide-react).
+Solo founder, low technical experience — explain briefly before making changes.
+When Claude makes a mistake, add the lesson to the "Lessons Learned" section below.
 
 ## Commands
-
 | Task | Command |
 |------|---------|
-| Dev server | `npm run dev` (starts on port 5000) |
+| Dev server | `npm run dev` (port 5000) |
 | Build | `npm run build` |
 | Type check | `npm run check` |
-| Push DB schema | `npm run db:push` |
+| DB schema push | `npm run db:push` |
+| Unit tests | `npm run test` |
 | E2E tests | `npm run test:e2e` |
-| E2E tests (UI) | `npm run test:e2e:ui` |
-| Production start | `npm run start` |
 
-**Environment:** Requires `DATABASE_URL` env var. Dev server binds to `0.0.0.0:5000`.
+Environment: Requires `DATABASE_URL`. Dev server binds to `0.0.0.0:5000`.
 
-## Architecture
+## Stack
+- **Frontend:** React 18, TypeScript, Vite, Wouter, TanStack React Query, shadcn/ui, Tailwind, Framer Motion
+- **Backend:** Express v5, TypeScript (tsx runner), esbuild production build
+- **DB:** PostgreSQL + Drizzle ORM — schema in `shared/schema.ts`
+- **Auth:** Replit Auth (OIDC + Passport.js + PG session store)
+- **Payments:** Stripe via Replit Connectors
+- **AI:** OpenAI API (chat, voice, image, task suggestions)
+- **Tests:** Vitest (unit), Playwright (e2e)
 
-### Stack
-- **Frontend:** React 18 + TypeScript + Vite, Wouter routing, TanStack React Query, shadcn/ui (Radix + Tailwind CSS)
-- **Backend:** Express.js + TypeScript (tsx runner), esbuild for production
-- **Database:** PostgreSQL + Drizzle ORM, schema in `shared/schema.ts`, config in `drizzle.config.ts`
-- **Auth:** Replit Auth via OpenID Connect + Passport.js + PostgreSQL session store
-- **Payments:** Stripe (checkout sessions, webhooks)
-- **AI:** OpenAI API (GPT-5.2) for chat and pattern analysis
-- **E2E Tests:** Playwright (Chromium), tests in `e2e/`
-
-### Directory Structure
-
+## Directory Structure
 ```
-client/src/          # React frontend
-  App.tsx            # All routes defined here (wouter)
-  components/        # UI components (shadcn/ui + custom)
-  hooks/             # Custom hooks (use-return-to, use-unsaved-guard, etc.)
-  lib/               # Utilities, queryClient, process-registry
-  pages/             # Page components
-server/
-  index.ts           # Express server entry point
-  routes/            # Modular API route files (one per domain)
-    index.ts         # Registers all route modules
-    helpers.ts       # Rate limiting & shared utilities
-  storage.ts         # Database operations (storage interface abstraction)
-  db.ts              # Drizzle DB connection
-  stripeClient.ts    # Stripe setup
-shared/
-  schema.ts          # Drizzle ORM schema + Zod insert schemas (shared by client & server)
+client/src/pages/          # One file per page (monolithic — state + UI + logic)
+client/src/components/     # Shared components + shadcn/ui in components/ui/
+client/src/components/ui/  # shadcn/ui — do NOT modify directly
+client/src/hooks/          # use-auth, use-return-to, use-unsaved-guard, use-toast
+client/src/lib/            # queryClient, process-registry, utils
+server/routes/             # One file per domain (habits, journals, eisenhower, etc.)
+server/routes/helpers.ts   # Rate limiters, CSV escape, ID parsing
+server/storage.ts          # IStorage interface — ALL db ops go here, never direct queries
+server/validation.ts       # All Zod schemas for request validation
+server/replit_integrations/# Auth, audio, image, batch processing
+shared/schema.ts           # Drizzle tables + Zod insert schemas (shared client/server)
+e2e/                       # Playwright tests + helpers.ts with mock utilities
+docs/                      # Detailed docs (TECH-STACK, ROUTES, DATA-MODEL, SECURITY, etc.)
 ```
+Path aliases: `@/*` → `client/src/*`, `@shared/*` → `shared/*`, `@assets` → `attached_assets/`
 
-### Path Aliases
-- `@/*` → `client/src/*`
-- `@shared/*` → `shared/*`
-- `@assets` → `attached_assets/`
+## Adding an API Endpoint
+1. Zod schema → `server/validation.ts`
+2. Storage method → `IStorage` + `DatabaseStorage` in `server/storage.ts`
+3. Route handler → `server/routes/{domain}.ts` with `isAuthenticated` + userId filter
+4. Register in `server/routes/index.ts` if new domain file
 
-### Key Patterns
+## Adding a Page
+1. Page component → `client/src/pages/`
+2. Route → `App.tsx` wrapped in `AccessGatedRoute`
+3. Process flow? Register in `process-registry.ts`, use `buildProcessUrl()` + `useReturnTo()`
+4. Nav entry → `app-layout.tsx` using `safeNavigate()` (NEVER raw `<Link>`)
+5. Data entry? Use `useUnsavedGuard()` for dirty form protection
 
-**API routes** are modular files in `server/routes/`, each registered in `server/routes/index.ts`. All API endpoints are under `/api/`. Auth routes use `setupAuth()` and `registerAuthRoutes()` from `server/replit_integrations/auth/`.
+## Data Flow
+- Server state: `useQuery` / `useMutation` via TanStack React Query
+- Query keys = API paths: `["/api/habits"]`, `["/api/journals"]`
+- Mutations: `apiRequest()` then `invalidateQueries()` on success
+- Local UI state: plain `useState` — no global store
 
-**Client routes** are all in `client/src/App.tsx` using wouter. Protected routes wrap with `AuthenticatedRoute`. Unauthenticated users redirect to `/api/login`.
+## Habit System (CRITICAL)
+- Versioning via lineageId + versionNumber — changing [name, category, cadence, timing, duration, isBinary] archives old, creates new
+- Max 3 active habits. Completion cycling: Binary: blank→Done→Skip. Non-binary: blank→Full→Min→Skip
+- Current weeks: active===true, max 3, dedupe by lineageId. Past weeks: all overlapping habits
+- Canonical filtering: `journal-hub.tsx` activeHabits useMemo — always cross-check
 
-**Database operations** go through the storage interface in `server/storage.ts`, not direct DB queries in route handlers.
+## Do's
+- Run `npm run check` before considering work complete
+- Explain briefly what you're doing and why before making changes
+- Save bug fixes and lessons to memory AND to "Lessons Learned" below
+- Proactively flag security/privacy concerns — app stores sensitive personal data
+- For non-trivial features, start in Plan mode (Shift+Tab twice) before coding
+- Use the storage interface — never direct DB queries in routes
 
-**Shared types** live in `shared/schema.ts` — Drizzle table definitions plus Zod schemas used by both client and server for validation.
+## Don'ts
+- Don't rabbit-hole — if fix fails after 2-3 attempts, stop and reassess
+- Don't over-engineer — MVP, keep it simple
+- Don't modify shadcn/ui components in `components/ui/`
+- Don't skip Zod validation on any endpoint
+- Don't create new state management patterns — React Query for server state
 
-## Navigation Framework
+## Security Rules
+- All routes: `isAuthenticated` + userId filtering. Never trust client-provided userId
+- Validate all input with Zod before DB ops
+- Never log or expose user content (journals, emotions, triggers) in errors
+- Rate limit AI/export endpoints (see `routes/helpers.ts`)
 
-When adding or modifying process flows:
-
-1. Register in `client/src/lib/process-registry.ts`
-2. Launch links must use `buildProcessUrl(path, currentPath)` to embed `returnTo`
-3. Completion must call `useReturnTo(fallback).finish()` to return to origin
-4. All AppLayout nav links must use `safeNavigate()` — never raw `<Link>` or `setLocation()`
-5. Full-page processes with data entry: register with `useUnsavedGuard()`
-6. Modal processes with data entry: intercept dialog close with confirmation dialog
-
-## Feature Domain Map
-
-Routes are split by domain: `billing`, `journals`, `eisenhower`, `empathy`, `habits`, `identity`, `tools`, `onboarding`. Each has a corresponding file in `server/routes/`.
-
-**Habit completion** uses click-through cycling (not dropdowns). Binary habits cycle: blank→Done→Skip→blank. Non-binary: blank→Full→Min→Skip→blank. Same system applies to Eisenhower Q1/Q2 items.
-
-**Journals** store structured data as JSON with morning/evening session types.
+## Deployment
+Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 
 ## Lessons Learned
+- Habit filtering must be consistent across all views — canonical logic in journal-hub.tsx
+- (Add new lessons here as they arise)
 
-### Habit Filtering is Date-Aware
-Never filter habits with just active=true. Historical views must show habits that were active during that specific time period using startDate/endDate ranges. Only the current week enforces max 3 active habits.
-
-### Habit Filtering Must Be Consistent Across All Views
-The canonical habit filtering logic lives in `journal-hub.tsx` (activeHabits useMemo). Any page that displays habits in a weekly calendar **must** apply the same rules: (1) current/future weeks filter to `active === true` only, (2) cap at 3 most recent, (3) deduplicate by lineageId, (4) past weeks show all overlapping habits. When adding or modifying any habit display, always cross-check against `journal-hub.tsx` to prevent divergence.
-
-## Additional Documentation
-
-Detailed docs are in the `docs/` directory: `TECH-STACK.md`, `ROUTES.md`, `DATA-MODEL.md`, `SECURITY.md`, `PAYMENT-FLOW.md`, `PAYWALL-UX.md`, `EXPORTS.md`.
+## Docs
+See `docs/` for: TECH-STACK, ROUTES, DATA-MODEL, SECURITY, PAYMENT-FLOW, PAYWALL-UX, EXPORTS

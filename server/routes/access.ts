@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 
-const VALID_ACCESS_CODE = "CheekBuster819395ptts";
+const VALID_ACCESS_CODE = process.env.ACCESS_CODE || "";
 
 export function registerAccessRoutes(app: Express) {
   app.get("/api/access-status", isAuthenticated, async (req: any, res: Response) => {
