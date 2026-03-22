@@ -98,11 +98,6 @@ export const createHabitCompletionSchema = z.object({
 });
 
 
-export const createMeditationInsightSchema = z.object({
-  date: dateString,
-  insight: trimmedString(1, 5000),
-});
-
 export const createJournalSchema = z.object({
   date: dateString,
   session: sessionEnum,

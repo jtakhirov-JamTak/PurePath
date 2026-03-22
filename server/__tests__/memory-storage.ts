@@ -11,12 +11,9 @@ let _identityDocs: any[] = [];
 let _toolUsage: any[] = [];
 let _triggerLogs: any[] = [];
 let _avoidanceLogs: any[] = [];
-let _meditationInsights: any[] = [];
-let _customTools: any[] = [];
 let _monthlyGoals: any[] = [];
 let _journals: any[] = [];
 let _userSettings: any[] = [];
-let _purchases: any[] = [];
 let _nextId = 1;
 
 function nextId() { return _nextId++; }
@@ -30,12 +27,9 @@ export function resetStorage() {
   _toolUsage = [];
   _triggerLogs = [];
   _avoidanceLogs = [];
-  _meditationInsights = [];
-  _customTools = [];
   _monthlyGoals = [];
   _journals = [];
   _userSettings = [];
-  _purchases = [];
   _nextId = 1;
 }
 
@@ -47,14 +41,14 @@ export const storage = {
     _habits.push(h);
     return h;
   },
-  updateHabit: async (id: number, data: any) => {
-    const h = _habits.find(h => h.id === id);
+  updateHabit: async (userId: string, id: number, data: any) => {
+    const h = _habits.find(h => h.id === id && h.userId === userId);
     if (h) Object.assign(h, data);
     return h;
   },
-  deleteHabit: async (id: number) => { _habits = _habits.filter(h => h.id !== id); },
-  versionHabit: async (oldId: number, newData: any) => {
-    const old = _habits.find(h => h.id === oldId);
+  deleteHabit: async (userId: string, id: number) => { _habits = _habits.filter(h => !(h.id === id && h.userId === userId)); },
+  versionHabit: async (userId: string, oldId: number, newData: any) => {
+    const old = _habits.find(h => h.id === oldId && h.userId === userId);
     if (!old) throw new Error("Not found");
     old.active = false;
     old.endDate = new Date().toISOString().slice(0, 10);
@@ -95,12 +89,12 @@ export const storage = {
     _eisenhower.push(e);
     return e;
   },
-  updateEisenhowerEntry: async (id: number, data: any) => {
-    const e = _eisenhower.find(e => e.id === id);
+  updateEisenhowerEntry: async (userId: string, id: number, data: any) => {
+    const e = _eisenhower.find(e => e.id === id && e.userId === userId);
     if (e) Object.assign(e, data);
     return e;
   },
-  deleteEisenhowerEntry: async (id: number) => { _eisenhower = _eisenhower.filter(e => e.id !== id); },
+  deleteEisenhowerEntry: async (userId: string, id: number) => { _eisenhower = _eisenhower.filter(e => !(e.id === id && e.userId === userId)); },
 
   // Empathy
   getEmpathyExercisesByUser: async (userId: string) => _empathy.filter(e => e.userId === userId),
@@ -109,12 +103,12 @@ export const storage = {
     _empathy.push(e);
     return e;
   },
-  updateEmpathyExercise: async (id: number, data: any) => {
-    const e = _empathy.find(e => e.id === id);
+  updateEmpathyExercise: async (userId: string, id: number, data: any) => {
+    const e = _empathy.find(e => e.id === id && e.userId === userId);
     if (e) Object.assign(e, data);
     return e;
   },
-  deleteEmpathyExercise: async (id: number) => { _empathy = _empathy.filter(e => e.id !== id); },
+  deleteEmpathyExercise: async (userId: string, id: number) => { _empathy = _empathy.filter(e => !(e.id === id && e.userId === userId)); },
 
   // Identity
   getIdentityDocument: async (userId: string) => _identityDocs.find(d => d.userId === userId) || null,
@@ -158,8 +152,8 @@ export const storage = {
     _toolUsage.push(t);
     return t;
   },
-  updateToolUsageLog: async (id: number, data: any) => {
-    const t = _toolUsage.find(t => t.id === id);
+  updateToolUsageLog: async (userId: string, id: number, data: any) => {
+    const t = _toolUsage.find(t => t.id === id && t.userId === userId);
     if (t) Object.assign(t, data);
     return t;
   },
@@ -180,29 +174,6 @@ export const storage = {
     return a;
   },
 
-  // Meditation insights
-  getMeditationInsightsByUser: async (userId: string) => _meditationInsights.filter(m => m.userId === userId),
-  createMeditationInsight: async (data: any) => {
-    const m = { id: nextId(), ...data };
-    _meditationInsights.push(m);
-    return m;
-  },
-  deleteMeditationInsight: async (id: number) => { _meditationInsights = _meditationInsights.filter(m => m.id !== id); },
-
-  // Custom tools
-  getCustomToolsByUser: async (userId: string) => _customTools.filter(t => t.userId === userId),
-  createCustomTool: async (data: any) => {
-    const t = { id: nextId(), ...data };
-    _customTools.push(t);
-    return t;
-  },
-  updateCustomTool: async (id: number, data: any) => {
-    const t = _customTools.find(t => t.id === id);
-    if (t) Object.assign(t, data);
-    return t;
-  },
-  deleteCustomTool: async (id: number) => { _customTools = _customTools.filter(t => t.id !== id); },
-
   // User settings / access
   getUserSettings: async (userId: string) => _userSettings.find(s => s.userId === userId) || null,
   upsertUserSettings: async (userId: string, data: any) => {
@@ -217,6 +188,4 @@ export const storage = {
     return s?.hasAccess === true;
   },
 
-  // Purchases
-  getPurchasesByUser: async (userId: string) => _purchases.filter(p => p.userId === userId),
 };

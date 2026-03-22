@@ -1,17 +1,14 @@
 import { db } from "./db";
-import { 
-  purchases, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, meditationInsights, identityDocuments, monthlyGoals, toolUsageLogs, customTools, triggerLogs, avoidanceLogs, userSettings,
-  type Purchase, type InsertPurchase,
+import {
+  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, userSettings,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
-  type MeditationInsight, type InsertMeditationInsight,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
   type ToolUsageLog, type InsertToolUsageLog,
-  type CustomTool, type InsertCustomTool,
   type TriggerLog, type InsertTriggerLog,
   type AvoidanceLog, type InsertAvoidanceLog,
   type UserSettings,
@@ -20,11 +17,6 @@ import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
-  getPurchasesByUser(userId: string): Promise<Purchase[]>;
-  getPurchaseBySessionId(stripeSessionId: string): Promise<Purchase | undefined>;
-  createPurchase(purchase: InsertPurchase): Promise<Purchase>;
-  createPurchaseIfNotExists(purchase: InsertPurchase): Promise<{ purchase: Purchase; created: boolean }>;
-  updatePurchaseStatus(purchaseId: number, status: string): Promise<void>;
   hasAccess(userId: string): Promise<boolean>;
 
   getJournalsByUser(userId: string): Promise<Journal[]>;
@@ -35,21 +27,21 @@ export interface IStorage {
   getEisenhowerEntriesByUser(userId: string): Promise<EisenhowerEntry[]>;
   getEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<EisenhowerEntry[]>;
   createEisenhowerEntry(entry: InsertEisenhowerEntry): Promise<EisenhowerEntry>;
-  updateEisenhowerEntry(id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
-  deleteEisenhowerEntry(id: number): Promise<void>;
+  updateEisenhowerEntry(userId: string, id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
+  deleteEisenhowerEntry(userId: string, id: number): Promise<void>;
   
   // Empathy Exercises
   getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]>;
   createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise>;
-  updateEmpathyExercise(id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise>;
-  deleteEmpathyExercise(id: number): Promise<void>;
+  updateEmpathyExercise(userId: string, id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise>;
+  deleteEmpathyExercise(userId: string, id: number): Promise<void>;
   
   // Habits
   getHabitsByUser(userId: string): Promise<Habit[]>;
   createHabit(habit: InsertHabit): Promise<Habit>;
-  updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit>;
-  deleteHabit(id: number): Promise<void>;
-  versionHabit(oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit>;
+  updateHabit(userId: string, id: number, habit: Partial<InsertHabit>): Promise<Habit>;
+  deleteHabit(userId: string, id: number): Promise<void>;
+  versionHabit(userId: string, oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit>;
 
   // Habit Completions
   getHabitCompletionsForDate(userId: string, date: string): Promise<HabitCompletion[]>;
@@ -58,11 +50,6 @@ export interface IStorage {
   updateHabitCompletionStatus(userId: string, habitId: number, date: string, status: string): Promise<void>;
   deleteHabitCompletion(userId: string, habitId: number, date: string): Promise<void>;
   
-
-  // Meditation Insights
-  getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]>;
-  createMeditationInsight(insight: InsertMeditationInsight): Promise<MeditationInsight>;
-  deleteMeditationInsight(id: number): Promise<void>;
 
   // Identity Document
   getIdentityDocument(userId: string): Promise<IdentityDocument | undefined>;
@@ -76,13 +63,7 @@ export interface IStorage {
   getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]>;
   getToolUsageLogsForRange(userId: string, startDate: string, endDate: string): Promise<ToolUsageLog[]>;
   createToolUsageLog(log: InsertToolUsageLog): Promise<ToolUsageLog>;
-  updateToolUsageLog(id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog>;
-
-  // Custom Tools
-  getCustomToolsByUser(userId: string): Promise<CustomTool[]>;
-  createCustomTool(tool: InsertCustomTool): Promise<CustomTool>;
-  updateCustomTool(id: number, updates: Partial<InsertCustomTool>): Promise<CustomTool>;
-  deleteCustomTool(id: number): Promise<void>;
+  updateToolUsageLog(userId: string, id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog>;
 
   // Trigger Logs
   getTriggerLogsByUser(userId: string): Promise<TriggerLog[]>;
@@ -101,35 +82,6 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getPurchasesByUser(userId: string): Promise<Purchase[]> {
-    return db.select().from(purchases).where(eq(purchases.userId, userId)).orderBy(desc(purchases.createdAt));
-  }
-
-  async getPurchaseBySessionId(stripeSessionId: string): Promise<Purchase | undefined> {
-    const [purchase] = await db.select().from(purchases).where(eq(purchases.stripeSessionId, stripeSessionId));
-    return purchase;
-  }
-
-  async createPurchase(purchase: InsertPurchase): Promise<Purchase> {
-    const [newPurchase] = await db.insert(purchases).values(purchase).returning();
-    return newPurchase;
-  }
-
-  async createPurchaseIfNotExists(purchase: InsertPurchase): Promise<{ purchase: Purchase; created: boolean }> {
-    if (purchase.stripeSessionId) {
-      const existing = await this.getPurchaseBySessionId(purchase.stripeSessionId);
-      if (existing) {
-        return { purchase: existing, created: false };
-      }
-    }
-    const newPurchase = await this.createPurchase(purchase);
-    return { purchase: newPurchase, created: true };
-  }
-
-  async updatePurchaseStatus(purchaseId: number, status: string): Promise<void> {
-    await db.update(purchases).set({ status }).where(eq(purchases.id, purchaseId));
-  }
-
   async hasAccess(userId: string): Promise<boolean> {
     const settings = await this.getUserSettings(userId);
     return settings?.hasAccess === true;
@@ -186,13 +138,13 @@ export class DatabaseStorage implements IStorage {
     return newEntry;
   }
 
-  async updateEisenhowerEntry(id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry> {
-    const [updated] = await db.update(eisenhowerEntries).set(entry).where(eq(eisenhowerEntries.id, id)).returning();
+  async updateEisenhowerEntry(userId: string, id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry> {
+    const [updated] = await db.update(eisenhowerEntries).set(entry).where(and(eq(eisenhowerEntries.id, id), eq(eisenhowerEntries.userId, userId))).returning();
     return updated;
   }
 
-  async deleteEisenhowerEntry(id: number): Promise<void> {
-    await db.delete(eisenhowerEntries).where(eq(eisenhowerEntries.id, id));
+  async deleteEisenhowerEntry(userId: string, id: number): Promise<void> {
+    await db.delete(eisenhowerEntries).where(and(eq(eisenhowerEntries.id, id), eq(eisenhowerEntries.userId, userId)));
   }
 
   // Empathy Exercises
@@ -205,13 +157,13 @@ export class DatabaseStorage implements IStorage {
     return newExercise;
   }
 
-  async updateEmpathyExercise(id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise> {
-    const [updated] = await db.update(empathyExercises).set(exercise).where(eq(empathyExercises.id, id)).returning();
+  async updateEmpathyExercise(userId: string, id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise> {
+    const [updated] = await db.update(empathyExercises).set(exercise).where(and(eq(empathyExercises.id, id), eq(empathyExercises.userId, userId))).returning();
     return updated;
   }
 
-  async deleteEmpathyExercise(id: number): Promise<void> {
-    await db.delete(empathyExercises).where(eq(empathyExercises.id, id));
+  async deleteEmpathyExercise(userId: string, id: number): Promise<void> {
+    await db.delete(empathyExercises).where(and(eq(empathyExercises.id, id), eq(empathyExercises.userId, userId)));
   }
 
   // Habits
@@ -229,24 +181,24 @@ export class DatabaseStorage implements IStorage {
     return newHabit;
   }
 
-  async updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit> {
-    const [updated] = await db.update(habits).set(habit).where(eq(habits.id, id)).returning();
+  async updateHabit(userId: string, id: number, habit: Partial<InsertHabit>): Promise<Habit> {
+    const [updated] = await db.update(habits).set(habit).where(and(eq(habits.id, id), eq(habits.userId, userId))).returning();
     return updated;
   }
 
-  async deleteHabit(id: number): Promise<void> {
-    await db.delete(habits).where(eq(habits.id, id));
+  async deleteHabit(userId: string, id: number): Promise<void> {
+    await db.delete(habits).where(and(eq(habits.id, id), eq(habits.userId, userId)));
   }
 
-  async versionHabit(oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit> {
+  async versionHabit(userId: string, oldHabitId: number, newData: Partial<InsertHabit>): Promise<Habit> {
     return db.transaction(async (tx) => {
-      const [oldHabit] = await tx.select().from(habits).where(eq(habits.id, oldHabitId));
+      const [oldHabit] = await tx.select().from(habits).where(and(eq(habits.id, oldHabitId), eq(habits.userId, userId)));
       if (!oldHabit) throw new Error("Habit not found");
 
       const todayStr = new Date().toISOString().slice(0, 10);
 
       // Archive the old habit
-      await tx.update(habits).set({ endDate: todayStr, active: false }).where(eq(habits.id, oldHabitId));
+      await tx.update(habits).set({ endDate: todayStr, active: false }).where(and(eq(habits.id, oldHabitId), eq(habits.userId, userId)));
 
       // Create new version
       const { id: _id, createdAt: _ca, ...oldFields } = oldHabit;
@@ -309,20 +261,6 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-
-  // Meditation Insights
-  async getMeditationInsightsByUser(userId: string): Promise<MeditationInsight[]> {
-    return db.select().from(meditationInsights).where(eq(meditationInsights.userId, userId)).orderBy(desc(meditationInsights.date));
-  }
-
-  async createMeditationInsight(insight: InsertMeditationInsight): Promise<MeditationInsight> {
-    const [newInsight] = await db.insert(meditationInsights).values(insight).returning();
-    return newInsight;
-  }
-
-  async deleteMeditationInsight(id: number): Promise<void> {
-    await db.delete(meditationInsights).where(eq(meditationInsights.id, id));
-  }
 
   async getIdentityDocument(userId: string): Promise<IdentityDocument | undefined> {
     const [doc] = await db.select().from(identityDocuments).where(eq(identityDocuments.userId, userId));
@@ -423,27 +361,9 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateToolUsageLog(id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog> {
-    const [updated] = await db.update(toolUsageLogs).set(updates).where(eq(toolUsageLogs.id, id)).returning();
+  async updateToolUsageLog(userId: string, id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog> {
+    const [updated] = await db.update(toolUsageLogs).set(updates).where(and(eq(toolUsageLogs.id, id), eq(toolUsageLogs.userId, userId))).returning();
     return updated;
-  }
-
-  async getCustomToolsByUser(userId: string): Promise<CustomTool[]> {
-    return db.select().from(customTools).where(eq(customTools.userId, userId)).orderBy(desc(customTools.createdAt));
-  }
-
-  async createCustomTool(tool: InsertCustomTool): Promise<CustomTool> {
-    const [created] = await db.insert(customTools).values(tool).returning();
-    return created;
-  }
-
-  async updateCustomTool(id: number, updates: Partial<InsertCustomTool>): Promise<CustomTool> {
-    const [updated] = await db.update(customTools).set(updates).where(eq(customTools.id, id)).returning();
-    return updated;
-  }
-
-  async deleteCustomTool(id: number): Promise<void> {
-    await db.delete(customTools).where(eq(customTools.id, id));
   }
 
   async getTriggerLogsByUser(userId: string): Promise<TriggerLog[]> {

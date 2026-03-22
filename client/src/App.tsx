@@ -10,7 +10,6 @@ import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
 import AccessGatePage from "@/pages/access-gate";
 import DashboardPage from "@/pages/dashboard";
-import BillingPage from "@/pages/billing";
 import JournalEntryPage from "@/pages/journal-entry";
 import EisenhowerPage from "@/pages/eisenhower";
 import EmpathyPage from "@/pages/empathy";
@@ -104,9 +103,6 @@ function Router() {
       </Route>
       <Route path="/dashboard">
         {() => <AccessGatedRoute component={DashboardPage} />}
-      </Route>
-      <Route path="/billing">
-        {() => <AccessGatedRoute component={BillingPage} />}
       </Route>
       <Route path="/journal/:date/:session">
         {() => <AccessGatedRoute component={JournalEntryPage} />}

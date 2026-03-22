@@ -1,10 +1,8 @@
 import type { Express, Response } from "express";
-import crypto from "crypto";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
-import { visionBoardSchema, createMeditationInsightSchema } from "../validation";
-import { parseId } from "./helpers";
+import { visionBoardSchema } from "../validation";
 
 export function registerIdentityRoutes(app: Express) {
   app.get("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
@@ -143,48 +141,4 @@ export function registerIdentityRoutes(app: Express) {
     }
   });
 
-  app.get("/api/meditation-insights", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const insights = await storage.getMeditationInsightsByUser(userId);
-      res.json(insights);
-    } catch (error) {
-      console.error("Error fetching meditation insights:", error);
-      res.status(500).json({ error: "Failed to fetch insights" });
-    }
-  });
-
-  app.post("/api/meditation-insights", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const parsed = createMeditationInsightSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.issues[0].message });
-      }
-      const userId = req.user.claims.sub;
-      const { date, insight } = parsed.data;
-      const newInsight = await storage.createMeditationInsight({ userId, date, insight });
-      res.json(newInsight);
-    } catch (error) {
-      console.error("Error creating meditation insight:", error);
-      res.status(500).json({ error: "Failed to save insight" });
-    }
-  });
-
-  app.delete("/api/meditation-insights/:id", isAuthenticated, async (req: any, res: Response) => {
-    try {
-      const userId = req.user.claims.sub;
-      const id = parseId(req.params.id);
-      if (!id) return res.status(400).json({ error: "Invalid ID" });
-      const existing = await storage.getMeditationInsightsByUser(userId);
-      const record = existing.find(r => r.id === id);
-      if (!record) {
-        return res.status(403).json({ error: "Not authorized" });
-      }
-      await storage.deleteMeditationInsight(id);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting meditation insight:", error);
-      res.status(500).json({ error: "Failed to delete insight" });
-    }
-  });
 }

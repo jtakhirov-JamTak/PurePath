@@ -45,7 +45,7 @@ export function registerEmpathyRoutes(app: Express) {
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const exercise = await storage.updateEmpathyExercise(id, parsedBody.data);
+      const exercise = await storage.updateEmpathyExercise(userId, id, parsedBody.data);
       res.json(exercise);
     } catch (error) {
       console.error("Error updating exercise:", error);
@@ -63,7 +63,7 @@ export function registerEmpathyRoutes(app: Express) {
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteEmpathyExercise(id);
+      await storage.deleteEmpathyExercise(userId, id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting exercise:", error);

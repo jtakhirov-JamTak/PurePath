@@ -91,7 +91,7 @@ export function registerEisenhowerRoutes(app: Express) {
       } else if (body.completed !== undefined) {
         body.status = body.completed ? "completed" : null;
       }
-      const entry = await storage.updateEisenhowerEntry(id, body);
+      const entry = await storage.updateEisenhowerEntry(userId, id, body);
       res.json(entry);
     } catch (error) {
       console.error("Error updating entry:", error);
@@ -109,7 +109,7 @@ export function registerEisenhowerRoutes(app: Express) {
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteEisenhowerEntry(id);
+      await storage.deleteEisenhowerEntry(userId, id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting entry:", error);
@@ -137,7 +137,7 @@ export function registerEisenhowerRoutes(app: Express) {
         if (item.scheduledDate && typeof item.scheduledDate === "string") {
           updates.scheduledDate = item.scheduledDate;
         }
-        await storage.updateEisenhowerEntry(item.id, updates);
+        await storage.updateEisenhowerEntry(userId, item.id, updates);
       }
       res.json({ success: true });
     } catch (error) {

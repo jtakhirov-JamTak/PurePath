@@ -54,7 +54,7 @@ export function registerToolRoutes(app: Express) {
       if (!parsedBody.success) {
         return res.status(400).json({ error: parsedBody.error.issues[0].message });
       }
-      const updated = await storage.updateToolUsageLog(id, parsedBody.data);
+      const updated = await storage.updateToolUsageLog(userId, id, parsedBody.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating tool usage log:", error);

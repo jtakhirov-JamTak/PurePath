@@ -1,32 +1,10 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, serial, date, uniqueIndex, check, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Re-export auth models
 export * from "./models/auth";
-
-// Purchases table - tracks course purchases
-export const purchases = pgTable("purchases", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  courseType: varchar("course_type", { length: 50 }).notNull(), // 'phase12', 'phase3', 'allinone' (legacy: 'course1', 'course2', 'bundle')
-  stripeSessionId: varchar("stripe_session_id").unique(),
-  stripePaymentId: varchar("stripe_payment_id"),
-  amount: integer("amount").notNull(), // in cents
-  status: varchar("status", { length: 20 }).notNull().default("completed"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => [
-  check("course_type_check", sql`${table.courseType} IN ('phase12', 'phase3', 'allinone', 'course1', 'course2', 'bundle')`),
-]);
-
-export const insertPurchaseSchema = createInsertSchema(purchases).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type Purchase = typeof purchases.$inferSelect;
-export type InsertPurchase = z.infer<typeof insertPurchaseSchema>;
 
 // Journals table - for Course 2 journaling
 export const journals = pgTable("journals", {
@@ -205,22 +183,6 @@ export type HabitCompletion = typeof habitCompletions.$inferSelect;
 export type InsertHabitCompletion = z.infer<typeof insertHabitCompletionSchema>;
 
 
-export const meditationInsights = pgTable("meditation_insights", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  date: date("date").notNull(),
-  insight: text("insight").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertMeditationInsightSchema = createInsertSchema(meditationInsights).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type MeditationInsight = typeof meditationInsights.$inferSelect;
-export type InsertMeditationInsight = z.infer<typeof insertMeditationInsightSchema>;
-
 // Monthly Goals - one per user per month
 export const monthlyGoals = pgTable("monthly_goals", {
   id: serial("id").primaryKey(),
@@ -299,33 +261,6 @@ export const insertIdentityDocumentSchema = createInsertSchema(identityDocuments
 
 export type IdentityDocument = typeof identityDocuments.$inferSelect;
 export type InsertIdentityDocument = z.infer<typeof insertIdentityDocumentSchema>;
-
-// Quarterly Goals - one per user per quarter
-export const quarterlyGoals = pgTable("quarterly_goals", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  quarterKey: varchar("quarter_key", { length: 10 }).notNull(),
-  quarterlyFocus: text("quarterly_focus").default(""),
-  outcomeStatement: text("outcome_statement").default(""),
-  measurementPlan: text("measurement_plan").default(""),
-  baseline: text("baseline").default(""),
-  target: text("target").default(""),
-  prize: text("prize").default(""),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => [
-  uniqueIndex("quarterly_goals_user_quarter_idx").on(table.userId, table.quarterKey),
-]);
-
-export const insertQuarterlyGoalSchema = createInsertSchema(quarterlyGoals).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type QuarterlyGoal = typeof quarterlyGoals.$inferSelect;
-export type InsertQuarterlyGoal = z.infer<typeof insertQuarterlyGoalSchema>;
-
 
 export const toolUsageLogs = pgTable("tool_usage_logs", {
   id: serial("id").primaryKey(),
@@ -427,21 +362,3 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 
-export const customTools = pgTable("custom_tools", {
-  id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  name: varchar("name", { length: 100 }).notNull(),
-  description: text("description"),
-  instructions: text("instructions"),
-  icon: varchar("icon", { length: 50 }).default("Sparkles"),
-  active: boolean("active").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const insertCustomToolSchema = createInsertSchema(customTools).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type CustomTool = typeof customTools.$inferSelect;
-export type InsertCustomTool = z.infer<typeof insertCustomToolSchema>;

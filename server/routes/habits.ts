@@ -87,9 +87,9 @@ export function registerHabitRoutes(app: Express) {
 
       let habit;
       if (hasVersionedChange && record.active) {
-        habit = await storage.versionHabit(id, data);
+        habit = await storage.versionHabit(userId, id, data);
       } else {
-        habit = await storage.updateHabit(id, data);
+        habit = await storage.updateHabit(userId, id, data);
       }
       res.json(habit);
     } catch (error) {
@@ -108,7 +108,7 @@ export function registerHabitRoutes(app: Express) {
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      const newHabit = await storage.versionHabit(id, {});
+      const newHabit = await storage.versionHabit(userId, id, {});
       res.json(newHabit);
     } catch (error) {
       console.error("Error creating new habit version:", error);
@@ -126,7 +126,7 @@ export function registerHabitRoutes(app: Express) {
       if (!record) {
         return res.status(403).json({ error: "Not authorized" });
       }
-      await storage.deleteHabit(id);
+      await storage.deleteHabit(userId, id);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting habit:", error);
@@ -151,7 +151,7 @@ export function registerHabitRoutes(app: Express) {
         if (item.timing && ["morning", "afternoon", "evening"].includes(item.timing)) {
           updates.timing = item.timing;
         }
-        await storage.updateHabit(item.id, updates);
+        await storage.updateHabit(userId, item.id, updates);
       }
       res.json({ success: true });
     } catch (error) {

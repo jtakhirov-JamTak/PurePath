@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth, registerAuthRoutes } from "../replit_integrations/auth";
 
-import { registerBillingRoutes } from "./billing";
 import { registerJournalRoutes } from "./journals";
 import { registerEisenhowerRoutes } from "./eisenhower";
 import { registerEmpathyRoutes } from "./empathy";
@@ -20,7 +19,6 @@ export async function registerRoutes(
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  registerBillingRoutes(app);
   registerJournalRoutes(app);
   registerEisenhowerRoutes(app);
   registerEmpathyRoutes(app);

@@ -19,8 +19,6 @@ export function registerExportRoutes(app: Express) {
         triggerLogs,
         avoidanceLogs,
         toolUsageLogs,
-        meditationInsights,
-        customTools,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getJournalsByUser(userId),
@@ -30,8 +28,6 @@ export function registerExportRoutes(app: Express) {
         storage.getTriggerLogsByUser(userId),
         storage.getAvoidanceLogsByUser(userId),
         storage.getToolUsageLogsByUser(userId),
-        storage.getMeditationInsightsByUser(userId),
-        storage.getCustomToolsByUser(userId),
       ]);
 
       // Collect monthly goals from all months
@@ -304,29 +300,6 @@ export function registerExportRoutes(app: Express) {
       } else {
         toolUsageLogs.forEach(t => {
           md += `- **${t.date}** — ${t.toolName}: mood ${t.moodBefore}→${t.moodAfter ?? "?"}/5, emotion: ${t.emotionBefore}→${t.emotionAfter || "?"}, ${t.completed ? "completed" : "not completed"}\n`;
-        });
-        md += `\n`;
-      }
-
-      // MEDITATION INSIGHTS
-      md += `---\n\n## Meditation Insights\n\n`;
-      if (meditationInsights.length === 0) {
-        md += `No meditation insights recorded.\n\n`;
-      } else {
-        meditationInsights.forEach(m => {
-          md += `- **${m.date}:** ${m.insight}\n`;
-        });
-        md += `\n`;
-      }
-
-      // CUSTOM TOOLS
-      if (customTools.length > 0) {
-        md += `---\n\n## Custom Tools\n\n`;
-        customTools.forEach(t => {
-          md += `- **${t.name}**${t.active ? "" : " (inactive)"}`;
-          if (t.description) md += `: ${t.description}`;
-          md += `\n`;
-          if (t.instructions) md += `  Instructions: ${t.instructions}\n`;
         });
         md += `\n`;
       }

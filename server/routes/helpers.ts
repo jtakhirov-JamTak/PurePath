@@ -33,15 +33,6 @@ export const aiRateLimit = rateLimit({
   keyGenerator: (req: any) => req.user?.claims?.sub || "anonymous",
 });
 
-export const transcriptionRateLimit = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: { error: "Too many transcription requests. Please wait a minute." },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req: any) => req.user?.claims?.sub || "anonymous",
-});
-
 export const exportRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: 10,

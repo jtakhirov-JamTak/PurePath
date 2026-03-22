@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   LogOut,
-  CreditCard,
   ChevronDown,
   Sprout,
   TreePine,
@@ -143,10 +142,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <DropdownMenuItem onClick={() => safeNavigate("/dashboard")} data-testid="menu-dashboard">
                     <Sprout className="h-4 w-4 mr-2" />
                     Today
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => safeNavigate("/billing")} data-testid="menu-billing">
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Billing
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={async () => {
                     const response = await fetch("/api/export-all", { credentials: "include" });
