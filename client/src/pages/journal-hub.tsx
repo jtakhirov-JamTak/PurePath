@@ -5,7 +5,7 @@ import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, isSameWeek, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { getDateHabits } from "@/lib/habit-filters";
@@ -21,6 +21,7 @@ export default function JournalHubPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(todayDate));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedWeekStart, setSelectedWeekStart] = useState(() => startOfWeek(todayDate, { weekStartsOn: 1 }));
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -33,34 +34,37 @@ export default function JournalHubPage() {
   });
 
   // Weekly calendar data
-  const currentWeekStart = startOfWeek(todayDate, { weekStartsOn: 1 });
-  const currentWeekStartStr = format(currentWeekStart, "yyyy-MM-dd");
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+  const selectedWeekStartStr = format(selectedWeekStart, "yyyy-MM-dd");
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeekStart, i));
+  const isCurrentWeek = isSameWeek(selectedWeekStart, todayDate, { weekStartsOn: 1 });
+  const canWeekForward = !isCurrentWeek;
 
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
-    queryKey: ["/api/eisenhower/week", currentWeekStartStr],
+    queryKey: ["/api/eisenhower/week", selectedWeekStartStr],
     enabled: !!user,
   });
 
-  const weekEndDate = addDays(currentWeekStart, 6);
-  const weekLabel = format(currentWeekStart, "MMM d") + " – " + format(weekEndDate, "d");
+  const weekEndDate = addDays(selectedWeekStart, 6);
+  const weekLabel = format(selectedWeekStart, "MMM d") + " – " + format(weekEndDate, "d");
 
-  // Scheduled items grouped by day+block for the time-block grid
-  const TIME_BLOCKS = ["morning", "midday", "afternoon", "evening"] as const;
-  const BLOCK_LABELS: Record<string, string> = { morning: "8–11", midday: "11–2", afternoon: "2–5", evening: "5–8" };
-
+  // Adaptive hourly grid — only show hours that have items
   const scheduledItems = useMemo(() => {
     const items = eisenhowerEntries.filter(
-      (e) => e.weekStart === currentWeekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime
+      (e) => e.weekStart === selectedWeekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime
     );
-    const grid: Record<string, EisenhowerEntry[]> = {};
-    items.forEach((e) => {
-      const key = `${e.scheduledDate}_${e.scheduledStartTime}`;
-      if (!grid[key]) grid[key] = [];
-      grid[key].push(e);
+    const parsed = items.map(e => {
+      const [sh] = (e.scheduledStartTime || "08:00").split(":").map(Number);
+      const endTime = e.scheduledEndTime || e.scheduledStartTime || "09:00";
+      const [eh] = endTime.split(":").map(Number);
+      return { ...e, startHour: sh, endHour: eh === sh ? eh + 1 : eh };
     });
-    return { grid, hasAny: items.length > 0 };
-  }, [eisenhowerEntries, currentWeekStartStr]);
+    const activeHours = new Set<number>();
+    parsed.forEach(item => {
+      for (let h = item.startHour; h < item.endHour; h++) activeHours.add(h);
+    });
+    const sortedHours = Array.from(activeHours).sort((a, b) => a - b);
+    return { items: parsed, activeHours: sortedHours, hasAny: items.length > 0 };
+  }, [eisenhowerEntries, selectedWeekStartStr]);
 
   // Selected date data
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
@@ -202,9 +206,24 @@ export default function JournalHubPage() {
 
         {/* WEEKLY TIME-BLOCK CALENDAR */}
         <section data-testid="weekly-time-block">
+          {/* Week navigation */}
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase text-bark font-medium">This Week</p>
-            <span className="text-[10px] text-muted-foreground">{weekLabel}</span>
+            <button
+              onClick={() => setSelectedWeekStart(prev => addDays(prev, -7))}
+              className="p-1 rounded hover:bg-muted cursor-pointer"
+              data-testid="button-prev-week"
+            >
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <span className="text-[11px] font-medium">{weekLabel}</span>
+            <button
+              onClick={() => canWeekForward && setSelectedWeekStart(prev => addDays(prev, 7))}
+              className={`p-1 rounded ${canWeekForward ? "hover:bg-muted cursor-pointer" : "opacity-30 cursor-default"}`}
+              disabled={!canWeekForward}
+              data-testid="button-next-week"
+            >
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
           </div>
 
           {scheduledItems.hasAny ? (
@@ -224,39 +243,72 @@ export default function JournalHubPage() {
                   })}
                 </div>
 
-                {/* Time block rows */}
-                {TIME_BLOCKS.map((block) => (
-                  <div key={block} className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
-                    <div className="text-[10px] text-muted-foreground text-right pr-1.5 flex items-start pt-0.5">
-                      {BLOCK_LABELS[block]}
+                {/* Adaptive hourly rows — only hours with items */}
+                {scheduledItems.activeHours.map((hour) => (
+                  <div key={hour} className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
+                    <div className="text-[10px] text-muted-foreground text-right pr-1.5 pt-0.5">
+                      {hour > 12 ? hour - 12 : hour}{hour >= 12 ? "p" : "a"}
                     </div>
                     {weekDays.map((day) => {
                       const dateStr = format(day, "yyyy-MM-dd");
                       const isToday = dateStr === todayStr;
-                      const cellKey = `${dateStr}_${block}`;
-                      const cellItems = scheduledItems.grid[cellKey] || [];
+                      // Items that START in this hour
+                      const cellItems = scheduledItems.items.filter(
+                        (e) => e.scheduledDate === dateStr && e.startHour === hour
+                      );
                       return (
                         <div
-                          key={cellKey}
-                          className={`min-h-[40px] border border-border/10 p-0.5 overflow-hidden flex flex-col gap-0.5 ${isToday ? "bg-primary/5" : ""}`}
+                          key={`${dateStr}_${hour}`}
+                          className={`min-h-[52px] border border-border/10 p-0.5 overflow-hidden flex flex-col gap-0.5 ${isToday ? "bg-primary/5" : ""}`}
                         >
                           {cellItems.map((item) => {
-                            const dur = item.durationMinutes || 60;
-                            const barH = dur <= 60 ? 18 : dur <= 120 ? 28 : 38;
-                            const bgColor = item.status === "completed" ? "bg-emerald-500 text-white"
-                              : item.status === "skipped" ? "bg-red-400 text-white"
-                              : "bg-primary/20 text-foreground";
+                            const spanHours = item.endHour - item.startHour;
+                            const barH = Math.min(spanHours * 22, 52);
+
+                            const CAT_COMPLETED: Record<string, string> = {
+                              health: "bg-emerald-500 text-white",
+                              wealth: "bg-yellow-500 text-white",
+                              relationships: "bg-rose-500 text-white",
+                              growth: "bg-blue-500 text-white",
+                              joy: "bg-amber-500 text-white",
+                            };
+                            const CAT_PENDING: Record<string, string> = {
+                              health: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+                              wealth: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+                              relationships: "bg-rose-500/20 text-rose-700 dark:text-rose-400",
+                              growth: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
+                              joy: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
+                            };
+                            const CAT_BORDER: Record<string, string> = {
+                              health: "#10b981", wealth: "#eab308", relationships: "#f43f5e",
+                              growth: "#3b82f6", joy: "#f59e0b",
+                            };
+
+                            const cat = item.category || "growth";
+                            let bgClass: string;
+                            if (item.status === "skipped") {
+                              bgClass = "bg-red-400 text-white";
+                            } else if (item.status === "completed") {
+                              bgClass = CAT_COMPLETED[cat] || "bg-primary text-white";
+                            } else {
+                              bgClass = CAT_PENDING[cat] || "bg-primary/20 text-foreground";
+                            }
+
+                            const isQ1 = item.quadrant === "q1";
                             return (
                               <button
                                 key={item.id}
                                 onClick={() => setLocation("/eisenhower")}
-                                className={`w-full rounded-sm text-[9px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center justify-between ${bgColor}`}
-                                style={{ height: `${barH}px` }}
-                                title={item.task}
+                                className={`w-full rounded-sm text-[10px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center justify-between ${bgClass} ${isQ1 ? "border-l-[3px]" : ""}`}
+                                style={{
+                                  height: `${barH}px`,
+                                  ...(isQ1 ? { borderLeftColor: CAT_BORDER[cat] || "currentColor" } : {}),
+                                }}
+                                title={`${item.task} (${item.quadrant.toUpperCase()})`}
                                 data-testid={`block-item-${item.id}`}
                               >
                                 <span className="truncate">{item.task}</span>
-                                <span className="text-[8px] opacity-70 shrink-0 ml-0.5">{dur / 60}h</span>
+                                <span className="text-[8px] opacity-70 shrink-0 ml-0.5">{spanHours}h</span>
                               </button>
                             );
                           })}
@@ -265,17 +317,29 @@ export default function JournalHubPage() {
                     })}
                   </div>
                 ))}
+
+                {/* Legend */}
+                <div className="flex gap-3 mt-2">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <span className="w-3 h-2 rounded-sm bg-muted border-l-[3px] border-l-primary" /> Q1 Urgent
+                  </span>
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <span className="w-3 h-2 rounded-sm bg-muted" /> Q2 Important
+                  </span>
+                </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-3">
               <p className="text-[11px] text-muted-foreground">No blocks scheduled this week</p>
-              <button
-                onClick={() => setLocation("/eisenhower")}
-                className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
-              >
-                Plan your week →
-              </button>
+              {isCurrentWeek && (
+                <button
+                  onClick={() => setLocation("/eisenhower")}
+                  className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
+                >
+                  Plan your week →
+                </button>
+              )}
             </div>
           )}
         </section>

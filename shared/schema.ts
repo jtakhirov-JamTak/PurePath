@@ -49,7 +49,9 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   scheduledTime: varchar("scheduled_time", { length: 50 }),
   scheduledDate: date("scheduled_date"),
   scheduledStartTime: varchar("scheduled_start_time", { length: 10 }),
+  scheduledEndTime: varchar("scheduled_end_time", { length: 10 }),
   durationMinutes: integer("duration_minutes"),
+  category: varchar("category", { length: 30 }),
   goalAlignment: text("goal_alignment"),
   blocksGoal: boolean("blocks_goal").default(false),
   completed: boolean("completed").default(false),
@@ -119,6 +121,8 @@ export const HABIT_CATEGORIES = {
   health: { label: "Health", color: "emerald" },
   wealth: { label: "Wealth", color: "yellow" },
   relationships: { label: "Relationships", color: "rose" },
+  growth: { label: "Growth", color: "blue" },
+  joy: { label: "Joy", color: "amber" },
 } as const;
 
 export type HabitCategory = keyof typeof HABIT_CATEGORIES;
@@ -143,7 +147,7 @@ export const habits = pgTable("habits", {
 }, (table) => [
   index("habits_user_id_idx").on(table.userId),
   index("habits_user_lineage_idx").on(table.userId, table.lineageId),
-  check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'self-development', 'happiness')`),
+  check("habit_category_check", sql`${table.category} IN ('health', 'wealth', 'relationships', 'growth', 'joy')`),
   check("habit_timing_check", sql`${table.timing} IN ('morning', 'afternoon', 'evening')`),
 ]);
 

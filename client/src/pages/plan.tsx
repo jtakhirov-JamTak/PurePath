@@ -10,23 +10,31 @@ import { format, startOfWeek } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 
-const BLOCK_SHORT: Record<string, string> = { morning: "AM", midday: "Mid", afternoon: "PM", evening: "Eve" };
+function fmtTime(t: string): string {
+  const [h, m] = t.split(":").map(Number);
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const suffix = h >= 12 ? "p" : "a";
+  return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, "0")}${suffix}`;
+}
 
-function formatSchedule(item: { scheduledDate?: string | null; scheduledStartTime?: string | null; durationMinutes?: number | null }): string {
+function formatSchedule(item: { scheduledDate?: string | null; scheduledStartTime?: string | null; scheduledEndTime?: string | null }): string {
   if (!item.scheduledDate) return "";
   const d = new Date(item.scheduledDate + "T12:00:00");
   const day = format(d, "EEE");
-  const block = item.scheduledStartTime ? BLOCK_SHORT[item.scheduledStartTime] || "" : "";
-  const dur = item.durationMinutes ? `${item.durationMinutes / 60}h` : "";
-  return [day, block, dur].filter(Boolean).join(" ") || "";
+  if (item.scheduledStartTime) {
+    const start = fmtTime(item.scheduledStartTime);
+    const end = item.scheduledEndTime ? fmtTime(item.scheduledEndTime) : "";
+    return end ? `${day} ${start}–${end}` : `${day} ${start}`;
+  }
+  return day;
 }
 
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
+  wealth: "bg-yellow-500",
   relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-300 dark:bg-slate-400",
+  growth: "bg-blue-500",
+  joy: "bg-amber-500",
 };
 
 export default function PlanPage() {

@@ -121,11 +121,16 @@ export default function DashboardPage() {
     return true;
   });
 
-  const BLOCK_ORDER: Record<string, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
-  const BLOCK_LABEL: Record<string, string> = { morning: "AM", midday: "Mid", afternoon: "PM", evening: "Eve" };
   const sortedFocusItems = [...focusItems].sort((a, b) =>
-    (BLOCK_ORDER[a.scheduledStartTime || ""] ?? 99) - (BLOCK_ORDER[b.scheduledStartTime || ""] ?? 99)
+    (a.scheduledStartTime || "99:99").localeCompare(b.scheduledStartTime || "99:99")
   );
+
+  const fmtTime = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const suffix = h >= 12 ? "p" : "a";
+    return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, "0")}${suffix}`;
+  };
 
   const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
     mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
@@ -334,6 +339,11 @@ export default function DashboardPage() {
           : item.status === "skipped" ? "text-muted-foreground italic"
           : ""
         }`}>{item.task}</span>
+        {item.scheduledStartTime && (
+          <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
+            {fmtTime(item.scheduledStartTime)}{item.scheduledEndTime ? `–${fmtTime(item.scheduledEndTime)}` : ""}
+          </span>
+        )}
       </div>
     );
   };
@@ -398,18 +408,11 @@ export default function DashboardPage() {
               <span className="text-[11px] text-muted-foreground">{format(today, "EEEE")}</span>
             </div>
             <ul className="space-y-0.5">
-              {sortedFocusItems.map((item, idx) => {
-                const prevBlock = idx > 0 ? sortedFocusItems[idx - 1].scheduledStartTime : null;
-                const showBlockLabel = item.scheduledStartTime && item.scheduledStartTime !== prevBlock;
-                return (
-                  <li key={item.id}>
-                    {showBlockLabel && (
-                      <p className="text-[10px] text-muted-foreground mt-1.5 mb-0.5">{BLOCK_LABEL[item.scheduledStartTime!]}</p>
-                    )}
-                    {renderFocusItem(item)}
-                  </li>
-                );
-              })}
+              {sortedFocusItems.map((item) => (
+                <li key={item.id}>
+                  {renderFocusItem(item)}
+                </li>
+              ))}
             </ul>
           </div>
         ) : (

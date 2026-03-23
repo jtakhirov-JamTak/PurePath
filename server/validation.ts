@@ -8,7 +8,7 @@ const optionalString = (max: number) => z.string().max(max, `Must be at most ${m
 const optionalTrimmedString = (max: number) => z.string().trim().max(max, `Must be at most ${max} characters`).optional().nullable();
 
 const quadrantEnum = z.enum(["q1", "q2", "q3", "q4", "unsorted"]);
-const categoryEnum = z.enum(["health", "wealth", "relationships", "self-development", "happiness"]);
+const categoryEnum = z.enum(["health", "wealth", "relationships", "growth", "joy"]);
 const timingEnum = z.enum(["morning", "afternoon", "evening"]);
 const decisionEnum = z.enum(["do_today", "schedule", "delegate", "delete"]);
 const sessionEnum = z.enum(["morning", "evening"]);
@@ -24,8 +24,10 @@ export const createEisenhowerSchema = z.object({
   decision: decisionEnum.optional().nullable(),
   scheduledTime: optionalString(50),
   scheduledDate: optionalDateString,
-  scheduledStartTime: z.enum(["morning", "midday", "afternoon", "evening"]).optional().nullable(),
-  durationMinutes: z.number().int().min(60).max(180).refine(v => v === undefined || v === null || v % 60 === 0, "Must be 60, 120, or 180").optional().nullable(),
+  scheduledStartTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format").optional().nullable(),
+  scheduledEndTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format").optional().nullable(),
+  durationMinutes: z.number().int().min(30).max(720).optional().nullable(),
+  category: categoryEnum.optional().nullable(),
   goalAlignment: optionalString(500),
   blocksGoal: z.boolean().optional().nullable(),
   isBinary: z.boolean().optional().nullable(),

@@ -17,8 +17,6 @@ const MAX_Q2 = 2;
 type Alignment = "yes" | "somewhat" | "no" | "";
 type Consequence = "real_soon" | "important_not_urgent" | "others_urgency" | "very_little" | "";
 
-type TimeBlock = "morning" | "midday" | "afternoon" | "evening" | "";
-
 interface WizardItem {
   id?: number;
   task: string;
@@ -29,9 +27,43 @@ interface WizardItem {
   selected: boolean;
   blocksGoal: boolean;
   scheduledDate: string;
-  scheduledStartTime: TimeBlock;
-  durationMinutes: number;
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  category: string;
 }
+
+const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
+  const totalMinutes = 8 * 60 + i * 30;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const label = `${h12}:${String(m).padStart(2, "0")}${h >= 12 ? "p" : "a"}`;
+  return { value: `${hh}:${mm}`, label };
+});
+
+function computeDuration(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return (eh * 60 + em) - (sh * 60 + sm);
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  health: "bg-emerald-500",
+  wealth: "bg-yellow-500",
+  relationships: "bg-rose-500",
+  growth: "bg-blue-500",
+  joy: "bg-amber-500",
+};
+const CATEGORY_LABELS: Record<string, string> = {
+  health: "Health",
+  wealth: "Wealth",
+  relationships: "Relationships",
+  growth: "Growth",
+  joy: "Joy",
+};
 
 function classifyQuadrant(alignment: Alignment, consequence: Consequence): string {
   if (alignment === "yes") {
@@ -92,8 +124,9 @@ export default function EisenhowerPage() {
         selected: true,
         blocksGoal: e.blocksGoal || false,
         scheduledDate: e.scheduledDate || "",
-        scheduledStartTime: (e.scheduledStartTime as TimeBlock) || "",
-        durationMinutes: e.durationMinutes || 60,
+        scheduledStartTime: e.scheduledStartTime || "",
+        scheduledEndTime: e.scheduledEndTime || "",
+        category: e.category || "",
       })));
     }
   }, [existingEntries, items.length]);
@@ -113,7 +146,8 @@ export default function EisenhowerPage() {
         blocksGoal: false,
         scheduledDate: "",
         scheduledStartTime: "",
-        durationMinutes: 60,
+        scheduledEndTime: "",
+        category: "",
       })),
     ]);
     setNewItemText("");
@@ -213,7 +247,9 @@ export default function EisenhowerPage() {
           isBinary: false,
           scheduledDate: item.scheduledDate || null,
           scheduledStartTime: item.scheduledStartTime || null,
-          durationMinutes: item.scheduledDate ? item.durationMinutes : null,
+          scheduledEndTime: item.scheduledEndTime || null,
+          durationMinutes: item.scheduledStartTime && item.scheduledEndTime ? computeDuration(item.scheduledStartTime, item.scheduledEndTime) : null,
+          category: item.category || null,
         };
 
         if (item.id) {
@@ -613,19 +649,23 @@ export default function EisenhowerPage() {
           <div className="space-y-4" data-testid="step-7">
             <div>
               <h2 className="text-sm font-medium">Schedule your week.</h2>
-              <p className="text-xs text-muted-foreground">Assign Q1 + Q2 items to a day, time block, and duration.</p>
+              <p className="text-xs text-muted-foreground">Pick a day, time, and category for each Q1/Q2 item.</p>
             </div>
 
             {schedulableItems.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {schedulableItems.map((item) => {
                   const globalIdx = item._originalIdx;
                   const wizItem = items[globalIdx];
+                  const endSlots = wizItem.scheduledStartTime
+                    ? TIME_SLOTS.filter(s => s.value > wizItem.scheduledStartTime)
+                    : TIME_SLOTS;
                   return (
-                    <div key={globalIdx} className="space-y-1" data-testid={`schedule-item-${globalIdx}`}>
-                      <p className="text-[13px] truncate">{item.task}</p>
-                      <div className="flex gap-2">
-                        {/* Day picker */}
+                    <div key={globalIdx} className="space-y-1.5 pb-3 border-b border-border/30 last:border-0" data-testid={`schedule-item-${globalIdx}`}>
+                      <p className="text-[13px] truncate font-medium">{item.task}</p>
+                      {/* Day picker */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-8 shrink-0">Day</span>
                         <div className="flex gap-0.5">
                           {weekDays.map(d => (
                             <button
@@ -644,46 +684,57 @@ export default function EisenhowerPage() {
                             </button>
                           ))}
                         </div>
-                        {/* Block picker */}
-                        <div className="flex gap-0.5">
-                          {([
-                            { value: "morning", label: "AM" },
-                            { value: "midday", label: "Mid" },
-                            { value: "afternoon", label: "PM" },
-                            { value: "evening", label: "Eve" },
-                          ] as const).map(b => (
+                      </div>
+                      {/* Time pickers */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-8 shrink-0">Time</span>
+                        <select
+                          value={wizItem.scheduledStartTime}
+                          onChange={(e) => setItems(prev => {
+                            const next = [...prev];
+                            next[globalIdx] = { ...next[globalIdx], scheduledStartTime: e.target.value };
+                            return next;
+                          })}
+                          className="h-6 text-[10px] rounded-sm border border-border bg-background px-1"
+                          data-testid={`start-time-${globalIdx}`}
+                        >
+                          <option value="">Start</option>
+                          {TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                        <span className="text-[10px] text-muted-foreground">–</span>
+                        <select
+                          value={wizItem.scheduledEndTime}
+                          onChange={(e) => setItems(prev => {
+                            const next = [...prev];
+                            next[globalIdx] = { ...next[globalIdx], scheduledEndTime: e.target.value };
+                            return next;
+                          })}
+                          className="h-6 text-[10px] rounded-sm border border-border bg-background px-1"
+                          data-testid={`end-time-${globalIdx}`}
+                        >
+                          <option value="">End</option>
+                          {endSlots.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                      </div>
+                      {/* Category picker */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground w-8 shrink-0">Area</span>
+                        <div className="flex gap-0.5 flex-wrap">
+                          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                             <button
-                              key={b.value}
+                              key={key}
                               type="button"
                               onClick={() => setItems(prev => {
                                 const next = [...prev];
-                                next[globalIdx] = { ...next[globalIdx], scheduledStartTime: wizItem.scheduledStartTime === b.value ? "" : b.value };
+                                next[globalIdx] = { ...next[globalIdx], category: wizItem.category === key ? "" : key };
                                 return next;
                               })}
-                              className={`h-6 px-1.5 text-[10px] font-medium rounded-sm transition-colors ${
-                                wizItem.scheduledStartTime === b.value ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                              className={`h-6 px-2 text-[10px] font-medium rounded-sm transition-colors flex items-center gap-1 ${
+                                wizItem.category === key ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                               }`}
                             >
-                              {b.label}
-                            </button>
-                          ))}
-                        </div>
-                        {/* Duration picker */}
-                        <div className="flex gap-0.5">
-                          {[60, 120, 180].map(d => (
-                            <button
-                              key={d}
-                              type="button"
-                              onClick={() => setItems(prev => {
-                                const next = [...prev];
-                                next[globalIdx] = { ...next[globalIdx], durationMinutes: d };
-                                return next;
-                              })}
-                              className={`h-6 px-1.5 text-[10px] font-medium rounded-sm transition-colors ${
-                                wizItem.durationMinutes === d ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {d / 60}h
+                              <span className={`h-1.5 w-1.5 rounded-full ${CATEGORY_COLORS[key]}`} />
+                              {label}
                             </button>
                           ))}
                         </div>
