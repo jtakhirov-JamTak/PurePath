@@ -356,7 +356,9 @@ export default function JournalEntryPage() {
           date,
           triggerText: eveningData.triggerText,
           appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
-          emotion: eveningData.triggerEmotion,
+          emotion: eveningData.triggerEmotion === "Other" && eveningData.triggerEmotionOther.trim()
+            ? eveningData.triggerEmotionOther.trim()
+            : eveningData.triggerEmotion,
           emotionIntensity: eveningData.triggerEmotionIntensity,
           urge: eveningData.triggerUrge === "Other" && eveningData.triggerUrgeOther.trim()
             ? eveningData.triggerUrgeOther.trim()
@@ -1072,6 +1074,14 @@ export default function JournalEntryPage() {
                               value={eveningData.triggerEmotionIntensity}
                               onChange={(n) => updateEveningField("triggerEmotionIntensity", n)}
                               testIdPrefix="journal-emotion-intensity"
+                            />
+                          )}
+                          {eveningData.triggerEmotion === "Other" && (
+                            <Input
+                              value={eveningData.triggerEmotionOther}
+                              onChange={(e) => updateEvening("triggerEmotionOther", e.target.value)}
+                              placeholder="Describe..."
+                              className="text-sm mt-1.5"
                             />
                           )}
                         </div>

@@ -10,7 +10,7 @@ export const APPRAISALS = [
 
 export const EMOTIONS = [
   "Anger", "Shame", "Fear", "Sadness",
-  "Frustration", "Anxiety", "Disgust", "Hurt",
+  "Frustration", "Anxiety", "Disgust", "Hurt", "Other",
 ];
 
 export const URGES = [

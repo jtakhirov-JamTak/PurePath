@@ -20,6 +20,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
   const [appraisalOther, setAppraisalOther] = useState("");
   const [emotion, setEmotion] = useState("");
   const [emotionIntensity, setEmotionIntensity] = useState<number | null>(null);
+  const [emotionOther, setEmotionOther] = useState("");
   const [urge, setUrge] = useState("");
   const [urgeIntensity, setUrgeIntensity] = useState<number | null>(null);
   const [urgeOther, setUrgeOther] = useState("");
@@ -39,6 +40,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
     setAppraisalOther("");
     setEmotion("");
     setEmotionIntensity(null);
+    setEmotionOther("");
     setUrge("");
     setUrgeIntensity(null);
     setUrgeOther("");
@@ -72,7 +74,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
         date: format(new Date(), "yyyy-MM-dd"),
         triggerText,
         appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
-        emotion,
+        emotion: emotion === "Other" && emotionOther.trim() ? emotionOther.trim() : emotion,
         emotionIntensity,
         urge: urge === "Other" && urgeOther.trim() ? urgeOther.trim() : urge,
         urgeIntensity,
@@ -170,6 +172,14 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
                 value={emotionIntensity}
                 onChange={setEmotionIntensity}
                 testIdPrefix="emotion-intensity"
+              />
+            )}
+            {emotion === "Other" && (
+              <Input
+                value={emotionOther}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmotionOther(e.target.value)}
+                placeholder="Describe..."
+                className="text-sm mt-1.5"
               />
             )}
           </div>
