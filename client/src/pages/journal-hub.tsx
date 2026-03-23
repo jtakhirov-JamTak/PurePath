@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Sun, Moon, ChevronLeft, ChevronRight, X, Zap, Target } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -279,11 +279,6 @@ export default function JournalHubPage() {
                               growth: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
                               joy: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
                             };
-                            const CAT_BORDER: Record<string, string> = {
-                              health: "#10b981", wealth: "#eab308", relationships: "#f43f5e",
-                              growth: "#3b82f6", joy: "#f59e0b",
-                            };
-
                             const cat = item.category || "growth";
                             let bgClass: string;
                             if (item.status === "skipped") {
@@ -299,16 +294,14 @@ export default function JournalHubPage() {
                               <button
                                 key={item.id}
                                 onClick={() => setLocation("/eisenhower")}
-                                className={`w-full rounded-sm text-[10px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center justify-between ${bgClass} ${isQ1 ? "border-l-[3px]" : ""}`}
-                                style={{
-                                  height: `${barH}px`,
-                                  ...(isQ1 ? { borderLeftColor: CAT_BORDER[cat] || "currentColor" } : {}),
-                                }}
+                                className={`w-full rounded-sm text-[10px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center gap-0.5 ${bgClass}`}
+                                style={{ height: `${barH}px` }}
                                 title={`${item.task} (${item.quadrant.toUpperCase()})`}
                                 data-testid={`block-item-${item.id}`}
                               >
-                                <span className="truncate">{item.task}</span>
-                                <span className="text-[8px] opacity-70 shrink-0 ml-0.5">{spanHours}h</span>
+                                {isQ1 ? <Zap className="h-2.5 w-2.5 shrink-0" /> : <Target className="h-2.5 w-2.5 shrink-0 opacity-60" />}
+                                <span className="truncate flex-1">{item.task}</span>
+                                <span className="text-[8px] opacity-70 shrink-0">{spanHours}h</span>
                               </button>
                             );
                           })}
@@ -321,10 +314,10 @@ export default function JournalHubPage() {
                 {/* Legend */}
                 <div className="flex gap-3 mt-2">
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <span className="w-3 h-2 rounded-sm bg-muted border-l-[3px] border-l-primary" /> Q1 Urgent
+                    <Zap className="h-2.5 w-2.5" /> Q1 Urgent
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <span className="w-3 h-2 rounded-sm bg-muted" /> Q2 Important
+                    <Target className="h-2.5 w-2.5" /> Q2 Important
                   </span>
                 </div>
               </div>

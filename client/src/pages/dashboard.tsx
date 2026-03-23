@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon,
-  Target,
+  Target, Zap,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -326,7 +326,7 @@ export default function DashboardPage() {
       : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
       : "border-border text-muted-foreground";
     return (
-      <div className="flex items-center gap-2.5 py-1.5" data-testid={`focus-item-${item.id}`}>
+      <div className="flex items-center gap-2 py-1.5" data-testid={`focus-item-${item.id}`}>
         <button
           onClick={cycleFocus}
           className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
@@ -334,6 +334,10 @@ export default function DashboardPage() {
         >
           {boxLabel}
         </button>
+        {item.quadrant === "q1"
+          ? <Zap className="h-3 w-3 text-amber-500 shrink-0" />
+          : <Target className="h-3 w-3 text-blue-500 shrink-0" />
+        }
         <span className={`text-xs flex-1 ${
           item.status === "completed" ? "line-through text-muted-foreground"
           : item.status === "skipped" ? "text-muted-foreground italic"

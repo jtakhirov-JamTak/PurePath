@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
+import { X, Zap, Target } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -662,7 +662,13 @@ export default function EisenhowerPage() {
                     : TIME_SLOTS;
                   return (
                     <div key={globalIdx} className="space-y-1.5 pb-3 border-b border-border/30 last:border-0" data-testid={`schedule-item-${globalIdx}`}>
-                      <p className="text-[13px] truncate font-medium">{item.task}</p>
+                      <div className="flex items-center gap-1.5">
+                        {item.quadrant === "q1" ? <Zap className="h-3 w-3 text-amber-500 shrink-0" /> : <Target className="h-3 w-3 text-blue-500 shrink-0" />}
+                        <p className="text-[13px] truncate font-medium">{item.task}</p>
+                      </div>
+                      {item.task.length > 25 && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">{item.task.length}/25 — shorten to fit your calendar</p>
+                      )}
                       {/* Day picker */}
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] text-muted-foreground w-8 shrink-0">Day</span>
