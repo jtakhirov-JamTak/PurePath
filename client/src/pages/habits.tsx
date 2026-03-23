@@ -4,33 +4,14 @@ import { HabitDialog } from "@/components/habit-dialog";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Repeat, Plus, Trash2, Timer, Pencil, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Repeat, Plus, Trash2, Pencil, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { FlowBar } from "@/components/flow-bar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { HABIT_CATEGORIES } from "@shared/schema";
 import type { Habit } from "@shared/schema";
 
-const CATEGORY_DOTS: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
-  relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-400",
-};
-
-const TIMING_ORDER: Record<string, number> = {
-  morning: 0,
-  afternoon: 1,
-  evening: 2,
-};
-
-const TIMING_LABELS: Record<string, string> = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-};
+const TIMING_ORDER: Record<string, number> = { morning: 0, afternoon: 1, evening: 2 };
+const TIMING_SHORT: Record<string, string> = { morning: "AM", afternoon: "PM", evening: "EVE" };
 
 const MAX_HABITS = 3;
 
@@ -44,7 +25,12 @@ export default function HabitsPage() {
 
   const activeHabits = habits
     .filter(h => h.active)
-    .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1));
+    .sort((a, b) => {
+      const ta = TIMING_ORDER[a.timing || "afternoon"] ?? 1;
+      const tb = TIMING_ORDER[b.timing || "afternoon"] ?? 1;
+      if (ta !== tb) return ta - tb;
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    });
 
   const pastHabits = habits
     .filter(h => !h.active)
@@ -145,27 +131,17 @@ export default function HabitsPage() {
                           <Repeat className="h-3.5 w-3.5 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium truncate" data-testid={`text-habit-name-${habit.id}`}>
-                            {habit.name}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs" data-testid={`badge-category-${habit.id}`}>
-                              <span className={`h-2 w-2 rounded-full mr-1 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
-                              {HABIT_CATEGORIES[(habit.category as keyof typeof HABIT_CATEGORIES) || "health"]?.label || "Health"}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs" data-testid={`badge-timing-${habit.id}`}>
-                              {TIMING_LABELS[habit.timing || "afternoon"] || "Afternoon"}
-                            </Badge>
-                            {habit.duration && habit.duration > 0 && (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Timer className="h-3 w-3" />
-                                {habit.duration} min
-                              </span>
-                            )}
-                            {(!habit.duration || habit.duration === 0) && (
-                              <span className="text-xs text-muted-foreground">Yes / No</span>
-                            )}
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium truncate" data-testid={`text-habit-name-${habit.id}`}>
+                              {habit.name}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {TIMING_SHORT[habit.timing || "afternoon"] || "PM"}
+                            </span>
                           </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {habit.cadence === "mon,tue,wed,thu,fri,sat,sun" ? "Daily" : habit.cadence?.split(",").map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(", ")}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -216,7 +192,7 @@ export default function HabitsPage() {
                 <div className="mt-2 space-y-1">
                   {pastHabits.map(habit => (
                     <div key={habit.id} className="flex items-center gap-2 py-1" data-testid={`past-habit-${habit.id}`}>
-                      <div className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
+                      <div className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/30" />
                       <span className="text-[13px] text-muted-foreground flex-1 truncate">{habit.name}</span>
                       <span className="text-[11px] text-muted-foreground shrink-0">
                         {habit.startDate || "—"} – {habit.endDate || "—"}

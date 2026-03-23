@@ -5,11 +5,11 @@ import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
-import type { Journal, Habit, HabitCompletion } from "@shared/schema";
+import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 
 export default function JournalHubPage() {
   const { user } = useAuth();
@@ -36,6 +36,21 @@ export default function JournalHubPage() {
     queryKey: ["/api/habit-completions", todayStr],
     enabled: !!user,
   });
+
+  // Q2 weekly calendar data
+  const currentWeekStart = startOfWeek(todayDate, { weekStartsOn: 1 });
+  const currentWeekStartStr = format(currentWeekStart, "yyyy-MM-dd");
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
+
+  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
+    queryKey: ["/api/eisenhower/week", currentWeekStartStr],
+    enabled: !!user,
+  });
+
+  const q2Items = useMemo(
+    () => eisenhowerEntries.filter((e) => e.quadrant === "q2" && e.weekStart === currentWeekStartStr),
+    [eisenhowerEntries, currentWeekStartStr],
+  );
 
   // Today's journals
   const todayJournals = journals.filter((j) => j.date === todayStr);
@@ -233,8 +248,8 @@ export default function JournalHubPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6" data-testid="journal-hub">
-        <h1 className="text-sm font-medium" data-testid="journal-hub-title">Journal</h1>
+      <div className="max-w-md mx-auto px-4 py-6 space-y-6" data-testid="proof-hub">
+        <h1 className="text-sm font-medium" data-testid="proof-hub-title">Proof</h1>
 
         {/* TODAY section */}
         <section data-testid="journal-today-section">
@@ -304,6 +319,73 @@ export default function JournalHubPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* THIS WEEK — Q2 calendar strip */}
+        <section data-testid="q2-week-strip">
+          <p className="text-[11px] uppercase text-bark font-medium mb-2">This Week</p>
+
+          <div className="rounded-lg bg-bark/5 p-3">
+            {/* Day abbreviations */}
+            <div className="grid grid-cols-7 gap-0">
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                <div key={d} className="text-[10px] text-muted-foreground text-center">{d}</div>
+              ))}
+            </div>
+
+            {/* Date numbers */}
+            <div className="grid grid-cols-7 gap-0 mt-0.5">
+              {weekDays.map((day) => {
+                const dateStr = format(day, "yyyy-MM-dd");
+                const isToday = dateStr === todayStr;
+                return (
+                  <div
+                    key={dateStr}
+                    className={`text-[10px] text-center leading-5 mx-auto w-5 h-5 flex items-center justify-center rounded-full ${isToday ? "ring-1 ring-primary" : ""}`}
+                  >
+                    {format(day, "d")}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Q2 items */}
+            {q2Items.length > 0 ? (
+              <div className="mt-2 space-y-1">
+                {q2Items.map((item) => {
+                  const barColor = item.status === "completed" || item.completed
+                    ? "bg-emerald-500"
+                    : "bg-muted";
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setLocation("/eisenhower")}
+                      className="flex items-center gap-2 w-full group cursor-pointer"
+                      data-testid={`q2-item-${item.id}`}
+                    >
+                      <span className="text-[11px] truncate w-20 text-left shrink-0">
+                        {item.blocksGoal && <span className="text-amber-500 mr-0.5">★</span>}
+                        {item.task}
+                      </span>
+                      <div className="flex-1 flex items-center">
+                        <div className={`h-[2px] w-full rounded-full ${barColor}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-2 text-center">
+                <p className="text-[11px] text-muted-foreground">No Q2 items this week</p>
+                <button
+                  onClick={() => setLocation("/eisenhower")}
+                  className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
+                >
+                  Plan your week →
+                </button>
               </div>
             )}
           </div>

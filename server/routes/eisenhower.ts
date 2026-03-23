@@ -7,6 +7,9 @@ import { z } from "zod";
 import { createEisenhowerSchema, updateEisenhowerSchema } from "../validation";
 import { parseId, parseDateParam, csvEscape, aiRateLimit, exportRateLimit } from "./helpers";
 
+const MAX_Q1 = 5;
+const MAX_Q2 = 2;
+
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -55,12 +58,18 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
       const userId = req.user.claims.sub;
-      const { task, weekStart } = parsed.data;
+      const { task, weekStart, quadrant } = parsed.data;
       if (task && weekStart) {
         const existing = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
         const duplicate = existing.find(e => e.task.toLowerCase() === task.trim().toLowerCase());
         if (duplicate) {
           return res.status(409).json({ error: `You already have a task named "${duplicate.task}" this week` });
+        }
+        if (quadrant === "q1" && existing.filter(e => e.quadrant === "q1").length >= MAX_Q1) {
+          return res.status(400).json({ error: `Max ${MAX_Q1} urgent items per week. If everything is urgent, nothing is.` });
+        }
+        if (quadrant === "q2" && existing.filter(e => e.quadrant === "q2").length >= MAX_Q2) {
+          return res.status(400).json({ error: `Max ${MAX_Q2} important-but-not-urgent items per week. Focus on what matters most.` });
         }
       }
       const entry = await storage.createEisenhowerEntry({ userId, ...parsed.data });
@@ -86,6 +95,16 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(403).json({ error: "Not authorized" });
       }
       const body = { ...parsed.data };
+      // Enforce quadrant limits when changing quadrant
+      if (body.quadrant && body.quadrant !== record.quadrant) {
+        const weekEntries = await storage.getEisenhowerEntriesForWeek(userId, record.weekStart);
+        if (body.quadrant === "q1" && weekEntries.filter(e => e.quadrant === "q1" && e.id !== id).length >= MAX_Q1) {
+          return res.status(400).json({ error: `Max ${MAX_Q1} urgent items per week. If everything is urgent, nothing is.` });
+        }
+        if (body.quadrant === "q2" && weekEntries.filter(e => e.quadrant === "q2" && e.id !== id).length >= MAX_Q2) {
+          return res.status(400).json({ error: `Max ${MAX_Q2} important-but-not-urgent items per week. Focus on what matters most.` });
+        }
+      }
       if (body.status !== undefined) {
         body.completed = body.status === "completed";
       } else if (body.completed !== undefined) {

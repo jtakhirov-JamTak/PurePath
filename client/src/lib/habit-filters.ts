@@ -2,6 +2,7 @@ import type { Habit } from "@shared/schema";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const MAX_ACTIVE_HABITS = 3;
+const TIMING_ORDER: Record<string, number> = { morning: 0, afternoon: 1, evening: 2 };
 
 /**
  * Deduplicate habits by lineageId, preferring active versions.
@@ -35,8 +36,14 @@ export function getTodaysHabits(habits: Habit[], dateStr: string): Habit[] {
   const deduped = dedupeByLineage(scheduled);
   if (deduped.length > MAX_ACTIVE_HABITS) {
     deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return deduped.slice(0, MAX_ACTIVE_HABITS);
+    deduped.length = MAX_ACTIVE_HABITS;
   }
+  deduped.sort((a, b) => {
+    const ta = TIMING_ORDER[a.timing || "afternoon"] ?? 1;
+    const tb = TIMING_ORDER[b.timing || "afternoon"] ?? 1;
+    if (ta !== tb) return ta - tb;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  });
   return deduped;
 }
 

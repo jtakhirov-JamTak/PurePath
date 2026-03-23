@@ -3,21 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import type { Habit } from "@shared/schema";
-
-const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
-
-const CATEGORY_DOTS: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
-  relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-400",
-};
 
 const TIMINGS = [
   { value: "morning", label: "Morning" },
@@ -25,11 +14,7 @@ const TIMINGS = [
   { value: "evening", label: "Evening" },
 ] as const;
 
-const DURATIONS = [
-  { value: 15, label: "15 min" },
-  { value: 30, label: "30 min" },
-  { value: 60, label: "60 min" },
-] as const;
+const CATEGORY_KEYS = Object.keys(HABIT_CATEGORIES) as HabitCategory[];
 
 const ALL_DAYS_CADENCE = "mon,tue,wed,thu,fri,sat,sun";
 const ALL_DAYS_SET = new Set(ALL_DAYS_CADENCE.split(","));
@@ -54,17 +39,14 @@ interface HabitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingHabit?: Habit | null;
-  defaultTiming?: string;
   onSuccess?: () => void;
 }
 
-export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, onSuccess }: HabitDialogProps) {
+export function HabitDialog({ open, onOpenChange, editingHabit, onSuccess }: HabitDialogProps) {
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<HabitCategory>("health");
   const [timing, setTiming] = useState("morning");
-  const [hasTimeCommitment, setHasTimeCommitment] = useState(true);
-  const [duration, setDuration] = useState(15);
+  const [category, setCategory] = useState<HabitCategory>("health");
   const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">("daily");
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set(ALL_DAYS_SET));
 
@@ -72,16 +54,8 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     if (!open) return;
     if (editingHabit) {
       setName(editingHabit.name);
+      setTiming(editingHabit.timing || "morning");
       setCategory((editingHabit.category as HabitCategory) || "health");
-      setTiming(editingHabit.timing === "daily" ? "afternoon" : (editingHabit.timing || "afternoon"));
-      const dur = editingHabit.duration;
-      if (dur && dur > 0) {
-        setHasTimeCommitment(true);
-        setDuration(dur);
-      } else {
-        setHasTimeCommitment(false);
-        setDuration(15);
-      }
       const days = new Set(editingHabit.cadence ? editingHabit.cadence.split(",") : ALL_DAYS_SET);
       if (days.size === 7 && Array.from(ALL_DAYS_SET).every(d => days.has(d))) {
         setScheduleMode("daily");
@@ -91,14 +65,12 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
       setSelectedDays(days);
     } else {
       setName("");
+      setTiming("morning");
       setCategory("health");
-      setTiming(defaultTiming || "morning");
-      setHasTimeCommitment(true);
-      setDuration(15);
       setScheduleMode("daily");
       setSelectedDays(new Set(ALL_DAYS_SET));
     }
-  }, [open, editingHabit, defaultTiming]);
+  }, [open, editingHabit]);
 
   const createHabitMutation = useToastMutation({
     mutationFn: async () => {
@@ -107,9 +79,9 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
         category,
         timing,
         cadence,
-        duration: hasTimeCommitment ? duration : null,
+        duration: null,
         startDate: formatDate(new Date()),
-        isBinary: !hasTimeCommitment,
+        isBinary: false,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -129,11 +101,9 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
     mutationFn: async (id) => {
       const res = await apiRequest("PATCH", `/api/habits/${id}`, {
         name,
-        category,
         timing,
+        category,
         cadence,
-        duration: hasTimeCommitment ? duration : null,
-        isBinary: !hasTimeCommitment,
       });
       if (!res.ok) {
         const body = await res.json();
@@ -168,6 +138,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
               value={name}
               onChange={(e) => setName(e.target.value)}
               data-testid="input-habit-name"
+              autoFocus
             />
           </div>
 
@@ -227,41 +198,17 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
           </div>
 
           <div>
-            <Label className="mb-2 block">Category</Label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORY_KEYS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setCategory(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                    category === key
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted"
-                  }`}
-                  data-testid={`chip-category-${key}`}
-                >
-                  <span className={`h-2 w-2 rounded-full ${CATEGORY_DOTS[key]}`} />
-                  {HABIT_CATEGORIES[key].label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Label className="mb-2 block">Time of Day</Label>
-            <div className="flex gap-2">
+            <p className="text-[10px] uppercase text-muted-foreground mb-1.5">When</p>
+            <div className="flex gap-1">
               {TIMINGS.map((t) => (
                 <button
                   key={t.value}
                   type="button"
                   onClick={() => setTiming(t.value)}
-                  className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                    timing === t.value
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                    timing === t.value ? "bg-primary text-white" : "bg-muted text-muted-foreground"
                   }`}
-                  data-testid={`chip-timing-${t.value}`}
+                  data-testid={`button-timing-${t.value}`}
                 >
                   {t.label}
                 </button>
@@ -269,41 +216,24 @@ export function HabitDialog({ open, onOpenChange, editingHabit, defaultTiming, o
             </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div className="space-y-0.5">
-              <Label htmlFor="time-commitment" className="text-sm cursor-pointer">This habit has a time commitment</Label>
-              <p className="text-[11px] text-muted-foreground">Turn off for simple yes/no habits</p>
+          <div>
+            <p className="text-[10px] uppercase text-muted-foreground mb-1.5">Category</p>
+            <div className="flex gap-1">
+              {CATEGORY_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setCategory(key)}
+                  className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors ${
+                    category === key ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                  }`}
+                  data-testid={`button-category-${key}`}
+                >
+                  {HABIT_CATEGORIES[key].label}
+                </button>
+              ))}
             </div>
-            <Switch
-              id="time-commitment"
-              checked={hasTimeCommitment}
-              onCheckedChange={setHasTimeCommitment}
-              data-testid="switch-time-commitment"
-            />
           </div>
-
-          {hasTimeCommitment && (
-            <div>
-              <Label className="mb-2 block">Duration</Label>
-              <div className="flex gap-2">
-                {DURATIONS.map((d) => (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => setDuration(d.value)}
-                    className={`flex-1 py-2 text-sm font-medium rounded-lg border transition-colors ${
-                      duration === d.value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background text-muted-foreground border-border hover:bg-muted"
-                    }`}
-                    data-testid={`chip-duration-${d.value}`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
         <DialogFooter>
           <Button

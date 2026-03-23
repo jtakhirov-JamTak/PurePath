@@ -114,13 +114,11 @@ export const insertEmpathyExerciseSchema = createInsertSchema(empathyExercises).
 export type EmpathyExercise = typeof empathyExercises.$inferSelect;
 export type InsertEmpathyExercise = z.infer<typeof insertEmpathyExerciseSchema>;
 
-// Habit categories with colors
+// Habit categories
 export const HABIT_CATEGORIES = {
   health: { label: "Health", color: "emerald" },
   wealth: { label: "Wealth", color: "yellow" },
   relationships: { label: "Relationships", color: "rose" },
-  "self-development": { label: "Self-Development", color: "blue" },
-  happiness: { label: "Happiness", color: "slate" },
 } as const;
 
 export type HabitCategory = keyof typeof HABIT_CATEGORIES;

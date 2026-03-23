@@ -11,6 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 
+const MAX_Q1 = 5;
+const MAX_Q2 = 2;
+
 type Alignment = "yes" | "somewhat" | "no" | "";
 type Consequence = "real_soon" | "important_not_urgent" | "others_urgency" | "very_little" | "";
 
@@ -169,6 +172,10 @@ export default function EisenhowerPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      // Enforce limits before saving
+      if (q1Items.length > MAX_Q1) throw new Error(`Max ${MAX_Q1} urgent items per week. If everything is urgent, nothing is.`);
+      if (q2Items.length > MAX_Q2) throw new Error(`Max ${MAX_Q2} important-but-not-urgent items per week. Focus on what matters most.`);
+
       // Mark dropped items as Q4
       const allItems = [
         ...classifiedItems,
@@ -214,6 +221,9 @@ export default function EisenhowerPage() {
     },
   });
 
+  const q1OverLimit = q1Items.length > MAX_Q1;
+  const q2OverLimit = q2Items.length > MAX_Q2;
+
   const canNext = () => {
     switch (step) {
       case 1: return items.length >= 3;
@@ -221,7 +231,7 @@ export default function EisenhowerPage() {
       case 3: return true;
       case 4: return selectedItems.every(i => i.goalAlignment !== "");
       case 5: return selectedItems.every(i => i.decision !== "");
-      case 6: return true;
+      case 6: return !q1OverLimit && !q2OverLimit;
       case 7: return true;
       default: return false;
     }
@@ -486,6 +496,14 @@ export default function EisenhowerPage() {
               </div>
               <div>
                 <p className="text-xs font-medium mb-2">Your values say</p>
+                <div className="flex gap-3 mb-2">
+                  <span className={`text-[10px] font-medium ${q1OverLimit ? "text-red-500" : "text-muted-foreground"}`} data-testid="q1-counter">
+                    Q1: {q1Items.length}/{MAX_Q1}
+                  </span>
+                  <span className={`text-[10px] font-medium ${q2OverLimit ? "text-red-500" : "text-muted-foreground"}`} data-testid="q2-counter">
+                    Q2: {q2Items.length}/{MAX_Q2}
+                  </span>
+                </div>
                 <ul className="space-y-1">
                   {q1Items.map((item, idx) => (
                     <li key={`q1-${idx}`} className="text-xs flex items-center gap-1.5" data-testid={`values-q1-${idx}`}>
@@ -502,6 +520,22 @@ export default function EisenhowerPage() {
                 </ul>
               </div>
             </div>
+
+            {(q1OverLimit || q2OverLimit) && (
+              <div className="rounded-md bg-red-500/10 border border-red-500/30 p-3" data-testid="limit-warning">
+                {q2OverLimit && (
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    Max {MAX_Q2} important-but-not-urgent items per week. Focus on what matters most.
+                  </p>
+                )}
+                {q1OverLimit && (
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    Max {MAX_Q1} urgent items per week. If everything is urgent, nothing is.
+                  </p>
+                )}
+                <p className="text-[10px] text-muted-foreground mt-1">Go back to change your answers, or remove items.</p>
+              </div>
+            )}
 
             <div className="border-l-[3px] border-l-[#6B4226] dark:border-l-[#A67B5B] bg-bark/5 rounded-r-md p-3">
               <p className="text-xs">
@@ -555,8 +589,8 @@ export default function EisenhowerPage() {
         {step === 7 && (
           <div className="space-y-4" data-testid="step-7">
             <div>
-              <h2 className="text-sm font-medium">Pick your 2 focus blocks for this week.</h2>
-              <p className="text-xs text-muted-foreground">These are the important-but-not-urgent items you'll protect time for.</p>
+              <h2 className="text-sm font-medium">Mark your focus blocks for this week.</h2>
+              <p className="text-xs text-muted-foreground">Toggle which Q2 items you'll protect time for.</p>
             </div>
 
             {commitQ2Items.length > 0 ? (
@@ -564,11 +598,9 @@ export default function EisenhowerPage() {
                 {commitQ2Items.map((item, idx) => {
                   const globalIdx = item._originalIdx;
                   const isSelected = commitSelected.has(globalIdx);
-                  const atLimit = commitSelected.size >= 2 && !isSelected;
                   return (
                     <button
                       key={idx}
-                      disabled={atLimit}
                       onClick={() => {
                         setCommitSelected(prev => {
                           const next = new Set(prev);
@@ -576,7 +608,6 @@ export default function EisenhowerPage() {
                           else next.add(globalIdx);
                           return next;
                         });
-                        // Mark blocksGoal
                         setItems(prev => {
                           const next = [...prev];
                           next[globalIdx] = { ...next[globalIdx], blocksGoal: !isSelected };
@@ -586,8 +617,6 @@ export default function EisenhowerPage() {
                       className={`w-full text-left p-3 rounded-md border-2 text-xs cursor-pointer ${
                         isSelected
                           ? "border-emerald-500 bg-emerald-500/10"
-                          : atLimit
-                          ? "border-border opacity-40 cursor-not-allowed"
                           : "border-border hover:border-primary/40"
                       }`}
                       data-testid={`commit-q2-${idx}`}
@@ -595,7 +624,6 @@ export default function EisenhowerPage() {
                       <p className="font-medium">{item.task}</p>
                       {isSelected && (
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {/* TODO: implement platform-native calendar handoff (Android INSERT intent / iOS EventKit). No Google API — hand off to whatever calendar app the user has. */}
                           This will show on your dashboard all week.
                         </p>
                       )}
