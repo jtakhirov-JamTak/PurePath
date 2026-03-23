@@ -7,7 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import { getDayOfYear } from "date-fns";
 
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
@@ -32,10 +33,32 @@ export default function PlanPage() {
     queryFn: async () => { const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed to fetch"); return res.json(); },
     enabled: !!user,
   });
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
 
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const activeHabits = habits.filter(h => h.active !== false);
   const focusItems = eisenhowerEntries.filter(e => e.weekStart === weekStartStr && (e.quadrant === "q1" || (e.quadrant === "q2" && e.blocksGoal)));
+
+  // Daily Anchor — rotating excerpt from identity document
+  const anchorExcerpt = (() => {
+    if (!identityDoc) return null;
+    const fields = [
+      identityDoc.identity?.trim(),
+      identityDoc.vision?.trim(),
+      identityDoc.values?.trim(),
+      identityDoc.purpose?.trim(),
+    ];
+    const dayIndex = getDayOfYear(today) % 4;
+    // Try the day's field first, then cycle through others
+    for (let i = 0; i < 4; i++) {
+      const text = fields[(dayIndex + i) % 4];
+      if (text) return text;
+    }
+    return null;
+  })();
 
   return (
     <AppLayout>
@@ -70,6 +93,23 @@ export default function PlanPage() {
               </Card>
             </div>
           </div>
+
+          {/* Daily Anchor */}
+          {anchorExcerpt && (
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Your Words</p>
+              <div className="rounded-lg bg-bark/5 p-3" data-testid="daily-anchor">
+                <p className="text-[13px] text-foreground italic line-clamp-3">{anchorExcerpt}</p>
+                <button
+                  className="text-[11px] text-primary hover:underline cursor-pointer mt-2"
+                  onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))}
+                  data-testid="link-anchor-identity"
+                >
+                  View full document →
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Monthly Goal */}
           <div className="space-y-2">
