@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
+import { getDateHabits } from "@/lib/habit-filters";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 
 export default function JournalHubPage() {
@@ -32,12 +32,7 @@ export default function JournalHubPage() {
     enabled: !!user,
   });
 
-  const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions", todayStr],
-    enabled: !!user,
-  });
-
-  // Q2 weekly calendar data
+  // Weekly calendar data
   const currentWeekStart = startOfWeek(todayDate, { weekStartsOn: 1 });
   const currentWeekStartStr = format(currentWeekStart, "yyyy-MM-dd");
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -46,11 +41,6 @@ export default function JournalHubPage() {
     queryKey: ["/api/eisenhower/week", currentWeekStartStr],
     enabled: !!user,
   });
-
-  const q2Items = useMemo(
-    () => eisenhowerEntries.filter((e) => e.quadrant === "q2" && e.weekStart === currentWeekStartStr),
-    [eisenhowerEntries, currentWeekStartStr],
-  );
 
   const weekEndDate = addDays(currentWeekStart, 6);
   const weekLabel = format(currentWeekStart, "MMM d") + " – " + format(weekEndDate, "d");
@@ -71,67 +61,6 @@ export default function JournalHubPage() {
     });
     return { grid, hasAny: items.length > 0 };
   }, [eisenhowerEntries, currentWeekStartStr]);
-
-  // Today's journals
-  const todayJournals = journals.filter((j) => j.date === todayStr);
-  const hasMorning = todayJournals.some((j) => j.session === "morning");
-  const hasEvening = todayJournals.some((j) => j.session === "evening");
-
-  // Today's scheduled habits (active, matching cadence, within date range, deduped, max 3)
-  const todaysHabits = useMemo(() => getTodaysHabits(habits, todayStr), [habits, todayStr]);
-
-  // Habit completion maps
-  const habitLevelMap = new Map<number, number>();
-  const habitStatusMap = new Map<number, string>();
-  habitCompletions.forEach((hc) => {
-    habitStatusMap.set(hc.habitId, hc.status || "completed");
-    if (hc.completionLevel != null) {
-      habitLevelMap.set(hc.habitId, hc.completionLevel);
-    } else {
-      const fallback = hc.status === "completed" ? 2 : hc.status === "minimum" ? 1 : hc.status === "skipped" ? 0 : null;
-      if (fallback != null) habitLevelMap.set(hc.habitId, fallback);
-    }
-  });
-
-  // Habit level cycling mutation
-  const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
-    mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
-      let res;
-      if (level === null) {
-        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
-      } else {
-        const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
-        const existing = habitCompletions.some((hc) => hc.habitId === habitId);
-        const payload: Record<string, unknown> = { status, completionLevel: level };
-        if (skipReason) payload.skipReason = skipReason;
-        if (existing) {
-          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, payload);
-        } else {
-          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, ...payload });
-        }
-      }
-      if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to update habit status");
-      }
-    },
-    invalidateKeys: [["/api/habit-completions", todayStr]],
-    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/")],
-    errorToast: "Could not update habit",
-  });
-
-  const cycleHabit = (habit: Habit) => {
-    const level = habitLevelMap.get(habit.id) ?? null;
-    if (level === null || level === undefined) {
-      setHabitLevelMutation.mutate({ habitId: habit.id, level: 2, isBinary: false });
-    } else if (level === 2) {
-      setHabitLevelMutation.mutate({ habitId: habit.id, level: 1, isBinary: false });
-    } else if (level === 1) {
-      setHabitLevelMutation.mutate({ habitId: habit.id, level: 0 });
-    } else {
-      setHabitLevelMutation.mutate({ habitId: habit.id, level: null });
-    }
-  };
 
   // Selected date data
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
@@ -271,146 +200,6 @@ export default function JournalHubPage() {
       <div className="max-w-md mx-auto px-4 py-6 space-y-6" data-testid="proof-hub">
         <h1 className="text-sm font-medium" data-testid="proof-hub-title">Proof</h1>
 
-        {/* TODAY section */}
-        <section data-testid="journal-today-section">
-          <p className="text-[11px] uppercase text-bark font-medium mb-1">Today</p>
-          <p className="text-xs text-muted-foreground mb-3">{format(todayDate, "EEEE, MMM d")}</p>
-
-          <div className="rounded-lg bg-bark/5 p-3 space-y-1" data-testid="journal-today-card">
-            {/* Morning row */}
-            <button
-              className="flex items-center gap-2 w-full py-1 text-left hover:bg-bark/5 rounded px-1 -mx-1"
-              onClick={() => setLocation(`/journal/${todayStr}/morning`)}
-              data-testid="journal-morning-row"
-            >
-              <Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-              <span className="text-[11px] flex-1">Morning</span>
-              <Badge
-                variant="secondary"
-                className={`text-[10px] px-1.5 py-0 ${hasMorning ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
-              >
-                {hasMorning ? "Completed" : "Not started"}
-              </Badge>
-            </button>
-
-            {/* Evening row */}
-            <button
-              className="flex items-center gap-2 w-full py-1 text-left hover:bg-bark/5 rounded px-1 -mx-1"
-              onClick={() => setLocation(`/journal/${todayStr}/evening`)}
-              data-testid="journal-evening-row"
-            >
-              <Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
-              <span className="text-[11px] flex-1">Evening</span>
-              <Badge
-                variant="secondary"
-                className={`text-[10px] px-1.5 py-0 ${hasEvening ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
-              >
-                {hasEvening ? "Completed" : "Not started"}
-              </Badge>
-            </button>
-
-            {/* Today's habits */}
-            {todaysHabits.length > 0 && (
-              <div className="pt-2 mt-1 border-t border-border/50" data-testid="journal-today-habits">
-                {todaysHabits.map((habit) => {
-                  const level = habitLevelMap.get(habit.id) ?? null;
-                  const status = habitStatusMap.get(habit.id) || null;
-                  const boxLabel = level === 2 ? "Done" : level === 1 ? "Min" : level === 0 ? "Skip" : "\u2014";
-                  const boxClass =
-                    status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
-                    : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                    : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                    : "border-border text-muted-foreground";
-
-                  return (
-                    <div key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`habit-item-${habit.id}`}>
-                      <button
-                        onClick={() => cycleHabit(habit)}
-                        className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
-                        data-testid={`habit-level-${habit.id}`}
-                      >
-                        {boxLabel}
-                      </button>
-                      <span className={`text-xs flex-1 ${
-                        status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
-                      }`}>
-                        {habit.name}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* THIS WEEK — Q2 calendar strip */}
-        <section data-testid="q2-week-strip">
-          <p className="text-[11px] uppercase text-bark font-medium mb-2">This Week</p>
-
-          <div className="rounded-lg bg-bark/5 p-3">
-            {/* Day abbreviations */}
-            <div className="grid grid-cols-7 gap-0">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <div key={d} className="text-[10px] text-muted-foreground text-center">{d}</div>
-              ))}
-            </div>
-
-            {/* Date numbers */}
-            <div className="grid grid-cols-7 gap-0 mt-0.5">
-              {weekDays.map((day) => {
-                const dateStr = format(day, "yyyy-MM-dd");
-                const isToday = dateStr === todayStr;
-                return (
-                  <div
-                    key={dateStr}
-                    className={`text-[10px] text-center leading-5 mx-auto w-5 h-5 flex items-center justify-center rounded-full ${isToday ? "ring-1 ring-primary" : ""}`}
-                  >
-                    {format(day, "d")}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Q2 items */}
-            {q2Items.length > 0 ? (
-              <div className="mt-2 space-y-1">
-                {q2Items.map((item) => {
-                  const barColor = item.status === "completed" || item.completed
-                    ? "bg-emerald-500"
-                    : "bg-muted";
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setLocation("/eisenhower")}
-                      className="flex items-center gap-2 w-full group cursor-pointer"
-                      data-testid={`q2-item-${item.id}`}
-                    >
-                      <span className="text-[11px] truncate w-20 text-left shrink-0">
-                        {item.blocksGoal && <span className="text-amber-500 mr-0.5">★</span>}
-                        {item.task}
-                      </span>
-                      <div className="flex-1 flex items-center">
-                        <div className={`h-[2px] w-full rounded-full ${barColor}`} />
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="mt-2 text-center">
-                <p className="text-[11px] text-muted-foreground">No Q2 items this week</p>
-                <button
-                  onClick={() => setLocation("/eisenhower")}
-                  className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
-                >
-                  Plan your week →
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
         {/* WEEKLY TIME-BLOCK CALENDAR */}
         <section data-testid="weekly-time-block">
           <div className="flex items-center justify-between mb-2">
@@ -449,10 +238,11 @@ export default function JournalHubPage() {
                       return (
                         <div
                           key={cellKey}
-                          className={`min-h-[40px] border border-border/10 p-0.5 ${isToday ? "bg-primary/5" : ""}`}
+                          className={`min-h-[40px] border border-border/10 p-0.5 overflow-hidden flex flex-col gap-0.5 ${isToday ? "bg-primary/5" : ""}`}
                         >
                           {cellItems.map((item) => {
-                            const widthPct = item.durationMinutes ? Math.min((item.durationMinutes / 180) * 100, 100) : 33;
+                            const dur = item.durationMinutes || 60;
+                            const barH = dur <= 60 ? 18 : dur <= 120 ? 28 : 38;
                             const bgColor = item.status === "completed" ? "bg-emerald-500 text-white"
                               : item.status === "skipped" ? "bg-red-400 text-white"
                               : "bg-primary/20 text-foreground";
@@ -460,12 +250,13 @@ export default function JournalHubPage() {
                               <button
                                 key={item.id}
                                 onClick={() => setLocation("/eisenhower")}
-                                className={`h-[18px] rounded-sm text-[9px] truncate px-1 mb-0.5 cursor-pointer block ${bgColor}`}
-                                style={{ width: `${widthPct}%` }}
+                                className={`w-full rounded-sm text-[9px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center justify-between ${bgColor}`}
+                                style={{ height: `${barH}px` }}
                                 title={item.task}
                                 data-testid={`block-item-${item.id}`}
                               >
-                                {item.task}
+                                <span className="truncate">{item.task}</span>
+                                <span className="text-[8px] opacity-70 shrink-0 ml-0.5">{dur / 60}h</span>
                               </button>
                             );
                           })}

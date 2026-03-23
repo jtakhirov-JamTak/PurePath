@@ -115,10 +115,17 @@ export default function DashboardPage() {
 
   const focusItems = eisenhowerEntries.filter((e) => {
     if (e.weekStart !== weekStartStr) return false;
-    if (e.quadrant === "q1") return true;
-    if (e.quadrant === "q2" && e.blocksGoal) return true;
-    return false;
+    if (e.status === "skipped" && e.skipReason) return false;
+    if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return false;
+    if (e.scheduledDate && e.scheduledDate !== todayStr) return false;
+    return true;
   });
+
+  const BLOCK_ORDER: Record<string, number> = { morning: 0, midday: 1, afternoon: 2, evening: 3 };
+  const BLOCK_LABEL: Record<string, string> = { morning: "AM", midday: "Mid", afternoon: "PM", evening: "Eve" };
+  const sortedFocusItems = [...focusItems].sort((a, b) =>
+    (BLOCK_ORDER[a.scheduledStartTime || ""] ?? 99) - (BLOCK_ORDER[b.scheduledStartTime || ""] ?? 99)
+  );
 
   const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
     mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
@@ -290,6 +297,47 @@ export default function DashboardPage() {
     return null;
   }
 
+  const renderFocusItem = (item: EisenhowerEntry) => {
+    const isBin = item.isBinary || false;
+    const lvl = item.completionLevel ?? null;
+    const cycleFocus = () => {
+      if (isBin) {
+        if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
+        else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
+        else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+      } else {
+        if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
+        else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
+        else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
+        else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
+      }
+    };
+    const boxLabel = isBin
+      ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
+      : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
+    const boxClass =
+      (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
+      : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
+      : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
+      : "border-border text-muted-foreground";
+    return (
+      <div className="flex items-center gap-2.5 py-1.5" data-testid={`focus-item-${item.id}`}>
+        <button
+          onClick={cycleFocus}
+          className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+          data-testid={`focus-level-${item.id}`}
+        >
+          {boxLabel}
+        </button>
+        <span className={`text-xs flex-1 ${
+          item.status === "completed" ? "line-through text-muted-foreground"
+          : item.status === "skipped" ? "text-muted-foreground italic"
+          : ""
+        }`}>{item.task}</span>
+      </div>
+    );
+  };
+
   const currentHour = new Date().getHours();
   const morningSkipped = !hasMorning && currentHour >= 12;
   const journalHabitItems = [
@@ -347,46 +395,18 @@ export default function DashboardPage() {
           <div data-testid="card-focus">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{weekLabel}</span>
+              <span className="text-[11px] text-muted-foreground">{format(today, "EEEE")}</span>
             </div>
             <ul className="space-y-0.5">
-              {focusItems.map((item) => {
-                const isBin = item.isBinary || false;
-                const lvl = item.completionLevel ?? null;
-                const cycleFocus = () => {
-                  if (isBin) {
-                    if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-                    else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
-                    else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                  } else {
-                    if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
-                    else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-                    else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
-                    else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-                  }
-                };
-                const boxLabel = isBin
-                  ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
-                  : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
-                const boxClass =
-                  (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-                  : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                  : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                  : "border-border text-muted-foreground";
+              {sortedFocusItems.map((item, idx) => {
+                const prevBlock = idx > 0 ? sortedFocusItems[idx - 1].scheduledStartTime : null;
+                const showBlockLabel = item.scheduledStartTime && item.scheduledStartTime !== prevBlock;
                 return (
-                  <li key={item.id} className="flex items-center gap-2.5 py-1.5" data-testid={`focus-item-${item.id}`}>
-                    <button
-                      onClick={cycleFocus}
-                      className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
-                      data-testid={`focus-level-${item.id}`}
-                    >
-                      {boxLabel}
-                    </button>
-                    <span className={`text-xs flex-1 ${
-                      item.status === "completed" ? "line-through text-muted-foreground"
-                      : item.status === "skipped" ? "text-muted-foreground italic"
-                      : ""
-                    }`}>{item.task}</span>
+                  <li key={item.id}>
+                    {showBlockLabel && (
+                      <p className="text-[10px] text-muted-foreground mt-1.5 mb-0.5">{BLOCK_LABEL[item.scheduledStartTime!]}</p>
+                    )}
+                    {renderFocusItem(item)}
                   </li>
                 );
               })}
@@ -396,15 +416,19 @@ export default function DashboardPage() {
           <div data-testid="card-focus-empty">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{weekLabel}</span>
+              <span className="text-[11px] text-muted-foreground">{format(today, "EEEE")}</span>
             </div>
-            <button
-              className="text-xs text-primary hover:underline cursor-pointer"
-              onClick={() => setLocation("/eisenhower")}
-              data-testid="link-plan-week"
-            >
-              Plan your week →
-            </button>
+            {eisenhowerEntries.some(e => e.weekStart === weekStartStr && (e.quadrant === "q1" || (e.quadrant === "q2" && e.blocksGoal))) ? (
+              <p className="text-xs text-muted-foreground">Nothing scheduled for today</p>
+            ) : (
+              <button
+                className="text-xs text-primary hover:underline cursor-pointer"
+                onClick={() => setLocation("/eisenhower")}
+                data-testid="link-plan-week"
+              >
+                Plan your week →
+              </button>
+            )}
           </div>
         )}
 
