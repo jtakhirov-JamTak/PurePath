@@ -17,7 +17,6 @@ export const journals = pgTable("journals", {
   reflections: text("reflections"),
   highlights: text("highlights"),
   challenges: text("challenges"),
-  tomorrowGoals: text("tomorrow_goals"),
   content: text("content"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

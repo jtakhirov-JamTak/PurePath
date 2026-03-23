@@ -95,7 +95,6 @@ Stores daily journal entries.
 | reflections | TEXT | | Reflections on the day |
 | highlights | TEXT | | Day's highlights |
 | challenges | TEXT | | Challenges faced |
-| tomorrow_goals | TEXT | | Goals for tomorrow |
 | content | TEXT | | Structured JSON content |
 | created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Last edit time |

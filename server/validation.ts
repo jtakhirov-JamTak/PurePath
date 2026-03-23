@@ -108,7 +108,6 @@ export const createJournalSchema = z.object({
   reflections: optionalString(5000),
   highlights: optionalString(5000),
   challenges: optionalString(5000),
-  tomorrowGoals: optionalString(5000),
   content: z.string().optional().nullable(),
 });
 

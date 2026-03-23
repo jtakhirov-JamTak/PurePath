@@ -103,7 +103,7 @@ export function registerExportRoutes(app: Express) {
             try {
               const parsed = JSON.parse(j.content);
               Object.entries(parsed).forEach(([key, val]) => {
-                if (val && val !== "" && val !== "[]" && val !== "null" && !key.startsWith("trigger") && !key.startsWith("legacy")) {
+                if (val && val !== "" && val !== "[]" && val !== "null" && typeof val !== "boolean" && !key.startsWith("trigger") && !key.startsWith("legacy")) {
                   const label = key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase()).trim();
                   if (Array.isArray(val)) {
                     if ((val as unknown[]).length > 0) md += `**${label}:** ${(val as unknown[]).join(", ")}\n`;
@@ -132,7 +132,6 @@ export function registerExportRoutes(app: Express) {
               if (j.reflections) md += `**Reflections:** ${j.reflections}\n`;
               if (j.highlights) md += `**Highlights:** ${j.highlights}\n`;
               if (j.challenges) md += `**Challenges:** ${j.challenges}\n`;
-              if (j.tomorrowGoals) md += `**Tomorrow Goals:** ${j.tomorrowGoals}\n`;
             }
           }
           md += `\n`;

@@ -76,8 +76,14 @@ interface EveningContent {
   stepBackLesson: string;
   // Shutdown
   shutdownEnough: string;
-  shutdownTomorrow: string;
-  tomorrowStepTime: string;
+  // Positive data capture
+  positiveInput: string;
+  positiveInputOther: string;
+  positiveState: string;
+  positiveStateOther: string;
+  positiveDownstream: string;
+  positiveDownstreamOther: string;
+  positiveShowDetail: boolean;
   // Quick mode
   quickRating: number | null;
   quickRemember: string;
@@ -106,6 +112,10 @@ const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have t
 
 const energyLabels = ["Depleted", "Enough", "Good", "Strong", "Supercharged"];
 const stressLabels = ["Calm", "Noticeable", "Moderate", "Heavy", "Overloaded"];
+
+const POSITIVE_INPUTS = ["Sleep", "Exercise", "Progress", "People", "Environment", "Mindset", "Other"];
+const POSITIVE_STATES = ["Calm", "Energy", "Focus", "Confidence", "Connection", "Joy", "Other"];
+const POSITIVE_DOWNSTREAMS = ["Habits", "Work", "Hard conversation", "Rest", "Planning", "Other"];
 
 const emptyMorning: MorningContent = {
   sleepHours: "",
@@ -157,8 +167,14 @@ const emptyEvening: EveningContent = {
   stepBackLesson: "",
   // Shutdown
   shutdownEnough: "",
-  shutdownTomorrow: "",
-  tomorrowStepTime: "08:00",
+  // Positive data capture
+  positiveInput: "",
+  positiveInputOther: "",
+  positiveState: "",
+  positiveStateOther: "",
+  positiveDownstream: "",
+  positiveDownstreamOther: "",
+  positiveShowDetail: false,
   // Quick mode
   quickRating: null,
   quickRemember: "",
@@ -287,7 +303,6 @@ export default function JournalEntryPage() {
               ...emptyEvening,
               review: existingJournal.highlights || "",
               insight: existingJournal.reflections || "",
-              shutdownTomorrow: existingJournal.tomorrowGoals || "",
             });
           }
         }
@@ -303,7 +318,6 @@ export default function JournalEntryPage() {
             ...emptyEvening,
             review: existingJournal.highlights || "",
             insight: existingJournal.reflections || "",
-            shutdownTomorrow: existingJournal.tomorrowGoals || "",
           });
         }
       }
@@ -326,7 +340,6 @@ export default function JournalEntryPage() {
         reflections: isMorning ? "" : eveningData.insight,
         highlights: isMorning ? "" : eveningData.review,
         challenges: isMorning ? morningData.avoidance : eveningData.triggerText,
-        tomorrowGoals: isMorning ? "" : eveningData.shutdownTomorrow,
       });
 
       // Also save trigger log entry if evening trigger data is filled
@@ -345,7 +358,9 @@ export default function JournalEntryPage() {
           appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
           emotion: eveningData.triggerEmotion,
           emotionIntensity: eveningData.triggerEmotionIntensity,
-          urge: eveningData.triggerUrge,
+          urge: eveningData.triggerUrge === "Other" && eveningData.triggerUrgeOther.trim()
+            ? eveningData.triggerUrgeOther.trim()
+            : eveningData.triggerUrge,
           urgeIntensity: eveningData.triggerUrgeIntensity,
           whatIDid: actionValue,
           actionTaken: actionValue,
@@ -1081,6 +1096,14 @@ export default function JournalEntryPage() {
                               testIdPrefix="journal-urge-intensity"
                             />
                           )}
+                          {eveningData.triggerUrge === "Other" && (
+                            <Input
+                              value={eveningData.triggerUrgeOther}
+                              onChange={(e) => updateEvening("triggerUrgeOther", e.target.value)}
+                              placeholder="Describe..."
+                              className="text-sm mt-1.5"
+                            />
+                          )}
                         </div>
 
                         {/* 5. What did you do? */}
@@ -1234,6 +1257,92 @@ export default function JournalEntryPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Positive data capture */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">What helped most today?</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {POSITIVE_INPUTS.map((opt) => (
+                            <Chip
+                              key={opt}
+                              label={opt}
+                              selected={eveningData.positiveInput === opt}
+                              onClick={() => updateEvening("positiveInput", eveningData.positiveInput === opt ? "" : opt)}
+                            />
+                          ))}
+                        </div>
+                        {eveningData.positiveInput === "Other" && (
+                          <Input
+                            value={eveningData.positiveInputOther}
+                            onChange={(e) => updateEvening("positiveInputOther", e.target.value)}
+                            placeholder="Describe..."
+                            className="text-sm mt-1.5"
+                          />
+                        )}
+                      </div>
+
+                      {!eveningData.positiveShowDetail && (
+                        <button
+                          type="button"
+                          onClick={() => updateEveningField("positiveShowDetail", true)}
+                          className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+                        >
+                          Add more detail
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      )}
+
+                      {eveningData.positiveShowDetail && (
+                        <div className="space-y-4 pt-2 border-t border-border">
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">What state did it create?</Label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {POSITIVE_STATES.map((opt) => (
+                                <Chip
+                                  key={opt}
+                                  label={opt}
+                                  selected={eveningData.positiveState === opt}
+                                  onClick={() => updateEvening("positiveState", eveningData.positiveState === opt ? "" : opt)}
+                                />
+                              ))}
+                            </div>
+                            {eveningData.positiveState === "Other" && (
+                              <Input
+                                value={eveningData.positiveStateOther}
+                                onChange={(e) => updateEvening("positiveStateOther", e.target.value)}
+                                placeholder="Describe..."
+                                className="text-sm mt-1.5"
+                              />
+                            )}
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">What did it make easier next?</Label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {POSITIVE_DOWNSTREAMS.map((opt) => (
+                                <Chip
+                                  key={opt}
+                                  label={opt}
+                                  selected={eveningData.positiveDownstream === opt}
+                                  onClick={() => updateEvening("positiveDownstream", eveningData.positiveDownstream === opt ? "" : opt)}
+                                />
+                              ))}
+                            </div>
+                            {eveningData.positiveDownstream === "Other" && (
+                              <Input
+                                value={eveningData.positiveDownstreamOther}
+                                onChange={(e) => updateEvening("positiveDownstreamOther", e.target.value)}
+                                placeholder="Describe..."
+                                className="text-sm mt-1.5"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator />
+
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Today was enough because:</Label>
                       <VoiceTextarea
@@ -1242,27 +1351,6 @@ export default function JournalEntryPage() {
                         placeholder="Today was enough because..."
                         className="min-h-[60px] resize-none"
                         data-testid="input-shutdown-enough"
-                      />
-                    </div>
-                    <Separator />
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Label className="text-sm font-medium">Tomorrow's first 2-minute step:</Label>
-                        <span className="text-sm text-muted-foreground">at</span>
-                        <Input
-                          type="time"
-                          value={eveningData.tomorrowStepTime}
-                          onChange={(e) => updateEvening("tomorrowStepTime", e.target.value)}
-                          className="w-28"
-                          data-testid="input-tomorrow-step-time"
-                        />
-                      </div>
-                      <VoiceTextarea
-                        value={eveningData.shutdownTomorrow}
-                        onChange={(val) => updateEvening("shutdownTomorrow", val)}
-                        placeholder="Tomorrow I'll start with..."
-                        className="min-h-[60px] resize-none"
-                        data-testid="input-shutdown-tomorrow"
                       />
                     </div>
                   </CardContent>

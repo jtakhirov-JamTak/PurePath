@@ -22,6 +22,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
   const [emotionIntensity, setEmotionIntensity] = useState<number | null>(null);
   const [urge, setUrge] = useState("");
   const [urgeIntensity, setUrgeIntensity] = useState<number | null>(null);
+  const [urgeOther, setUrgeOther] = useState("");
   const [actionTaken, setActionTaken] = useState("");
   const [actionOther, setActionOther] = useState("");
 
@@ -40,6 +41,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
     setEmotionIntensity(null);
     setUrge("");
     setUrgeIntensity(null);
+    setUrgeOther("");
     setActionTaken("");
     setActionOther("");
     setShowTier2(false);
@@ -72,7 +74,7 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
         appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
         emotion,
         emotionIntensity,
-        urge,
+        urge: urge === "Other" && urgeOther.trim() ? urgeOther.trim() : urge,
         urgeIntensity,
         whatIDid: actionValue,
         actionTaken: actionValue,
@@ -190,6 +192,14 @@ export function TriggerLogModal({ open, onClose }: { open: boolean; onClose: () 
                 value={urgeIntensity}
                 onChange={setUrgeIntensity}
                 testIdPrefix="urge-intensity"
+              />
+            )}
+            {urge === "Other" && (
+              <Input
+                value={urgeOther}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrgeOther(e.target.value)}
+                placeholder="Describe..."
+                className="text-sm mt-1.5"
               />
             )}
           </div>

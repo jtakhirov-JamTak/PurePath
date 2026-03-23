@@ -1,7 +1,6 @@
 import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
-import { format } from "date-fns";
 import { createJournalSchema } from "../validation";
 import { parseDateParam, exportRateLimit } from "./helpers";
 
@@ -58,42 +57,6 @@ export function registerJournalRoutes(app: Express) {
         userId,
         ...parsed.data,
       });
-
-      if (parsed.data.session === "evening" && parsed.data.tomorrowGoals) {
-        try {
-          const content = parsed.data.content ? JSON.parse(parsed.data.content) : {};
-          const tomorrowStep = parsed.data.tomorrowGoals.trim();
-          if (tomorrowStep) {
-            const journalDate = new Date(parsed.data.date + "T12:00:00");
-            const tomorrow = new Date(journalDate);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
-            const dayOfWeek = tomorrow.getDay();
-            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            const weekStartDate = new Date(tomorrow);
-            weekStartDate.setDate(weekStartDate.getDate() + mondayOffset);
-            const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-            const rawTime = content.tomorrowStepTime || "08:00";
-            const [hh, mm] = rawTime.split(":").map(Number);
-            const ampm = hh >= 12 ? "PM" : "AM";
-            const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
-            const displayTime = `${h12}:${String(mm).padStart(2, "0")} ${ampm}`;
-            await storage.createEisenhowerEntry({
-              userId,
-              task: tomorrowStep,
-              weekStart: weekStartStr,
-              role: "self-development",
-              quadrant: "q1",
-              scheduledDate: tomorrowStr,
-              scheduledStartTime: rawTime,
-              scheduledTime: displayTime,
-              isBinary: true,
-            });
-          }
-        } catch (e) {
-          console.error("Error auto-creating Q1 from evening journal:", e);
-        }
-      }
 
       res.json(journal);
     } catch (error) {
@@ -169,8 +132,22 @@ export function registerJournalRoutes(app: Express) {
               if (parsed.triggerNextTime) content += `**Next Time:** ${parsed.triggerNextTime}\n`;
               if (parsed.satisfied) content += `**Satisfied With:** ${parsed.satisfied}\n`;
               if (parsed.dissatisfied) content += `**Dissatisfied With:** ${parsed.dissatisfied}\n`;
+              if (parsed.positiveInput) {
+                const val = parsed.positiveInput === "Other" && parsed.positiveInputOther
+                  ? `Other (${parsed.positiveInputOther})` : parsed.positiveInput;
+                content += `**What Helped Most:** ${val}\n`;
+              }
+              if (parsed.positiveState) {
+                const val = parsed.positiveState === "Other" && parsed.positiveStateOther
+                  ? `Other (${parsed.positiveStateOther})` : parsed.positiveState;
+                content += `**State Created:** ${val}\n`;
+              }
+              if (parsed.positiveDownstream) {
+                const val = parsed.positiveDownstream === "Other" && parsed.positiveDownstreamOther
+                  ? `Other (${parsed.positiveDownstreamOther})` : parsed.positiveDownstream;
+                content += `**Made Easier Next:** ${val}\n`;
+              }
               if (parsed.shutdownEnough) content += `**Today Was Enough Because:** ${parsed.shutdownEnough}\n`;
-              if (parsed.shutdownTomorrow) content += `**Tomorrow's First Step:** ${parsed.shutdownTomorrow}\n`;
             }
           } catch {
             if (journal.gratitude) content += `**Gratitude:** ${journal.gratitude}\n`;
@@ -178,7 +155,6 @@ export function registerJournalRoutes(app: Express) {
             if (journal.highlights) content += `**Highlights:** ${journal.highlights}\n`;
             if (journal.reflections) content += `**Reflections:** ${journal.reflections}\n`;
             if (journal.challenges) content += `**Challenges:** ${journal.challenges}\n`;
-            if (journal.tomorrowGoals) content += `**Tomorrow's Goals:** ${journal.tomorrowGoals}\n`;
           }
         }
         content += "\n";
