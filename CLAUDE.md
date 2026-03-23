@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project Overview
-Leaf — 3-phase personal growth course platform for workshop cohorts (launch: April 2026).
+Leaf — One live 3.5-hour workshop ($899) + mobile-first daily practice app (PWA).
 Users journal, track habits, set goals, and build self-awareness through structured exercises.
 Data is mechanistic/structured for future AI pattern analysis.
 
@@ -25,7 +25,7 @@ Environment: Requires `DATABASE_URL`. Dev server binds to `0.0.0.0:5000`.
 - **Backend:** Express v5, TypeScript (tsx runner), esbuild production build
 - **DB:** PostgreSQL + Drizzle ORM — schema in `shared/schema.ts`
 - **Auth:** Replit Auth (OIDC + Passport.js + PG session store)
-- **Payments:** Stripe via Replit Connectors
+- **Access:** Single-use access codes (workshop attendees)
 - **AI:** OpenAI API (chat, voice, image, task suggestions)
 - **Tests:** Vitest (unit), Playwright (e2e)
 
@@ -101,4 +101,4 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - (Add new lessons here as they arise)
 
 ## Docs
-See `docs/` for: TECH-STACK, ROUTES, DATA-MODEL, SECURITY, PAYMENT-FLOW, PAYWALL-UX, EXPORTS
+See `docs/` for: TECH-STACK, ROUTES, DATA-MODEL, SECURITY, EXPORTS

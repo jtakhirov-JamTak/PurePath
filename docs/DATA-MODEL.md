@@ -1,7 +1,5 @@
 # Data Model
 
-> **Note:** This document describes both **existing tables** (currently implemented) and **planned tables** (for future enhancement). Planned items are marked accordingly.
-
 ## Overview
 
 This document describes the database schema, relationships, and key design decisions.
@@ -12,19 +10,19 @@ This document describes the database schema, relationships, and key design decis
 
 ```
 ┌─────────────┐       ┌─────────────┐       ┌─────────────┐
-│   users     │───────│  purchases  │       │  journals   │
+│   users     │───────│  journals   │       │userSettings  │
 │             │  1:N  │             │       │             │
 └─────────────┘       └─────────────┘       └─────────────┘
       │                                           │
-      │ 1:N                                       │ N:1
+      │ 1:N                                       │ 1:1
       │                                           │
 ┌─────────────┐                             ┌─────────────┐
 │   sessions  │                             │    users    │
 └─────────────┘                             └─────────────┘
-      
+
 ┌─────────────┐       ┌─────────────┐
-│export_history│──────│    users    │
-│             │  N:1  │             │
+│   habits    │───────│ completions │
+│             │  1:N  │             │
 └─────────────┘       └─────────────┘
 ```
 
@@ -64,34 +62,32 @@ Stores user sessions for authentication persistence.
 - Managed by `connect-pg-simple`
 - Automatic cleanup of expired sessions
 
-### purchases
+### userSettings
 
-Tracks course purchases and access entitlements.
+Stores per-user settings including access status.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
-| user_id | VARCHAR | NOT NULL, FK → users | Purchaser |
-| course_type | VARCHAR | NOT NULL, CHECK | 'course1', 'course2', or 'bundle' (constrained) |
-| amount | INTEGER | NOT NULL | Price in cents |
-| stripe_session_id | VARCHAR | UNIQUE | Stripe Checkout session ID |
-| status | VARCHAR | DEFAULT 'completed' | Payment status |
-| created_at | TIMESTAMP | DEFAULT NOW() | Purchase time |
+| user_id | VARCHAR | NOT NULL, UNIQUE | User reference |
+| onboarding_step | INTEGER | DEFAULT 0 | Current onboarding step |
+| onboarding_complete | BOOLEAN | DEFAULT false | Whether onboarding is done |
+| has_access | BOOLEAN | DEFAULT false | Whether user has app access (set via access code) |
+| created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
+| updated_at | TIMESTAMP | DEFAULT NOW() | Last update time |
 
 **Notes:**
-- `stripe_session_id` UNIQUE constraint enables idempotent webhook processing
-- `course_type` CHECK constraint enforces valid values ('course1', 'course2', 'bundle')
-- Bundle purchase grants access to both courses
-- Amount stored in cents to avoid floating-point issues
+- `hasAccess` is set to `true` when a valid access code is verified
+- One row per user (UNIQUE on user_id)
 
 ### journals
 
-Stores daily journal entries for Course 2.
+Stores daily journal entries.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
-| user_id | VARCHAR | NOT NULL, FK → users | Entry author |
+| user_id | VARCHAR | NOT NULL | Entry author |
 | date | DATE | NOT NULL | Entry date |
 | session | VARCHAR | NOT NULL | 'morning' or 'evening' |
 | gratitude | TEXT | | What I'm grateful for |
@@ -100,34 +96,79 @@ Stores daily journal entries for Course 2.
 | highlights | TEXT | | Day's highlights |
 | challenges | TEXT | | Challenges faced |
 | tomorrow_goals | TEXT | | Goals for tomorrow |
+| content | TEXT | | Structured JSON content |
 | created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
 | updated_at | TIMESTAMP | DEFAULT NOW() | Last edit time |
 
 **Notes:**
 - UNIQUE INDEX on (user_id, date, session) enforces one entry per user per date per session
-- This constraint enables safe upsert operations
-- Morning entries typically use: gratitude, intentions
-- Evening entries typically use: highlights, reflections, challenges, tomorrow_goals
+- CHECK constraint enforces session IN ('morning', 'evening')
+- `content` stores structured JSON for newer entry formats
 
-### export_history *(Planned)*
+### habits
 
-Tracks export requests and generated files. **Not yet implemented.**
+Stores weekly recurring habits.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
-| user_id | VARCHAR | NOT NULL, FK → users | Exporter |
-| format | VARCHAR | NOT NULL | 'csv', 'txt', 'docx', 'pdf', 'json' |
-| date_from | DATE | | Range start (null = all) |
-| date_to | DATE | | Range end (null = all) |
-| filename | VARCHAR | NOT NULL | Generated filename |
-| file_size | INTEGER | | Size in bytes |
-| entry_count | INTEGER | | Number of entries exported |
-| created_at | TIMESTAMP | DEFAULT NOW() | Export time |
+| user_id | VARCHAR | NOT NULL | Habit owner |
+| name | VARCHAR(200) | NOT NULL | Habit name |
+| category | VARCHAR(30) | DEFAULT 'health' | health, wealth, relationships, self-development, happiness |
+| timing | VARCHAR(20) | DEFAULT 'afternoon' | morning, afternoon, evening |
+| cadence | VARCHAR(50) | NOT NULL | Frequency description |
+| duration | INTEGER | | Duration in minutes |
+| start_date | VARCHAR(10) | | When habit started |
+| end_date | VARCHAR(10) | | When habit was archived |
+| sort_order | INTEGER | DEFAULT 0 | Display order |
+| is_binary | BOOLEAN | DEFAULT false | Simple done/not-done vs. levels |
+| active | BOOLEAN | DEFAULT true | Whether habit is current |
+| lineage_id | VARCHAR(36) | | Groups versions of same habit |
+| version_number | INTEGER | DEFAULT 1 | Version within lineage |
+| created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
 
-**Notes:**
-- Enables re-download of previous exports
-- Tracks usage patterns for analytics
+### habitCompletions
+
+Stores daily habit check-offs.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PRIMARY KEY | Auto-incrementing ID |
+| user_id | VARCHAR | NOT NULL | User reference |
+| habit_id | INTEGER | NOT NULL | Habit reference |
+| date | DATE | NOT NULL | Completion date |
+| status | VARCHAR(20) | DEFAULT 'completed' | completed, skipped, minimum |
+| completion_level | INTEGER | | Completion level |
+| skip_reason | VARCHAR(100) | | Why skipped |
+| created_at | TIMESTAMP | DEFAULT NOW() | Creation time |
+
+### eisenhowerEntries
+
+Weekly planning tasks organized by Eisenhower matrix quadrants.
+
+### empathyExercises
+
+EQ module — prep and debrief exercises for interpersonal interactions.
+
+### monthlyGoals
+
+One goal document per user per month with goal statement, obstacles, IF-THEN plans.
+
+### identityDocuments
+
+One per user — identity statement, vision, values, strengths, patterns.
+
+### triggerLogs
+
+Emotional trigger tracking with emotion/urge intensity and recovery.
+
+### avoidanceLogs
+
+Avoidance pattern tracking with discomfort rating and exposure steps.
+
+### toolUsageLogs
+
+Tracks usage of self-regulation tools with before/after mood.
 
 ---
 
@@ -136,75 +177,12 @@ Tracks export requests and generated files. **Not yet implemented.**
 ### Performance Indexes
 
 ```sql
-CREATE INDEX idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX idx_journals_user_date ON journals(user_id, date);
-CREATE INDEX idx_export_history_user ON export_history(user_id, created_at);
 CREATE INDEX idx_sessions_expire ON sessions(expire);
-```
-
----
-
-## Type Definitions (Drizzle)
-
-```typescript
-// shared/schema.ts
-
-import { pgTable, serial, varchar, text, integer, timestamp, date } from 'drizzle-orm/pg-core';
-import { createInsertSchema } from 'drizzle-zod';
-
-export const users = pgTable('users', {
-  id: varchar('id').primaryKey(),
-  email: varchar('email'),
-  firstName: varchar('first_name'),
-  lastName: varchar('last_name'),
-  profileImageUrl: varchar('profile_image_url'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at'),
-});
-
-export const purchases = pgTable('purchases', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id').notNull(),
-  courseType: varchar('course_type').notNull(),
-  amount: integer('amount').notNull(),
-  stripeSessionId: varchar('stripe_session_id').unique(),
-  status: varchar('status').default('completed'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const journals = pgTable('journals', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id').notNull(),
-  date: date('date').notNull(),
-  morningEntry: text('morning_entry'),
-  eveningEntry: text('evening_entry'),
-  mood: varchar('mood'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at'),
-});
-
-export const exportHistory = pgTable('export_history', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id').notNull(),
-  format: varchar('format').notNull(),
-  dateFrom: date('date_from'),
-  dateTo: date('date_to'),
-  filename: varchar('filename').notNull(),
-  fileSize: integer('file_size'),
-  entryCount: integer('entry_count'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
-// Insert schemas for validation
-export const insertPurchaseSchema = createInsertSchema(purchases).omit({ id: true, createdAt: true });
-export const insertJournalSchema = createInsertSchema(journals).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertExportHistorySchema = createInsertSchema(exportHistory).omit({ id: true, createdAt: true });
-
-// Select types
-export type User = typeof users.$inferSelect;
-export type Purchase = typeof purchases.$inferSelect;
-export type Journal = typeof journals.$inferSelect;
-export type ExportHistory = typeof exportHistory.$inferSelect;
+CREATE INDEX idx_habits_user_id ON habits(user_id);
+CREATE INDEX idx_habits_user_lineage ON habits(user_id, lineage_id);
+CREATE UNIQUE INDEX idx_habit_completions_user_habit_date ON habit_completions(user_id, habit_id, date);
+CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
 ```
 
 ---
@@ -212,7 +190,6 @@ export type ExportHistory = typeof exportHistory.$inferSelect;
 ## Data Integrity Rules
 
 1. **Foreign Keys:** All `user_id` columns reference `users.id`
-2. **Unique Constraints:** `stripe_session_id` prevents duplicate purchases
-3. **Required Fields:** `userId`, `courseType`, `amount` on purchases
-4. **Soft Deletes:** Consider adding `deleted_at` for recoverable deletion
-5. **Timestamps:** All tables track `created_at` for auditing
+2. **Unique Constraints:** journals (user_id, date, session), habit_completions (user_id, habit_id, date), user_settings (user_id)
+3. **CHECK Constraints:** journal session, habit category/timing, eisenhower quadrant, mood ranges
+4. **Timestamps:** All tables track `created_at` for auditing

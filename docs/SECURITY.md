@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines security practices for the course platform. Follow these patterns to prevent common vulnerabilities.
+This document outlines security practices for the Leaf platform. Follow these patterns to prevent common vulnerabilities.
 
 ---
 
@@ -12,31 +12,17 @@ This document outlines security practices for the course platform. Follow these 
 
 **Never hardcode secrets in code.** All credentials come from environment variables.
 
-### Bad Examples
-
-```typescript
-// ❌ NEVER DO THIS
-const stripe = new Stripe('sk_live_abc123...');
-const db = new Pool({ password: 'mysecretpassword' });
-const openai = new OpenAI({ apiKey: 'sk-...' });
-```
-
 ### Good Examples
 
 ```typescript
-// ✅ ALWAYS DO THIS (Replit environment)
-// Stripe: Use Replit Stripe Connector (credentials auto-managed)
-import Stripe from "stripe";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY); // Via connector
-
 // Database: Use Replit-provided DATABASE_URL
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// OpenAI: Use Replit AI Integrations (auto-managed keys)
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Access code: Set via environment variable
+const VALID_ACCESS_CODE = process.env.ACCESS_CODE || "";
+
+// Session secret
+app.use(session({ secret: process.env.SESSION_SECRET }));
 ```
 
 ### Replit Secret Management
@@ -44,24 +30,18 @@ const openai = new OpenAI({
 | Secret | How to Set | Accessed Via |
 |--------|------------|--------------|
 | `SESSION_SECRET` | Secrets tab | `process.env.SESSION_SECRET` |
+| `ACCESS_CODE` | Secrets tab | `process.env.ACCESS_CODE` |
 | Database credentials | Automatic | `process.env.DATABASE_URL` |
-| Stripe keys | Stripe Connector | Connector SDK |
-| OpenAI keys | AI Integrations | `process.env.AI_INTEGRATIONS_OPENAI_API_KEY` |
 
 ### Never Expose Secrets
 
 ```typescript
 // ❌ NEVER log secrets
-console.log('API Key:', process.env.STRIPE_SECRET_KEY);
+console.log('Access code:', process.env.ACCESS_CODE);
 
 // ❌ NEVER return secrets to frontend
 app.get('/api/config', (req, res) => {
-  res.json({ stripeKey: process.env.STRIPE_SECRET_KEY }); // NO!
-});
-
-// ✅ Only expose public keys if needed
-app.get('/api/config', (req, res) => {
-  res.json({ stripePublicKey: process.env.STRIPE_PUBLISHABLE_KEY });
+  res.json({ accessCode: process.env.ACCESS_CODE }); // NO!
 });
 ```
 
@@ -74,14 +54,6 @@ app.get('/api/config', (req, res) => {
 Use middleware functions, not inline checks.
 
 ```typescript
-// ❌ BAD: Repeated inline checks
-app.get('/api/journals', (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  // ... handler
-});
-
 // ✅ GOOD: Reusable middleware
 function isAuthenticated(req, res, next) {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
@@ -101,60 +73,41 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
-    httpOnly: true,  // Prevent XSS access to cookies
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    sameSite: 'lax', // CSRF protection
+    sameSite: 'lax',
   },
 }));
 ```
 
 ---
 
-## Authorization (Entitlements)
+## Authorization (Access Control)
+
+### Access Code Model
+
+Access is granted when a user submits a valid access code. The `hasAccess` flag in `userSettings` is set to `true` and checked on subsequent requests.
+
+```typescript
+// Server-side access check
+const settings = await storage.getUserSettings(userId);
+const hasAccess = settings?.hasAccess === true;
+```
 
 ### Server-Side is Authoritative
 
-Never trust frontend for access control decisions.
-
-```typescript
-// ❌ BAD: Only frontend check
-// In React:
-if (user.hasCourse1) {
-  return <Course1Content />;
-}
-
-// ✅ GOOD: Server validates every request
-// Frontend check is UX only (prevents confusion), not security
-```
+Never trust frontend for access control decisions. Frontend checks are UX only, not security.
 
 ### Fail Closed
 
 Default to denying access.
 
 ```typescript
-function requireEntitlement(course: string) {
-  return async (req, res, next) => {
-    // Default: no access
-    let hasAccess = false;
-    
-    try {
-      const purchases = await storage.getPurchasesByUser(req.user.id);
-      hasAccess = purchases.some(p => 
-        p.status === 'completed' && 
-        (p.courseType === course || p.courseType === 'bundle')
-      );
-    } catch (error) {
-      // On error, still deny access
-      console.error('Entitlement check failed:', error);
-    }
-    
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    
-    next();
-  };
+// Default: no access
+const settings = await storage.getUserSettings(userId);
+if (!settings?.hasAccess) {
+  return res.status(403).json({ error: 'Access denied' });
 }
 ```
 
@@ -171,24 +124,16 @@ import { z } from 'zod';
 
 const journalSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  morningEntry: z.string().max(10000).optional(),
-  eveningEntry: z.string().max(10000).optional(),
-  mood: z.enum(['happy', 'calm', 'neutral', 'anxious', 'sad']).optional(),
+  session: z.enum(['morning', 'evening']),
+  content: z.string().max(50000).optional(),
 });
 
 app.post('/api/journals', isAuthenticated, async (req, res) => {
   const result = journalSchema.safeParse(req.body);
-  
   if (!result.success) {
-    return res.status(400).json({ 
-      error: 'Invalid input',
-      details: result.error.issues,
-    });
+    return res.status(400).json({ error: 'Invalid input' });
   }
-  
   // Use validated data
-  const { date, morningEntry, eveningEntry, mood } = result.data;
-  // ...
 });
 ```
 
@@ -206,61 +151,6 @@ const user = await db.select().from(users).where(eq(users.id, userId));
 
 ---
 
-## Webhook Security
-
-### Verify Stripe Signatures
-
-Always verify webhook signatures to prevent spoofing.
-
-```typescript
-app.post('/api/webhooks/stripe',
-  express.raw({ type: 'application/json' }), // Raw body for signature
-  async (req, res) => {
-    const signature = req.headers['stripe-signature'];
-    
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        signature,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err.message);
-      return res.status(400).send('Invalid signature');
-    }
-    
-    // Process verified event
-    // ...
-  }
-);
-```
-
-### Idempotent Processing
-
-Prevent duplicate processing of webhooks.
-
-```typescript
-async function handlePayment(session) {
-  const sessionId = session.id;
-  
-  // Check if already processed
-  const existing = await storage.getPurchaseBySessionId(sessionId);
-  if (existing) {
-    console.log('Already processed, skipping');
-    return;
-  }
-  
-  // Process payment
-  await storage.createPurchase({
-    stripeSessionId: sessionId,
-    // ...
-  });
-}
-```
-
----
-
 ## Data Protection
 
 ### User Data Isolation
@@ -269,25 +159,14 @@ Users should only access their own data.
 
 ```typescript
 app.get('/api/journals', isAuthenticated, async (req, res) => {
-  const userId = req.user.id;
-  
+  const userId = req.user.claims.sub;
+
   // ✅ Always filter by authenticated user
   const journals = await db.select()
     .from(journals)
     .where(eq(journals.userId, userId));
-  
-  res.json(journals);
-});
 
-app.get('/api/journals/:id', isAuthenticated, async (req, res) => {
-  const journal = await storage.getJournalById(req.params.id);
-  
-  // ✅ Verify ownership
-  if (journal.userId !== req.user.id) {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  
-  res.json(journal);
+  res.json(journals);
 });
 ```
 
@@ -312,29 +191,16 @@ app.get('/api/user', (req, res) => {
 
 ### Prevent Abuse
 
-Limit API requests to prevent abuse and control costs.
-
 ```typescript
 import rateLimit from 'express-rate-limit';
 
-// General API rate limit
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 requests per window
+  max: 100,
   message: { error: 'Too many requests, please try again later' },
 });
 
 app.use('/api/', apiLimiter);
-
-// Stricter limit for AI endpoints (costly)
-const aiLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50, // 50 requests per hour
-  message: { error: 'AI usage limit reached, please try again later' },
-});
-
-// Apply to AI-powered endpoints as needed
-// app.use('/api/ai-endpoint', aiLimiter);
 ```
 
 ---
@@ -344,11 +210,6 @@ const aiLimiter = rateLimit({
 ### Don't Leak Internal Details
 
 ```typescript
-// ❌ BAD: Exposes internal error
-app.use((err, req, res, next) => {
-  res.status(500).json({ error: err.message, stack: err.stack });
-});
-
 // ✅ GOOD: Generic message, log internally
 app.use((err, req, res, next) => {
   console.error('Internal error:', err);
@@ -366,16 +227,8 @@ app.use((err, req, res, next) => {
 - [ ] No secrets logged or exposed
 - [ ] Session cookies are httpOnly and secure
 - [ ] All routes have appropriate authentication
-- [ ] Entitlements checked server-side
-- [ ] Webhook signatures verified
+- [ ] Access checked server-side via `userSettings.hasAccess`
 - [ ] Input validation on all endpoints
 - [ ] Rate limiting configured
 - [ ] Error messages don't leak internals
 - [ ] Users can only access their own data
-
-### Regular Audits
-
-- [ ] Review access logs for anomalies
-- [ ] Check for unused/stale sessions
-- [ ] Update dependencies for security patches
-- [ ] Review new endpoints for auth/entitlement coverage

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains the technology choices for the course platform and why each was selected.
+This document explains the technology choices for the Leaf platform and why each was selected.
 
 ---
 
@@ -26,11 +26,14 @@ This document explains the technology choices for the course platform and why ea
 ### Tailwind CSS
 **Why:** Utility-first CSS that keeps styles co-located with components. Faster iteration than traditional CSS. Built-in dark mode support.
 
+### Framer Motion
+**Why:** Animation library for React. Used for page transitions and UI interactions.
+
 ---
 
 ## Backend
 
-### Express.js + TypeScript
+### Express.js v5 + TypeScript
 **Why:** Minimal, flexible Node.js framework. Easy to understand, well-documented, huge ecosystem.
 
 ### Drizzle ORM
@@ -39,25 +42,24 @@ This document explains the technology choices for the course platform and why ea
 ### PostgreSQL
 **Why:** Robust, full-featured relational database. Handles complex queries, transactions, and scales well. Managed by Replit.
 
-### Passport.js + OpenID Connect
-**Why:** Flexible authentication middleware. Supports multiple strategies. Works with Replit Auth out of the box.
+---
+
+## Auth & Access
+
+### Auth: Replit Auth (migrating to Clerk)
+**Why:** Zero-configuration authentication for Replit apps. Handles OAuth flow, session management, and user identity. Clerk migration planned for production independence.
+
+### Access: Single-use access codes (replacing Stripe)
+**Why:** Workshop attendees receive an access code that unlocks the app. Verified server-side, stored as `hasAccess` flag in `userSettings`. No payment processing needed — workshop fee is collected separately.
 
 ---
 
 ## External Services
 
-### Stripe
-**Why:** Industry-standard payment processing. Excellent documentation, webhooks, and developer experience. Handles PCI compliance.
-
-**Integration:** Via Replit Connectors for automatic credential management.
-
 ### OpenAI API
-**Why:** State-of-the-art language models for AI chat functionality. Streaming support for real-time responses.
+**Why:** Language models for AI chat functionality. Streaming support for real-time responses.
 
 **Integration:** Via Replit AI Integrations for automatic API key management.
-
-### Replit Auth
-**Why:** Zero-configuration authentication for Replit apps. Handles OAuth flow, session management, and user identity.
 
 ---
 
@@ -71,13 +73,11 @@ This document explains the technology choices for the course platform and why ea
 |----------|---------|------------|
 | `DATABASE_URL` | PostgreSQL connection string | Replit |
 | `SESSION_SECRET` | Session encryption key | User (set as secret) |
+| `ACCESS_CODE` | Workshop access code | User (set as secret) |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` | OpenAI API access | Replit AI Integrations |
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI API endpoint | Replit AI Integrations |
 | `REPL_ID` | Replit app identifier | Replit |
 | `ISSUER_URL` | Auth OIDC issuer | Replit |
-
-### Stripe Credentials
-Managed automatically by Replit Stripe Connector. Never manually set Stripe keys.
 
 ---
 
@@ -123,10 +123,7 @@ Types defined in `shared/schema.ts` are used by both frontend and backend. This 
 Database operations go through an `IStorage` interface. This allows easy testing with mock implementations and potential database swaps.
 
 ### Centralized Middleware
-Authentication and entitlement checks use middleware functions, not per-route checks. This prevents security gaps from inconsistent implementations.
-
-### Streaming Responses
-AI chat uses server-sent events for streaming. The frontend progressively renders tokens as they arrive.
+Authentication and access checks use middleware functions, not per-route checks. This prevents security gaps from inconsistent implementations.
 
 ---
 
@@ -135,5 +132,5 @@ AI chat uses server-sent events for streaming. The frontend progressively render
 1. **Type Safety:** TypeScript everywhere catches errors early
 2. **Speed:** Vite + React Query = fast development and fast UX
 3. **Simplicity:** Express + Drizzle = minimal abstraction layers
-4. **Replit Integration:** Native support for auth, database, payments, AI
+4. **Replit Integration:** Native support for auth, database, AI
 5. **Maintainability:** Standard patterns, good documentation, active communities
