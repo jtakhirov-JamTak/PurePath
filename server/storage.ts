@@ -78,7 +78,7 @@ export interface IStorage {
 
   // User Settings
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
-  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean }): Promise<UserSettings>;
+  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string }): Promise<UserSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -395,7 +395,7 @@ export class DatabaseStorage implements IStorage {
     return settings;
   }
 
-  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean }): Promise<UserSettings> {
+  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string }): Promise<UserSettings> {
     const [result] = await db
       .insert(userSettings)
       .values({ userId, ...updates, updatedAt: new Date() })

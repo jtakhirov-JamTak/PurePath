@@ -10,11 +10,12 @@ import { Loader2 } from "lucide-react";
 export default function AccessGatePage() {
   const [, setLocation] = useLocation();
   const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
   const verifyMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/verify-access-code", { code });
+      const res = await apiRequest("POST", "/api/verify-access-code", { code, email });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Verification failed");
@@ -50,6 +51,14 @@ export default function AccessGatePage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              placeholder="Your email"
+              className="text-center text-lg"
+              data-testid="input-email"
+            />
+            <Input
               type="text"
               value={code}
               onChange={(e) => { setCode(e.target.value); setError(""); }}
@@ -66,7 +75,7 @@ export default function AccessGatePage() {
             type="submit"
             className="w-full"
             style={{ backgroundColor: "#50C878" }}
-            disabled={!code.trim() || verifyMutation.isPending}
+            disabled={!code.trim() || !email.includes("@") || !email.includes(".") || verifyMutation.isPending}
             data-testid="button-verify-code"
           >
             {verifyMutation.isPending ? (
