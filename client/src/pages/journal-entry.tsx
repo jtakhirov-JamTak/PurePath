@@ -249,7 +249,7 @@ export default function JournalEntryPage() {
     if (isMorning) return [];
     const items: { id: string; name: string; type: "habit" | "eisenhower" }[] = [];
     habitCompletions.forEach(hc => {
-      if (hc.completionLevel === 0 || hc.status === "skipped") {
+      if ((hc.completionLevel === 0 || hc.status === "skipped") && !hc.skipReason) {
         const habit = habits.find(h => h.id === hc.habitId);
         if (habit) items.push({ id: `habit_${hc.habitId}`, name: habit.name, type: "habit" });
       }
@@ -257,7 +257,7 @@ export default function JournalEntryPage() {
     eisenhowerEntries.forEach(e => {
       if (e.weekStart !== weekStartStr) return;
       if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return;
-      if (e.completionLevel === 0 || e.status === "skipped") {
+      if ((e.completionLevel === 0 || e.status === "skipped") && !e.skipReason) {
         items.push({ id: `eisenhower_${e.id}`, name: e.task, type: "eisenhower" });
       }
     });
