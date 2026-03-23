@@ -188,10 +188,15 @@ export default function PlanPage() {
                 {focusItems.map(item => {
                   const sched = formatSchedule(item);
                   return (
-                    <div key={item.id} className="flex items-center gap-2 py-0.5" data-testid={`focus-plan-${item.id}`}>
-                      <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""}`}>{item.task}</span>
-                      {sched && <span className="text-[10px] text-muted-foreground shrink-0">{sched}</span>}
-                      {!sched && item.status && <span className="text-[10px] text-muted-foreground">{item.status}</span>}
+                    <div key={item.id} data-testid={`focus-plan-${item.id}`}>
+                      <div className="flex items-center gap-2 py-0.5">
+                        <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""}`}>{item.task}</span>
+                        {sched && <span className="text-[10px] text-muted-foreground shrink-0">{sched}</span>}
+                        {!sched && item.status && <span className="text-[10px] text-muted-foreground">{item.status}</span>}
+                      </div>
+                      {item.task.length > 25 && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">{item.task.length}/25 — shorten to fit calendar</p>
+                      )}
                     </div>
                   );
                 })}
