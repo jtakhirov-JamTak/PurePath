@@ -10,6 +10,17 @@ import { format, startOfWeek } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 
+const BLOCK_SHORT: Record<string, string> = { morning: "AM", midday: "Mid", afternoon: "PM", evening: "Eve" };
+
+function formatSchedule(item: { scheduledDate?: string | null; scheduledStartTime?: string | null; durationMinutes?: number | null }): string {
+  if (!item.scheduledDate) return "";
+  const d = new Date(item.scheduledDate + "T12:00:00");
+  const day = format(d, "EEE");
+  const block = item.scheduledStartTime ? BLOCK_SHORT[item.scheduledStartTime] || "" : "";
+  const dur = item.durationMinutes ? `${item.durationMinutes / 60}h` : "";
+  return [day, block, dur].filter(Boolean).join(" ") || "";
+}
+
 const CATEGORY_DOTS: Record<string, string> = {
   health: "bg-emerald-500",
   wealth: "bg-yellow-400",
@@ -166,12 +177,16 @@ export default function PlanPage() {
             <p className="text-[11px] uppercase tracking-wide text-bark font-medium">This Week</p>
             {focusItems.length > 0 ? (
               <div className="space-y-1">
-                {focusItems.map(item => (
-                  <div key={item.id} className="flex items-center gap-2 py-0.5" data-testid={`focus-plan-${item.id}`}>
-                    <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""}`}>{item.task}</span>
-                    {item.status && <span className="text-[10px] text-muted-foreground">{item.status}</span>}
-                  </div>
-                ))}
+                {focusItems.map(item => {
+                  const sched = formatSchedule(item);
+                  return (
+                    <div key={item.id} className="flex items-center gap-2 py-0.5" data-testid={`focus-plan-${item.id}`}>
+                      <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""}`}>{item.task}</span>
+                      {sched && <span className="text-[10px] text-muted-foreground shrink-0">{sched}</span>}
+                      {!sched && item.status && <span className="text-[10px] text-muted-foreground">{item.status}</span>}
+                    </div>
+                  );
+                })}
                 <button className="text-xs text-primary hover:underline cursor-pointer mt-1" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-open-eisenhower">
                   Plan your week →
                 </button>

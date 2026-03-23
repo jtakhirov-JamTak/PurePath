@@ -52,6 +52,26 @@ export default function JournalHubPage() {
     [eisenhowerEntries, currentWeekStartStr],
   );
 
+  const weekEndDate = addDays(currentWeekStart, 6);
+  const weekLabel = format(currentWeekStart, "MMM d") + " – " + format(weekEndDate, "d");
+
+  // Scheduled items grouped by day+block for the time-block grid
+  const TIME_BLOCKS = ["morning", "midday", "afternoon", "evening"] as const;
+  const BLOCK_LABELS: Record<string, string> = { morning: "8–11", midday: "11–2", afternoon: "2–5", evening: "5–8" };
+
+  const scheduledItems = useMemo(() => {
+    const items = eisenhowerEntries.filter(
+      (e) => e.weekStart === currentWeekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime
+    );
+    const grid: Record<string, EisenhowerEntry[]> = {};
+    items.forEach((e) => {
+      const key = `${e.scheduledDate}_${e.scheduledStartTime}`;
+      if (!grid[key]) grid[key] = [];
+      grid[key].push(e);
+    });
+    return { grid, hasAny: items.length > 0 };
+  }, [eisenhowerEntries, currentWeekStartStr]);
+
   // Today's journals
   const todayJournals = journals.filter((j) => j.date === todayStr);
   const hasMorning = todayJournals.some((j) => j.session === "morning");
@@ -389,6 +409,84 @@ export default function JournalHubPage() {
               </div>
             )}
           </div>
+        </section>
+
+        {/* WEEKLY TIME-BLOCK CALENDAR */}
+        <section data-testid="weekly-time-block">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] uppercase text-bark font-medium">This Week</p>
+            <span className="text-[10px] text-muted-foreground">{weekLabel}</span>
+          </div>
+
+          {scheduledItems.hasAny ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[340px]">
+                {/* Day headers */}
+                <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
+                  <div />
+                  {weekDays.map((day) => {
+                    const dateStr = format(day, "yyyy-MM-dd");
+                    const isToday = dateStr === todayStr;
+                    return (
+                      <div key={dateStr} className={`text-[10px] text-muted-foreground text-center py-0.5 ${isToday ? "bg-primary/5 rounded-t" : ""}`}>
+                        {format(day, "EEE")}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Time block rows */}
+                {TIME_BLOCKS.map((block) => (
+                  <div key={block} className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
+                    <div className="text-[10px] text-muted-foreground text-right pr-1.5 flex items-start pt-0.5">
+                      {BLOCK_LABELS[block]}
+                    </div>
+                    {weekDays.map((day) => {
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const isToday = dateStr === todayStr;
+                      const cellKey = `${dateStr}_${block}`;
+                      const cellItems = scheduledItems.grid[cellKey] || [];
+                      return (
+                        <div
+                          key={cellKey}
+                          className={`min-h-[40px] border border-border/10 p-0.5 ${isToday ? "bg-primary/5" : ""}`}
+                        >
+                          {cellItems.map((item) => {
+                            const widthPct = item.durationMinutes ? Math.min((item.durationMinutes / 180) * 100, 100) : 33;
+                            const bgColor = item.status === "completed" ? "bg-emerald-500 text-white"
+                              : item.status === "skipped" ? "bg-red-400 text-white"
+                              : "bg-primary/20 text-foreground";
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => setLocation("/eisenhower")}
+                                className={`h-[18px] rounded-sm text-[9px] truncate px-1 mb-0.5 cursor-pointer block ${bgColor}`}
+                                style={{ width: `${widthPct}%` }}
+                                title={item.task}
+                                data-testid={`block-item-${item.id}`}
+                              >
+                                {item.task}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-3">
+              <p className="text-[11px] text-muted-foreground">No blocks scheduled this week</p>
+              <button
+                onClick={() => setLocation("/eisenhower")}
+                className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
+              >
+                Plan your week →
+              </button>
+            </div>
+          )}
         </section>
 
         {/* HISTORY section — Calendar Heatmap */}

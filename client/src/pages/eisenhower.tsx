@@ -5,7 +5,7 @@ import { FlowBar } from "@/components/flow-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -17,6 +17,8 @@ const MAX_Q2 = 2;
 type Alignment = "yes" | "somewhat" | "no" | "";
 type Consequence = "real_soon" | "important_not_urgent" | "others_urgency" | "very_little" | "";
 
+type TimeBlock = "morning" | "midday" | "afternoon" | "evening" | "";
+
 interface WizardItem {
   id?: number;
   task: string;
@@ -26,6 +28,9 @@ interface WizardItem {
   sortOrder: number;
   selected: boolean;
   blocksGoal: boolean;
+  scheduledDate: string;
+  scheduledStartTime: TimeBlock;
+  durationMinutes: number;
 }
 
 function classifyQuadrant(alignment: Alignment, consequence: Consequence): string {
@@ -86,6 +91,9 @@ export default function EisenhowerPage() {
         sortOrder: e.sortOrder ?? i,
         selected: true,
         blocksGoal: e.blocksGoal || false,
+        scheduledDate: e.scheduledDate || "",
+        scheduledStartTime: (e.scheduledStartTime as TimeBlock) || "",
+        durationMinutes: e.durationMinutes || 60,
       })));
     }
   }, [existingEntries, items.length]);
@@ -103,6 +111,9 @@ export default function EisenhowerPage() {
         sortOrder: prev.length + i,
         selected: false,
         blocksGoal: false,
+        scheduledDate: "",
+        scheduledStartTime: "",
+        durationMinutes: 60,
       })),
     ]);
     setNewItemText("");
@@ -200,6 +211,9 @@ export default function EisenhowerPage() {
           blocksGoal: item.blocksGoal,
           sortOrder: item.sortOrder,
           isBinary: false,
+          scheduledDate: item.scheduledDate || null,
+          scheduledStartTime: item.scheduledStartTime || null,
+          durationMinutes: item.scheduledDate ? item.durationMinutes : null,
         };
 
         if (item.id) {
@@ -224,6 +238,14 @@ export default function EisenhowerPage() {
   const q1OverLimit = q1Items.length > MAX_Q1;
   const q2OverLimit = q2Items.length > MAX_Q2;
 
+  // Week days for scheduling step
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStart, i);
+    return { date: format(d, "yyyy-MM-dd"), label: format(d, "EEEEE") };
+  });
+
+  const schedulableItems = [...q1Items, ...q2Items];
+
   const canNext = () => {
     switch (step) {
       case 1: return items.length >= 3;
@@ -232,7 +254,8 @@ export default function EisenhowerPage() {
       case 4: return selectedItems.every(i => i.goalAlignment !== "");
       case 5: return selectedItems.every(i => i.decision !== "");
       case 6: return !q1OverLimit && !q2OverLimit;
-      case 7: return true;
+      case 7: return true; // scheduling is optional
+      case 8: return true;
       default: return false;
     }
   };
@@ -267,7 +290,7 @@ export default function EisenhowerPage() {
 
         {/* Step indicator */}
         <div className="flex items-center gap-1.5 mb-6" data-testid="step-indicator">
-          {[1, 2, 3, 4, 5, 6, 7].map(s => (
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
             <div
               key={s}
               className={`h-2 w-2 rounded-full ${s === step ? "bg-primary" : s < step ? "bg-primary/50" : "bg-muted"}`}
@@ -585,9 +608,107 @@ export default function EisenhowerPage() {
           </div>
         )}
 
-        {/* Step 7: Commit */}
+        {/* Step 7: Schedule */}
         {step === 7 && (
           <div className="space-y-4" data-testid="step-7">
+            <div>
+              <h2 className="text-sm font-medium">Schedule your week.</h2>
+              <p className="text-xs text-muted-foreground">Assign Q1 + Q2 items to a day, time block, and duration.</p>
+            </div>
+
+            {schedulableItems.length > 0 ? (
+              <div className="space-y-3">
+                {schedulableItems.map((item) => {
+                  const globalIdx = item._originalIdx;
+                  const wizItem = items[globalIdx];
+                  return (
+                    <div key={globalIdx} className="space-y-1" data-testid={`schedule-item-${globalIdx}`}>
+                      <p className="text-[13px] truncate">{item.task}</p>
+                      <div className="flex gap-2">
+                        {/* Day picker */}
+                        <div className="flex gap-0.5">
+                          {weekDays.map(d => (
+                            <button
+                              key={d.date}
+                              type="button"
+                              onClick={() => setItems(prev => {
+                                const next = [...prev];
+                                next[globalIdx] = { ...next[globalIdx], scheduledDate: wizItem.scheduledDate === d.date ? "" : d.date };
+                                return next;
+                              })}
+                              className={`h-6 w-6 text-[10px] font-medium rounded-sm transition-colors ${
+                                wizItem.scheduledDate === d.date ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Block picker */}
+                        <div className="flex gap-0.5">
+                          {([
+                            { value: "morning", label: "AM" },
+                            { value: "midday", label: "Mid" },
+                            { value: "afternoon", label: "PM" },
+                            { value: "evening", label: "Eve" },
+                          ] as const).map(b => (
+                            <button
+                              key={b.value}
+                              type="button"
+                              onClick={() => setItems(prev => {
+                                const next = [...prev];
+                                next[globalIdx] = { ...next[globalIdx], scheduledStartTime: wizItem.scheduledStartTime === b.value ? "" : b.value };
+                                return next;
+                              })}
+                              className={`h-6 px-1.5 text-[10px] font-medium rounded-sm transition-colors ${
+                                wizItem.scheduledStartTime === b.value ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {b.label}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Duration picker */}
+                        <div className="flex gap-0.5">
+                          {[60, 120, 180].map(d => (
+                            <button
+                              key={d}
+                              type="button"
+                              onClick={() => setItems(prev => {
+                                const next = [...prev];
+                                next[globalIdx] = { ...next[globalIdx], durationMinutes: d };
+                                return next;
+                              })}
+                              className={`h-6 px-1.5 text-[10px] font-medium rounded-sm transition-colors ${
+                                wizItem.durationMinutes === d ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {d / 60}h
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No Q1 or Q2 items to schedule.</p>
+            )}
+
+            <button
+              className="text-[11px] text-muted-foreground hover:underline cursor-pointer"
+              onClick={() => setStep(8)}
+              data-testid="link-skip-scheduling"
+            >
+              Skip scheduling →
+            </button>
+          </div>
+        )}
+
+        {/* Step 8: Commit */}
+        {step === 8 && (
+          <div className="space-y-4" data-testid="step-8">
             <div>
               <h2 className="text-sm font-medium">Mark your focus blocks for this week.</h2>
               <p className="text-xs text-muted-foreground">Toggle which Q2 items you'll protect time for.</p>
@@ -647,7 +768,7 @@ export default function EisenhowerPage() {
             </Button>
           ) : <div />}
 
-          {step < 7 ? (
+          {step < 8 ? (
             <Button
               size="sm"
               className="text-xs"
