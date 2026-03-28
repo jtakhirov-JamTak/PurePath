@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
@@ -38,6 +39,7 @@ export function DailyHabitsCard({
   onHabitSkip,
   onNavigate,
 }: DailyHabitsCardProps) {
+  const [popKeys, setPopKeys] = useState<Record<number, number>>({});
   // Sort habits by time of day
   const sortedHabits = [...todaysHabits]
     .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1))
@@ -104,6 +106,7 @@ export function DailyHabitsCard({
             const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
 
             const cycleHabit = () => {
+              setPopKeys(prev => ({ ...prev, [habit.id]: (prev[habit.id] || 0) + 1 }));
               const nextLevel = getNextHabitLevel(level);
               if (nextLevel === 0) {
                 onHabitSkip(habit.id);
@@ -118,8 +121,9 @@ export function DailyHabitsCard({
             return (
               <li key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`habit-item-${habit.id}`}>
                 <button
+                  key={popKeys[habit.id] || 0}
                   onClick={cycleHabit}
-                  className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+                  className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass}`}
                   data-testid={`habit-level-${habit.id}`}
                 >
                   {boxLabel}

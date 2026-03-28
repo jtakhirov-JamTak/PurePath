@@ -77,13 +77,13 @@ export function WeekStrip({
               {day.dayNum}
             </span>
             {/* Category dots */}
-            <div className="flex gap-0.5 mt-1 min-h-[6px]">
+            <div className={`flex gap-0.5 mt-1 min-h-[6px] ${day.allDone ? "animate-dot-pulse" : ""}`}>
               {day.categories.slice(0, 4).map((cat) => (
                 <span
                   key={cat}
                   className={`h-1.5 w-1.5 rounded-full ${
                     day.allDone
-                      ? "bg-emerald-500/40"
+                      ? "bg-emerald-500"
                       : CATEGORY_COLORS[cat] || "bg-blue-500"
                   }`}
                 />

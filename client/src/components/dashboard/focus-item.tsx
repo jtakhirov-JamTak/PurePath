@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Zap, Target, Pencil, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { EisenhowerEntry } from "@shared/schema";
 import { fmtTime } from "@/lib/format";
 import { getCompletionLabel, getFocusBoxClass, getNextFocusLevel } from "@/lib/completion";
@@ -33,6 +34,7 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
   const [editPanel, setEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState(item.task);
   const [saving, setSaving] = useState(false);
+  const [popKey, setPopKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const savingNameRef = useRef(false);
 
@@ -74,7 +76,6 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
       savePatch({ task: trimmed });
     }
     setEditingName(false);
-    // Reset guard after React processes the state update
     setTimeout(() => { savingNameRef.current = false; }, 0);
   };
 
@@ -87,11 +88,13 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
     <div data-testid={`focus-item-${item.id}`}>
       <div className="flex items-center gap-2 py-1.5">
         <button
+          key={popKey}
           onClick={() => {
+            setPopKey(k => k + 1);
             const nextLevel = getNextFocusLevel(lvl, isBin);
             onCycleLevel(item.id, nextLevel, isBin || undefined);
           }}
-          className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
+          className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${popKey > 0 ? "animate-tap-pop" : ""} ${boxClass}`}
           data-testid={`focus-level-${item.id}`}
         >
           {boxLabel}
@@ -140,65 +143,71 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
         </button>
       </div>
 
-      {/* Inline edit panel */}
-      {editPanel && (
-        <div className="ml-14 mb-2 flex flex-wrap gap-2 items-center" data-testid={`focus-edit-panel-${item.id}`}>
-          {/* Day */}
-          <select
-            value={item.scheduledDate || ""}
-            onChange={(e) => savePatch({ scheduledDate: e.target.value || null })}
-            className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
-            disabled={saving}
+      {/* Inline edit panel — slides in */}
+      <AnimatePresence>
+        {editPanel && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="overflow-hidden"
           >
-            <option value="">No day</option>
-            {dayOptions.map((d) => (
-              <option key={d.value} value={d.value}>{d.label}</option>
-            ))}
-          </select>
-          {/* Start time */}
-          <select
-            value={item.scheduledStartTime || ""}
-            onChange={(e) => savePatch({ scheduledStartTime: e.target.value || null })}
-            className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
-            disabled={saving}
-          >
-            <option value="">Start</option>
-            {TIME_SLOTS.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          {/* End time */}
-          <select
-            value={item.scheduledEndTime || ""}
-            onChange={(e) => savePatch({ scheduledEndTime: e.target.value || null })}
-            className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
-            disabled={saving}
-          >
-            <option value="">End</option>
-            {TIME_SLOTS.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          {/* Category */}
-          <div className="flex gap-0.5">
-            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => savePatch({ category: key })}
-                className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${
-                  item.category === key
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                }`}
+            <div className="ml-14 mb-2 flex flex-wrap gap-2 items-center" data-testid={`focus-edit-panel-${item.id}`}>
+              <select
+                value={item.scheduledDate || ""}
+                onChange={(e) => savePatch({ scheduledDate: e.target.value || null })}
+                className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
                 disabled={saving}
-                title={label}
               >
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${CATEGORY_COLORS[key]}`} />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+                <option value="">No day</option>
+                {dayOptions.map((d) => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+              <select
+                value={item.scheduledStartTime || ""}
+                onChange={(e) => savePatch({ scheduledStartTime: e.target.value || null })}
+                className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
+                disabled={saving}
+              >
+                <option value="">Start</option>
+                {TIME_SLOTS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <select
+                value={item.scheduledEndTime || ""}
+                onChange={(e) => savePatch({ scheduledEndTime: e.target.value || null })}
+                className="text-[10px] bg-muted rounded px-1.5 py-1 border-0 outline-none"
+                disabled={saving}
+              >
+                <option value="">End</option>
+                {TIME_SLOTS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              <div className="flex gap-0.5">
+                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => savePatch({ category: key })}
+                    className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer ${
+                      item.category === key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                    disabled={saving}
+                    title={label}
+                  >
+                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${CATEGORY_COLORS[key]}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

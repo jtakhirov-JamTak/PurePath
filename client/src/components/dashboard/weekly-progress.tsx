@@ -17,7 +17,7 @@ function Bar({ label, value, max }: { label: string; value: number; max: number 
       <span className="w-[44px] text-[11px] text-muted-foreground shrink-0">{label}</span>
       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full rounded-full bg-primary transition-all"
+          className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>

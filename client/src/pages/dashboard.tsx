@@ -9,22 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon,
-  Target,
+  Target, Check,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth, getDayOfYear } from "date-fns";
+import { format, startOfWeek, addDays, getDayOfYear } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitLevelMap, buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems, getWeekFocusItems } from "@/lib/eisenhower-filters";
-import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
+import { getTodaysHabits } from "@/lib/habit-filters";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
 import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
-import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
-import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
 import { WeekStrip } from "@/components/dashboard/week-strip";
 import { FocusItem } from "@/components/dashboard/focus-item";
 
@@ -38,13 +37,7 @@ export default function DashboardPage() {
   const todayStr = format(today, "yyyy-MM-dd");
   const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-  const weekEndDate = addDays(weekStartDate, 6);
-  const weekLabel = format(weekStartDate, "MMM d") + " – " + format(weekEndDate, "d");
 
-  const monthStart = startOfMonth(today);
-  const monthEnd = endOfMonth(today);
-  const monthStartStr = format(monthStart, "yyyy-MM-dd");
-  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
 
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
     queryKey: ["/api/onboarding"],
@@ -56,7 +49,6 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
 
   const { data: habitCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions", todayStr],
@@ -65,15 +57,6 @@ export default function DashboardPage() {
     refetchOnMount: "always",
   });
 
-  const { data: weekHabitCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions/range/" + weekStartStr + "/" + weekEndStr],
-    enabled: !!user,
-  });
-
-  const { data: monthHabitCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions/range/" + monthStartStr + "/" + monthEndStr],
-    enabled: !!user,
-  });
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -219,70 +202,21 @@ export default function DashboardPage() {
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
 
-  const progressMetrics: ProgressMetrics = useMemo(() => {
-    // Build lineage→habitIds map for sibling matching
-    const lineageMap = new Map<string, number[]>();
-    habits.forEach(h => {
-      if (h.lineageId) {
-        if (!lineageMap.has(h.lineageId)) lineageMap.set(h.lineageId, []);
-        lineageMap.get(h.lineageId)!.push(h.id);
-      }
-    });
+  const allFocusDone = focusItems.length > 0 && focusItems.every(e => e.status === "completed");
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevAllFocusDoneRef = useRef(allFocusDone);
 
-    function countHabits(dayStrs: string[], completions: HabitCompletion[]) {
-      let completed = 0;
-      let scheduled = 0;
-      for (const dayStr of dayStrs) {
-        if (dayStr > todayStr) continue;
-        const dayHabits = getDateHabits(habits, dayStr);
-        dayHabits.forEach(h => {
-          scheduled++;
-          const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
-          const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
-          if (hc) {
-            if (hc.completionLevel != null && hc.completionLevel >= 1) completed++;
-          }
-        });
-      }
-      return { completed, scheduled };
+  useEffect(() => {
+    // Only celebrate on false → true transition (not on initial load)
+    if (allFocusDone && !prevAllFocusDoneRef.current) {
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 1500);
+      prevAllFocusDoneRef.current = allFocusDone;
+      return () => clearTimeout(timer);
     }
+    prevAllFocusDoneRef.current = allFocusDone;
+  }, [allFocusDone]);
 
-    // Week days
-    const weekDayStrs: string[] = [];
-    for (let d = 0; d < 7; d++) weekDayStrs.push(format(addDays(weekStartDate, d), "yyyy-MM-dd"));
-
-    // Month days
-    const monthDayStrs: string[] = [];
-    let cursor = monthStart;
-    while (cursor <= monthEnd) {
-      monthDayStrs.push(format(cursor, "yyyy-MM-dd"));
-      cursor = addDays(cursor, 1);
-    }
-
-    const weekHabits = countHabits(weekDayStrs, weekHabitCompletions);
-    const monthHabits = countHabits(monthDayStrs, monthHabitCompletions);
-
-    // Q2 items for the week
-    const weekQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
-    const q2CompletedWeek = weekQ2.filter(e => e.status === "completed").length;
-    const q2TotalWeek = weekQ2.length;
-
-    // Q2 items for the month
-    const monthQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart! >= monthStartStr && e.weekStart! <= monthEndStr);
-    const q2CompletedMonth = monthQ2.filter(e => e.status === "completed").length;
-    const q2TotalMonth = monthQ2.length;
-
-    return {
-      habitsCompletedWeek: weekHabits.completed,
-      habitsScheduledWeek: weekHabits.scheduled,
-      habitsCompletedMonth: monthHabits.completed,
-      habitsScheduledMonth: monthHabits.scheduled,
-      q2CompletedWeek,
-      q2TotalWeek,
-      q2CompletedMonth,
-      q2TotalMonth,
-    };
-  }, [habits, weekHabitCompletions, monthHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr, monthStartStr, monthEndStr, monthStart, monthEnd]);
 
 
   useEffect(() => {
@@ -379,14 +313,19 @@ export default function DashboardPage() {
         />
 
         {focusItems.length > 0 ? (
-          <div data-testid="card-focus">
+          <div data-testid="card-focus" className="relative">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
               <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{selectedDate !== todayStr && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setSelectedDate(todayStr)}>← today</button>}</span>
             </div>
-            <ul className="space-y-0.5">
-              {sortedFocusItems.map((item) => (
-                <li key={item.id}>
+            <ul key={selectedDate} className="space-y-0.5">
+              {sortedFocusItems.map((item, i) => (
+                <motion.li
+                  key={item.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15, delay: i * 0.04 }}
+                >
                   <FocusItem
                     item={item}
                     weekStartDate={weekStartDate}
@@ -394,9 +333,25 @@ export default function DashboardPage() {
                       setEisenhowerLevelMutation.mutate({ id, level, isBinary })
                     }
                   />
-                </li>
+                </motion.li>
               ))}
             </ul>
+            {/* Last-item celebration — auto-dismisses after 1.5s */}
+            <AnimatePresence>
+              {showCelebration && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div className="bg-emerald-500 text-white rounded-full p-3 shadow-lg animate-check-flash">
+                    <Check className="h-6 w-6" />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
           <div data-testid="card-focus-empty">
@@ -440,8 +395,6 @@ export default function DashboardPage() {
           onHabitSkip={(habitId) => setHabitLevelMutation.mutate({ habitId, level: 0 })}
           onNavigate={(path) => { setLocation(path.startsWith("/journal/") ? path : buildProcessUrl(path, "/dashboard")); window.scrollTo(0, 0); }}
         />
-
-        <WeeklyProgress progressMetrics={progressMetrics} />
 
         <ToolPalette
           onToolOpen={setQuickToolOpen}
