@@ -98,6 +98,7 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 
 ## Lessons Learned
 - Habit filtering must be consistent across all views — canonical logic in journal-hub.tsx
+- Auto-created eisenhower entries (e.g. from monthly goal nextConcreteStep) must dedupe before POSTing — re-saving the goal duplicated items on the calendar
 - (Add new lessons here as they arise)
 
 ## Docs

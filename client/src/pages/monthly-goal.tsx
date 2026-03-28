@@ -105,21 +105,26 @@ export default function MonthlyGoalPage() {
         throw new Error(body.error || "Failed to save goal");
       }
 
-      // TODO: auto-link monthly goal next step to This Week's Focus
-      // Create eisenhower entry for next step if it falls within current week
+      // Auto-link monthly goal next step to This Week's Focus (skip if duplicate)
       if (nextConcreteStep && goalWhen) {
         const weekStart = startOfWeek(today, { weekStartsOn: 1 });
         const weekEnd = addDays(weekStart, 6);
         const whenDate = new Date(goalWhen + "T12:00:00");
         if (whenDate >= weekStart && whenDate <= weekEnd) {
-          await apiRequest("POST", "/api/eisenhower", {
-            task: nextConcreteStep,
-            weekStart: format(weekStart, "yyyy-MM-dd"),
-            role: "",
-            quadrant: "q1",
-            blocksGoal: true,
-            deadline: goalWhen,
-          });
+          const weekStartStr = format(weekStart, "yyyy-MM-dd");
+          const existingRes = await fetch(`/api/eisenhower`, { credentials: "include" });
+          const existing: { task: string; weekStart: string }[] = existingRes.ok ? await existingRes.json() : [];
+          const alreadyExists = existing.some(e => e.task === nextConcreteStep && e.weekStart === weekStartStr);
+          if (!alreadyExists) {
+            await apiRequest("POST", "/api/eisenhower", {
+              task: nextConcreteStep,
+              weekStart: weekStartStr,
+              role: "",
+              quadrant: "q1",
+              blocksGoal: true,
+              deadline: goalWhen,
+            });
+          }
         }
       }
 
