@@ -9,33 +9,9 @@ import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, startOfWeek } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
+import { CATEGORY_COLORS } from "@/lib/constants";
+import { getWeekFocusItems } from "@/lib/eisenhower-filters";
 
-function fmtTime(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  const suffix = h >= 12 ? "p" : "a";
-  return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, "0")}${suffix}`;
-}
-
-function formatSchedule(item: { scheduledDate?: string | null; scheduledStartTime?: string | null; scheduledEndTime?: string | null }): string {
-  if (!item.scheduledDate) return "";
-  const d = new Date(item.scheduledDate + "T12:00:00");
-  const day = format(d, "EEE");
-  if (item.scheduledStartTime) {
-    const start = fmtTime(item.scheduledStartTime);
-    const end = item.scheduledEndTime ? fmtTime(item.scheduledEndTime) : "";
-    return end ? `${day} ${start}–${end}` : `${day} ${start}`;
-  }
-  return day;
-}
-
-const CATEGORY_DOTS: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-500",
-  relationships: "bg-rose-500",
-  growth: "bg-blue-500",
-  joy: "bg-amber-500",
-};
 
 export default function PlanPage() {
   const { user } = useAuth();
@@ -59,7 +35,7 @@ export default function PlanPage() {
 
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const activeHabits = habits.filter(h => h.active !== false);
-  const focusItems = eisenhowerEntries.filter(e => e.weekStart === weekStartStr && (e.quadrant === "q1" || (e.quadrant === "q2" && e.blocksGoal)));
+  const focusItems = getWeekFocusItems(eisenhowerEntries, weekStartStr);
 
   // Daily Anchor — rotating excerpt from identity document
   const anchorExcerpt = (() => {
@@ -84,7 +60,7 @@ export default function PlanPage() {
       <div className="container mx-auto px-4 py-6 max-w-2xl">
         <div className="mb-6">
           <h1 className="text-sm font-medium" data-testid="text-plan-title">Plan</h1>
-          <p className="text-xs text-muted-foreground">Your documents, goal, habits, and weekly focus.</p>
+          <p className="text-xs text-muted-foreground">Your documents, goal, and habits.</p>
         </div>
 
         <div className="space-y-6">
@@ -163,7 +139,7 @@ export default function PlanPage() {
               <div className="space-y-1">
                 {activeHabits.slice(0, 5).map(habit => (
                   <div key={habit.id} className="flex items-center gap-2 py-0.5" data-testid={`habit-plan-${habit.id}`}>
-                    <div className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOTS[(habit.category as string) || "health"] || "bg-emerald-500"}`} />
+                    <div className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[(habit.category as string) || "health"] || "bg-emerald-500"}`} />
                     <span className="text-xs flex-1">{habit.name}</span>
                     <span className="text-[10px] text-muted-foreground capitalize">{habit.timing || "afternoon"}</span>
                   </div>
@@ -180,35 +156,12 @@ export default function PlanPage() {
             )}
           </div>
 
-          {/* This Week */}
+          {/* Weekly Planning */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">This Week</p>
-            {focusItems.length > 0 ? (
-              <div className="space-y-1">
-                {focusItems.map(item => {
-                  const sched = formatSchedule(item);
-                  return (
-                    <div key={item.id} data-testid={`focus-plan-${item.id}`}>
-                      <div className="flex items-center gap-2 py-0.5">
-                        <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : item.status === "skipped" ? "text-muted-foreground italic" : ""}`}>{item.task}</span>
-                        {sched && <span className="text-[10px] text-muted-foreground shrink-0">{sched}</span>}
-                        {!sched && item.status && <span className="text-[10px] text-muted-foreground">{item.status}</span>}
-                      </div>
-                      {item.task.length > 25 && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400">{item.task.length}/25 — shorten to fit calendar</p>
-                      )}
-                    </div>
-                  );
-                })}
-                <button className="text-xs text-primary hover:underline cursor-pointer mt-1" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-open-eisenhower">
-                  Plan your week →
-                </button>
-              </div>
-            ) : (
-              <button className="text-xs text-primary hover:underline cursor-pointer" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
-                Figure out what matters →
-              </button>
-            )}
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Weekly Planning</p>
+            <button className="text-xs text-primary hover:underline cursor-pointer" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
+              {focusItems.length > 0 ? "Edit your week →" : "Figure out what matters →"}
+            </button>
           </div>
         </div>
       </div>

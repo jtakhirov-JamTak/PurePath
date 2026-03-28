@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sun, Moon,
-  Target, Zap,
+  Target,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays, startOfMonth, endOfMonth } from "date-fns";
-import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal } from "@shared/schema";
+import { format, startOfWeek, addDays, startOfMonth, endOfMonth, getDayOfYear } from "date-fns";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import { buildHabitLevelMap, buildHabitStatusMap } from "@/lib/completion";
+import { getTodaysFocusItems, getWeekFocusItems } from "@/lib/eisenhower-filters";
 import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
@@ -23,6 +25,8 @@ import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
 import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
 import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
+import { WeekStrip } from "@/components/dashboard/week-strip";
+import { FocusItem } from "@/components/dashboard/focus-item";
 
 
 export default function DashboardPage() {
@@ -94,43 +98,47 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  const { data: identityDoc } = useQuery<IdentityDocument>({
+    queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
   const todaysHabits = getTodaysHabits(habits, todayStr);
 
-  const habitStatusMap = new Map<number, string>();
-  const habitLevelMap = new Map<number, number>();
-  habitCompletions.forEach((hc) => {
-    habitStatusMap.set(hc.habitId, hc.status || "completed");
-    if (hc.completionLevel != null) {
-      habitLevelMap.set(hc.habitId, hc.completionLevel);
-    } else {
-      const fallback = hc.status === "completed" ? 2 : hc.status === "minimum" ? 1 : hc.status === "skipped" ? 0 : null;
-      if (fallback != null) habitLevelMap.set(hc.habitId, fallback);
-    }
-  });
+  const habitStatusMap = buildHabitStatusMap(habitCompletions);
+  const habitLevelMap = buildHabitLevelMap(habitCompletions);
 
   const todayJournals = journals.filter((j) => j.date === todayStr);
   const hasMorning = todayJournals.some((j) => j.session === "morning");
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
 
-  const focusItems = eisenhowerEntries.filter((e) => {
-    if (e.weekStart !== weekStartStr) return false;
-    if (e.status === "skipped" && e.skipReason) return false;
-    if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return false;
-    if (e.scheduledDate && e.scheduledDate !== todayStr) return false;
-    return true;
-  });
+  // Daily Anchor — rotating excerpt from identity document
+  const anchorExcerpt = useMemo(() => {
+    if (!identityDoc) return null;
+    const fields = [
+      identityDoc.identity?.trim(),
+      identityDoc.vision?.trim(),
+      identityDoc.values?.trim(),
+      identityDoc.purpose?.trim(),
+    ];
+    const dayIndex = getDayOfYear(today) % 4;
+    for (let i = 0; i < 4; i++) {
+      const text = fields[(dayIndex + i) % 4];
+      if (text) return text;
+    }
+    return null;
+  }, [identityDoc]);
+
+  // Focus items for the selected day (defaults to today)
+  const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate);
 
   const sortedFocusItems = [...focusItems].sort((a, b) =>
     (a.scheduledStartTime || "99:99").localeCompare(b.scheduledStartTime || "99:99")
   );
 
-  const fmtTime = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    const suffix = h >= 12 ? "p" : "a";
-    return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, "0")}${suffix}`;
-  };
 
   const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null; skipReason?: string; isBinary?: boolean }>({
     mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
@@ -302,55 +310,6 @@ export default function DashboardPage() {
     return null;
   }
 
-  const renderFocusItem = (item: EisenhowerEntry) => {
-    const isBin = item.isBinary || false;
-    const lvl = item.completionLevel ?? null;
-    const cycleFocus = () => {
-      if (isBin) {
-        if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1, isBinary: true });
-        else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
-        else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-      } else {
-        if (lvl === null) setEisenhowerLevelMutation.mutate({ id: item.id, level: 2 });
-        else if (lvl === 2) setEisenhowerLevelMutation.mutate({ id: item.id, level: 1 });
-        else if (lvl === 1) setEisenhowerLevelMutation.mutate({ id: item.id, level: 0 });
-        else setEisenhowerLevelMutation.mutate({ id: item.id, level: null });
-      }
-    };
-    const boxLabel = isBin
-      ? (lvl === 1 ? "Done" : lvl === 0 ? "Skip" : "—")
-      : (lvl === 2 ? "Full" : lvl === 1 ? "Min" : lvl === 0 ? "Skip" : "—");
-    const boxClass =
-      (lvl === 2 || (isBin && lvl === 1)) ? "bg-emerald-500 border-emerald-600 text-white"
-      : lvl === 1 ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-      : lvl === 0 ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-      : "border-border text-muted-foreground";
-    return (
-      <div className="flex items-center gap-2 py-1.5" data-testid={`focus-item-${item.id}`}>
-        <button
-          onClick={cycleFocus}
-          className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${boxClass}`}
-          data-testid={`focus-level-${item.id}`}
-        >
-          {boxLabel}
-        </button>
-        {item.quadrant === "q1"
-          ? <Zap className="h-3 w-3 text-amber-500 shrink-0" />
-          : <Target className="h-3 w-3 text-blue-500 shrink-0" />
-        }
-        <span className={`text-xs flex-1 ${
-          item.status === "completed" ? "line-through text-muted-foreground"
-          : item.status === "skipped" ? "text-muted-foreground italic"
-          : ""
-        }`}>{item.task}</span>
-        {item.scheduledStartTime && (
-          <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
-            {fmtTime(item.scheduledStartTime)}{item.scheduledEndTime ? `–${fmtTime(item.scheduledEndTime)}` : ""}
-          </span>
-        )}
-      </div>
-    );
-  };
 
   const currentHour = new Date().getHours();
   const morningSkipped = !hasMorning && currentHour >= 12;
@@ -375,6 +334,11 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-monthly-promise">
                 <Target className="h-3 w-3 inline mr-1" />
                 {goalDisplay}
+              </p>
+            )}
+            {anchorExcerpt && (
+              <p className="text-[11px] text-muted-foreground italic mt-0.5 line-clamp-1" data-testid="daily-anchor">
+                {anchorExcerpt}
               </p>
             )}
           </div>
@@ -405,16 +369,31 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <WeekStrip
+          weekStartDate={weekStartDate}
+          todayStr={todayStr}
+          selectedDateStr={selectedDate}
+          eisenhowerEntries={eisenhowerEntries}
+          weekStartStr={weekStartStr}
+          onSelectDate={setSelectedDate}
+        />
+
         {focusItems.length > 0 ? (
           <div data-testid="card-focus">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{format(today, "EEEE")}</span>
+              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{selectedDate !== todayStr && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setSelectedDate(todayStr)}>← today</button>}</span>
             </div>
             <ul className="space-y-0.5">
               {sortedFocusItems.map((item) => (
                 <li key={item.id}>
-                  {renderFocusItem(item)}
+                  <FocusItem
+                    item={item}
+                    weekStartDate={weekStartDate}
+                    onCycleLevel={(id, level, isBinary) =>
+                      setEisenhowerLevelMutation.mutate({ id, level, isBinary })
+                    }
+                  />
                 </li>
               ))}
             </ul>
@@ -423,9 +402,9 @@ export default function DashboardPage() {
           <div data-testid="card-focus-empty">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{format(today, "EEEE")}</span>
+              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{selectedDate !== todayStr && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setSelectedDate(todayStr)}>← today</button>}</span>
             </div>
-            {eisenhowerEntries.some(e => e.weekStart === weekStartStr && (e.quadrant === "q1" || (e.quadrant === "q2" && e.blocksGoal))) ? (
+            {getWeekFocusItems(eisenhowerEntries, weekStartStr).length > 0 ? (
               <p className="text-xs text-muted-foreground">Nothing scheduled for today</p>
             ) : (
               <button

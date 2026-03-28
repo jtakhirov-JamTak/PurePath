@@ -1,8 +1,8 @@
 import type { Habit } from "@shared/schema";
+import { TIMING_ORDER } from "@/lib/constants";
 
 const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const MAX_ACTIVE_HABITS = 3;
-const TIMING_ORDER: Record<string, number> = { morning: 0, afternoon: 1, evening: 2 };
 
 /**
  * Deduplicate habits by lineageId, preferring active versions.

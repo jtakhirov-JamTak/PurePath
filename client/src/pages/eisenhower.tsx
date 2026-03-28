@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/constants";
 
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
@@ -50,20 +51,6 @@ function computeDuration(start: string, end: string): number {
   return (eh * 60 + em) - (sh * 60 + sm);
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-500",
-  relationships: "bg-rose-500",
-  growth: "bg-blue-500",
-  joy: "bg-amber-500",
-};
-const CATEGORY_LABELS: Record<string, string> = {
-  health: "Health",
-  wealth: "Wealth",
-  relationships: "Relationships",
-  growth: "Growth",
-  joy: "Joy",
-};
 
 function classifyQuadrant(alignment: Alignment, consequence: Consequence): string {
   if (alignment === "yes") {

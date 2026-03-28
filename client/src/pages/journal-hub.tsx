@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import { Sun, Moon, ChevronLeft, ChevronRight, X, Zap, Target } from "lucide-react";
+import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, isSameWeek, addDays, startOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { getDateHabits } from "@/lib/habit-filters";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import { buildHabitLevelMap, buildHabitStatusMap, getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
+import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
+import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
 
 export default function JournalHubPage() {
   const { user } = useAuth();
@@ -21,7 +24,6 @@ export default function JournalHubPage() {
 
   const [selectedMonth, setSelectedMonth] = useState(() => startOfMonth(todayDate));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedWeekStart, setSelectedWeekStart] = useState(() => startOfWeek(todayDate, { weekStartsOn: 1 }));
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -33,38 +35,81 @@ export default function JournalHubPage() {
     enabled: !!user,
   });
 
-  // Weekly calendar data
-  const selectedWeekStartStr = format(selectedWeekStart, "yyyy-MM-dd");
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeekStart, i));
-  const isCurrentWeek = isSameWeek(selectedWeekStart, todayDate, { weekStartsOn: 1 });
-  const canWeekForward = !isCurrentWeek;
+  // Progress bar data
+  const weekStartDate = startOfWeek(todayDate, { weekStartsOn: 1 });
+  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+  const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
+  const monthStart = startOfMonth(todayDate);
+  const monthEnd = endOfMonth(todayDate);
+  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
 
-  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
-    queryKey: ["/api/eisenhower/week", selectedWeekStartStr],
+  const { data: weekHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range/" + weekStartStr + "/" + weekEndStr],
     enabled: !!user,
   });
 
-  const weekEndDate = addDays(selectedWeekStart, 6);
-  const weekLabel = format(selectedWeekStart, "MMM d") + " – " + format(weekEndDate, "d");
+  const { data: monthHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range/" + monthStartStr + "/" + monthEndStr],
+    enabled: !!user,
+  });
 
-  // Adaptive hourly grid — only show hours that have items
-  const scheduledItems = useMemo(() => {
-    const items = eisenhowerEntries.filter(
-      (e) => e.weekStart === selectedWeekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime
-    );
-    const parsed = items.map(e => {
-      const [sh] = (e.scheduledStartTime || "08:00").split(":").map(Number);
-      const endTime = e.scheduledEndTime || e.scheduledStartTime || "09:00";
-      const [eh] = endTime.split(":").map(Number);
-      return { ...e, startHour: sh, endHour: eh === sh ? eh + 1 : eh };
+  const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
+    queryKey: ["/api/eisenhower"],
+    enabled: !!user,
+  });
+
+  const progressMetrics: ProgressMetrics = useMemo(() => {
+    const lineageMap = new Map<string, number[]>();
+    habits.forEach(h => {
+      if (h.lineageId) {
+        if (!lineageMap.has(h.lineageId)) lineageMap.set(h.lineageId, []);
+        lineageMap.get(h.lineageId)!.push(h.id);
+      }
     });
-    const activeHours = new Set<number>();
-    parsed.forEach(item => {
-      for (let h = item.startHour; h < item.endHour; h++) activeHours.add(h);
-    });
-    const sortedHours = Array.from(activeHours).sort((a, b) => a - b);
-    return { items: parsed, activeHours: sortedHours, hasAny: items.length > 0 };
-  }, [eisenhowerEntries, selectedWeekStartStr]);
+
+    function countHabits(dayStrs: string[], completions: HabitCompletion[]) {
+      let completed = 0, scheduled = 0;
+      for (const dayStr of dayStrs) {
+        if (dayStr > todayStr) continue;
+        const dayHabits = getDateHabits(habits, dayStr);
+        dayHabits.forEach(h => {
+          scheduled++;
+          const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
+          const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
+          if (hc && hc.completionLevel != null && hc.completionLevel >= 1) completed++;
+        });
+      }
+      return { completed, scheduled };
+    }
+
+    const weekDayStrs: string[] = [];
+    for (let d = 0; d < 7; d++) weekDayStrs.push(format(addDays(weekStartDate, d), "yyyy-MM-dd"));
+
+    const monthDayStrs: string[] = [];
+    let cursor = monthStart;
+    while (cursor <= monthEnd) {
+      monthDayStrs.push(format(cursor, "yyyy-MM-dd"));
+      cursor = addDays(cursor, 1);
+    }
+
+    const weekHabits = countHabits(weekDayStrs, weekHabitCompletions);
+    const monthHabits = countHabits(monthDayStrs, monthHabitCompletions);
+
+    const weekQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
+    const monthQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart! >= monthStartStr && e.weekStart! <= monthEndStr);
+
+    return {
+      habitsCompletedWeek: weekHabits.completed,
+      habitsScheduledWeek: weekHabits.scheduled,
+      habitsCompletedMonth: monthHabits.completed,
+      habitsScheduledMonth: monthHabits.scheduled,
+      q2CompletedWeek: weekQ2.filter(e => e.status === "completed").length,
+      q2TotalWeek: weekQ2.length,
+      q2CompletedMonth: monthQ2.filter(e => e.status === "completed").length,
+      q2TotalMonth: monthQ2.length,
+    };
+  }, [habits, weekHabitCompletions, monthHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr, monthStartStr, monthEndStr, monthStart, monthEnd]);
 
   // Selected date data
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
@@ -72,26 +117,8 @@ export default function JournalHubPage() {
     enabled: !!user && !!selectedDate,
   });
 
-  const selectedDateHabitLevelMap = useMemo(() => {
-    const map = new Map<number, number>();
-    selectedDateCompletions.forEach((hc) => {
-      if (hc.completionLevel != null) {
-        map.set(hc.habitId, hc.completionLevel);
-      } else {
-        const fallback = hc.status === "completed" ? 2 : hc.status === "minimum" ? 1 : hc.status === "skipped" ? 0 : null;
-        if (fallback != null) map.set(hc.habitId, fallback);
-      }
-    });
-    return map;
-  }, [selectedDateCompletions]);
-
-  const selectedDateHabitStatusMap = useMemo(() => {
-    const map = new Map<number, string>();
-    selectedDateCompletions.forEach((hc) => {
-      map.set(hc.habitId, hc.status || "completed");
-    });
-    return map;
-  }, [selectedDateCompletions]);
+  const selectedDateHabitLevelMap = useMemo(() => buildHabitLevelMap(selectedDateCompletions), [selectedDateCompletions]);
+  const selectedDateHabitStatusMap = useMemo(() => buildHabitStatusMap(selectedDateCompletions), [selectedDateCompletions]);
 
   const selectedDateHabits = useMemo(() => {
     if (!selectedDate) return [];
@@ -138,15 +165,8 @@ export default function JournalHubPage() {
   const cycleSelectedDateHabit = (habit: Habit) => {
     if (!selectedDate) return;
     const level = selectedDateHabitLevelMap.get(habit.id) ?? null;
-    if (level === null || level === undefined) {
-      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 2, isBinary: false, date: selectedDate });
-    } else if (level === 2) {
-      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 1, isBinary: false, date: selectedDate });
-    } else if (level === 1) {
-      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: 0, date: selectedDate });
-    } else {
-      setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: null, date: selectedDate });
-    }
+    const nextLevel = getNextHabitLevel(level);
+    setSelectedDateHabitLevelMutation.mutate({ habitId: habit.id, level: nextLevel, isBinary: false, date: selectedDate });
   };
 
   // Calendar heatmap data
@@ -204,138 +224,7 @@ export default function JournalHubPage() {
       <div className="max-w-md mx-auto px-4 py-6 space-y-6" data-testid="proof-hub">
         <h1 className="text-sm font-medium" data-testid="proof-hub-title">Proof</h1>
 
-        {/* WEEKLY TIME-BLOCK CALENDAR */}
-        <section data-testid="weekly-time-block">
-          {/* Week navigation */}
-          <div className="flex items-center justify-between mb-2">
-            <button
-              onClick={() => setSelectedWeekStart(prev => addDays(prev, -7))}
-              className="p-1 rounded hover:bg-muted cursor-pointer"
-              data-testid="button-prev-week"
-            >
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <span className="text-[11px] font-medium">{weekLabel}</span>
-            <button
-              onClick={() => canWeekForward && setSelectedWeekStart(prev => addDays(prev, 7))}
-              className={`p-1 rounded ${canWeekForward ? "hover:bg-muted cursor-pointer" : "opacity-30 cursor-default"}`}
-              disabled={!canWeekForward}
-              data-testid="button-next-week"
-            >
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-
-          {scheduledItems.hasAny ? (
-            <div className="overflow-x-auto">
-              <div className="min-w-[340px]">
-                {/* Day headers */}
-                <div className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
-                  <div />
-                  {weekDays.map((day) => {
-                    const dateStr = format(day, "yyyy-MM-dd");
-                    const isToday = dateStr === todayStr;
-                    return (
-                      <div key={dateStr} className={`text-[10px] text-muted-foreground text-center py-0.5 ${isToday ? "bg-primary/5 rounded-t" : ""}`}>
-                        {format(day, "EEE")}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Adaptive hourly rows — only hours with items */}
-                {scheduledItems.activeHours.map((hour) => (
-                  <div key={hour} className="grid grid-cols-[36px_repeat(7,1fr)] gap-px">
-                    <div className="text-[10px] text-muted-foreground text-right pr-1.5 pt-0.5">
-                      {hour > 12 ? hour - 12 : hour}{hour >= 12 ? "p" : "a"}
-                    </div>
-                    {weekDays.map((day) => {
-                      const dateStr = format(day, "yyyy-MM-dd");
-                      const isToday = dateStr === todayStr;
-                      // Items that START in this hour
-                      const cellItems = scheduledItems.items.filter(
-                        (e) => e.scheduledDate === dateStr && e.startHour === hour
-                      );
-                      return (
-                        <div
-                          key={`${dateStr}_${hour}`}
-                          className={`min-h-[52px] border border-border/10 p-0.5 overflow-hidden flex flex-col gap-0.5 ${isToday ? "bg-primary/5" : ""}`}
-                        >
-                          {cellItems.map((item) => {
-                            const spanHours = item.endHour - item.startHour;
-                            const barH = Math.min(spanHours * 22, 52);
-
-                            const CAT_COMPLETED: Record<string, string> = {
-                              health: "bg-emerald-500 text-white",
-                              wealth: "bg-yellow-500 text-white",
-                              relationships: "bg-rose-500 text-white",
-                              growth: "bg-blue-500 text-white",
-                              joy: "bg-amber-500 text-white",
-                            };
-                            const CAT_PENDING: Record<string, string> = {
-                              health: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-                              wealth: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-                              relationships: "bg-rose-500/20 text-rose-700 dark:text-rose-400",
-                              growth: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
-                              joy: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-                            };
-                            const cat = item.category || "growth";
-                            let bgClass: string;
-                            if (item.status === "skipped") {
-                              bgClass = "bg-red-400 text-white";
-                            } else if (item.status === "completed") {
-                              bgClass = CAT_COMPLETED[cat] || "bg-primary text-white";
-                            } else {
-                              bgClass = CAT_PENDING[cat] || "bg-primary/20 text-foreground";
-                            }
-
-                            const isQ1 = item.quadrant === "q1";
-                            return (
-                              <button
-                                key={item.id}
-                                onClick={() => setLocation("/eisenhower")}
-                                className={`w-full rounded-sm text-[10px] overflow-hidden text-ellipsis whitespace-nowrap px-1 cursor-pointer flex items-center gap-0.5 ${bgClass}`}
-                                style={{ height: `${barH}px` }}
-                                title={`${item.task} (${item.quadrant.toUpperCase()})`}
-                                data-testid={`block-item-${item.id}`}
-                              >
-                                {isQ1 ? <Zap className="h-2.5 w-2.5 shrink-0" /> : <Target className="h-2.5 w-2.5 shrink-0 opacity-60" />}
-                                <span className="truncate flex-1">{item.task}</span>
-                                <span className="text-[8px] opacity-70 shrink-0">{spanHours}h</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-
-                {/* Legend */}
-                <div className="flex gap-3 mt-2">
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Zap className="h-2.5 w-2.5" /> Q1 Urgent
-                  </span>
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Target className="h-2.5 w-2.5" /> Q2 Important
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-3">
-              <p className="text-[11px] text-muted-foreground">No blocks scheduled this week</p>
-              {isCurrentWeek && (
-                <button
-                  onClick={() => setLocation("/eisenhower")}
-                  className="text-[11px] text-primary hover:underline mt-0.5 cursor-pointer"
-                >
-                  Plan your week →
-                </button>
-              )}
-            </div>
-          )}
-        </section>
+        <WeeklyProgress progressMetrics={progressMetrics} />
 
         {/* HISTORY section — Calendar Heatmap */}
         <section data-testid="journal-history-section">
@@ -478,12 +367,8 @@ export default function JournalHubPage() {
                       {selectedDateHabits.map((habit) => {
                         const level = selectedDateHabitLevelMap.get(habit.id) ?? null;
                         const status = selectedDateHabitStatusMap.get(habit.id) || null;
-                        const boxLabel = level === 2 ? "Done" : level === 1 ? "Min" : level === 0 ? "Skip" : "\u2014";
-                        const boxClass =
-                          status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
-                          : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-                          : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-                          : "border-border text-muted-foreground";
+                        const boxLabel = getHabitLabel(level);
+                        const boxClass = getCompletionBoxClass(status);
 
                         return (
                           <div key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`detail-habit-item-${habit.id}`}>

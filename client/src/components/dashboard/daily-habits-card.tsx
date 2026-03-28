@@ -2,26 +2,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
 import type { Habit } from "@shared/schema";
-
-const CATEGORY_DOTS: Record<string, string> = {
-  health: "bg-emerald-500",
-  wealth: "bg-yellow-400",
-  relationships: "bg-rose-500",
-  "self-development": "bg-blue-500",
-  happiness: "bg-slate-400",
-};
-
-const TIMING_ORDER: Record<string, number> = {
-  morning: 0,
-  afternoon: 1,
-  evening: 2,
-};
-
-const TIMING_LABELS: Record<string, string> = {
-  morning: "AM",
-  afternoon: "PM",
-  evening: "Eve",
-};
+import { CATEGORY_COLORS, TIMING_ORDER, TIMING_LABELS } from "@/lib/constants";
+import { getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
 
 interface JournalHabitItem {
   id: number;
@@ -121,25 +103,17 @@ export function DailyHabitsCard({
             const status = habitStatusMap.get(habit.id) || null;
             const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
 
-            // Unified 3-state cycle: Done (2) -> Min (1) -> Skip -> blank
             const cycleHabit = () => {
-              if (level === null || level === undefined) {
-                onHabitLevel(habit.id, 2, { isBinary: false });
-              } else if (level === 2) {
-                onHabitLevel(habit.id, 1, { isBinary: false });
-              } else if (level === 1) {
+              const nextLevel = getNextHabitLevel(level);
+              if (nextLevel === 0) {
                 onHabitSkip(habit.id);
               } else {
-                onHabitLevel(habit.id, null);
+                onHabitLevel(habit.id, nextLevel, { isBinary: false });
               }
             };
 
-            const boxLabel = level === 2 ? "Done" : level === 1 ? "Min" : level === 0 ? "Skip" : "\u2014";
-            const boxClass =
-              status === "completed" ? "bg-emerald-500 border-emerald-600 text-white"
-              : status === "minimum" ? "bg-yellow-300 border-yellow-400 text-yellow-800 dark:bg-yellow-400/40 dark:border-yellow-400/60 dark:text-yellow-200"
-              : status === "skipped" ? "bg-red-400 border-red-500 text-white dark:bg-red-500/40 dark:border-red-500/60"
-              : "border-border text-muted-foreground";
+            const boxLabel = getHabitLabel(level);
+            const boxClass = getCompletionBoxClass(status);
 
             return (
               <li key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`habit-item-${habit.id}`}>
@@ -150,7 +124,7 @@ export function DailyHabitsCard({
                 >
                   {boxLabel}
                 </button>
-                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOTS[habit.category || "health"] || "bg-emerald-500"}`} />
+                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-emerald-500"}`} />
                 <span className="text-[10px] text-muted-foreground w-6 shrink-0">{timingLabel}</span>
                 <span className={`text-xs flex-1 ${
                   status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
