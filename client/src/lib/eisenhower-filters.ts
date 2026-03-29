@@ -1,21 +1,26 @@
 import type { EisenhowerEntry } from "@shared/schema";
 
 /**
- * Get focus items for today's dashboard view.
- * Q1 + Q2-that-block-goal for the current week, filtered to today (or unscheduled).
+ * Get focus items for a selected day on the dashboard.
+ * Q1 + Q2-that-block-goal for the current week.
+ * - Scheduled items: only show on their scheduled date
+ * - Unscheduled items: only show on actual today (not past/future selected dates)
  * Excludes skipped items with a skip reason.
  */
 export function getTodaysFocusItems(
   entries: EisenhowerEntry[],
   weekStartStr: string,
-  todayStr: string,
+  selectedDate: string,
+  actualToday: string,
 ): EisenhowerEntry[] {
   return entries.filter((e) => {
     if (e.weekStart !== weekStartStr) return false;
     if (e.status === "skipped" && e.skipReason) return false;
     if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return false;
-    if (e.scheduledDate && e.scheduledDate !== todayStr) return false;
-    return true;
+    // Scheduled items: only show on their assigned date
+    if (e.scheduledDate) return e.scheduledDate === selectedDate;
+    // Unscheduled items: show only when viewing today
+    return selectedDate === actualToday;
   });
 }
 

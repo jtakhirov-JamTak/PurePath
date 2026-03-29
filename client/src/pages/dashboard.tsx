@@ -132,7 +132,7 @@ export default function DashboardPage() {
   }, [identityDoc]);
 
   // Focus items for selected day (used by both list and contract)
-  const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate);
+  const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate, todayStr);
 
   const sortedFocusItems = [...focusItems].sort((a, b) =>
     (a.scheduledStartTime || "99:99").localeCompare(b.scheduledStartTime || "99:99")

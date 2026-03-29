@@ -11,7 +11,7 @@ import { buildProcessUrl } from "@/hooks/use-return-to";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { format, startOfWeek } from "date-fns";
-import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, WeeklySummary } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 import { CATEGORY_COLORS } from "@/lib/constants";
 import { getWeekFocusItems } from "@/lib/eisenhower-filters";
@@ -27,6 +27,10 @@ export default function PlanPage() {
   const currentMonthKey = format(today, "yyyy-MM");
 
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({ queryKey: ["/api/eisenhower"], enabled: !!user });
+  const { data: weeklySummary } = useQuery<WeeklySummary | null>({
+    queryKey: ["/api/eisenhower/weekly-summary", weekStartStr],
+    enabled: !!user,
+  });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"], enabled: !!user });
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
@@ -232,13 +236,15 @@ export default function PlanPage() {
           {/* WEEK */}
           <div className="space-y-2">
             <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Week</p>
+
+            {/* This Week — committed items */}
             <Card className="overflow-visible" data-testid="card-this-week">
               <CardContent className="p-3">
                 {focusItems.length > 0 ? (
                   <div className="space-y-2">
                     {q1Items.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Urgent ({q1Items.length}/{MAX_Q1})</p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Handle this week ({q1Items.length}/{MAX_Q1})</p>
                         {q1Items.map(item => (
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-rose-400" />
@@ -256,7 +262,7 @@ export default function PlanPage() {
                     )}
                     {q2Items.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Important ({q2Items.length}/{MAX_Q2})</p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Protect this week ({q2Items.length}/{MAX_Q2})</p>
                         {q2Items.map(item => (
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
@@ -289,25 +295,23 @@ export default function PlanPage() {
                             className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${addType === "q1" ? "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/30 dark:border-rose-500 dark:text-rose-400" : "border-border text-muted-foreground"}`}
                             onClick={() => { setAddType("q1"); setReplaceId(null); }}
                           >
-                            Urgent {q1Items.length >= MAX_Q1 && "(full)"}
+                            Handle {q1Items.length >= MAX_Q1 && "(full)"}
                           </button>
                           <button
                             className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${addType === "q2" ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-500 dark:text-amber-400" : "border-border text-muted-foreground"}`}
                             onClick={() => { setAddType("q2"); setReplaceId(null); }}
                           >
-                            Important {q2Items.length >= MAX_Q2 && "(replace)"}
+                            Protect {q2Items.length >= MAX_Q2 && "(replace)"}
                           </button>
                         </div>
 
-                        {/* Q1 at limit warning */}
                         {addType === "q1" && q1Items.length >= MAX_Q1 && (
-                          <p className="text-[10px] text-rose-500">At {MAX_Q1} urgent items. Remove one first.</p>
+                          <p className="text-[10px] text-rose-500">At {MAX_Q1} Handle items. Remove one first.</p>
                         )}
 
-                        {/* Q2 replacement picker */}
                         {needsQ2Replace && (
                           <div className="space-y-1">
-                            <p className="text-[10px] text-muted-foreground">Replace which important item?</p>
+                            <p className="text-[10px] text-muted-foreground">Replace which Protect item?</p>
                             {q2Items.map(item => (
                               <button
                                 key={item.id}
@@ -350,28 +354,49 @@ export default function PlanPage() {
                         Add item
                       </button>
                     )}
-
-                    <button
-                      className="text-[10px] text-muted-foreground hover:underline cursor-pointer block"
-                      onClick={() => {
-                        if (!confirm("This will start a fresh planning ritual. Your current week will be replaced when you commit the new plan.")) return;
-                        setLocation(buildProcessUrl("/eisenhower", "/plan"));
-                      }}
-                      data-testid="button-rebuild-week"
-                    >
-                      Rebuild week →
-                    </button>
                   </div>
                 ) : (
-                  <div>
-                    <p className="text-xs text-muted-foreground">No commitments yet.</p>
-                    <button className="text-xs text-primary hover:underline cursor-pointer mt-1" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
-                      Plan your week →
-                    </button>
-                  </div>
+                  <p className="text-xs text-muted-foreground">No commitments yet.</p>
                 )}
               </CardContent>
             </Card>
+
+            {/* Two week tools */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Plan your week */}
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => {
+                if (focusItems.length > 0 && !confirm("This will start a fresh planning ritual. Your current week will be replaced when you commit the new plan.")) return;
+                setLocation(buildProcessUrl("/eisenhower", "/plan"));
+              }} data-testid="card-plan-week">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${focusItems.length > 0 ? "bg-emerald-500" : "bg-rose-400"}`} />
+                    <div>
+                      <p className="text-xs font-medium">{focusItems.length > 0 ? "Rebuild Week" : "Plan Your Week"}</p>
+                      <p className="text-[10px] text-muted-foreground">Full guided ritual</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Face your fear */}
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/eisenhower?startAt=fear", "/plan"))} data-testid="card-face-fear">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${weeklySummary?.fearTarget ? "bg-emerald-500" : "bg-rose-400"}`} />
+                    <div>
+                      <p className="text-xs font-medium">Face Your Fear</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {weeklySummary?.fearTarget
+                          ? <span className="line-clamp-1">{weeklySummary.fearTarget}</span>
+                          : "Weekly fear reflection"
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>

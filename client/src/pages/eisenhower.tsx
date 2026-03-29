@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
@@ -62,8 +62,10 @@ export default function EisenhowerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState(1);
+  const isFearOnly = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("startAt") === "fear";
+  const [step, setStep] = useState(isFearOnly ? 6 : 1);
   const nextId = useRef(1);
+  const [fearOnlyMode, setFearOnlyMode] = useState(isFearOnly);
 
   // Step 2 — Brain dump
   const [newItemText, setNewItemText] = useState("");
@@ -89,6 +91,22 @@ export default function EisenhowerPage() {
     queryKey: ["/api/eisenhower/week", weekStartStr],
   });
   const hasExistingPlan = existingEntries.length > 0;
+
+  // Fear-only mode: pre-load existing items so user can pick a fear target
+  const fearOnlyLoaded = useRef(false);
+  useEffect(() => {
+    if (fearOnlyMode && existingEntries.length > 0 && !fearOnlyLoaded.current) {
+      fearOnlyLoaded.current = true;
+      setItems(existingEntries.map(e => ({
+        id: nextId.current++,
+        text: e.task,
+        selected: true,
+        rank: null,
+        ignoreConsequence: e.quadrant === "q1" ? true : e.quadrant === "q2" ? false : null,
+        futureGlad: (e.quadrant === "q1" || e.quadrant === "q2") ? true : false,
+      })));
+    }
+  }, [fearOnlyMode, existingEntries]);
 
   // Derived lists
   const selectedItems = items.filter(i => i.selected);
@@ -168,9 +186,29 @@ export default function EisenhowerPage() {
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
-  // Commit mutation
+  // Commit mutation — full week or fear-only
   const commitMutation = useMutation({
     mutationFn: async () => {
+      // Fear-only mode: save fear reflection without touching weekly entries
+      if (fearOnlyMode) {
+        if (!fearData.targetTask || !fearData.blockerChip) throw new Error("Complete the fear reflection first");
+        const res = await apiRequest("POST", "/api/eisenhower/weekly-summary", {
+          weekStart: weekStartStr,
+          fearTarget: fearData.targetTask,
+          fearIfFaced: fearData.fearIfFaced,
+          fearIfAvoided: fearData.fearIfAvoided,
+          fearBlocker: fearData.blockerChip,
+          fearFirstMove: fearData.smallestProofMove,
+          fearPromotedToQ2: fearData.promoteToQ2,
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to save fear reflection");
+        }
+        return res.json();
+      }
+
+      // Full ritual mode: commit entire week
       const commitItems = [...handleItems, ...protectItems].map((item, i) => ({
         task: item.text,
         quadrant: item.classification as "q1" | "q2",
@@ -185,7 +223,6 @@ export default function EisenhowerPage() {
 
       if (shouldPromote && fearItem) {
         const currentQ2 = commitItems.filter(ci => ci.quadrant === "q2").length;
-        // Check if fear item is already in commitItems
         const alreadyIncluded = commitItems.some(ci => ci.task === fearItem.text);
         if (!alreadyIncluded && currentQ2 < MAX_Q2) {
           commitItems.push({
@@ -194,7 +231,6 @@ export default function EisenhowerPage() {
             sortOrder: commitItems.length,
           });
         } else if (alreadyIncluded) {
-          // Update existing to Q2 only if room
           const existing = commitItems.find(ci => ci.task === fearItem.text);
           if (existing && currentQ2 < MAX_Q2) existing.quadrant = "q2";
         }
@@ -226,7 +262,8 @@ export default function EisenhowerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStartStr] });
-      setLocation("/dashboard");
+      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/weekly-summary", weekStartStr] });
+      setLocation(fearOnlyMode ? "/plan" : "/dashboard");
     },
     onError: (error: Error) => {
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
@@ -263,15 +300,18 @@ export default function EisenhowerPage() {
     setStep(s => Math.min(s + 1, TOTAL_STEPS));
   };
   const goBack = () => {
+    if (fearOnlyMode && step === 6) return; // Can't go back before fear step in fear-only mode
     if (step === 6) {
-      // Reset fear data when going back from fear step — target may become stale
       setFearTargetIdx(null);
       setFearData({ targetTask: "", fearIfFaced: "", fearIfAvoided: "", blockerChip: "", smallestProofMove: "", promoteToQ2: false });
     }
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const progressPercent = Math.round((step / TOTAL_STEPS) * 100);
+  const fearOnlySteps = 2; // step 6 (fear) + step 7 (commit)
+  const progressPercent = fearOnlyMode
+    ? Math.round(((step - 5) / fearOnlySteps) * 100)
+    : Math.round((step / TOTAL_STEPS) * 100);
 
   return (
     <AppLayout>
@@ -285,7 +325,9 @@ export default function EisenhowerPage() {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">Step {step} of {TOTAL_STEPS}</p>
+        <p className="text-xs text-muted-foreground mt-1 text-right">
+          {fearOnlyMode ? `Step ${step - 5} of ${fearOnlySteps}` : `Step ${step} of ${TOTAL_STEPS}`}
+        </p>
       </div>
 
       <main className="container mx-auto px-4 py-6 max-w-lg">
@@ -765,11 +807,13 @@ export default function EisenhowerPage() {
         )}
 
         {/* ==================== NAVIGATION ==================== */}
-        {step > 1 && (
+        {(step > 1 || fearOnlyMode) && (
           <div className="flex justify-between items-center mt-8 pt-4 border-t">
-            <Button variant="ghost" onClick={goBack} data-testid="button-back">
-              Back
-            </Button>
+            {!(fearOnlyMode && step === 6) ? (
+              <Button variant="ghost" onClick={goBack} data-testid="button-back">
+                Back
+              </Button>
+            ) : <div />}
             <Button
               onClick={goNext}
               disabled={!canNext || (step === 7 && commitMutation.isPending)}

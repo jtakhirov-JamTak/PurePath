@@ -4,7 +4,7 @@ import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
 import OpenAI from "openai";
 import { z } from "zod";
-import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema } from "../validation";
+import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema } from "../validation";
 import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit } from "./helpers";
 
 const MAX_Q1 = 5;
@@ -129,6 +129,36 @@ export function registerEisenhowerRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching weekly summary:", error);
       res.status(500).json({ error: "Failed to fetch weekly summary" });
+    }
+  });
+
+  // Save fear reflection standalone (without wiping the week)
+  app.post("/api/eisenhower/weekly-summary", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const parsed = saveFearSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const { weekStart, ...fearData } = parsed.data;
+      const d = new Date(weekStart + "T12:00:00Z");
+      if (d.getUTCDay() !== 1) {
+        return res.status(400).json({ error: "weekStart must be a Monday" });
+      }
+      const summary = await storage.upsertWeeklySummary({
+        userId,
+        weekStart,
+        fearTarget: fearData.fearTarget,
+        fearIfFaced: fearData.fearIfFaced,
+        fearIfAvoided: fearData.fearIfAvoided,
+        fearBlocker: fearData.fearBlocker,
+        fearFirstMove: fearData.fearFirstMove,
+        fearPromotedToQ2: fearData.fearPromotedToQ2,
+      });
+      res.json(summary);
+    } catch (error) {
+      console.error("Error saving fear reflection:", error);
+      res.status(500).json({ error: "Failed to save fear reflection" });
     }
   });
 

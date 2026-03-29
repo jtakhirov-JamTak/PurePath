@@ -186,6 +186,16 @@ export const commitWeekSchema = z.object({
   }).optional().nullable(),
 });
 
+export const saveFearSchema = z.object({
+  weekStart: dateString,
+  fearTarget: z.string().trim().min(1).max(500),
+  fearIfFaced: z.string().trim().min(1).max(2000),
+  fearIfAvoided: z.string().trim().min(1).max(2000),
+  fearBlocker: fearBlockerEnum,
+  fearFirstMove: z.string().trim().min(1).max(2000),
+  fearPromotedToQ2: z.boolean(),
+});
+
 export const reorderItemSchema = z.object({
   id: z.number().int().positive(),
   sortOrder: z.number().int().min(0),
