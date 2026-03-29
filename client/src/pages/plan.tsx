@@ -258,7 +258,7 @@ export default function PlanPage() {
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-rose-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
-                            {!weekLocked && (
+                            {!(weekLocked && (item.status === "completed" || item.completionLevel)) && (
                               <button
                                 className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
                                 onClick={() => deleteMutation.mutate({ id: item.id })}
@@ -278,7 +278,7 @@ export default function PlanPage() {
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
-                            {!weekLocked && (
+                            {!(weekLocked && (item.status === "completed" || item.completionLevel)) && (
                               <button
                                 className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
                                 onClick={() => deleteMutation.mutate({ id: item.id })}
