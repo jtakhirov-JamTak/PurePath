@@ -90,7 +90,7 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
   const bgClass = isUndone ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
 
   return (
-    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-colors ${borderClass} ${bgClass}`}>
+    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-all duration-200 ${borderClass} ${bgClass} ${item.status === "skipped" ? "opacity-60" : ""}`}>
       <div className="flex items-center gap-2 py-1.5">
         <button
           key={popKey}

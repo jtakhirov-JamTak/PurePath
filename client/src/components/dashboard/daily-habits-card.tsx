@@ -141,7 +141,7 @@ export function DailyHabitsCard({
             const boxClass = getCompletionBoxClass(status);
 
             return (
-              <li key={habit.id} className="py-1.5" data-testid={`habit-item-${habit.id}`}>
+              <li key={habit.id} className={`py-1.5 transition-opacity duration-200 ${status === "skipped" ? "opacity-60" : ""}`} data-testid={`habit-item-${habit.id}`}>
                 <div className="flex items-center gap-2.5">
                   <button
                     key={popKeys[habit.id] || 0}
@@ -176,7 +176,7 @@ export function DailyHabitsCard({
                           : lvl === 0 ? "bg-rose-400"
                           : isToday ? "ring-1 ring-border bg-transparent"
                           : "bg-muted"
-                        }`}
+                        } ${isToday && lvl !== null && lvl > 0 ? "animate-dot-spring" : ""}`}
                       />
                     );
                   })}

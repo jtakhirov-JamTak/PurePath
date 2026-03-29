@@ -11,7 +11,7 @@ const MAX_Q1 = 5;
 const MAX_Q2 = 2;
 
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "missing",
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 

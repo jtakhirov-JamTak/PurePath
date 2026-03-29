@@ -202,6 +202,7 @@ export default function JournalEntryPage() {
   const [morningData, setMorningData] = useState<MorningContent>(emptyMorning);
   const [eveningData, setEveningData] = useState<EveningContent>(emptyEvening);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDayClosed, setShowDayClosed] = useState(false);
   const [journalMode, setJournalMode] = useState<"quick" | "full">(() => {
     return (localStorage.getItem("leaf-journal-mode") as "quick" | "full") || "full";
   });
@@ -388,10 +389,6 @@ export default function JournalEntryPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Journal Saved",
-        description: "Your journal entry has been saved successfully.",
-      });
       queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
       if (!isMorning && eveningData.triggerText.trim()) {
@@ -400,7 +397,18 @@ export default function JournalEntryPage() {
       if (!isMorning) {
         queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
         queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
+        // "Day closed." moment — fade content, show text, then navigate
+        setShowDayClosed(true);
+        setTimeout(() => {
+          setLocation("/");
+          window.scrollTo(0, 0);
+        }, 1800);
+        return;
       }
+      toast({
+        title: "Journal Saved",
+        description: "Your journal entry has been saved successfully.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -462,6 +470,14 @@ export default function JournalEntryPage() {
       </div>
     );
   };
+
+  if (showDayClosed) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-lg font-medium text-foreground animate-fade-in">Day closed.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

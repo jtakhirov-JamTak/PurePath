@@ -111,6 +111,15 @@ export default {
           "50%": { transform: "scale(1.2)", opacity: "1" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "dot-spring": {
+          "0%": { transform: "scale(0)" },
+          "60%": { transform: "scale(1.4)" },
+          "100%": { transform: "scale(1)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -118,6 +127,8 @@ export default {
         "tap-pop": "tap-pop 150ms ease-out",
         "dot-pulse": "dot-pulse 400ms ease-out",
         "check-flash": "check-flash 300ms ease-out",
+        "dot-spring": "dot-spring 250ms ease-out",
+        "fade-in": "fade-in 300ms ease-out",
       },
     },
   },
