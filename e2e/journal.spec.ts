@@ -32,10 +32,10 @@ test.describe("Journal Creation", () => {
 
     await expect(page.getByTestId("card-check-in")).toBeVisible();
     await expect(page.getByTestId("input-sleep-hours")).toBeVisible();
-    await expect(page.getByTestId("card-self-awareness")).toBeVisible();
-    await expect(page.getByTestId("input-intention")).toBeVisible();
-    await expect(page.getByTestId("card-happiness")).toBeVisible();
     await expect(page.getByTestId("input-gratitude")).toBeVisible();
+    await expect(page.getByTestId("card-identity")).toBeVisible();
+    await expect(page.getByTestId("card-let-go")).toBeVisible();
+    await expect(page.getByTestId("input-letting-go")).toBeVisible();
   });
 
   test("energy and stress level buttons are clickable", async ({ page }) => {
@@ -72,12 +72,11 @@ test.describe("Journal Creation", () => {
     expect(body.session).toBe("morning");
   });
 
-  test("courage card fields are present", async ({ page }) => {
+  test("let go card field is present", async ({ page }) => {
     await page.goto(`/journal/${todayStr}/morning`);
 
-    await expect(page.getByTestId("card-courage")).toBeVisible();
-    await expect(page.getByTestId("input-avoidance")).toBeVisible();
-    await expect(page.getByTestId("input-courage-action")).toBeVisible();
+    await expect(page.getByTestId("card-let-go")).toBeVisible();
+    await expect(page.getByTestId("input-letting-go")).toBeVisible();
   });
 
   test("mode toggle switches between quick and deep", async ({ page }) => {

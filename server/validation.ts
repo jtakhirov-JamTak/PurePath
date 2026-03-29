@@ -17,7 +17,7 @@ const completionStatusEnum = z.enum(["completed", "skipped"]);
 export const createEisenhowerSchema = z.object({
   task: trimmedString(1, 500),
   weekStart: dateString,
-  role: z.string().max(50, "Role must be at most 50 characters"),
+  role: z.string().max(50, "Role must be at most 50 characters").default(""),
   quadrant: quadrantEnum,
   deadline: optionalDateString,
   timeEstimate: optionalString(20),
@@ -154,6 +154,36 @@ export const createAvoidanceLogSchema = z.object({
   discomfort: z.number().int().min(1).max(5),
   smallestExposure: optionalString(2000),
   startedNow: z.boolean().optional().nullable(),
+});
+
+export const fearBlockerEnum = z.enum([
+  "getting_it_wrong",
+  "being_judged",
+  "disappointing_someone",
+  "uncertainty",
+  "waiting_for_permission",
+  "hoping_someone_else_decides",
+  "shame_discomfort",
+  "succeeding_and_sustaining",
+]);
+
+export const commitWeekItemSchema = z.object({
+  task: z.string().trim().min(1).max(500),
+  quadrant: z.enum(["q1", "q2"]),
+  sortOrder: z.number().int().min(0),
+});
+
+export const commitWeekSchema = z.object({
+  weekStart: dateString,
+  items: z.array(commitWeekItemSchema).max(7),
+  fearData: z.object({
+    fearTarget: z.string().trim().min(1).max(500),
+    fearIfFaced: z.string().trim().min(1).max(2000),
+    fearIfAvoided: z.string().trim().min(1).max(2000),
+    fearBlocker: fearBlockerEnum,
+    fearFirstMove: z.string().trim().min(1).max(2000),
+    fearPromotedToQ2: z.boolean(),
+  }).optional().nullable(),
 });
 
 export const reorderItemSchema = z.object({

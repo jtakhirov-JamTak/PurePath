@@ -353,7 +353,10 @@ export default function PlanPage() {
 
                     <button
                       className="text-[10px] text-muted-foreground hover:underline cursor-pointer block"
-                      onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))}
+                      onClick={() => {
+                        if (!confirm("This will start a fresh planning ritual. Your current week will be replaced when you commit the new plan.")) return;
+                        setLocation(buildProcessUrl("/eisenhower", "/plan"));
+                      }}
                       data-testid="button-rebuild-week"
                     >
                       Rebuild week →

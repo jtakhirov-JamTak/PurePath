@@ -81,6 +81,33 @@ export const insertEisenhowerEntrySchema = createInsertSchema(eisenhowerEntries)
 export type EisenhowerEntry = typeof eisenhowerEntries.$inferSelect;
 export type InsertEisenhowerEntry = z.infer<typeof insertEisenhowerEntrySchema>;
 
+// Weekly summaries - fear reflection + week-level data
+export const weeklySummaries = pgTable("weekly_summaries", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  weekStart: date("week_start").notNull(),
+  fearTarget: text("fear_target"),
+  fearIfFaced: text("fear_if_faced"),
+  fearIfAvoided: text("fear_if_avoided"),
+  fearBlocker: varchar("fear_blocker", { length: 50 }),
+  fearFirstMove: text("fear_first_move"),
+  fearPromotedToQ2: boolean("fear_promoted_to_q2").default(false),
+  fearLinkedEntryId: integer("fear_linked_entry_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("weekly_summaries_user_week_idx").on(table.userId, table.weekStart),
+]);
+
+export const insertWeeklySummarySchema = createInsertSchema(weeklySummaries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WeeklySummary = typeof weeklySummaries.$inferSelect;
+export type InsertWeeklySummary = z.infer<typeof insertWeeklySummarySchema>;
+
 // Empathy exercises - reflection after interactions
 export const empathyExercises = pgTable("empathy_exercises", {
   id: serial("id").primaryKey(),

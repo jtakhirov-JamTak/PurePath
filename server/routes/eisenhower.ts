@@ -4,8 +4,8 @@ import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
 import OpenAI from "openai";
 import { z } from "zod";
-import { createEisenhowerSchema, updateEisenhowerSchema } from "../validation";
-import { parseId, parseDateParam, csvEscape, aiRateLimit, exportRateLimit } from "./helpers";
+import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema } from "../validation";
+import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit } from "./helpers";
 
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
@@ -115,6 +115,96 @@ export function registerEisenhowerRoutes(app: Express) {
     } catch (error) {
       console.error("Error updating entry:", error);
       res.status(500).json({ error: "Failed to update entry" });
+    }
+  });
+
+  // Get weekly summary (fear data) for a specific week
+  app.get("/api/eisenhower/weekly-summary/:weekStart", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const weekStart = parseMondayParam(req.params.weekStart);
+      if (!weekStart) return res.status(400).json({ error: "Invalid date or not a Monday" });
+      const summary = await storage.getWeeklySummary(userId, weekStart);
+      res.json(summary || null);
+    } catch (error) {
+      console.error("Error fetching weekly summary:", error);
+      res.status(500).json({ error: "Failed to fetch weekly summary" });
+    }
+  });
+
+  // Wipe all entries for a week (Rebuild Week)
+  app.delete("/api/eisenhower/week/:weekStart", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const weekStart = parseMondayParam(req.params.weekStart);
+      if (!weekStart) return res.status(400).json({ error: "Invalid date or not a Monday" });
+      const count = await storage.deleteEisenhowerEntriesForWeek(userId, weekStart);
+      res.json({ success: true, deleted: count });
+    } catch (error) {
+      console.error("Error wiping week:", error);
+      res.status(500).json({ error: "Failed to wipe week" });
+    }
+  });
+
+  // Atomic commit: wipe existing week, save new items + fear summary
+  app.post("/api/eisenhower/commit-week", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const parsed = commitWeekSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const { weekStart, items, fearData } = parsed.data;
+
+      // Validate weekStart is a Monday
+      const d = new Date(weekStart + "T12:00:00Z");
+      if (d.getUTCDay() !== 1) {
+        return res.status(400).json({ error: "weekStart must be a Monday" });
+      }
+
+      // Validate caps
+      const q1Count = items.filter(i => i.quadrant === "q1").length;
+      const q2Count = items.filter(i => i.quadrant === "q2").length;
+      if (q1Count > MAX_Q1) {
+        return res.status(400).json({ error: `Max ${MAX_Q1} Handle items per week` });
+      }
+      if (q2Count > MAX_Q2) {
+        return res.status(400).json({ error: `Max ${MAX_Q2} Protect items per week` });
+      }
+
+      // Check for duplicate task names within the submitted items
+      const taskNames = items.map(i => i.task.toLowerCase());
+      if (new Set(taskNames).size !== taskNames.length) {
+        return res.status(400).json({ error: "Duplicate task names are not allowed" });
+      }
+
+      // Build item payloads
+      const entryItems = items.map(item => ({
+        task: item.task,
+        quadrant: item.quadrant,
+        role: "",
+        sortOrder: item.sortOrder,
+        blocksGoal: item.quadrant === "q2" ? true : false,
+      }));
+
+      // Build fear summary payload
+      const fearSummary = fearData ? {
+        userId,
+        weekStart,
+        fearTarget: fearData.fearTarget,
+        fearIfFaced: fearData.fearIfFaced,
+        fearIfAvoided: fearData.fearIfAvoided,
+        fearBlocker: fearData.fearBlocker,
+        fearFirstMove: fearData.fearFirstMove,
+        fearPromotedToQ2: fearData.fearPromotedToQ2,
+      } : undefined;
+
+      // Atomic: delete + insert + upsert in one transaction
+      const result = await storage.commitWeek(userId, weekStart, entryItems, fearSummary);
+      res.json(result);
+    } catch (error) {
+      console.error("Error committing week:", error);
+      res.status(500).json({ error: "Failed to commit week" });
     }
   });
 

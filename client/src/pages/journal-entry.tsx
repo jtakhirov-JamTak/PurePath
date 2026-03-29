@@ -10,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, Shield, Target, BedDouble, Compass } from "lucide-react";
+import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, BedDouble, Compass } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, MonthlyGoal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 import { startOfWeek } from "date-fns";
 
 interface MorningContent {
@@ -215,19 +215,6 @@ export default function JournalEntryPage() {
     enabled: !!user,
   });
 
-  const currentMonthKey = date ? date.substring(0, 7) : format(new Date(), "yyyy-MM");
-  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", currentMonthKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
-  const goalDisplayText = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
-  const hasGoal = goalDisplayText.length > 0;
-
   const { data: identityDoc } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
     enabled: !!user,
@@ -330,7 +317,7 @@ export default function JournalEntryPage() {
         intentions: isMorning ? morningData.intention : "",
         reflections: isMorning ? "" : eveningData.insight,
         highlights: isMorning ? "" : eveningData.review,
-        challenges: isMorning ? morningData.avoidance : eveningData.triggerText,
+        challenges: isMorning ? (existingJournal?.challenges || "") : eveningData.triggerText,
       });
 
       // Also save trigger log entry if evening trigger data is filled
@@ -439,10 +426,6 @@ export default function JournalEntryPage() {
 
   const updateEveningField = <K extends keyof EveningContent>(field: K, value: EveningContent[K]) => {
     setEveningData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateMorningField = <K extends keyof MorningContent>(field: K, value: MorningContent[K]) => {
-    setMorningData(prev => ({ ...prev, [field]: value }));
   };
 
   const toggleEveningChip = (field: "triggerAppraisal" | "triggerBodyState", val: string) => {
@@ -640,6 +623,18 @@ export default function JournalEntryPage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Gratitude */}
+                <div className="space-y-2 mt-4">
+                  <Label className="text-sm font-medium">What I'm grateful for</Label>
+                  <Textarea
+                    value={morningData.gratitude}
+                    onChange={(e) => updateMorning("gratitude", e.target.value)}
+                    placeholder="I am grateful for..."
+                    className="min-h-[60px] max-h-[80px] resize-none"
+                    data-testid="input-gratitude"
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -733,156 +728,21 @@ export default function JournalEntryPage() {
               </CardContent>
             </Card>
 
-            {/* Section 3 — Avoidance (full mode only) */}
+            {/* Section 3 — Let Go (full mode only) */}
             {journalMode === "full" && (
-              <Card data-testid="card-courage">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                      <Shield className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm">Courage</CardTitle>
-                      <CardDescription>Face what you're avoiding</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {hasGoal && (
-                    <div className="rounded-md bg-muted/50 px-4 py-3" data-testid="goal-context">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Monthly Goal</p>
-                      <p className="text-sm">{goalDisplayText}</p>
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">What am I avoiding?</Label>
-                    <Textarea
-                      value={morningData.avoidance}
-                      onChange={(e) => updateMorning("avoidance", e.target.value)}
-                      placeholder="The thing I'm avoiding is..."
-                      rows={2}
-                      className="resize-none text-sm"
-                      data-testid="input-avoidance"
-                    />
-                  </div>
-
-                  {morningData.avoidance.trim() ? (
-                    <>
-                      <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">Which value does facing this serve?</Label>
-                        {valuesItems.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {valuesItems.map((value, i) => {
-                              const selected = morningData.avoidanceValue === value;
-                              return (
-                                <button
-                                  key={i}
-                                  type="button"
-                                  onClick={() => updateMorning("avoidanceValue", selected ? "" : value)}
-                                  className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
-                                    selected
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-primary/40 text-primary hover:bg-primary/[0.08]"
-                                  }`}
-                                  data-testid={`chip-avoidance-value-${i}`}
-                                >
-                                  {value}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">
-                            Set up your values in your <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button> first.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">Discomfort level</Label>
-                        <div className="flex gap-2">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <Button
-                              key={n}
-                              variant={morningData.avoidanceDiscomfort === n ? "default" : "outline"}
-                              size="sm"
-                              className="flex-1"
-                              type="button"
-                              onClick={() => updateMorningField("avoidanceDiscomfort", n)}
-                              data-testid={`button-avoidance-discomfort-${n}`}
-                            >
-                              {n}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">What do I think will happen if I do this?</Label>
-                        <Input
-                          value={morningData.avoidanceFear}
-                          onChange={(e) => updateMorning("avoidanceFear", e.target.value)}
-                          placeholder="My fear is that..."
-                          data-testid="input-avoidance-fear"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">Smallest exposure rep</Label>
-                        <Textarea
-                          value={morningData.courageAction}
-                          onChange={(e) => updateMorning("courageAction", e.target.value)}
-                          placeholder="The tiniest step I could take..."
-                          rows={2}
-                          className="resize-none text-sm"
-                          data-testid="input-courage-action"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">I'll do this at:</Label>
-                        <Input
-                          type="time"
-                          value={morningData.exposureTime}
-                          onChange={(e) => updateMorning("exposureTime", e.target.value)}
-                          className="w-32"
-                          data-testid="input-exposure-time"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Nothing to avoid? That's a win — skip this section.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Section 4 — Happiness (full mode only) */}
-            {journalMode === "full" && (
-              <Card data-testid="card-happiness">
+              <Card data-testid="card-let-go">
                 <CardHeader>
                   <div className="flex items-center gap-3">
                     <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
                       <Heart className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-sm">Happiness</CardTitle>
-                      <CardDescription className="italic">"Every day should be a happy day"</CardDescription>
+                      <CardTitle className="text-sm">Let Go</CardTitle>
+                      <CardDescription>Release what doesn't serve you</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Who or what am I grateful for today?</Label>
-                    <Textarea
-                      value={morningData.gratitude}
-                      onChange={(e) => updateMorning("gratitude", e.target.value)}
-                      placeholder="I am grateful for..."
-                      className="min-h-[60px] max-h-[80px] resize-none"
-                      data-testid="input-gratitude"
-                    />
-                  </div>
+                <CardContent>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">One thing I am letting go of today:</Label>
                     <Input

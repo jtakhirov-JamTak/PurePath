@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, userSettings,
+  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
@@ -12,6 +12,7 @@ import {
   type TriggerLog, type InsertTriggerLog,
   type AvoidanceLog, type InsertAvoidanceLog,
   type UserSettings,
+  type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -30,6 +31,12 @@ export interface IStorage {
   updateEisenhowerEntry(userId: string, id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
   deleteEisenhowerEntry(userId: string, id: number): Promise<void>;
   deleteBlocksGoalEntries(userId: string): Promise<number>;
+  deleteEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<number>;
+
+  // Weekly Summaries
+  getWeeklySummary(userId: string, weekStart: string): Promise<WeeklySummary | undefined>;
+  upsertWeeklySummary(summary: InsertWeeklySummary): Promise<WeeklySummary>;
+  commitWeek(userId: string, weekStart: string, items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[], fearSummary?: InsertWeeklySummary): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }>;
 
   // Empathy Exercises
   getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]>;
@@ -151,6 +158,107 @@ export class DatabaseStorage implements IStorage {
   async deleteBlocksGoalEntries(userId: string): Promise<number> {
     const result = await db.delete(eisenhowerEntries).where(and(eq(eisenhowerEntries.userId, userId), eq(eisenhowerEntries.blocksGoal, true))).returning();
     return result.length;
+  }
+
+  async deleteEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<number> {
+    const result = await db.delete(eisenhowerEntries).where(and(
+      eq(eisenhowerEntries.userId, userId),
+      eq(eisenhowerEntries.weekStart, weekStart)
+    )).returning();
+    // Clear dangling fearLinkedEntryId on any existing weekly summary
+    await db.update(weeklySummaries)
+      .set({ fearLinkedEntryId: null, updatedAt: new Date() })
+      .where(and(
+        eq(weeklySummaries.userId, userId),
+        eq(weeklySummaries.weekStart, weekStart)
+      ));
+    return result.length;
+  }
+
+  // Weekly Summaries
+  async getWeeklySummary(userId: string, weekStart: string): Promise<WeeklySummary | undefined> {
+    const [summary] = await db.select().from(weeklySummaries).where(and(
+      eq(weeklySummaries.userId, userId),
+      eq(weeklySummaries.weekStart, weekStart)
+    ));
+    return summary;
+  }
+
+  async upsertWeeklySummary(summary: InsertWeeklySummary): Promise<WeeklySummary> {
+    const [result] = await db
+      .insert(weeklySummaries)
+      .values({ ...summary, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [weeklySummaries.userId, weeklySummaries.weekStart],
+        set: {
+          fearTarget: summary.fearTarget,
+          fearIfFaced: summary.fearIfFaced,
+          fearIfAvoided: summary.fearIfAvoided,
+          fearBlocker: summary.fearBlocker,
+          fearFirstMove: summary.fearFirstMove,
+          fearPromotedToQ2: summary.fearPromotedToQ2,
+          fearLinkedEntryId: summary.fearLinkedEntryId,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async commitWeek(
+    userId: string,
+    weekStart: string,
+    items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[],
+    fearSummary?: InsertWeeklySummary,
+  ): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }> {
+    return db.transaction(async (tx) => {
+      // 1. Wipe existing entries for this week
+      await tx.delete(eisenhowerEntries).where(and(
+        eq(eisenhowerEntries.userId, userId),
+        eq(eisenhowerEntries.weekStart, weekStart)
+      ));
+
+      // 2. Insert all new entries
+      const entries: EisenhowerEntry[] = [];
+      for (const item of items) {
+        const [entry] = await tx.insert(eisenhowerEntries).values({
+          ...item,
+          userId,
+          weekStart,
+        }).returning();
+        entries.push(entry);
+      }
+
+      // 3. Upsert fear summary if provided
+      let summary: WeeklySummary | null = null;
+      if (fearSummary) {
+        // Link fear to the matching committed entry
+        const linkedId = fearSummary.fearPromotedToQ2
+          ? entries.find(e => e.task === fearSummary.fearTarget && e.quadrant === "q2")?.id ?? null
+          : null;
+
+        const [result] = await tx
+          .insert(weeklySummaries)
+          .values({ ...fearSummary, fearLinkedEntryId: linkedId, updatedAt: new Date() })
+          .onConflictDoUpdate({
+            target: [weeklySummaries.userId, weeklySummaries.weekStart],
+            set: {
+              fearTarget: fearSummary.fearTarget,
+              fearIfFaced: fearSummary.fearIfFaced,
+              fearIfAvoided: fearSummary.fearIfAvoided,
+              fearBlocker: fearSummary.fearBlocker,
+              fearFirstMove: fearSummary.fearFirstMove,
+              fearPromotedToQ2: fearSummary.fearPromotedToQ2,
+              fearLinkedEntryId: linkedId,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        summary = result;
+      }
+
+      return { entries, summary };
+    });
   }
 
   // Empathy Exercises
