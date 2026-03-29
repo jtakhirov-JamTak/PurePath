@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format } from "date-fns";
 import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
 
 const DEFAULT_OBSTACLES = ["Time", "Energy", "Avoidance", "Distraction", "Perfectionism"];
@@ -105,36 +105,9 @@ export default function MonthlyGoalPage() {
         throw new Error(body.error || "Failed to save goal");
       }
 
-      // Auto-link monthly goal next step to This Week's Focus (skip if duplicate)
-      if (nextConcreteStep && goalWhen) {
-        const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-        const weekEnd = addDays(weekStart, 6);
-        const whenDate = new Date(goalWhen + "T12:00:00");
-        if (whenDate >= weekStart && whenDate <= weekEnd) {
-          const weekStartStr = format(weekStart, "yyyy-MM-dd");
-          const existingRes = await fetch(`/api/eisenhower`, { credentials: "include" });
-          const existing: { task: string; weekStart: string }[] = existingRes.ok ? await existingRes.json() : [];
-          const match = existing.find((e: any) => e.task === nextConcreteStep && e.weekStart === weekStartStr);
-          if (match && !(match as any).scheduledDate) {
-            // Patch existing unscheduled item to pin it to the goal date
-            await apiRequest("PATCH", `/api/eisenhower/${(match as any).id}`, { scheduledDate: goalWhen });
-          } else if (!match) {
-            await apiRequest("POST", "/api/eisenhower", {
-              task: nextConcreteStep,
-              weekStart: weekStartStr,
-              scheduledDate: goalWhen,
-              role: "",
-              quadrant: "q1",
-              blocksGoal: true,
-              deadline: goalWhen,
-            });
-          }
-        }
-      }
-
       return res.json();
     },
-    invalidateKeys: ["/api/monthly-goal", "/api/eisenhower"],
+    invalidateKeys: ["/api/monthly-goal"],
     successToast: { title: "Goal saved" },
     errorToast: "Could not save goal",
     onSuccess: () => {

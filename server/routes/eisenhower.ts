@@ -136,6 +136,18 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
+  // One-time cleanup: remove all auto-created blocksGoal entries
+  app.delete("/api/eisenhower/cleanup-goal-entries", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.deleteBlocksGoalEntries(userId);
+      res.json({ success: true, deleted: count });
+    } catch (error) {
+      console.error("Error cleaning up goal entries:", error);
+      res.status(500).json({ error: "Failed to clean up" });
+    }
+  });
+
   app.post("/api/eisenhower/reorder", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;

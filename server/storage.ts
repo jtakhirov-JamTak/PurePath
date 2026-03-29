@@ -29,7 +29,8 @@ export interface IStorage {
   createEisenhowerEntry(entry: InsertEisenhowerEntry): Promise<EisenhowerEntry>;
   updateEisenhowerEntry(userId: string, id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
   deleteEisenhowerEntry(userId: string, id: number): Promise<void>;
-  
+  deleteBlocksGoalEntries(userId: string): Promise<number>;
+
   // Empathy Exercises
   getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]>;
   createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise>;
@@ -145,6 +146,11 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEisenhowerEntry(userId: string, id: number): Promise<void> {
     await db.delete(eisenhowerEntries).where(and(eq(eisenhowerEntries.id, id), eq(eisenhowerEntries.userId, userId)));
+  }
+
+  async deleteBlocksGoalEntries(userId: string): Promise<number> {
+    const result = await db.delete(eisenhowerEntries).where(and(eq(eisenhowerEntries.userId, userId), eq(eisenhowerEntries.blocksGoal, true))).returning();
+    return result.length;
   }
 
   // Empathy Exercises
