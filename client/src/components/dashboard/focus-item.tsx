@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { EisenhowerEntry } from "@shared/schema";
 import { fmtTime } from "@/lib/format";
 import { getCompletionLabel, getFocusBoxClass, getNextFocusLevel } from "@/lib/completion";
-import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/constants";
+import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_BADGE, QUADRANT_BORDER, QUADRANT_BG_UNDONE, QUADRANT_ICON_COLOR } from "@/lib/constants";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -84,8 +84,13 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
   const boxLabel = getCompletionLabel(lvl, isBin);
   const boxClass = getFocusBoxClass(lvl, isBin);
 
+  const isUndone = item.status !== "completed" && item.status !== "skipped";
+  const quadrant = item.quadrant || "q1";
+  const borderClass = QUADRANT_BORDER[quadrant] || "";
+  const bgClass = isUndone ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
+
   return (
-    <div data-testid={`focus-item-${item.id}`}>
+    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-colors ${borderClass} ${bgClass}`}>
       <div className="flex items-center gap-2 py-1.5">
         <button
           key={popKey}
@@ -100,9 +105,14 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
           {boxLabel}
         </button>
         {item.quadrant === "q1"
-          ? <Zap className="h-3 w-3 text-amber-500 shrink-0" />
-          : <Target className="h-3 w-3 text-blue-500 shrink-0" />
+          ? <Zap className={`h-3 w-3 ${QUADRANT_ICON_COLOR.q1} shrink-0`} />
+          : <Target className={`h-3 w-3 ${QUADRANT_ICON_COLOR.q2} shrink-0`} />
         }
+        {item.category && (
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${CATEGORY_BADGE[item.category] || "bg-muted text-muted-foreground"}`}>
+            {CATEGORY_LABELS[item.category] || item.category}
+          </span>
+        )}
         {editingName ? (
           <input
             ref={inputRef}

@@ -37,6 +37,11 @@ export default function PlanPage() {
   const activeHabits = habits.filter(h => h.active !== false);
   const focusItems = getWeekFocusItems(eisenhowerEntries, weekStartStr);
 
+  // Completion heuristics for document cards
+  const discoveryFilled = !!(identityDoc?.strengths?.trim() || identityDoc?.helpingPatterns?.trim());
+  const identityFilled = !!(identityDoc?.identity?.trim() || identityDoc?.vision?.trim());
+  const scoreboardFilled = !!(identityDoc?.yearVision?.trim());
+
   // Daily Anchor — rotating excerpt from identity document
   const anchorExcerpt = (() => {
     if (!identityDoc) return null;
@@ -70,20 +75,35 @@ export default function PlanPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))} data-testid="card-nav-discovery">
                 <CardContent className="p-3">
-                  <p className="text-xs font-medium">Discovery Profile</p>
-                  <p className="text-[10px] text-muted-foreground">Values, strengths, patterns</p>
+                  <div className="flex items-start gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${discoveryFilled ? "bg-emerald-500" : "bg-rose-400"}`} />
+                    <div>
+                      <p className="text-xs font-medium">Discovery Profile</p>
+                      <p className="text-[10px] text-muted-foreground">Values, strengths, patterns</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))} data-testid="card-nav-identity">
                 <CardContent className="p-3">
-                  <p className="text-xs font-medium">Identity Document</p>
-                  <p className="text-[10px] text-muted-foreground">Vision, identity, purpose</p>
+                  <div className="flex items-start gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${identityFilled ? "bg-emerald-500" : "bg-rose-400"}`} />
+                    <div>
+                      <p className="text-xs font-medium">Identity Document</p>
+                      <p className="text-[10px] text-muted-foreground">Vision, identity, purpose</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/scoreboard", "/plan"))} data-testid="card-nav-scoreboard">
                 <CardContent className="p-3">
-                  <p className="text-xs font-medium">1-Year Scoreboard</p>
-                  <p className="text-[10px] text-muted-foreground">Outcome, obstacles, IF-THEN</p>
+                  <div className="flex items-start gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${scoreboardFilled ? "bg-emerald-500" : "bg-rose-400"}`} />
+                    <div>
+                      <p className="text-xs font-medium">1-Year Scoreboard</p>
+                      <p className="text-[10px] text-muted-foreground">Outcome, obstacles, IF-THEN</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -126,7 +146,7 @@ export default function PlanPage() {
                 </Button>
               </div>
             ) : (
-              <button className="text-xs text-primary hover:underline cursor-pointer" onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="button-plan-set-goal">
+              <button className="text-xs text-rose-500 hover:underline cursor-pointer" onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="button-plan-set-goal">
                 Set your monthly goal →
               </button>
             )}

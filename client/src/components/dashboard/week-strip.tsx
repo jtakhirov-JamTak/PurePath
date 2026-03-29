@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { format, addDays } from "date-fns";
 import type { EisenhowerEntry } from "@shared/schema";
-import { CATEGORY_COLORS } from "@/lib/constants";
+import { CATEGORY_COLORS, WEEK_DAY_TINT } from "@/lib/constants";
 import { getWeekFocusItems } from "@/lib/eisenhower-filters";
 
 interface WeekStripProps {
@@ -46,7 +46,11 @@ export function WeekStrip({
       ).length;
       const allDone = dayItems.length > 0 && completedCount === dayItems.length;
 
-      return { dateStr, dayLabel, dayNum, isToday, isSelected, isFuture, categories, itemCount: dayItems.length, allDone };
+      // Quadrant-based tint: rose for open Q1, amber for open Q2-only
+      const hasQ1Open = dayItems.some((e) => e.quadrant === "q1" && e.status !== "completed" && e.status !== "skipped");
+      const hasQ2Open = !hasQ1Open && dayItems.some((e) => e.quadrant === "q2" && e.status !== "completed" && e.status !== "skipped");
+
+      return { dateStr, dayLabel, dayNum, isToday, isSelected, isFuture, categories, itemCount: dayItems.length, allDone, hasQ1Open, hasQ2Open };
     });
   }, [weekStartDate, todayStr, selectedDateStr, eisenhowerEntries, weekStartStr]);
 
@@ -57,13 +61,16 @@ export function WeekStrip({
           <button
             key={day.dateStr}
             onClick={() => onSelectDate(day.dateStr)}
-            className={`flex flex-col items-center py-1.5 px-0.5 rounded-lg cursor-pointer transition-colors ${
-              day.isSelected
-                ? "bg-primary/10 ring-1 ring-primary"
-                : day.isToday
-                  ? "bg-bark/5"
-                  : "hover:bg-muted/50"
-            }`}
+            className={`flex flex-col items-center py-1.5 px-0.5 rounded-lg cursor-pointer transition-colors ${(() => {
+              if (day.isSelected) return "bg-primary/10 ring-1 ring-primary";
+              const tint = day.allDone ? WEEK_DAY_TINT.allDone
+                : day.hasQ1Open ? WEEK_DAY_TINT.hasQ1Open
+                : day.hasQ2Open ? WEEK_DAY_TINT.hasQ2Open
+                : "";
+              return day.isToday
+                ? (tint || "bg-bark/5")
+                : `${tint} hover:bg-muted/50`;
+            })()}`}
             data-testid={`week-day-${day.dateStr}`}
           >
             <span className={`text-[10px] font-medium ${

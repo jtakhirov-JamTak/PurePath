@@ -130,6 +130,6 @@ test.describe("Journal Creation", () => {
     await page.goto("/");
 
     // Morning button should show when no morning journal exists
-    await expect(page.getByTestId("button-morning-journal")).toBeVisible();
+    await expect(page.getByTestId("button-start-morning-journal")).toBeVisible();
   });
 });

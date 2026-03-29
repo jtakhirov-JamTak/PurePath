@@ -99,6 +99,7 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 ## Lessons Learned
 - Habit filtering must be consistent across all views — canonical logic in journal-hub.tsx
 - Auto-created eisenhower entries (e.g. from monthly goal nextConcreteStep) must dedupe before POSTing — re-saving the goal duplicated items on the calendar
+- Dashboard Daily Contract (or any "today's commitment" UI) must derive from `todayFocusItems` pinned to `todayStr`, not `focusItems` which follows `selectedDate` in the week strip
 - (Add new lessons here as they arise)
 
 ## Docs

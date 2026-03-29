@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
 import type { Habit } from "@shared/schema";
-import { CATEGORY_COLORS, TIMING_ORDER, TIMING_LABELS } from "@/lib/constants";
+import { CATEGORY_COLORS, TIMING_ORDER, TIMING_LABELS, HABIT_UNDONE_BG } from "@/lib/constants";
 import { getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
 
 interface JournalHabitItem {
@@ -123,7 +123,7 @@ export function DailyHabitsCard({
                 <button
                   key={popKeys[habit.id] || 0}
                   onClick={cycleHabit}
-                  className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass}`}
+                  className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass} ${!status ? HABIT_UNDONE_BG : ""}`}
                   data-testid={`habit-level-${habit.id}`}
                 >
                   {boxLabel}

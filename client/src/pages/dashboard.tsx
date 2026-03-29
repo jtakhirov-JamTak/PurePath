@@ -5,16 +5,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Sun, Moon,
   Target, Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays, getDayOfYear } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitLevelMap, buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems, getWeekFocusItems } from "@/lib/eisenhower-filters";
@@ -98,24 +96,15 @@ export default function DashboardPage() {
   const hasEvening = todayJournals.some((j) => j.session === "evening");
 
 
-  // Daily Anchor — rotating excerpt from identity document
-  const anchorExcerpt = useMemo(() => {
+  // Identity statement for Daily Contract — first non-empty identity field
+  const identityStatement = useMemo(() => {
     if (!identityDoc) return null;
-    const fields = [
-      identityDoc.identity?.trim(),
-      identityDoc.vision?.trim(),
-      identityDoc.values?.trim(),
-      identityDoc.purpose?.trim(),
-    ];
-    const dayIndex = getDayOfYear(today) % 4;
-    for (let i = 0; i < 4; i++) {
-      const text = fields[(dayIndex + i) % 4];
-      if (text) return text;
-    }
-    return null;
+    return identityDoc.identity?.trim() || identityDoc.purpose?.trim()
+      || identityDoc.vision?.trim() || identityDoc.values?.trim() || null;
   }, [identityDoc]);
 
-  // Focus items for the selected day (defaults to today)
+  // Focus items for today (used by Daily Contract) and selected day (used by list)
+  const todayFocusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, todayStr);
   const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate);
 
   const sortedFocusItems = [...focusItems].sort((a, b) =>
@@ -202,7 +191,7 @@ export default function DashboardPage() {
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
 
-  const allFocusDone = focusItems.length > 0 && focusItems.every(e => e.status === "completed");
+  const allFocusDone = todayFocusItems.length > 0 && todayFocusItems.every(e => e.status === "completed");
   const [showCelebration, setShowCelebration] = useState(false);
   const prevAllFocusDoneRef = useRef(allFocusDone);
 
@@ -255,52 +244,39 @@ export default function DashboardPage() {
   const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
   const totalHabits = todaysHabits.length + journalHabitItems.length;
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+  const completedFocusCount = todayFocusItems.filter(e => e.status === "completed").length;
+  const allContractDone = (todayFocusItems.length === 0 || allFocusDone) && completedHabits === totalHabits;
 
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-3 max-w-2xl space-y-2">
-        <div className="flex items-center justify-between gap-4 flex-wrap" data-testid="today-header">
-          <div>
-            <h1 className="text-sm font-medium" data-testid="text-today-title">
-              {format(today, "EEEE, MMM d")}
-            </h1>
-            {goalDisplay && (
-              <p className="text-xs text-muted-foreground mt-0.5" data-testid="text-monthly-promise">
-                <Target className="h-3 w-3 inline mr-1" />
-                {goalDisplay}
-              </p>
-            )}
-            {anchorExcerpt && (
-              <p className="text-[11px] text-muted-foreground italic mt-0.5 line-clamp-1" data-testid="daily-anchor">
-                {anchorExcerpt}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {!hasMorning && (
-              <Button
-                size="sm"
-                className="text-xs py-1 px-3 h-auto"
-                onClick={() => { setLocation(`/journal/${todayStr}/morning`); window.scrollTo(0, 0); }}
-                data-testid="button-morning-journal"
-              >
-                <Sun className="h-3.5 w-3.5 mr-1" />
-                Morning
-              </Button>
-            )}
-            {hasMorning && !hasEvening && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs py-1 px-3 h-auto"
-                onClick={() => { setLocation(`/journal/${todayStr}/evening`); window.scrollTo(0, 0); }}
-                data-testid="button-evening-journal"
-              >
-                <Moon className="h-3.5 w-3.5 mr-1" />
-                Evening
-              </Button>
-            )}
-          </div>
+        {/* Daily Contract */}
+        <div
+          className={`rounded-lg p-3 transition-colors ${allContractDone ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-bark/5"}`}
+          data-testid="daily-contract"
+        >
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+            {format(today, "EEEE, MMM d")}
+          </p>
+          {identityStatement && (
+            <p className="text-xs italic text-foreground/80 mt-1 line-clamp-2" data-testid="contract-identity">
+              &ldquo;{identityStatement}&rdquo;
+            </p>
+          )}
+          {goalDisplay && (
+            <p className="text-[11px] text-muted-foreground mt-1" data-testid="contract-goal">
+              <Target className="h-3 w-3 inline mr-1" />
+              {goalDisplay}
+            </p>
+          )}
+          <p className="text-[11px] mt-2 font-medium" data-testid="contract-counts">
+            <span className={allContractDone ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}>
+              {allContractDone
+                ? "Proved."
+                : `Proving: ${todayFocusItems.length > 0 ? `${completedFocusCount}/${todayFocusItems.length} focus \u00b7 ` : ""}${completedHabits}/${totalHabits} habits`
+              }
+            </span>
+          </p>
         </div>
 
         <WeekStrip

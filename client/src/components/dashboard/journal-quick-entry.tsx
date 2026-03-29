@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, ArrowRight } from "lucide-react";
+import { JOURNAL_STATE } from "@/lib/constants";
 
 export function JournalQuickEntry({
   todayStr,
@@ -17,10 +18,11 @@ export function JournalQuickEntry({
 }) {
   const bothDone = hasMorning && hasEvening;
   const displayName = firstName || "there";
+  const hour = new Date().getHours();
 
   if (bothDone) {
     return (
-      <Card className="overflow-visible" data-testid="card-journal-quick">
+      <Card className={`overflow-visible border-l-4 ${JOURNAL_STATE.done}`} data-testid="card-journal-quick">
         <CardContent className="py-2 px-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Check className="h-3.5 w-3.5 text-emerald-500" />
@@ -33,7 +35,7 @@ export function JournalQuickEntry({
 
   if (!hasMorning) {
     return (
-      <Card className="overflow-visible border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B]" data-testid="card-journal-quick">
+      <Card className={`overflow-visible border-l-4 ${hour < 12 ? JOURNAL_STATE.morningActive : JOURNAL_STATE.morningMissed}`} data-testid="card-journal-quick">
         <CardHeader className="py-2 px-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>
@@ -63,7 +65,7 @@ export function JournalQuickEntry({
   }
 
   return (
-    <Card className="overflow-visible border-l-4 border-l-[#6B4226]/50 dark:border-l-[#A67B5B]/50" data-testid="card-journal-quick">
+    <Card className={`overflow-visible border-l-4 ${hour >= 17 ? JOURNAL_STATE.eveningActive : JOURNAL_STATE.eveningDefault}`} data-testid="card-journal-quick">
       <CardHeader className="py-2 px-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
