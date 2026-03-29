@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, addDays, getDay } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, WeeklySummary } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 import { CATEGORY_COLORS } from "@/lib/constants";
@@ -23,8 +23,17 @@ export default function PlanPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const today = new Date();
-  const weekStartStr = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekEndStr = format(addDays(weekStart, 6), "MMM d");
+  const weekLabel = `${format(weekStart, "MMM d")} – ${weekEndStr}`;
   const currentMonthKey = format(today, "yyyy-MM");
+  const monthLabel = format(today, "MMMM yyyy");
+  const yearLabel = format(today, "yyyy");
+
+  // After Friday (Sat=6, Sun=0), lock removals — protect completed work
+  const dayOfWeek = getDay(today); // 0=Sun, 6=Sat
+  const weekLocked = dayOfWeek === 0 || dayOfWeek === 6;
 
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({ queryKey: ["/api/eisenhower"], enabled: !!user });
   const { data: weeklySummary } = useQuery<WeeklySummary | null>({
@@ -156,7 +165,7 @@ export default function PlanPage() {
 
           {/* YEAR */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Year</p>
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Year · {yearLabel}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))} data-testid="card-nav-discovery">
                 <CardContent className="p-3">
@@ -196,7 +205,7 @@ export default function PlanPage() {
 
           {/* MONTH */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Month</p>
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Month · {monthLabel}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* Monthly Goal card */}
               <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="card-monthly-goal">
@@ -235,7 +244,7 @@ export default function PlanPage() {
 
           {/* WEEK */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Week</p>
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Week · {weekLabel}</p>
 
             {/* This Week — committed items */}
             <Card className="overflow-visible" data-testid="card-this-week">
@@ -249,13 +258,15 @@ export default function PlanPage() {
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-rose-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
-                            <button
-                              className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
-                              onClick={() => deleteMutation.mutate({ id: item.id })}
-                              data-testid={`button-remove-${item.id}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                            {!weekLocked && (
+                              <button
+                                className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
+                                onClick={() => deleteMutation.mutate({ id: item.id })}
+                                data-testid={`button-remove-${item.id}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -267,13 +278,15 @@ export default function PlanPage() {
                           <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
-                            <button
-                              className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
-                              onClick={() => deleteMutation.mutate({ id: item.id })}
-                              data-testid={`button-remove-${item.id}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                            {!weekLocked && (
+                              <button
+                                className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
+                                onClick={() => deleteMutation.mutate({ id: item.id })}
+                                data-testid={`button-remove-${item.id}`}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>

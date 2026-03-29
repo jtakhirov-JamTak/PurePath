@@ -108,6 +108,7 @@ export default function EisenhowerPage() {
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d")}`;
 
   // Check if a plan already exists for this week
   const { data: existingEntries = [], isLoading: entriesLoading } = useQuery<EisenhowerEntry[]>({
@@ -394,6 +395,7 @@ export default function EisenhowerPage() {
           <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-8">
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Weekly Reset</h2>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{weekLabel}</p>
               <p className="text-muted-foreground text-sm max-w-sm">
                 Take 3 slow breaths.<br />
                 You are overloaded, not incapable.
