@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Minus, Plus } from "lucide-react";
-import type { Habit } from "@shared/schema";
+import type { Habit, HabitCompletion } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_ORDER, TIMING_LABELS, HABIT_UNDONE_BG } from "@/lib/constants";
 import { getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
+import { format, addDays } from "date-fns";
 
 interface JournalHabitItem {
   id: number;
@@ -22,6 +23,7 @@ interface DailyHabitsCardProps {
   habitLevelMap: Map<number, number>;
   completedHabits: number;
   totalHabits: number;
+  weekStreakCompletions: HabitCompletion[];
   onHabitLevel: (habitId: number, level: number | null, options?: { isBinary?: boolean }) => void;
   onHabitSkip: (habitId: number) => void;
   onNavigate: (path: string) => void;
@@ -35,11 +37,31 @@ export function DailyHabitsCard({
   habitLevelMap,
   completedHabits,
   totalHabits,
+  weekStreakCompletions,
   onHabitLevel,
   onHabitSkip,
   onNavigate,
 }: DailyHabitsCardProps) {
   const [popKeys, setPopKeys] = useState<Record<number, number>>({});
+
+  // Streak dots: last 7 days + per-habit completion map
+  const last7Days = useMemo(() => {
+    const days: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      days.push(format(addDays(new Date(todayStr + "T12:00:00"), -i), "yyyy-MM-dd"));
+    }
+    return days;
+  }, [todayStr]);
+
+  const streakMap = useMemo(() => {
+    const map = new Map<number, Map<string, number | null>>();
+    weekStreakCompletions.forEach(hc => {
+      if (!map.has(hc.habitId)) map.set(hc.habitId, new Map());
+      map.get(hc.habitId)!.set(hc.date, hc.completionLevel);
+    });
+    return map;
+  }, [weekStreakCompletions]);
+
   // Sort habits by time of day
   const sortedHabits = [...todaysHabits]
     .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1))
@@ -119,25 +141,46 @@ export function DailyHabitsCard({
             const boxClass = getCompletionBoxClass(status);
 
             return (
-              <li key={habit.id} className="flex items-center gap-2.5 py-1.5" data-testid={`habit-item-${habit.id}`}>
-                <button
-                  key={popKeys[habit.id] || 0}
-                  onClick={cycleHabit}
-                  className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass} ${!status ? HABIT_UNDONE_BG : ""}`}
-                  data-testid={`habit-level-${habit.id}`}
-                >
-                  {boxLabel}
-                </button>
-                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-emerald-500"}`} />
-                <span className="text-[10px] text-muted-foreground w-6 shrink-0">{timingLabel}</span>
-                <span className={`text-xs flex-1 ${
-                  status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
-                }`}>
-                  {habit.name}
-                </span>
-                {status === "skipped" && (
-                  <span className="text-[10px] text-muted-foreground">skipped</span>
-                )}
+              <li key={habit.id} className="py-1.5" data-testid={`habit-item-${habit.id}`}>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    key={popKeys[habit.id] || 0}
+                    onClick={cycleHabit}
+                    className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass} ${!status ? HABIT_UNDONE_BG : ""}`}
+                    data-testid={`habit-level-${habit.id}`}
+                  >
+                    {boxLabel}
+                  </button>
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-emerald-500"}`} />
+                  <span className="text-[10px] text-muted-foreground w-6 shrink-0">{timingLabel}</span>
+                  <span className={`text-xs flex-1 ${
+                    status === "completed" ? "line-through text-muted-foreground" : status === "skipped" ? "text-muted-foreground italic" : ""
+                  }`}>
+                    {habit.name}
+                  </span>
+                  {status === "skipped" && (
+                    <span className="text-[10px] text-muted-foreground">skipped</span>
+                  )}
+                </div>
+                {/* 7-dot streak row */}
+                <div className="flex gap-0.5 ml-[4.75rem] mt-0.5">
+                  {last7Days.map(dayStr => {
+                    const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
+                    const isToday = dayStr === todayStr;
+                    return (
+                      <span
+                        key={dayStr}
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          lvl === 2 ? "bg-emerald-500"
+                          : lvl === 1 ? "bg-yellow-400"
+                          : lvl === 0 ? "bg-rose-400"
+                          : isToday ? "ring-1 ring-border bg-transparent"
+                          : "bg-muted"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
               </li>
             );
           })}

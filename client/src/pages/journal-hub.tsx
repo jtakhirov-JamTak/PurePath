@@ -59,30 +59,44 @@ export default function JournalHubPage() {
     enabled: !!user,
   });
 
-  const progressMetrics: ProgressMetrics = useMemo(() => {
-    const lineageMap = new Map<string, number[]>();
+  // Previous week data for week-over-week comparison
+  const prevWeekStartDate = addDays(weekStartDate, -7);
+  const prevWeekStartStr = format(prevWeekStartDate, "yyyy-MM-dd");
+  const prevWeekEndStr = format(addDays(prevWeekStartDate, 6), "yyyy-MM-dd");
+
+  const { data: prevWeekHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range/" + prevWeekStartStr + "/" + prevWeekEndStr],
+    enabled: !!user,
+  });
+
+  // Shared lineage map for habit versioning
+  const lineageMap = useMemo(() => {
+    const map = new Map<string, number[]>();
     habits.forEach(h => {
       if (h.lineageId) {
-        if (!lineageMap.has(h.lineageId)) lineageMap.set(h.lineageId, []);
-        lineageMap.get(h.lineageId)!.push(h.id);
+        if (!map.has(h.lineageId)) map.set(h.lineageId, []);
+        map.get(h.lineageId)!.push(h.id);
       }
     });
+    return map;
+  }, [habits]);
 
-    function countHabits(dayStrs: string[], completions: HabitCompletion[]) {
-      let completed = 0, scheduled = 0;
-      for (const dayStr of dayStrs) {
-        if (dayStr > todayStr) continue;
-        const dayHabits = getDateHabits(habits, dayStr);
-        dayHabits.forEach(h => {
-          scheduled++;
-          const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
-          const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
-          if (hc && hc.completionLevel != null && hc.completionLevel >= 1) completed++;
-        });
-      }
-      return { completed, scheduled };
+  function countHabits(dayStrs: string[], completions: HabitCompletion[]) {
+    let completed = 0, scheduled = 0;
+    for (const dayStr of dayStrs) {
+      if (dayStr > todayStr) continue;
+      const dayHabits = getDateHabits(habits, dayStr);
+      dayHabits.forEach(h => {
+        scheduled++;
+        const siblingIds = h.lineageId ? (lineageMap.get(h.lineageId) || [h.id]) : [h.id];
+        const hc = completions.find(c => siblingIds.includes(c.habitId) && c.date === dayStr);
+        if (hc && hc.completionLevel != null && hc.completionLevel >= 1) completed++;
+      });
     }
+    return { completed, scheduled };
+  }
 
+  const progressMetrics: ProgressMetrics = useMemo(() => {
     const weekDayStrs: string[] = [];
     for (let d = 0; d < 7; d++) weekDayStrs.push(format(addDays(weekStartDate, d), "yyyy-MM-dd"));
 
@@ -109,7 +123,36 @@ export default function JournalHubPage() {
       q2CompletedMonth: monthQ2.filter(e => e.status === "completed").length,
       q2TotalMonth: monthQ2.length,
     };
-  }, [habits, weekHabitCompletions, monthHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr, monthStartStr, monthEndStr, monthStart, monthEnd]);
+  }, [habits, weekHabitCompletions, monthHabitCompletions, eisenhowerEntries, weekStartDate, weekStartStr, todayStr, monthStartStr, monthEndStr, monthStart, monthEnd, lineageMap]);
+
+  // Week-over-week comparison (only after 14+ days of journal data)
+  const uniqueJournalDays = new Set(journals.map(j => j.date)).size;
+  const hasEnoughHistory = uniqueJournalDays >= 14;
+
+  const weekOverWeek = useMemo(() => {
+    if (!hasEnoughHistory) return null;
+
+    const prevWeekDayStrs: string[] = [];
+    for (let d = 0; d < 7; d++) prevWeekDayStrs.push(format(addDays(prevWeekStartDate, d), "yyyy-MM-dd"));
+
+    const thisWeekDayStrs: string[] = [];
+    for (let d = 0; d < 7; d++) thisWeekDayStrs.push(format(addDays(weekStartDate, d), "yyyy-MM-dd"));
+
+    const prevWeek = countHabits(prevWeekDayStrs, prevWeekHabitCompletions);
+    const thisWeek = countHabits(thisWeekDayStrs, weekHabitCompletions);
+
+    const prevPct = prevWeek.scheduled > 0 ? Math.round((prevWeek.completed / prevWeek.scheduled) * 100) : 0;
+    const thisPct = thisWeek.scheduled > 0 ? Math.round((thisWeek.completed / thisWeek.scheduled) * 100) : 0;
+    const delta = thisPct - prevPct;
+
+    // Q2 comparison
+    const prevQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === prevWeekStartStr);
+    const thisQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
+    const prevQ2Pct = prevQ2.length > 0 ? Math.round((prevQ2.filter(e => e.status === "completed").length / prevQ2.length) * 100) : null;
+    const thisQ2Pct = thisQ2.length > 0 ? Math.round((thisQ2.filter(e => e.status === "completed").length / thisQ2.length) * 100) : null;
+
+    return { prevPct, thisPct, delta, prevQ2Pct, thisQ2Pct, prevWeek, thisWeek };
+  }, [hasEnoughHistory, prevWeekHabitCompletions, weekHabitCompletions, eisenhowerEntries, prevWeekStartDate, prevWeekStartStr, weekStartDate, weekStartStr, habits, todayStr, lineageMap]);
 
   // Selected date data
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
@@ -225,6 +268,41 @@ export default function JournalHubPage() {
         <h1 className="text-sm font-medium" data-testid="proof-hub-title">Proof</h1>
 
         <WeeklyProgress progressMetrics={progressMetrics} />
+
+        {/* Week-over-week comparison */}
+        {weekOverWeek && (
+          <section data-testid="week-over-week">
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium mb-2">Week over Week</p>
+            <div className="rounded-lg border border-border/40 p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">This week</span>
+                <span className="text-xs font-medium">{weekOverWeek.thisWeek.completed}/{weekOverWeek.thisWeek.scheduled} habits &middot; {weekOverWeek.thisPct}%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Last week</span>
+                <span className="text-xs font-medium">{weekOverWeek.prevWeek.completed}/{weekOverWeek.prevWeek.scheduled} habits &middot; {weekOverWeek.prevPct}%</span>
+              </div>
+              {weekOverWeek.thisQ2Pct !== null && weekOverWeek.prevQ2Pct !== null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Q2 focus</span>
+                  <span className="text-xs font-medium">{weekOverWeek.thisQ2Pct}% vs {weekOverWeek.prevQ2Pct}%</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-1.5 border-t border-border/30">
+                <span className="text-xs text-muted-foreground">Trend</span>
+                <span className={`text-xs font-semibold ${
+                  weekOverWeek.delta > 5 ? "text-emerald-600 dark:text-emerald-400"
+                  : weekOverWeek.delta < -5 ? "text-rose-500 dark:text-rose-400"
+                  : "text-muted-foreground"
+                }`}>
+                  {weekOverWeek.delta > 5 ? "\u2191 Improving"
+                    : weekOverWeek.delta < -5 ? "\u2193 Declining"
+                    : "\u2192 Steady"}
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* HISTORY section — Calendar Heatmap */}
         <section data-testid="journal-history-section">

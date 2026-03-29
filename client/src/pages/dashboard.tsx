@@ -61,6 +61,13 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
+  // 7-day habit completions for streak dots
+  const streakStartStr = format(addDays(today, -6), "yyyy-MM-dd");
+  const { data: weekStreakCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range/" + streakStartStr + "/" + todayStr],
+    enabled: !!user,
+  });
+
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({
     queryKey: ["/api/eisenhower"],
     enabled: !!user,
@@ -365,6 +372,7 @@ export default function DashboardPage() {
           habitLevelMap={habitLevelMap}
           completedHabits={completedHabits}
           totalHabits={totalHabits}
+          weekStreakCompletions={weekStreakCompletions}
           onHabitLevel={(habitId, level, options) => {
             setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
           }}
