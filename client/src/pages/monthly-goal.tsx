@@ -114,11 +114,15 @@ export default function MonthlyGoalPage() {
           const weekStartStr = format(weekStart, "yyyy-MM-dd");
           const existingRes = await fetch(`/api/eisenhower`, { credentials: "include" });
           const existing: { task: string; weekStart: string }[] = existingRes.ok ? await existingRes.json() : [];
-          const alreadyExists = existing.some(e => e.task === nextConcreteStep && e.weekStart === weekStartStr);
-          if (!alreadyExists) {
+          const match = existing.find((e: any) => e.task === nextConcreteStep && e.weekStart === weekStartStr);
+          if (match && !(match as any).scheduledDate) {
+            // Patch existing unscheduled item to pin it to the goal date
+            await apiRequest("PATCH", `/api/eisenhower/${(match as any).id}`, { scheduledDate: goalWhen });
+          } else if (!match) {
             await apiRequest("POST", "/api/eisenhower", {
               task: nextConcreteStep,
               weekStart: weekStartStr,
+              scheduledDate: goalWhen,
               role: "",
               quadrant: "q1",
               blocksGoal: true,
