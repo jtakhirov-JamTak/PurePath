@@ -171,6 +171,9 @@ export const commitWeekItemSchema = z.object({
   task: z.string().trim().min(1).max(500),
   quadrant: z.enum(["q1", "q2"]),
   sortOrder: z.number().int().min(0),
+  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  scheduledStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  scheduledEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
 });
 
 export const commitWeekSchema = z.object({

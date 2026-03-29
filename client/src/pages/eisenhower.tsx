@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { X, Plus, Check, Loader2 } from "lucide-react";
-import { format, startOfWeek } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -19,7 +19,18 @@ const MAX_Q2 = 2;
 const MAX_CANDIDATES = 7;
 const MAX_RANKED = 5;
 const MAX_BRAIN_DUMP = 30;
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
+
+const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
+  const totalMinutes = 8 * 60 + i * 30;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  const hh = String(h).padStart(2, "0");
+  const mm = String(m).padStart(2, "0");
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  const label = `${h12}:${String(m).padStart(2, "0")}${h >= 12 ? "p" : "a"}`;
+  return { value: `${hh}:${mm}`, label };
+});
 
 const BLOCKER_CHIPS = [
   { value: "getting_it_wrong", label: "Getting it wrong" },
@@ -39,6 +50,9 @@ interface BrainDumpItem {
   rank: number | null;     // 1-5 from gut-rank step
   ignoreConsequence: boolean | null;  // "Will something real happen soon if I ignore this?"
   futureGlad: boolean | null;         // "Will my future self be glad I did this?"
+  scheduledDate: string;   // YYYY-MM-DD
+  scheduledStartTime: string; // HH:MM
+  scheduledEndTime: string;   // HH:MM
 }
 
 interface FearData {
@@ -104,6 +118,9 @@ export default function EisenhowerPage() {
         rank: null,
         ignoreConsequence: e.quadrant === "q1" ? true : e.quadrant === "q2" ? false : null,
         futureGlad: (e.quadrant === "q1" || e.quadrant === "q2") ? true : false,
+        scheduledDate: e.scheduledDate || "",
+        scheduledStartTime: e.scheduledStartTime || "",
+        scheduledEndTime: e.scheduledEndTime || "",
       })));
     }
   }, [fearOnlyMode, existingEntries]);
@@ -117,6 +134,14 @@ export default function EisenhowerPage() {
   const handleItems = q1Items; // alias for user-facing label
   const protectItems = q2Items;
   const discardedItems = classifiedItems.filter(i => i.classification === "not_this_week");
+  const schedulableItems = [...handleItems, ...protectItems]; // items that need scheduling
+  const allScheduled = schedulableItems.length > 0 && schedulableItems.every(i => i.scheduledDate && i.scheduledStartTime && i.scheduledEndTime);
+
+  // Week days for scheduling step
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStart, i);
+    return { date: format(d, "yyyy-MM-dd"), label: format(d, "EEE") };
+  });
 
   // Brain dump helpers
   const addItem = () => {
@@ -127,7 +152,7 @@ export default function EisenhowerPage() {
     const newItems = parts
       .filter(text => !items.some(i => i.text.toLowerCase() === text.toLowerCase()))
       .slice(0, MAX_BRAIN_DUMP - items.length) // enforce cap
-      .map(text => ({ id: nextId.current++, text, selected: false, rank: null, ignoreConsequence: null, futureGlad: null }));
+      .map(text => ({ id: nextId.current++, text, selected: false, rank: null, ignoreConsequence: null, futureGlad: null, scheduledDate: "", scheduledStartTime: "", scheduledEndTime: "" }));
     setItems(prev => [...prev, ...newItems]);
     setNewItemText("");
   };
@@ -186,6 +211,10 @@ export default function EisenhowerPage() {
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
+  const updateSchedule = (idx: number, field: "scheduledDate" | "scheduledStartTime" | "scheduledEndTime", value: string) => {
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  };
+
   // Commit mutation — full week or fear-only
   const commitMutation = useMutation({
     mutationFn: async () => {
@@ -213,6 +242,9 @@ export default function EisenhowerPage() {
         task: item.text,
         quadrant: item.classification as "q1" | "q2",
         sortOrder: i,
+        scheduledDate: item.scheduledDate || null,
+        scheduledStartTime: item.scheduledStartTime || null,
+        scheduledEndTime: item.scheduledEndTime || null,
       }));
 
       // If fear item is promoted to Q2 and not already in Q2, add it
@@ -229,6 +261,9 @@ export default function EisenhowerPage() {
             task: fearItem.text,
             quadrant: "q2",
             sortOrder: commitItems.length,
+            scheduledDate: fearItem.scheduledDate || null,
+            scheduledStartTime: fearItem.scheduledStartTime || null,
+            scheduledEndTime: fearItem.scheduledEndTime || null,
           });
         } else if (alreadyIncluded) {
           const existing = commitItems.find(ci => ci.task === fearItem.text);
@@ -270,48 +305,58 @@ export default function EisenhowerPage() {
     },
   });
 
-  // Step navigation
+  // Step navigation (1=Arrive, 2=BrainDump, 3=Cut, 4=Rank, 5=Sort, 6=Schedule, 7=Fear, 8=Commit)
+  const fearStep = fearOnlyMode ? 6 : 7; // fear-only skips to step 6 which maps to fear
+  const commitStep = fearOnlyMode ? 7 : 8;
+
   const canNext = (() => {
     switch (step) {
-      case 1: return true; // Arrive — always
-      case 2: return items.length >= 1; // Brain dump — need at least 1
+      case 1: return true;
+      case 2: return items.length >= 1;
       case 3: return selectedItems.length >= 1 && selectedItems.length <= MAX_CANDIDATES;
-      case 4: return rankedItems.length >= 1; // At least 1 ranked
+      case 4: return rankedItems.length >= 1;
       case 5: return allSorted && q1Items.length <= MAX_Q1 && q2Items.length <= MAX_Q2;
-      case 6: return fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim();
-      case 7: return !commitMutation.isPending;
+      case 6: return fearOnlyMode
+        ? (fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim())
+        : allScheduled;
+      case 7: return fearOnlyMode
+        ? !commitMutation.isPending
+        : (fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim());
+      case 8: return !commitMutation.isPending;
       default: return false;
     }
   })();
 
   const goNext = () => {
-    if (step === 7) {
+    if (step === commitStep) {
       commitMutation.mutate();
       return;
     }
-    if (step === 5) {
-      // Pre-fill fear target with first item if none selected
+    if (step === (fearOnlyMode ? 5 : 6)) {
+      // Pre-fill fear target with first item if none selected (entering fear step)
       if (fearTargetIdx === null && selectedItems.length > 0) {
         const firstIdx = items.findIndex(i => i.selected);
         setFearTargetIdx(firstIdx);
         setFearData(prev => ({ ...prev, targetTask: items[firstIdx].text }));
       }
     }
-    setStep(s => Math.min(s + 1, TOTAL_STEPS));
+    setStep(s => Math.min(s + 1, commitStep));
   };
   const goBack = () => {
-    if (fearOnlyMode && step === 6) return; // Can't go back before fear step in fear-only mode
-    if (step === 6) {
+    if (fearOnlyMode && step === 6) return;
+    if (step === fearStep) {
       setFearTargetIdx(null);
       setFearData({ targetTask: "", fearIfFaced: "", fearIfAvoided: "", blockerChip: "", smallestProofMove: "", promoteToQ2: false });
     }
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const fearOnlySteps = 2; // step 6 (fear) + step 7 (commit)
+  const fearOnlySteps = 2;
   const progressPercent = fearOnlyMode
     ? Math.round(((step - 5) / fearOnlySteps) * 100)
     : Math.round((step / TOTAL_STEPS) * 100);
+  const displayStep = fearOnlyMode ? step - 5 : step;
+  const displayTotal = fearOnlyMode ? fearOnlySteps : TOTAL_STEPS;
 
   return (
     <AppLayout>
@@ -325,9 +370,7 @@ export default function EisenhowerPage() {
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">
-          {fearOnlyMode ? `Step ${step - 5} of ${fearOnlySteps}` : `Step ${step} of ${TOTAL_STEPS}`}
-        </p>
+        <p className="text-xs text-muted-foreground mt-1 text-right">Step {displayStep} of {displayTotal}</p>
       </div>
 
       <main className="container mx-auto px-4 py-6 max-w-lg">
@@ -610,8 +653,70 @@ export default function EisenhowerPage() {
           </div>
         )}
 
-        {/* ==================== STEP 6 — FACE THE FEAR ==================== */}
-        {step === 6 && (
+        {/* ==================== STEP 6 — SCHEDULE ==================== */}
+        {step === 6 && !fearOnlyMode && (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">When will you do each one?</h2>
+              <p className="text-sm text-muted-foreground">Assign a day and time to each item.</p>
+            </div>
+
+            <div className="space-y-4">
+              {schedulableItems.map((item) => {
+                const originalIdx = items.findIndex(it => it.id === item.id);
+                const isQ1 = item.classification === "q1";
+                return (
+                  <Card key={item.id} className={isQ1 ? "border-rose-200 dark:border-rose-900/40" : "border-amber-200 dark:border-amber-900/40"}>
+                    <CardContent className="p-3 space-y-2">
+                      <p className="text-sm font-medium">{item.text}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {weekDays.map(day => (
+                          <button
+                            key={day.date}
+                            type="button"
+                            onClick={() => updateSchedule(originalIdx, "scheduledDate", day.date)}
+                            className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${
+                              items[originalIdx]?.scheduledDate === day.date
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "border-border text-muted-foreground hover:border-primary/40"
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <select
+                          value={items[originalIdx]?.scheduledStartTime || ""}
+                          onChange={e => updateSchedule(originalIdx, "scheduledStartTime", e.target.value)}
+                          className="text-xs h-8 rounded-md border border-border bg-background px-2 flex-1"
+                        >
+                          <option value="">Start</option>
+                          {TIME_SLOTS.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={items[originalIdx]?.scheduledEndTime || ""}
+                          onChange={e => updateSchedule(originalIdx, "scheduledEndTime", e.target.value)}
+                          className="text-xs h-8 rounded-md border border-border bg-background px-2 flex-1"
+                        >
+                          <option value="">End</option>
+                          {TIME_SLOTS.filter(t => !items[originalIdx]?.scheduledStartTime || t.value > items[originalIdx].scheduledStartTime).map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ==================== STEP 7 — FACE THE FEAR ==================== */}
+        {step === fearStep && (
           <div className="space-y-6">
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">What important thing am I resisting?</h2>
@@ -725,8 +830,8 @@ export default function EisenhowerPage() {
           </div>
         )}
 
-        {/* ==================== STEP 7 — COMMIT ==================== */}
-        {step === 7 && (
+        {/* ==================== STEP 8 — COMMIT ==================== */}
+        {step === commitStep && (
           <div className="space-y-6">
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">Commit the week</h2>
@@ -816,10 +921,10 @@ export default function EisenhowerPage() {
             ) : <div />}
             <Button
               onClick={goNext}
-              disabled={!canNext || (step === 7 && commitMutation.isPending)}
+              disabled={!canNext || (step === commitStep && commitMutation.isPending)}
               data-testid="button-next"
             >
-              {step === 7 ? (
+              {step === commitStep ? (
                 commitMutation.isPending ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
                 ) : "Commit"

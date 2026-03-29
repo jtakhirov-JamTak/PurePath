@@ -2,9 +2,8 @@ import type { EisenhowerEntry } from "@shared/schema";
 
 /**
  * Get focus items for a selected day on the dashboard.
- * Q1 + Q2-that-block-goal for the current week.
- * - Scheduled items: only show on their scheduled date
- * - Unscheduled items: only show on actual today (not past/future selected dates)
+ * Q1 + Q2-that-block-goal for the current week, filtered by scheduled date.
+ * Unscheduled items only show on actual today.
  * Excludes skipped items with a skip reason.
  */
 export function getTodaysFocusItems(
@@ -17,9 +16,7 @@ export function getTodaysFocusItems(
     if (e.weekStart !== weekStartStr) return false;
     if (e.status === "skipped" && e.skipReason) return false;
     if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return false;
-    // Scheduled items: only show on their assigned date
     if (e.scheduledDate) return e.scheduledDate === selectedDate;
-    // Unscheduled items: show only when viewing today
     return selectedDate === actualToday;
   });
 }

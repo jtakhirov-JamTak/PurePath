@@ -215,6 +215,9 @@ export function registerEisenhowerRoutes(app: Express) {
         role: "",
         sortOrder: item.sortOrder,
         blocksGoal: item.quadrant === "q2" ? true : false,
+        scheduledDate: item.scheduledDate || null,
+        scheduledStartTime: item.scheduledStartTime || null,
+        scheduledEndTime: item.scheduledEndTime || null,
       }));
 
       // Build fear summary payload
