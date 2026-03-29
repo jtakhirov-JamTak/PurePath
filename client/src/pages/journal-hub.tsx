@@ -110,8 +110,8 @@ export default function JournalHubPage() {
     const weekHabits = countHabits(weekDayStrs, weekHabitCompletions);
     const monthHabits = countHabits(monthDayStrs, monthHabitCompletions);
 
-    const weekQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
-    const monthQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart! >= monthStartStr && e.weekStart! <= monthEndStr);
+    const weekQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.blocksGoal && e.weekStart === weekStartStr);
+    const monthQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.blocksGoal && e.weekStart! >= monthStartStr && e.weekStart! <= monthEndStr);
 
     return {
       habitsCompletedWeek: weekHabits.completed,
@@ -146,8 +146,8 @@ export default function JournalHubPage() {
     const delta = thisPct - prevPct;
 
     // Q2 comparison
-    const prevQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === prevWeekStartStr);
-    const thisQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.weekStart === weekStartStr);
+    const prevQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.blocksGoal && e.weekStart === prevWeekStartStr);
+    const thisQ2 = eisenhowerEntries.filter(e => e.quadrant === "q2" && e.blocksGoal && e.weekStart === weekStartStr);
     const prevQ2Pct = prevQ2.length > 0 ? Math.round((prevQ2.filter(e => e.status === "completed").length / prevQ2.length) * 100) : null;
     const thisQ2Pct = thisQ2.length > 0 ? Math.round((thisQ2.filter(e => e.status === "completed").length / thisQ2.length) * 100) : null;
 
