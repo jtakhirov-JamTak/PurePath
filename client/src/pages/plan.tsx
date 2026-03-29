@@ -1,20 +1,27 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { X, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
+import { apiRequest } from "@/lib/queryClient";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { format, startOfWeek } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 import { CATEGORY_COLORS } from "@/lib/constants";
 import { getWeekFocusItems } from "@/lib/eisenhower-filters";
 
+const MAX_Q1 = 5;
+const MAX_Q2 = 2;
 
 export default function PlanPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-
   const today = new Date();
   const weekStartStr = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const currentMonthKey = format(today, "yyyy-MM");
@@ -60,6 +67,63 @@ export default function PlanPage() {
 
   const q1Items = focusItems.filter(e => e.quadrant === "q1");
   const q2Items = focusItems.filter(e => e.quadrant === "q2");
+
+  // Week card: add flow state
+  const [addingItem, setAddingItem] = useState(false);
+  const [addTask, setAddTask] = useState("");
+  const [addType, setAddType] = useState<"q1" | "q2">("q1");
+  const [replaceId, setReplaceId] = useState<number | null>(null);
+
+  const resetAddForm = () => {
+    setAddingItem(false);
+    setAddTask("");
+    setAddType("q1");
+    setReplaceId(null);
+  };
+
+  // Delete an item from the week
+  const deleteMutation = useToastMutation<{ id: number }>({
+    mutationFn: async ({ id }) => {
+      const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
+      if (!res.ok) throw new Error("Failed to remove item");
+    },
+    invalidateKeys: [["/api/eisenhower"]],
+    errorToast: "Could not remove item",
+  });
+
+  // Add a new item (and optionally delete a replaced Q2 item)
+  const addMutation = useToastMutation<{ task: string; quadrant: "q1" | "q2"; replaceId?: number }>({
+    mutationFn: async ({ task, quadrant, replaceId: rid }) => {
+      // If replacing a Q2 item, delete the old one first to make room (server enforces cap)
+      // Then POST the new one. If POST fails after DELETE, user loses one item — but this
+      // ordering avoids the server rejecting the POST due to the cap being full.
+      if (rid) {
+        const delRes = await apiRequest("DELETE", `/api/eisenhower/${rid}`);
+        if (!delRes.ok) throw new Error("Failed to remove replaced item");
+      }
+      const res = await apiRequest("POST", "/api/eisenhower", {
+        task,
+        weekStart: weekStartStr,
+        quadrant,
+        blocksGoal: quadrant === "q2",
+        sortOrder: focusItems.length,
+        isBinary: false,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to add item");
+      }
+    },
+    invalidateKeys: [["/api/eisenhower"]],
+    errorToast: "Could not add item",
+    onSuccess: () => resetAddForm(),
+  });
+
+  const canSaveAdd = addTask.trim().length > 0 && (
+    addType === "q1" ? q1Items.length < MAX_Q1 :
+    q2Items.length < MAX_Q2 || replaceId !== null
+  );
+  const needsQ2Replace = addType === "q2" && q2Items.length >= MAX_Q2;
 
   return (
     <AppLayout>
@@ -174,35 +238,132 @@ export default function PlanPage() {
                   <div className="space-y-2">
                     {q1Items.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Urgent</p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Urgent ({q1Items.length}/{MAX_Q1})</p>
                         {q1Items.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 py-0.5">
+                          <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-rose-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                            <button
+                              className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
+                              onClick={() => deleteMutation.mutate({ id: item.id })}
+                              data-testid={`button-remove-${item.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
                           </div>
                         ))}
                       </div>
                     )}
                     {q2Items.length > 0 && (
                       <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Important</p>
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Important ({q2Items.length}/{MAX_Q2})</p>
                         {q2Items.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 py-0.5">
+                          <div key={item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
                             <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                            <button
+                              className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
+                              onClick={() => deleteMutation.mutate({ id: item.id })}
+                              data-testid={`button-remove-${item.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
                           </div>
                         ))}
                       </div>
                     )}
-                    <button className="text-xs text-primary hover:underline cursor-pointer mt-1" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
-                      Edit your week →
+
+                    {/* Lightweight add flow */}
+                    {addingItem ? (
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <Input
+                          placeholder="What needs to happen?"
+                          value={addTask}
+                          onChange={e => setAddTask(e.target.value)}
+                          className="text-xs h-8"
+                          autoFocus
+                          data-testid="input-add-task"
+                        />
+                        <div className="flex gap-1.5">
+                          <button
+                            className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${addType === "q1" ? "bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/30 dark:border-rose-500 dark:text-rose-400" : "border-border text-muted-foreground"}`}
+                            onClick={() => { setAddType("q1"); setReplaceId(null); }}
+                          >
+                            Urgent {q1Items.length >= MAX_Q1 && "(full)"}
+                          </button>
+                          <button
+                            className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${addType === "q2" ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-500 dark:text-amber-400" : "border-border text-muted-foreground"}`}
+                            onClick={() => { setAddType("q2"); setReplaceId(null); }}
+                          >
+                            Important {q2Items.length >= MAX_Q2 && "(replace)"}
+                          </button>
+                        </div>
+
+                        {/* Q1 at limit warning */}
+                        {addType === "q1" && q1Items.length >= MAX_Q1 && (
+                          <p className="text-[10px] text-rose-500">At {MAX_Q1} urgent items. Remove one first.</p>
+                        )}
+
+                        {/* Q2 replacement picker */}
+                        {needsQ2Replace && (
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-muted-foreground">Replace which important item?</p>
+                            {q2Items.map(item => (
+                              <button
+                                key={item.id}
+                                className={`flex items-center gap-2 py-1 px-2 w-full text-left rounded-md text-xs cursor-pointer ${replaceId === item.id ? "bg-amber-50 border border-amber-300 dark:bg-amber-950/30 dark:border-amber-500" : "hover:bg-muted"}`}
+                                onClick={() => setReplaceId(item.id)}
+                              >
+                                <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
+                                {item.task}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="text-xs h-7"
+                            disabled={!canSaveAdd || addMutation.isPending}
+                            onClick={() => addMutation.mutate({
+                              task: addTask.trim(),
+                              quadrant: addType,
+                              replaceId: needsQ2Replace ? replaceId ?? undefined : undefined,
+                            })}
+                            data-testid="button-save-add"
+                          >
+                            {addMutation.isPending ? "Saving..." : "Save"}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={resetAddForm}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer mt-1"
+                        onClick={() => setAddingItem(true)}
+                        data-testid="button-add-item"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add item
+                      </button>
+                    )}
+
+                    <button
+                      className="text-[10px] text-muted-foreground hover:underline cursor-pointer block"
+                      onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))}
+                      data-testid="button-rebuild-week"
+                    >
+                      Rebuild week →
                     </button>
                   </div>
                 ) : (
                   <div>
                     <p className="text-xs text-muted-foreground">No commitments yet.</p>
                     <button className="text-xs text-primary hover:underline cursor-pointer mt-1" onClick={() => setLocation(buildProcessUrl("/eisenhower", "/plan"))} data-testid="button-plan-eisenhower">
-                      Figure out what matters →
+                      Plan your week →
                     </button>
                   </div>
                 )}
