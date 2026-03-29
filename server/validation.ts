@@ -178,7 +178,7 @@ export const commitWeekItemSchema = z.object({
 
 export const commitWeekSchema = z.object({
   weekStart: dateString,
-  items: z.array(commitWeekItemSchema).max(7),
+  items: z.array(commitWeekItemSchema).min(1).max(7),
   fearData: z.object({
     fearTarget: z.string().trim().min(1).max(500),
     fearIfFaced: z.string().trim().min(1).max(2000),

@@ -11,6 +11,7 @@ import { X, Plus, Check, Loader2 } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useLocation } from "wouter";
 import type { EisenhowerEntry } from "@shared/schema";
 
@@ -21,8 +22,8 @@ const MAX_RANKED = 5;
 const MAX_BRAIN_DUMP = 30;
 const TOTAL_STEPS = 8;
 
-const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
-  const totalMinutes = 8 * 60 + i * 30;
+const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
+  const totalMinutes = 8 * 60 + i * 30; // 8:00am to 9:00pm
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   const hh = String(h).padStart(2, "0");
@@ -76,6 +77,7 @@ export default function EisenhowerPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { register, unregister } = useUnsavedGuard();
   const isFearOnly = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("startAt") === "fear";
   const [step, setStep] = useState(isFearOnly ? 6 : 1);
   const nextId = useRef(1);
@@ -84,6 +86,13 @@ export default function EisenhowerPage() {
   // Step 2 — Brain dump
   const [newItemText, setNewItemText] = useState("");
   const [items, setItems] = useState<BrainDumpItem[]>([]);
+
+  // Unsaved guard: mark dirty once user starts entering data (past step 1)
+  useEffect(() => {
+    const isDirty = step > 1 && items.length > 0;
+    register("eisenhower-wizard", { isDirty, message: "You have an in-progress weekly plan. Leaving will lose your progress." });
+    return () => unregister("eisenhower-wizard");
+  }, [step, items.length, register, unregister]);
 
   // Step 6 — Fear
   const [fearTargetIdx, setFearTargetIdx] = useState<number | null>(null);
@@ -100,8 +109,8 @@ export default function EisenhowerPage() {
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
 
-  // Check if a plan already exists for this week (#5 — re-entry awareness)
-  const { data: existingEntries = [] } = useQuery<EisenhowerEntry[]>({
+  // Check if a plan already exists for this week
+  const { data: existingEntries = [], isLoading: entriesLoading } = useQuery<EisenhowerEntry[]>({
     queryKey: ["/api/eisenhower/week", weekStartStr],
   });
   const hasExistingPlan = existingEntries.length > 0;
@@ -109,6 +118,12 @@ export default function EisenhowerPage() {
   // Fear-only mode: pre-load existing items so user can pick a fear target
   const fearOnlyLoaded = useRef(false);
   useEffect(() => {
+    // Redirect to plan if no entries exist for fear-only mode
+    if (fearOnlyMode && !entriesLoading && existingEntries.length === 0 && !fearOnlyLoaded.current) {
+      toast({ title: "Plan your week first", description: "You need committed items before facing a fear.", variant: "destructive" });
+      setLocation("/plan");
+      return;
+    }
     if (fearOnlyMode && existingEntries.length > 0 && !fearOnlyLoaded.current) {
       fearOnlyLoaded.current = true;
       setItems(existingEntries.map(e => ({
@@ -135,7 +150,7 @@ export default function EisenhowerPage() {
   const protectItems = q2Items;
   const discardedItems = classifiedItems.filter(i => i.classification === "not_this_week");
   const schedulableItems = [...handleItems, ...protectItems]; // items that need scheduling
-  const allScheduled = schedulableItems.length > 0 && schedulableItems.every(i => i.scheduledDate && i.scheduledStartTime && i.scheduledEndTime);
+  const allScheduled = schedulableItems.length === 0 || schedulableItems.every(i => i.scheduledDate && i.scheduledStartTime && i.scheduledEndTime);
 
   // Week days for scheduling step
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -640,12 +655,21 @@ export default function EisenhowerPage() {
                 )}
 
                 {(q1Items.length > MAX_Q1 || q2Items.length > MAX_Q2) && (
-                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 space-y-2">
                     <p className="text-sm text-destructive">
                       {q1Items.length > MAX_Q1 && `Too many Handle items (${q1Items.length}/${MAX_Q1}). `}
                       {q2Items.length > MAX_Q2 && `Too many Protect items (${q2Items.length}/${MAX_Q2}). `}
-                      Go back and reconsider your answers.
                     </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setItems(prev => prev.map(it => it.selected ? { ...it, ignoreConsequence: null, futureGlad: null } : it));
+                      }}
+                      data-testid="button-reset-sort"
+                    >
+                      Re-sort items
+                    </Button>
                   </div>
                 )}
               </div>
@@ -675,7 +699,7 @@ export default function EisenhowerPage() {
                             key={day.date}
                             type="button"
                             onClick={() => updateSchedule(originalIdx, "scheduledDate", day.date)}
-                            className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${
+                            className={`text-xs px-3 py-2 rounded-md border cursor-pointer min-h-[44px] ${
                               items[originalIdx]?.scheduledDate === day.date
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "border-border text-muted-foreground hover:border-primary/40"
