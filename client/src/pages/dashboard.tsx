@@ -6,9 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Target, Check,
-} from "lucide-react";
+import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -16,10 +14,9 @@ import { format, startOfWeek, addDays } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitLevelMap, buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems, getWeekFocusItems } from "@/lib/eisenhower-filters";
-import { getTodaysHabits } from "@/lib/habit-filters";
+import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { TriggerLogModal } from "@/components/tools/trigger-log-modal";
-import { JournalQuickEntry } from "@/components/dashboard/journal-quick-entry";
 import { DailyHabitsCard } from "@/components/dashboard/daily-habits-card";
 import { ToolPalette } from "@/components/dashboard/tool-palette";
 import { WeekStrip } from "@/components/dashboard/week-strip";
@@ -54,7 +51,6 @@ export default function DashboardPage() {
     staleTime: 0,
     refetchOnMount: "always",
   });
-
 
   const { data: journals = [] } = useQuery<Journal[]>({
     queryKey: ["/api/journals"],
@@ -92,16 +88,41 @@ export default function DashboardPage() {
   });
 
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const isToday = selectedDate === todayStr;
 
-  const todaysHabits = getTodaysHabits(habits, todayStr);
+  // Completions for selected date (when browsing a different day)
+  const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/" + selectedDate],
+    enabled: !!user && !isToday,
+  });
 
-  const habitStatusMap = buildHabitStatusMap(habitCompletions);
-  const habitLevelMap = buildHabitLevelMap(habitCompletions);
+  // Date-aware habits: active-only max 3 for today, all matching for past dates
+  const selectedHabits = useMemo(() => {
+    return isToday ? getTodaysHabits(habits, todayStr) : getDateHabits(habits, selectedDate);
+  }, [habits, selectedDate, todayStr, isToday]);
 
-  const todayJournals = journals.filter((j) => j.date === todayStr);
-  const hasMorning = todayJournals.some((j) => j.session === "morning");
-  const hasEvening = todayJournals.some((j) => j.session === "evening");
+  // Date-aware completions and maps
+  const activeCompletions = isToday ? habitCompletions : selectedDateCompletions;
+  const habitStatusMap = buildHabitStatusMap(activeCompletions);
+  const habitLevelMap = buildHabitLevelMap(activeCompletions);
 
+  // Date-aware journal status
+  const selectedJournals = journals.filter((j) => j.date === selectedDate);
+  const hasMorning = selectedJournals.some((j) => j.session === "morning");
+  const hasEvening = selectedJournals.some((j) => j.session === "evening");
+
+  // 7-day journal completion map for journal row dots
+  const journalDayMap = useMemo(() => {
+    const morning = new Set<string>();
+    const evening = new Set<string>();
+    journals.forEach((j) => {
+      if (j.date >= streakStartStr && j.date <= todayStr) {
+        if (j.session === "morning") morning.add(j.date);
+        else if (j.session === "evening") evening.add(j.date);
+      }
+    });
+    return { morning, evening };
+  }, [journals, streakStartStr, todayStr]);
 
   // Identity statement for Daily Contract — first non-empty identity field
   const identityStatement = useMemo(() => {
@@ -110,8 +131,7 @@ export default function DashboardPage() {
       || identityDoc.vision?.trim() || identityDoc.values?.trim() || null;
   }, [identityDoc]);
 
-  // Focus items for today (used by Daily Contract) and selected day (used by list)
-  const todayFocusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, todayStr);
+  // Focus items for selected day (used by both list and contract)
   const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate);
 
   const sortedFocusItems = [...focusItems].sort((a, b) =>
@@ -123,16 +143,16 @@ export default function DashboardPage() {
     mutationFn: async ({ habitId, level, skipReason, isBinary }) => {
       let res;
       if (level === null) {
-        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${selectedDate}`);
       } else {
         const status = (isBinary && level === 1) ? "completed" : level === 2 ? "completed" : level === 1 ? "minimum" : "skipped";
-        const existing = habitCompletions.some(hc => hc.habitId === habitId);
+        const existing = activeCompletions.some(hc => hc.habitId === habitId);
         const payload: Record<string, unknown> = { status, completionLevel: level };
         if (skipReason) payload.skipReason = skipReason;
         if (existing) {
-          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, payload);
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${selectedDate}`, payload);
         } else {
-          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, ...payload });
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: selectedDate, ...payload });
         }
       }
       if (!res.ok) {
@@ -141,7 +161,7 @@ export default function DashboardPage() {
       }
     },
     invalidateKeys: [["/api/habit-completions", todayStr]],
-    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && q.queryKey[0].startsWith("/api/habit-completions/range/")],
+    invalidatePredicates: [(q) => typeof q.queryKey[0] === "string" && (q.queryKey[0].startsWith("/api/habit-completions/range/") || q.queryKey[0].startsWith("/api/habit-completions/"))],
     errorToast: "Could not update habit",
   });
 
@@ -198,13 +218,13 @@ export default function DashboardPage() {
 
   const [quickToolOpen, setQuickToolOpen] = useState<string | null>(null);
 
-  const allFocusDone = todayFocusItems.length > 0 && todayFocusItems.every(e => e.status === "completed");
+  const allFocusDone = focusItems.length > 0 && focusItems.every(e => e.status === "completed");
   const [showCelebration, setShowCelebration] = useState(false);
   const prevAllFocusDoneRef = useRef(allFocusDone);
 
   useEffect(() => {
-    // Only celebrate on false → true transition (not on initial load)
-    if (allFocusDone && !prevAllFocusDoneRef.current) {
+    // Only celebrate on false → true transition for today (not past dates or initial load)
+    if (isToday && allFocusDone && !prevAllFocusDoneRef.current) {
       setShowCelebration(true);
       const timer = setTimeout(() => setShowCelebration(false), 1500);
       prevAllFocusDoneRef.current = allFocusDone;
@@ -241,46 +261,45 @@ export default function DashboardPage() {
   }
 
 
-  const currentHour = new Date().getHours();
-  const morningSkipped = !hasMorning && currentHour >= 12;
   const journalHabitItems = [
-    { id: -1, name: "Morning Journal", isMorning: true, done: hasMorning, skipped: morningSkipped },
-    { id: -2, name: "Evening Journal", isMorning: false, done: hasEvening, skipped: false },
+    { id: -1, name: "Morning Journal", session: "morning" as const, done: hasMorning },
+    { id: -2, name: "Evening Journal", session: "evening" as const, done: hasEvening },
   ];
 
-  const completedHabits = todaysHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
-  const totalHabits = todaysHabits.length + journalHabitItems.length;
+  const completedHabits = selectedHabits.filter(h => habitStatusMap.get(h.id) === "completed").length + journalHabitItems.filter(j => j.done).length;
+  const totalHabits = selectedHabits.length + journalHabitItems.length;
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
-  const completedFocusCount = todayFocusItems.filter(e => e.status === "completed").length;
-  const allContractDone = (todayFocusItems.length === 0 || allFocusDone) && completedHabits === totalHabits;
+  const completedFocusCount = focusItems.filter(e => e.status === "completed").length;
+  const allContractDone = (focusItems.length === 0 || allFocusDone) && completedHabits === totalHabits;
 
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-3 max-w-2xl space-y-2">
         {/* Daily Contract */}
         <div
-          className={`rounded-lg p-3 transition-colors ${allContractDone ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-bark/5"}`}
+          className={`rounded-lg p-3 transition-colors ${isToday && allContractDone ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-bark/5"}`}
           data-testid="daily-contract"
         >
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-            {format(today, "EEEE, MMM d")}
+            {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
           </p>
           {identityStatement && (
             <p className="text-xs italic text-foreground/80 mt-1 line-clamp-2" data-testid="contract-identity">
+              <span className="not-italic font-medium text-muted-foreground">Identity: </span>
               &ldquo;{identityStatement}&rdquo;
             </p>
           )}
           {goalDisplay && (
             <p className="text-[11px] text-muted-foreground mt-1" data-testid="contract-goal">
-              <Target className="h-3 w-3 inline mr-1" />
+              <span className="font-medium">Goal: </span>
               {goalDisplay}
             </p>
           )}
           <p className="text-[11px] mt-2 font-medium" data-testid="contract-counts">
-            <span className={allContractDone ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}>
-              {allContractDone
+            <span className={isToday && allContractDone ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}>
+              {isToday && allContractDone
                 ? "Proved."
-                : `Proving: ${todayFocusItems.length > 0 ? `${completedFocusCount}/${todayFocusItems.length} focus \u00b7 ` : ""}${completedHabits}/${totalHabits} habits`
+                : `${isToday ? "Proving: " : ""}${focusItems.length > 0 ? `${completedFocusCount}/${focusItems.length} focus \u00b7 ` : ""}${completedHabits}/${totalHabits} habits`
               }
             </span>
           </p>
@@ -356,23 +375,18 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <JournalQuickEntry
-          todayStr={todayStr}
-          hasMorning={hasMorning}
-          hasEvening={hasEvening}
-          setLocation={setLocation}
-          firstName={user?.firstName || ""}
-        />
-
         <DailyHabitsCard
           todayStr={todayStr}
-          todaysHabits={todaysHabits}
+          selectedDate={selectedDate}
+          readOnly={selectedDate > todayStr}
+          selectedHabits={selectedHabits}
           journalHabitItems={journalHabitItems}
           habitStatusMap={habitStatusMap}
           habitLevelMap={habitLevelMap}
           completedHabits={completedHabits}
           totalHabits={totalHabits}
           weekStreakCompletions={weekStreakCompletions}
+          journalDayMap={journalDayMap}
           onHabitLevel={(habitId, level, options) => {
             setHabitLevelMutation.mutate({ habitId, level, isBinary: options?.isBinary });
           }}

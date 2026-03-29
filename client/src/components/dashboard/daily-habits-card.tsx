@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, Minus, Plus } from "lucide-react";
+import { Plus, Sun, Moon } from "lucide-react";
 import type { Habit, HabitCompletion } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_ORDER, TIMING_LABELS, HABIT_UNDONE_BG } from "@/lib/constants";
 import { getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
@@ -10,20 +10,22 @@ import { format, addDays } from "date-fns";
 interface JournalHabitItem {
   id: number;
   name: string;
-  isMorning: boolean;
+  session: "morning" | "evening";
   done: boolean;
-  skipped: boolean;
 }
 
 interface DailyHabitsCardProps {
   todayStr: string;
-  todaysHabits: Habit[];
+  selectedDate: string;
+  readOnly?: boolean;
+  selectedHabits: Habit[];
   journalHabitItems: JournalHabitItem[];
   habitStatusMap: Map<number, string>;
   habitLevelMap: Map<number, number>;
   completedHabits: number;
   totalHabits: number;
   weekStreakCompletions: HabitCompletion[];
+  journalDayMap: { morning: Set<string>; evening: Set<string> };
   onHabitLevel: (habitId: number, level: number | null, options?: { isBinary?: boolean }) => void;
   onHabitSkip: (habitId: number) => void;
   onNavigate: (path: string) => void;
@@ -31,13 +33,16 @@ interface DailyHabitsCardProps {
 
 export function DailyHabitsCard({
   todayStr,
-  todaysHabits,
+  selectedDate,
+  readOnly,
+  selectedHabits,
   journalHabitItems,
   habitStatusMap,
   habitLevelMap,
   completedHabits,
   totalHabits,
   weekStreakCompletions,
+  journalDayMap,
   onHabitLevel,
   onHabitSkip,
   onNavigate,
@@ -62,10 +67,9 @@ export function DailyHabitsCard({
     return map;
   }, [weekStreakCompletions]);
 
-  // Sort habits by time of day
-  const sortedHabits = [...todaysHabits]
-    .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1))
-    .slice(0, 3);
+  // Sort habits by time of day (capping already handled by parent)
+  const sortedHabits = [...selectedHabits]
+    .sort((a, b) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1));
 
   if (sortedHabits.length === 0 && journalHabitItems.length === 0) {
     return (
@@ -99,35 +103,54 @@ export function DailyHabitsCard({
       </CardHeader>
       <CardContent className="pb-3 px-3">
         <ul className="space-y-0.5">
-          {journalHabitItems.map((jh) => (
-            <li key={jh.id} className="flex items-center gap-2.5 py-1.5" data-testid={`journal-habit-${jh.isMorning ? "morning" : "evening"}`}>
-              <div className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
-                jh.done ? "bg-primary border-primary" : jh.skipped ? "bg-yellow-300 border-yellow-400 dark:bg-yellow-400/30 dark:border-yellow-400/50" : "border-border"
-              }`}>
-                {jh.done && <Check className="h-3 w-3 text-primary-foreground" />}
-                {jh.skipped && <Minus className="h-3 w-3 text-yellow-700 dark:text-yellow-300" />}
-              </div>
-              <span className="h-2 w-2 rounded-full shrink-0 bg-violet-400" />
-              <button
-                className={`text-xs flex-1 text-left hover:underline ${jh.done ? "line-through text-muted-foreground" : jh.skipped ? "text-muted-foreground italic" : ""}`}
-                onClick={() => {
-                  const session = jh.isMorning ? "morning" : "evening";
-                  onNavigate(`/journal/${todayStr}/${session}`);
-                }}
-                data-testid={`button-journal-habit-${jh.isMorning ? "morning" : "evening"}`}
-              >
-                {jh.name}
-              </button>
-              {jh.done && <span className="text-[10px] text-muted-foreground">done</span>}
-              {jh.skipped && <span className="text-[10px] text-muted-foreground">skipped</span>}
-            </li>
-          ))}
+          {journalHabitItems.map((jh) => {
+            const Icon = jh.session === "morning" ? Sun : Moon;
+            const sessionDays = journalDayMap[jh.session];
+            return (
+              <li key={jh.id} className="py-1.5" data-testid={`journal-row-${jh.session}`}>
+                <button
+                  className="flex items-center gap-2.5 w-full text-left cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => onNavigate(`/journal/${selectedDate}/${jh.session}`)}
+                  data-testid={`button-journal-${jh.session}`}
+                >
+                  <div className={`h-5 w-12 rounded-md border-2 shrink-0 flex items-center justify-center ${
+                    jh.done ? "bg-emerald-500 border-emerald-600" : "border-border"
+                  }`}>
+                    <Icon className={`h-3 w-3 ${jh.done ? "text-white" : "text-muted-foreground"}`} />
+                  </div>
+                  <span className="h-2 w-2 rounded-full shrink-0 bg-violet-400" />
+                  <span className={`text-xs flex-1 ${jh.done ? "line-through text-muted-foreground" : ""}`}>
+                    {jh.name}
+                  </span>
+                  {jh.done && <span className="text-[10px] text-muted-foreground">done</span>}
+                </button>
+                {/* 7-dot journal streak */}
+                <div className="flex gap-0.5 ml-[4.75rem] mt-0.5">
+                  {last7Days.map(dayStr => {
+                    const done = sessionDays.has(dayStr);
+                    const isToday = dayStr === todayStr;
+                    return (
+                      <span
+                        key={dayStr}
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          done ? "bg-emerald-500"
+                          : isToday ? "ring-1 ring-border bg-transparent"
+                          : "bg-muted"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </li>
+            );
+          })}
           {sortedHabits.map((habit) => {
             const level = habitLevelMap.get(habit.id) ?? null;
             const status = habitStatusMap.get(habit.id) || null;
             const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
 
             const cycleHabit = () => {
+              if (readOnly) return;
               setPopKeys(prev => ({ ...prev, [habit.id]: (prev[habit.id] || 0) + 1 }));
               const nextLevel = getNextHabitLevel(level);
               if (nextLevel === 0) {
@@ -146,7 +169,7 @@ export function DailyHabitsCard({
                   <button
                     key={popKeys[habit.id] || 0}
                     onClick={cycleHabit}
-                    className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass} ${!status ? HABIT_UNDONE_BG : ""}`}
+                    className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium ${readOnly ? "cursor-default opacity-50" : "cursor-pointer"} ${(popKeys[habit.id] || 0) > 0 ? "animate-tap-pop" : ""} ${boxClass} ${!status ? HABIT_UNDONE_BG : ""}`}
                     data-testid={`habit-level-${habit.id}`}
                   >
                     {boxLabel}

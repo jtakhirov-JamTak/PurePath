@@ -80,14 +80,6 @@ export const CATEGORY_BADGE: Record<string, string> = {
   joy: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
 };
 
-/** Journal card border + background by time-of-day state */
-export const JOURNAL_STATE = {
-  morningActive: "border-l-rose-400 bg-rose-50/50 dark:border-l-rose-500 dark:bg-rose-950/10",
-  morningMissed: "border-l-muted-foreground/30",
-  eveningActive: "border-l-amber-400 bg-amber-50/50 dark:border-l-amber-500 dark:bg-amber-950/10",
-  eveningDefault: "border-l-muted-foreground/20",
-  done: "border-l-emerald-400 dark:border-l-emerald-500",
-} as const;
 
 /** Week strip day cell tints based on completion */
 export const WEEK_DAY_TINT: Record<string, string> = {

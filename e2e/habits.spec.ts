@@ -77,10 +77,10 @@ test.describe("Habit Tracking on Dashboard", () => {
   test("journal habit items link to journal pages", async ({ page }) => {
     await page.goto("/");
 
-    const morningItem = page.getByTestId("journal-habit-morning");
+    const morningItem = page.getByTestId("journal-row-morning");
     await expect(morningItem).toBeVisible();
 
-    const eveningItem = page.getByTestId("journal-habit-evening");
+    const eveningItem = page.getByTestId("journal-row-evening");
     await expect(eveningItem).toBeVisible();
   });
 

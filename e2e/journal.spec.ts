@@ -129,7 +129,7 @@ test.describe("Journal Creation", () => {
     await mockDashboardData(page, { journals: [] });
     await page.goto("/");
 
-    // Morning button should show when no morning journal exists
-    await expect(page.getByTestId("button-start-morning-journal")).toBeVisible();
+    // Morning journal row should be visible on dashboard
+    await expect(page.getByTestId("button-journal-morning")).toBeVisible();
   });
 });
