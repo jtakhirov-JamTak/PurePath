@@ -179,6 +179,10 @@ export const storage = {
   getDecisionsForWeek: async (userId: string, weekStart: string) => [] as any[],
   createDecision: async (data: any) => ({ id: nextId(), ...data }),
 
+  // Containment Logs
+  getContainmentLogsByUser: async (userId: string) => [] as any[],
+  createContainmentLog: async (data: any) => ({ id: nextId(), ...data }),
+
   // User settings / access
   getUserSettings: async (userId: string) => _userSettings.find(s => s.userId === userId) || null,
   upsertUserSettings: async (userId: string, data: any) => {

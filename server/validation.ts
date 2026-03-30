@@ -247,6 +247,15 @@ export const saveFearSchema = z.object({
   fearPromotedToQ2: z.boolean(),
 });
 
+export const createContainmentLogSchema = z.object({
+  date: dateString,
+  branch: z.enum(["overwhelmed", "avoiding"]),
+  emotion: optionalString(100),
+  emotionReason: optionalString(2000),
+  moveAction: optionalString(2000),
+  completed: z.boolean().optional().nullable(),
+});
+
 export const reorderItemSchema = z.object({
   id: z.number().int().positive(),
   sortOrder: z.number().int().min(0),

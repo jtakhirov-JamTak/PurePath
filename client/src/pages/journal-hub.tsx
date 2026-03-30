@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Badge } from "@/components/ui/badge";
-import { Sun, Moon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Sun, Moon, ChevronLeft, ChevronRight, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -9,7 +9,7 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth,
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { getDateHabits } from "@/lib/habit-filters";
-import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, Habit, HabitCompletion, EisenhowerEntry, TriggerLog, AvoidanceLog, Decision, ContainmentLog } from "@shared/schema";
 import { buildHabitLevelMap, buildHabitStatusMap, getHabitLabel, getCompletionBoxClass, getNextHabitLevel } from "@/lib/completion";
 import { WeeklyProgress } from "@/components/dashboard/weekly-progress";
 import type { ProgressMetrics } from "@/components/dashboard/weekly-progress";
@@ -58,6 +58,121 @@ export default function JournalHubPage() {
     queryKey: ["/api/eisenhower"],
     enabled: !!user,
   });
+
+  // Tool history data
+  const { data: triggerLogs = [] } = useQuery<TriggerLog[]>({
+    queryKey: ["/api/trigger-logs"],
+    enabled: !!user,
+  });
+  const { data: avoidanceLogs = [] } = useQuery<AvoidanceLog[]>({
+    queryKey: ["/api/avoidance-logs"],
+    enabled: !!user,
+  });
+  const { data: decisionsList = [] } = useQuery<Decision[]>({
+    queryKey: ["/api/decisions"],
+    enabled: !!user,
+  });
+  const { data: containmentLogs = [] } = useQuery<ContainmentLog[]>({
+    queryKey: ["/api/containment-logs"],
+    enabled: !!user,
+  });
+
+  const [toolFilter, setToolFilter] = useState<"all" | "triggers" | "avoidance" | "decisions" | "containment">("all");
+  const [expandedEntry, setExpandedEntry] = useState<string | null>(null);
+  const [showAllTools, setShowAllTools] = useState(false);
+
+  type ToolHistoryEntry = {
+    id: string;
+    type: "trigger" | "avoidance" | "decision" | "containment";
+    date: string;
+    createdAt: string;
+    summary: string;
+    details: { label: string; value: string }[];
+  };
+
+  const TOOL_COLORS: Record<string, string> = {
+    trigger: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+    avoidance: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    decision: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+    containment: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  };
+
+  const toolHistoryEntries = useMemo((): ToolHistoryEntry[] => {
+    const entries: ToolHistoryEntry[] = [];
+
+    triggerLogs.forEach(t => entries.push({
+      id: `trigger-${t.id}`,
+      type: "trigger",
+      date: t.date,
+      createdAt: t.createdAt?.toString() || t.date,
+      summary: `${t.emotion || "Unknown"}${t.emotionIntensity ? ` (${t.emotionIntensity}/10)` : ""} — ${(t.triggerText || "").slice(0, 60)}`,
+      details: [
+        ...(t.triggerText ? [{ label: "Trigger", value: t.triggerText }] : []),
+        ...(t.emotion ? [{ label: "Emotion", value: `${t.emotion}${t.emotionIntensity ? ` (${t.emotionIntensity}/10)` : ""}` }] : []),
+        ...(t.urge ? [{ label: "Urge", value: `${t.urge}${t.urgeIntensity ? ` (${t.urgeIntensity}/10)` : ""}` }] : []),
+        ...(t.actionTaken ? [{ label: "Action", value: t.actionTaken }] : []),
+        ...(t.outcome ? [{ label: "Outcome", value: t.outcome }] : []),
+        ...(t.recoveryTime ? [{ label: "Recovery", value: t.recoveryTime }] : []),
+        ...(t.reflection ? [{ label: "Reflection", value: t.reflection }] : []),
+      ],
+    }));
+
+    avoidanceLogs.forEach(a => entries.push({
+      id: `avoidance-${a.id}`,
+      type: "avoidance",
+      date: a.date,
+      createdAt: a.createdAt?.toString() || a.date,
+      summary: `Avoiding: ${(a.avoidingWhat || "").slice(0, 60)}`,
+      details: [
+        ...(a.avoidingWhat ? [{ label: "Avoiding", value: a.avoidingWhat }] : []),
+        ...(a.discomfort ? [{ label: "Discomfort", value: `${a.discomfort}/5` }] : []),
+        ...(a.selectedValue ? [{ label: "Value", value: a.selectedValue }] : []),
+        ...(a.anticipatedOutcome ? [{ label: "Anticipated outcome", value: a.anticipatedOutcome }] : []),
+        ...(a.smallestExposure ? [{ label: "Smallest step", value: a.smallestExposure }] : []),
+        ...(a.scheduledTime ? [{ label: "Scheduled", value: a.scheduledTime }] : []),
+      ],
+    }));
+
+    decisionsList.forEach(d => entries.push({
+      id: `decision-${d.id}`,
+      type: "decision",
+      date: d.weekStart,
+      createdAt: d.createdAt?.toString() || d.weekStart,
+      summary: `${(d.fear || "").slice(0, 40)}${d.decisionStatement ? " → " + d.decisionStatement.slice(0, 30) : ""}`,
+      details: [
+        ...(d.fear ? [{ label: "Fear", value: d.fear }] : []),
+        ...(d.problemStatement ? [{ label: "Problem", value: d.problemStatement }] : []),
+        ...(d.decisionStatement ? [{ label: "Decision", value: d.decisionStatement }] : []),
+        ...(d.doorType ? [{ label: "Door type", value: d.doorType }] : []),
+        ...(d.firstPhysicalStep ? [{ label: "First step", value: d.firstPhysicalStep }] : []),
+      ],
+    }));
+
+    containmentLogs.forEach(c => entries.push({
+      id: `containment-${c.id}`,
+      type: "containment",
+      date: c.date,
+      createdAt: c.createdAt?.toString() || c.date,
+      summary: `${c.branch === "overwhelmed" ? "Overwhelmed" : "Avoiding"}${c.emotion ? `: ${c.emotion}` : ""}`,
+      details: [
+        { label: "Branch", value: c.branch === "overwhelmed" ? "Overwhelmed" : "Avoiding" },
+        ...(c.emotion ? [{ label: "Emotion", value: c.emotion }] : []),
+        ...(c.emotionReason ? [{ label: "Because", value: c.emotionReason }] : []),
+        ...(c.moveAction ? [{ label: "Move action", value: c.moveAction }] : []),
+      ],
+    }));
+
+    entries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return entries;
+  }, [triggerLogs, avoidanceLogs, decisionsList, containmentLogs]);
+
+  const filteredToolEntries = useMemo(() => {
+    if (toolFilter === "all") return toolHistoryEntries;
+    const typeMap = { triggers: "trigger", avoidance: "avoidance", decisions: "decision", containment: "containment" } as const;
+    return toolHistoryEntries.filter(e => e.type === typeMap[toolFilter]);
+  }, [toolHistoryEntries, toolFilter]);
+
+  const visibleToolEntries = showAllTools ? filteredToolEntries : filteredToolEntries.slice(0, 20);
 
   // Previous week data for week-over-week comparison
   const prevWeekStartDate = addDays(weekStartDate, -7);
@@ -468,6 +583,76 @@ export default function JournalHubPage() {
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Tool History */}
+        <section data-testid="tool-history-section">
+          <p className="text-[11px] uppercase text-bark font-medium mb-2">Tool History</p>
+
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {(["all", "triggers", "avoidance", "decisions", "containment"] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => { setToolFilter(f); setExpandedEntry(null); }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium min-h-[32px] cursor-pointer transition-colors ${
+                  toolFilter === f
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+                data-testid={`filter-${f}`}
+              >
+                {f === "all" ? `All (${toolHistoryEntries.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${toolHistoryEntries.filter(e => e.type === (f === "triggers" ? "trigger" : f === "decisions" ? "decision" : f)).length})`}
+              </button>
+            ))}
+          </div>
+
+          {filteredToolEntries.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">No tool entries yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {visibleToolEntries.map(entry => {
+                const isExpanded = expandedEntry === entry.id;
+                return (
+                  <button
+                    key={entry.id}
+                    onClick={() => setExpandedEntry(isExpanded ? null : entry.id)}
+                    className="w-full text-left rounded-lg bg-bark/5 px-3 py-2.5 cursor-pointer hover:bg-bark/10 transition-colors min-h-[44px]"
+                    data-testid={`tool-entry-${entry.id}`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 mt-0.5 ${TOOL_COLORS[entry.type]}`}>
+                        {entry.type === "trigger" ? "Trigger" : entry.type === "avoidance" ? "Avoidance" : entry.type === "decision" ? "Decision" : "Containment"}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs truncate">{entry.summary}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{format(new Date(entry.date + "T12:00:00"), "MMM d, yyyy")}</p>
+                      </div>
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-2 pt-2 border-t border-border/50 space-y-1.5">
+                        {entry.details.map((d, i) => (
+                          <div key={i} className="text-xs">
+                            <span className="font-medium text-muted-foreground">{d.label}: </span>
+                            <span className="text-foreground">{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+              {filteredToolEntries.length > 20 && !showAllTools && (
+                <button
+                  onClick={() => setShowAllTools(true)}
+                  className="w-full text-center text-xs text-primary hover:underline cursor-pointer py-2 min-h-[44px]"
+                  data-testid="button-show-more-tools"
+                >
+                  Show all {filteredToolEntries.length} entries
+                </button>
               )}
             </div>
           )}

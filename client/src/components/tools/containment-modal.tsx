@@ -11,6 +11,8 @@ import {
   Heart, Shield, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { AvoidingExercise } from "./avoiding-exercise";
+import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 const CONTAINMENT_STEPS = [
   { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
@@ -140,6 +142,14 @@ function OverwhelmedExercise({ open, onClose }: { open: boolean; onClose: () => 
 
   const goNext = () => {
     if (isLastStep) {
+      apiRequest("POST", "/api/containment-logs", {
+        date: format(new Date(), "yyyy-MM-dd"),
+        branch: "overwhelmed",
+        emotion: emotionName || null,
+        emotionReason: becauseText || null,
+        moveAction: moveAction || null,
+        completed: true,
+      }).catch(() => {});
       mood.finishExercise();
       return;
     }
@@ -301,7 +311,14 @@ function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () =
       icon={<Shield className="h-5 w-5 text-amber-500" />}
       testId="modal-avoidance"
     >
-      <AvoidingExercise onFinish={() => mood.finishExercise()} />
+      <AvoidingExercise onFinish={() => {
+        apiRequest("POST", "/api/containment-logs", {
+          date: format(new Date(), "yyyy-MM-dd"),
+          branch: "avoiding",
+          completed: true,
+        }).catch(() => {});
+        mood.finishExercise();
+      }} />
     </ExerciseModal>
   );
 }

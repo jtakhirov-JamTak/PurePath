@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, userSettings, weeklySummaries,
+  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, containmentLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
@@ -12,6 +12,7 @@ import {
   type TriggerLog, type InsertTriggerLog,
   type AvoidanceLog, type InsertAvoidanceLog,
   type Decision, type InsertDecision,
+  type ContainmentLog, type InsertContainmentLog,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
@@ -87,6 +88,10 @@ export interface IStorage {
   getDecisionsByUser(userId: string): Promise<Decision[]>;
   getDecisionsForWeek(userId: string, weekStart: string): Promise<Decision[]>;
   createDecision(decision: InsertDecision): Promise<Decision>;
+
+  // Containment Logs
+  getContainmentLogsByUser(userId: string): Promise<ContainmentLog[]>;
+  createContainmentLog(log: InsertContainmentLog): Promise<ContainmentLog>;
 
   // Habit completion level updates
   updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void>;
@@ -523,6 +528,15 @@ export class DatabaseStorage implements IStorage {
 
   async createDecision(decision: InsertDecision): Promise<Decision> {
     const [created] = await db.insert(decisions).values(decision).returning();
+    return created;
+  }
+
+  async getContainmentLogsByUser(userId: string): Promise<ContainmentLog[]> {
+    return db.select().from(containmentLogs).where(eq(containmentLogs.userId, userId)).orderBy(desc(containmentLogs.createdAt));
+  }
+
+  async createContainmentLog(log: InsertContainmentLog): Promise<ContainmentLog> {
+    const [created] = await db.insert(containmentLogs).values(log).returning();
     return created;
   }
 

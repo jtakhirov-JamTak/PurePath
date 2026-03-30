@@ -410,6 +410,28 @@ export const insertDecisionSchema = createInsertSchema(decisions).omit({
 export type Decision = typeof decisions.$inferSelect;
 export type InsertDecision = z.infer<typeof insertDecisionSchema>;
 
+export const containmentLogs = pgTable("containment_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  branch: varchar("branch", { length: 20 }).notNull(),
+  emotion: varchar("emotion", { length: 100 }),
+  emotionReason: text("emotion_reason"),
+  moveAction: text("move_action"),
+  completed: boolean("completed").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("containment_logs_user_id_idx").on(table.userId),
+]);
+
+export const insertContainmentLogSchema = createInsertSchema(containmentLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type ContainmentLog = typeof containmentLogs.$inferSelect;
+export type InsertContainmentLog = z.infer<typeof insertContainmentLogSchema>;
+
 export const userSettings = pgTable("user_settings", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().unique(),

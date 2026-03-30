@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import {
   createToolUsageSchema, updateToolUsageSchema,
-  createTriggerLogSchema, createAvoidanceLogSchema, createDecisionSchema,
+  createTriggerLogSchema, createAvoidanceLogSchema, createDecisionSchema, createContainmentLogSchema,
 } from "../validation";
 import { parseId, parseMondayParam, csvEscape, exportRateLimit, writeRateLimit } from "./helpers";
 
@@ -176,6 +176,33 @@ export function registerToolRoutes(app: Express) {
     } catch (error) {
       console.error("Error creating decision:", error);
       res.status(500).json({ error: "Failed to create decision" });
+    }
+  });
+
+  // Containment Logs
+  app.get("/api/containment-logs", isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const logs = await storage.getContainmentLogsByUser(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching containment logs:", error);
+      res.status(500).json({ error: "Failed to fetch containment logs" });
+    }
+  });
+
+  app.post("/api/containment-logs", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const parsed = createContainmentLogSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const log = await storage.createContainmentLog({ userId, ...parsed.data });
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating containment log:", error);
+      res.status(500).json({ error: "Failed to create containment log" });
     }
   });
 }

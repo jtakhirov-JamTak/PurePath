@@ -20,6 +20,7 @@ export function registerExportRoutes(app: Express) {
         avoidanceLogs,
         toolUsageLogs,
         decisionLogs,
+        containmentLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getJournalsByUser(userId),
@@ -30,6 +31,7 @@ export function registerExportRoutes(app: Express) {
         storage.getAvoidanceLogsByUser(userId),
         storage.getToolUsageLogsByUser(userId),
         storage.getDecisionsByUser(userId),
+        storage.getContainmentLogsByUser(userId),
       ]);
 
       // Collect monthly goals from all months
@@ -318,6 +320,21 @@ export function registerExportRoutes(app: Express) {
           if (d.doorType) md += `**Door type:** ${d.doorType}\n`;
           if (d.firstPhysicalStep) md += `**First step:** ${d.firstPhysicalStep}\n`;
           md += `\n`;
+        });
+      }
+
+      // CONTAINMENT LOGS
+      md += `---\n\n## Containment Logs\n\n`;
+      const cLogs = containmentLogs as { date: string; branch: string; emotion?: string | null; emotionReason?: string | null; moveAction?: string | null; completed?: boolean | null }[];
+      if (cLogs.length === 0) {
+        md += `No containment logs recorded.\n\n`;
+      } else {
+        cLogs.forEach((c) => {
+          md += `### ${c.date} — ${c.branch}\n`;
+          if (c.emotion) md += `**Emotion:** ${c.emotion}\n`;
+          if (c.emotionReason) md += `**Because:** ${c.emotionReason}\n`;
+          if (c.moveAction) md += `**Move action:** ${c.moveAction}\n`;
+          md += `**Completed:** ${c.completed ? "Yes" : "No"}\n\n`;
         });
       }
 
