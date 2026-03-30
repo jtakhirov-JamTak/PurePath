@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExerciseModal } from "@/components/exercise-modal";
 import { useMoodTracking } from "@/hooks/use-mood-tracking";
 import { useTimer, formatTime } from "@/hooks/use-timer";
@@ -7,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Heart, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
+  Heart, Shield, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { AvoidingExercise } from "./avoiding-exercise";
 
 const CONTAINMENT_STEPS = [
   { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
@@ -58,16 +60,74 @@ function TimerCircle({ timer, color, testId }: { timer: ReturnType<typeof useTim
   );
 }
 
+type Branch = "choose" | "overwhelmed" | "avoiding";
+
 export function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [branch, setBranch] = useState<Branch>("choose");
+
+  const handleFullClose = () => {
+    setBranch("choose");
+    onClose();
+  };
+
+  // Branch selection screen — shown before any exercise/mood tracking
+  if (branch === "choose") {
+    return (
+      <Dialog open={open} onOpenChange={(o) => { if (!o) handleFullClose(); }}>
+        <DialogContent className="sm:max-w-md" data-testid="modal-containment-choose">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-rose-500" />
+              What's happening right now?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            <button
+              onClick={() => setBranch("overwhelmed")}
+              className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
+              data-testid="button-branch-overwhelmed"
+            >
+              <Heart className="h-8 w-8 text-rose-500" />
+              <div className="text-center">
+                <p className="text-sm font-medium">I'm Overwhelmed</p>
+                <p className="text-[10px] text-muted-foreground">Regulate intense emotion</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setBranch("avoiding")}
+              className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
+              data-testid="button-branch-avoiding"
+            >
+              <Shield className="h-8 w-8 text-amber-500" />
+              <div className="text-center">
+                <p className="text-sm font-medium">I'm Avoiding</p>
+                <p className="text-[10px] text-muted-foreground">Face what I'm putting off</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (branch === "overwhelmed") {
+    return <OverwhelmedExercise open={open} onClose={handleFullClose} />;
+  }
+
+  return <AvoidingExerciseModal open={open} onClose={handleFullClose} />;
+}
+
+// ─── Overwhelmed path (existing 4-step exercise) ───
+
+function OverwhelmedExercise({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [step, setStep] = useState(0);
   const timer = useTimer(CONTAINMENT_STEPS[0].duration);
   const [emotionName, setEmotionName] = useState("");
   const [becauseText, setBecauseText] = useState("");
-  const [validationChip, setValidationChip] = useState<string>("");
+  const [validationChip, setValidationChip] = useState("");
   const [moveAction, setMoveAction] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const mood = useMoodTracking("Containment");
-
 
   const currentStep = CONTAINMENT_STEPS[step];
   const isLastStep = step === CONTAINMENT_STEPS.length - 1;
@@ -92,6 +152,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
   const handleClose = () => {
     setStep(0); setEmotionName(""); setBecauseText(""); setValidationChip(""); setMoveAction("");
     timer.setDuration(CONTAINMENT_STEPS[0].duration);
+    mood.reset();
     onClose();
   };
 
@@ -217,6 +278,30 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
           </Button>
         </div>
       </div>
+    </ExerciseModal>
+  );
+}
+
+// ─── Avoiding path ───
+
+function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const mood = useMoodTracking("Avoidance");
+
+  const handleClose = () => {
+    mood.reset();
+    onClose();
+  };
+
+  return (
+    <ExerciseModal
+      open={open}
+      onClose={handleClose}
+      mood={mood}
+      title="Face the Avoidance"
+      icon={<Shield className="h-5 w-5 text-amber-500" />}
+      testId="modal-avoidance"
+    >
+      <AvoidingExercise onFinish={() => mood.finishExercise()} />
     </ExerciseModal>
   );
 }

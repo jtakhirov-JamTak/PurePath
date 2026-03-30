@@ -363,6 +363,9 @@ export const avoidanceLogs = pgTable("avoidance_logs", {
   discomfort: integer("discomfort").notNull(),
   smallestExposure: text("smallest_exposure"),
   startedNow: boolean("started_now").default(false),
+  selectedValue: text("selected_value"),
+  anticipatedOutcome: text("anticipated_outcome"),
+  scheduledTime: varchar("scheduled_time", { length: 10 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("avoidance_logs_user_id_idx").on(table.userId),
@@ -375,6 +378,37 @@ export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
 
 export type AvoidanceLog = typeof avoidanceLogs.$inferSelect;
 export type InsertAvoidanceLog = z.infer<typeof insertAvoidanceLogSchema>;
+
+// Decision Matrix entries
+export const decisions = pgTable("decisions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  weekStart: date("week_start").notNull(),
+  fear: text("fear").notNull(),
+  blocker: varchar("blocker", { length: 100 }),
+  problemStatement: text("problem_statement"),
+  constraints: text("constraints"),           // JSON array
+  successLooksLike: text("success_looks_like"),
+  mustHaves: text("must_haves"),              // JSON array
+  niceToHaves: text("nice_to_haves"),         // JSON array
+  notAllowed: text("not_allowed"),            // JSON array
+  noFearSolutions: text("no_fear_solutions"), // JSON array
+  doorType: varchar("door_type", { length: 20 }),
+  decisionStatement: text("decision_statement"),
+  consultQuestion: text("consult_question"),
+  firstPhysicalStep: text("first_physical_step"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("decisions_user_id_idx").on(table.userId),
+]);
+
+export const insertDecisionSchema = createInsertSchema(decisions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Decision = typeof decisions.$inferSelect;
+export type InsertDecision = z.infer<typeof insertDecisionSchema>;
 
 export const userSettings = pgTable("user_settings", {
   id: serial("id").primaryKey(),

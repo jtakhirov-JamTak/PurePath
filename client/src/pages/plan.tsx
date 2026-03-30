@@ -3,14 +3,15 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Plus } from "lucide-react";
+import { X, Plus, ChevronLeft, ChevronRight, Scale } from "lucide-react";
+import { DecisionMatrixWizard } from "@/components/tools/decision-matrix-wizard";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { format, startOfWeek, addDays, getDay } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks, getDay } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, WeeklySummary } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 import { CATEGORY_COLORS } from "@/lib/constants";
@@ -23,10 +24,12 @@ export default function PlanPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStart = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), weekOffset);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(addDays(weekStart, 6), "MMM d");
   const weekLabel = `${format(weekStart, "MMM d")} – ${weekEndStr}`;
+  const isCurrentWeek = weekOffset === 0;
   const currentMonthKey = format(today, "yyyy-MM");
   const monthLabel = format(today, "MMMM yyyy");
   const yearLabel = format(today, "yyyy");
@@ -85,6 +88,7 @@ export default function PlanPage() {
 
   // Week card: add flow state
   const [addingItem, setAddingItem] = useState(false);
+  const [showDecisionWizard, setShowDecisionWizard] = useState(false);
   const [addTask, setAddTask] = useState("");
   const [addType, setAddType] = useState<"q1" | "q2">("q1");
   const [replaceId, setReplaceId] = useState<number | null>(null);
@@ -176,7 +180,7 @@ export default function PlanPage() {
 
           {/* YEAR */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Year · {yearLabel}</p>
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Become · {yearLabel}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))} data-testid="card-nav-discovery">
                 <CardContent className="p-3">
@@ -216,7 +220,7 @@ export default function PlanPage() {
 
           {/* MONTH */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Month · {monthLabel}</p>
+            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Commit · {monthLabel}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* Monthly Goal card */}
               <Card className="overflow-visible hover-elevate cursor-pointer" onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))} data-testid="card-monthly-goal">
@@ -255,7 +259,15 @@ export default function PlanPage() {
 
           {/* WEEK */}
           <div className="space-y-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Week · {weekLabel}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] uppercase tracking-wide text-bark font-medium flex-1">Decide · {weekLabel}</p>
+              <button onClick={() => setWeekOffset(o => Math.max(o - 1, -4))} className="p-1 text-muted-foreground hover:text-foreground min-h-[44px] flex items-center" data-testid="button-week-prev">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button onClick={() => setWeekOffset(o => Math.min(o + 1, 1))} className="p-1 text-muted-foreground hover:text-foreground min-h-[44px] flex items-center" data-testid="button-week-next">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
 
             {/* This Week — committed items */}
             <Card className="overflow-visible" data-testid="card-this-week">
@@ -405,12 +417,12 @@ export default function PlanPage() {
               </CardContent>
             </Card>
 
-            {/* Two week tools */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Week tools */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {/* Plan your week */}
               <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => {
                 if (focusItems.length > 0 && !confirm("This will start a fresh planning ritual. Your current week will be replaced when you commit the new plan.")) return;
-                setLocation(buildProcessUrl("/eisenhower", "/plan"));
+                setLocation(buildProcessUrl(`/eisenhower${!isCurrentWeek ? `?week=${weekStartStr}` : ""}`, "/plan"));
               }} data-testid="card-plan-week">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-2">
@@ -440,7 +452,29 @@ export default function PlanPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Decision Matrix */}
+              <Card className="hover-elevate cursor-pointer overflow-visible" onClick={() => setShowDecisionWizard(true)} data-testid="card-decision-matrix">
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    <Scale className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" />
+                    <div>
+                      <p className="text-xs font-medium">Decision Matrix</p>
+                      <p className="text-[10px] text-muted-foreground">3-step protocol</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Decision Matrix wizard (inline) */}
+            {showDecisionWizard && (
+              <DecisionMatrixWizard
+                weekStartStr={weekStartStr}
+                onClose={() => setShowDecisionWizard(false)}
+                onSaved={() => setShowDecisionWizard(false)}
+              />
+            )}
           </div>
         </div>
       </div>

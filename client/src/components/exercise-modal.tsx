@@ -118,6 +118,8 @@ export function ExerciseModal({
   testId,
 }: ExerciseModalProps) {
   const resetAndClose = () => {
+    // Reset and close in the same batch — React 18 batches both state updates
+    // so the dialog closes without flashing the "before" screen
     mood.reset();
     onClose();
   };

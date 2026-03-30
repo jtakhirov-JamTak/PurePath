@@ -167,6 +167,34 @@ export const createAvoidanceLogSchema = z.object({
   discomfort: z.number().int().min(1).max(5),
   smallestExposure: optionalString(2000),
   startedNow: z.boolean().optional().nullable(),
+  selectedValue: optionalString(500),
+  anticipatedOutcome: optionalString(2000),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM format").optional().nullable(),
+});
+
+export const decisionBlockerEnum = z.enum([
+  "perfection_over_timeliness",
+  "permission_seeking",
+  "outsourcing_the_decision",
+  "shame_avoidance",
+  "fear",
+]);
+
+export const createDecisionSchema = z.object({
+  weekStart: dateString,
+  fear: trimmedString(1, 2000),
+  blocker: decisionBlockerEnum.optional().nullable(),
+  problemStatement: optionalString(2000),
+  constraints: optionalString(5000),           // JSON array string
+  successLooksLike: optionalString(2000),
+  mustHaves: optionalString(5000),
+  niceToHaves: optionalString(5000),
+  notAllowed: optionalString(5000),
+  noFearSolutions: optionalString(5000),       // JSON array string
+  doorType: z.enum(["reversible", "irreversible"]).optional().nullable(),
+  decisionStatement: optionalString(2000),
+  consultQuestion: optionalString(2000),
+  firstPhysicalStep: optionalString(2000),
 });
 
 export const fearBlockerEnum = z.enum([

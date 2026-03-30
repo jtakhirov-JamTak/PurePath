@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, userSettings, weeklySummaries,
+  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
@@ -11,6 +11,7 @@ import {
   type ToolUsageLog, type InsertToolUsageLog,
   type TriggerLog, type InsertTriggerLog,
   type AvoidanceLog, type InsertAvoidanceLog,
+  type Decision, type InsertDecision,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
@@ -81,6 +82,11 @@ export interface IStorage {
   // Avoidance Logs
   getAvoidanceLogsByUser(userId: string): Promise<AvoidanceLog[]>;
   createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog>;
+
+  // Decisions
+  getDecisionsByUser(userId: string): Promise<Decision[]>;
+  getDecisionsForWeek(userId: string, weekStart: string): Promise<Decision[]>;
+  createDecision(decision: InsertDecision): Promise<Decision>;
 
   // Habit completion level updates
   updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void>;
@@ -504,6 +510,19 @@ export class DatabaseStorage implements IStorage {
 
   async createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog> {
     const [created] = await db.insert(avoidanceLogs).values(log).returning();
+    return created;
+  }
+
+  async getDecisionsByUser(userId: string): Promise<Decision[]> {
+    return db.select().from(decisions).where(eq(decisions.userId, userId)).orderBy(desc(decisions.createdAt));
+  }
+
+  async getDecisionsForWeek(userId: string, weekStart: string): Promise<Decision[]> {
+    return db.select().from(decisions).where(and(eq(decisions.userId, userId), eq(decisions.weekStart, weekStart))).orderBy(desc(decisions.createdAt));
+  }
+
+  async createDecision(decision: InsertDecision): Promise<Decision> {
+    const [created] = await db.insert(decisions).values(decision).returning();
     return created;
   }
 

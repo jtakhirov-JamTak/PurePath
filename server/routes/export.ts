@@ -19,6 +19,7 @@ export function registerExportRoutes(app: Express) {
         triggerLogs,
         avoidanceLogs,
         toolUsageLogs,
+        decisionLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getJournalsByUser(userId),
@@ -28,6 +29,7 @@ export function registerExportRoutes(app: Express) {
         storage.getTriggerLogsByUser(userId),
         storage.getAvoidanceLogsByUser(userId),
         storage.getToolUsageLogsByUser(userId),
+        storage.getDecisionsByUser(userId),
       ]);
 
       // Collect monthly goals from all months
@@ -301,6 +303,22 @@ export function registerExportRoutes(app: Express) {
           md += `- **${t.date}** — ${t.toolName}: mood ${t.moodBefore}→${t.moodAfter ?? "?"}/5, emotion: ${t.emotionBefore}→${t.emotionAfter || "?"}, ${t.completed ? "completed" : "not completed"}\n`;
         });
         md += `\n`;
+      }
+
+      // DECISIONS
+      md += `---\n\n## Decisions\n\n`;
+      const decisionList = decisionLogs as { weekStart: string; fear: string; blocker?: string | null; decisionStatement?: string | null; doorType?: string | null; firstPhysicalStep?: string | null }[];
+      if (decisionList.length === 0) {
+        md += `No decisions recorded.\n\n`;
+      } else {
+        decisionList.forEach((d) => {
+          md += `### ${d.weekStart} — "${d.fear}"\n`;
+          if (d.blocker) md += `**Blocker:** ${d.blocker}\n`;
+          if (d.decisionStatement) md += `**Decision:** ${d.decisionStatement}\n`;
+          if (d.doorType) md += `**Door type:** ${d.doorType}\n`;
+          if (d.firstPhysicalStep) md += `**First step:** ${d.firstPhysicalStep}\n`;
+          md += `\n`;
+        });
       }
 
       md += `---\n\n`;

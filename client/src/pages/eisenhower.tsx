@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { X, Plus, Check, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks, getDay } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
@@ -188,7 +188,16 @@ export default function EisenhowerPage() {
   const [scheduleIdx, setScheduleIdx] = useState(0);
 
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("week") : null;
+  const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const [planNextWeek, setPlanNextWeek] = useState(() => {
+    if (isFearOnly) return false; // fear-only always uses current week
+    if (weekParam) return weekParam !== format(currentWeekStart, "yyyy-MM-dd");
+    // Default to next week on Fri/Sat/Sun
+    const dow = getDay(today);
+    return dow === 0 || dow === 5 || dow === 6;
+  });
+  const weekStart = planNextWeek ? addWeeks(currentWeekStart, 1) : currentWeekStart;
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d")}`;
 
@@ -566,9 +575,28 @@ export default function EisenhowerPage() {
                 You are overloaded, not incapable.
               </p>
             </div>
+            {/* Week toggle */}
+            {!fearOnlyMode && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPlanNextWeek(false)}
+                  className={`text-xs px-4 py-2 rounded-full border min-h-[44px] ${!planNextWeek ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
+                  data-testid="button-this-week"
+                >
+                  This week
+                </button>
+                <button
+                  onClick={() => setPlanNextWeek(true)}
+                  className={`text-xs px-4 py-2 rounded-full border min-h-[44px] ${planNextWeek ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground"}`}
+                  data-testid="button-next-week"
+                >
+                  Next week
+                </button>
+              </div>
+            )}
             {hasExistingPlan && (
               <p className="text-xs text-amber-600 dark:text-amber-400 max-w-xs">
-                You already have a plan this week. Completing this ritual will replace it.
+                You already have a plan for this week. Completing this ritual will replace it.
               </p>
             )}
             <Button size="lg" onClick={goNext} data-testid="button-ready">
