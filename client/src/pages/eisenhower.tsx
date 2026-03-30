@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { X, Plus, Check, Loader2 } from "lucide-react";
+import { X, Plus, Check, Loader2, ArrowRight, ArrowLeft } from "lucide-react";
 import { format, startOfWeek, addDays } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,9 +18,9 @@ import type { EisenhowerEntry } from "@shared/schema";
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
 const MAX_CANDIDATES = 7;
-const MAX_RANKED = 5;
 const MAX_BRAIN_DUMP = 30;
-const TOTAL_STEPS = 8;
+const MAX_DAYS_PER_ITEM = 5;
+const TOTAL_STEPS = 7;
 
 const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
   const totalMinutes = 8 * 60 + i * 30; // 8:00am to 9:00pm
@@ -44,16 +44,45 @@ const BLOCKER_CHIPS = [
   { value: "succeeding_and_sustaining", label: "Succeeding and having to sustain it" },
 ] as const;
 
+type SortImportance = "clearly" | "somewhat" | "not_really";
+type SortConsequence = "real_consequence" | "stays_important" | "someone_annoyed" | "basically_nothing";
+type SortResistance = "low_value" | "uncomfortable" | "straightforward";
+type SortResult = "handle" | "protect" | "not_this_week";
+
+const IMPORTANCE_CHIPS: { value: SortImportance; label: string }[] = [
+  { value: "clearly", label: "Yes, clearly" },
+  { value: "somewhat", label: "Somewhat" },
+  { value: "not_really", label: "Not really" },
+];
+
+const CONSEQUENCE_CHIPS: { value: SortConsequence; label: string }[] = [
+  { value: "real_consequence", label: "Real consequence this week" },
+  { value: "stays_important", label: "It stays important, but no immediate consequence" },
+  { value: "someone_annoyed", label: "Mostly someone else gets annoyed" },
+  { value: "basically_nothing", label: "Basically nothing" },
+];
+
+const RESISTANCE_CHIPS: { value: SortResistance; label: string }[] = [
+  { value: "low_value", label: "Low value — I should let it go" },
+  { value: "uncomfortable", label: "It matters — I'm just uncomfortable" },
+  { value: "straightforward", label: "Not resisting — it's straightforward" },
+];
+
 interface BrainDumpItem {
-  id: number;              // stable unique ID for React keys
+  id: number;
   text: string;
-  selected: boolean;       // survived Cut to 7
-  rank: number | null;     // 1-5 from gut-rank step
-  ignoreConsequence: boolean | null;  // "Will something real happen soon if I ignore this?"
-  futureGlad: boolean | null;         // "Will my future self be glad I did this?"
-  scheduledDate: string;   // YYYY-MM-DD
-  scheduledStartTime: string; // HH:MM
-  scheduledEndTime: string;   // HH:MM
+  selected: boolean;
+  // Sort fields (Step 4 — Better Sort)
+  sortImportance: SortImportance | null;
+  sortConsequence: SortConsequence | null;
+  sortResistance: SortResistance | null;
+  sortResult: SortResult | null;
+  sortPriority: number | null;
+  // Scheduling (Step 7)
+  scheduledDates: string[];
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  firstMove: string;
 }
 
 interface FearData {
@@ -65,13 +94,60 @@ interface FearData {
   promoteToQ2: boolean;
 }
 
-function classifyItem(item: BrainDumpItem): "q1" | "q2" | "not_this_week" {
-  const { ignoreConsequence, futureGlad } = item;
-  if (ignoreConsequence === null || futureGlad === null) return "not_this_week";
-  if (ignoreConsequence && futureGlad) return "q1";    // Handle this week
-  if (!ignoreConsequence && futureGlad) return "q2";   // Protect this week
-  return "not_this_week"; // Yes+No and No+No both discarded
+function classifyItem(item: BrainDumpItem): SortResult {
+  const { sortImportance: imp, sortConsequence: con, sortResistance: res } = item;
+  if (!imp || !con || !res) return "not_this_week";
+
+  // Handle: real consequence regardless of Q1/Q3
+  if (con === "real_consequence") return "handle";
+
+  // Not this week rules
+  if (imp === "not_really" && (con === "someone_annoyed" || con === "basically_nothing")) return "not_this_week";
+  if (imp === "somewhat" && con === "basically_nothing" && res === "low_value") return "not_this_week";
+
+  // Protect: important (clearly or somewhat) + non-urgent consequence
+  if (imp === "clearly" || imp === "somewhat") return "protect";
+
+  // Fallback for not_really + stays_important (edge case)
+  return "not_this_week";
 }
+
+function computeSortPriority(item: BrainDumpItem): number {
+  const { sortImportance: imp, sortConsequence: con, sortResistance: res } = item;
+  const result = classifyItem(item);
+
+  if (result === "handle") {
+    if (imp === "clearly") return 1;
+    if (imp === "somewhat") return 2;
+    return 3; // not_really + real_consequence (obligation)
+  }
+
+  if (result === "protect") {
+    if (imp === "clearly" && con === "stays_important" && res === "uncomfortable") return 1;
+    if (imp === "clearly" && con === "stays_important" && res === "straightforward") return 2;
+    if (imp === "clearly" && con === "stays_important") return 3; // low_value edge
+    if (imp === "clearly" && con === "basically_nothing") return 4;
+    if (imp === "clearly" && con === "someone_annoyed") return 5;
+    if (imp === "somewhat" && con === "stays_important" && res === "uncomfortable") return 6;
+    if (imp === "somewhat" && con === "stays_important" && res === "straightforward") return 7;
+    if (imp === "somewhat" && con === "someone_annoyed") return 8;
+    return 9;
+  }
+
+  return 99;
+}
+
+function generateGroupId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for non-secure contexts (e.g., HTTP on LAN for mobile testing)
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+const RESULT_BADGE: Record<SortResult, { label: string; className: string }> = {
+  handle: { label: "Handle", className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
+  protect: { label: "Protect", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  not_this_week: { label: "Not this week", className: "bg-muted text-muted-foreground" },
+};
 
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();
@@ -79,7 +155,7 @@ export default function EisenhowerPage() {
   const [, setLocation] = useLocation();
   const { register, unregister } = useUnsavedGuard();
   const isFearOnly = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("startAt") === "fear";
-  const [step, setStep] = useState(isFearOnly ? 6 : 1);
+  const [step, setStep] = useState(isFearOnly ? 5 : 1);
   const nextId = useRef(1);
   const [fearOnlyMode, setFearOnlyMode] = useState(isFearOnly);
 
@@ -94,7 +170,7 @@ export default function EisenhowerPage() {
     return () => unregister("eisenhower-wizard");
   }, [step, items.length, register, unregister]);
 
-  // Step 6 — Fear
+  // Step 5 — Fear
   const [fearTargetIdx, setFearTargetIdx] = useState<number | null>(null);
   const [fearData, setFearData] = useState<FearData>({
     targetTask: "",
@@ -104,6 +180,12 @@ export default function EisenhowerPage() {
     smallestProofMove: "",
     promoteToQ2: false,
   });
+
+  // Step 4 — Badge display: hold on current item briefly after classification
+  const [badgeItemId, setBadgeItemId] = useState<number | null>(null);
+
+  // Step 7 — Schedule sub-step tracking
+  const [scheduleIdx, setScheduleIdx] = useState(0);
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -119,7 +201,6 @@ export default function EisenhowerPage() {
   // Fear-only mode: pre-load existing items so user can pick a fear target
   const fearOnlyLoaded = useRef(false);
   useEffect(() => {
-    // Redirect to plan if no entries exist for fear-only mode
     if (fearOnlyMode && !entriesLoading && existingEntries.length === 0 && !fearOnlyLoaded.current) {
       toast({ title: "Plan your week first", description: "You need committed items before facing a fear.", variant: "destructive" });
       setLocation("/plan");
@@ -131,27 +212,42 @@ export default function EisenhowerPage() {
         id: nextId.current++,
         text: e.task,
         selected: true,
-        rank: null,
-        ignoreConsequence: e.quadrant === "q1" ? true : e.quadrant === "q2" ? false : null,
-        futureGlad: (e.quadrant === "q1" || e.quadrant === "q2") ? true : false,
-        scheduledDate: e.scheduledDate || "",
+        sortImportance: (e.sortImportance as SortImportance) || null,
+        sortConsequence: (e.sortConsequence as SortConsequence) || null,
+        sortResistance: (e.sortResistance as SortResistance) || null,
+        sortResult: (e.sortResult as SortResult) || (e.quadrant === "q1" ? "handle" : e.quadrant === "q2" ? "protect" : null),
+        sortPriority: e.sortPriority ?? null,
+        scheduledDates: e.scheduledDate ? [e.scheduledDate] : [],
         scheduledStartTime: e.scheduledStartTime || "",
         scheduledEndTime: e.scheduledEndTime || "",
+        firstMove: e.firstMove || "",
       })));
     }
   }, [fearOnlyMode, existingEntries]);
 
   // Derived lists
   const selectedItems = items.filter(i => i.selected);
-  const rankedItems = selectedItems.filter(i => i.rank !== null).sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
-  const classifiedItems = selectedItems.map(item => ({ ...item, classification: classifyItem(item) }));
-  const q1Items = classifiedItems.filter(i => i.classification === "q1");
-  const q2Items = classifiedItems.filter(i => i.classification === "q2");
-  const handleItems = q1Items; // alias for user-facing label
-  const protectItems = q2Items;
-  const discardedItems = classifiedItems.filter(i => i.classification === "not_this_week");
-  const schedulableItems = [...handleItems, ...protectItems]; // items that need scheduling
-  const allScheduled = schedulableItems.length === 0 || schedulableItems.every(i => i.scheduledDate && i.scheduledStartTime && i.scheduledEndTime);
+  const allSorted = selectedItems.length > 0 && selectedItems.every(i =>
+    i.sortImportance !== null && i.sortConsequence !== null && i.sortResistance !== null
+  );
+
+  // Classified items with results (recomputes when items change)
+  // Respect manual overrides: if sortResult was set by moveItem(), keep it
+  const classifiedItems = selectedItems.map(item => {
+    const derived = classifyItem(item);
+    const wasManuallyMoved = item.sortResult !== null && item.sortResult !== derived;
+    const result = wasManuallyMoved ? item.sortResult! : derived;
+    return {
+      ...item,
+      sortResult: result,
+      sortPriority: wasManuallyMoved ? (item.sortPriority ?? 99) : computeSortPriority(item),
+    };
+  });
+
+  const handleItems = classifiedItems.filter(i => i.sortResult === "handle").sort((a, b) => a.sortPriority - b.sortPriority);
+  const protectItems = classifiedItems.filter(i => i.sortResult === "protect").sort((a, b) => a.sortPriority - b.sortPriority);
+  const discardedItems = classifiedItems.filter(i => i.sortResult === "not_this_week");
+  const committedItems = [...handleItems, ...protectItems];
 
   // Week days for scheduling step
   const weekDays = Array.from({ length: 7 }, (_, i) => {
@@ -163,12 +259,20 @@ export default function EisenhowerPage() {
   const addItem = () => {
     const trimmed = newItemText.trim();
     if (!trimmed) return;
-    // Support comma-separated
     const parts = trimmed.split(",").map(s => s.trim()).filter(Boolean);
     const newItems = parts
       .filter(text => !items.some(i => i.text.toLowerCase() === text.toLowerCase()))
-      .slice(0, MAX_BRAIN_DUMP - items.length) // enforce cap
-      .map(text => ({ id: nextId.current++, text, selected: false, rank: null, ignoreConsequence: null, futureGlad: null, scheduledDate: "", scheduledStartTime: "", scheduledEndTime: "" }));
+      .slice(0, MAX_BRAIN_DUMP - items.length)
+      .map(text => ({
+        id: nextId.current++, text, selected: false,
+        sortImportance: null as SortImportance | null,
+        sortConsequence: null as SortConsequence | null,
+        sortResistance: null as SortResistance | null,
+        sortResult: null as SortResult | null,
+        sortPriority: null as number | null,
+        scheduledDates: [] as string[],
+        scheduledStartTime: "", scheduledEndTime: "", firstMove: "",
+      }));
     setItems(prev => [...prev, ...newItems]);
     setNewItemText("");
   };
@@ -181,57 +285,74 @@ export default function EisenhowerPage() {
   const toggleSelected = (idx: number) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item;
-      if (item.selected) return { ...item, selected: false, rank: null };
+      if (item.selected) return { ...item, selected: false, sortImportance: null, sortConsequence: null, sortResistance: null, sortResult: null, sortPriority: null };
       const currentSelected = prev.filter(it => it.selected).length;
       if (currentSelected >= MAX_CANDIDATES) return item;
       return { ...item, selected: true };
     }));
   };
 
-  // Step 4 — Tap-to-rank
-  const toggleRank = (idx: number) => {
-    setItems(prev => {
-      const item = prev[idx];
-      if (item.rank !== null) {
-        // Unrank: remove this rank and reflow
-        const removedRank = item.rank;
-        return prev.map((it, i) => {
-          if (i === idx) return { ...it, rank: null };
-          if (it.rank !== null && it.rank > removedRank) return { ...it, rank: it.rank - 1 };
-          return it;
-        });
-      }
-      // Assign next rank
-      const currentRanked = prev.filter(it => it.rank !== null).length;
-      if (currentRanked >= MAX_RANKED) return prev;
-      return prev.map((it, i) => {
-        if (i === idx) return { ...it, rank: currentRanked + 1 };
-        return it;
-      });
-    });
-  };
-
-  // Step 5 — Sort questions
+  // Step 4 — Better Sort: find next unsorted item (hold on current while badge showing)
   const sortItemIdx = (() => {
-    // Find the first selected item that hasn't been classified yet
+    // If badge is showing, stay on that item
+    if (badgeItemId !== null) {
+      const idx = items.findIndex(i => i.id === badgeItemId);
+      if (idx >= 0) return idx;
+    }
     for (let i = 0; i < items.length; i++) {
-      if (items[i].selected && (items[i].ignoreConsequence === null || items[i].futureGlad === null)) {
+      if (items[i].selected && (items[i].sortImportance === null || items[i].sortConsequence === null || items[i].sortResistance === null)) {
         return i;
       }
     }
     return null;
   })();
-  const allSorted = selectedItems.length > 0 && selectedItems.every(i => i.ignoreConsequence !== null && i.futureGlad !== null);
 
-  const answerSort = (idx: number, field: "ignoreConsequence" | "futureGlad", value: boolean) => {
+  const answerSort = (idx: number, field: "sortImportance" | "sortConsequence" | "sortResistance", value: string) => {
+    setItems(prev => {
+      const next = prev.map((item, i) => {
+        if (i !== idx) return item;
+        const updated = { ...item, [field]: value };
+        // Auto-classify when all 3 answered
+        if (updated.sortImportance && updated.sortConsequence && updated.sortResistance) {
+          updated.sortResult = classifyItem(updated);
+          updated.sortPriority = computeSortPriority(updated);
+        }
+        return updated;
+      });
+      // Show badge briefly before auto-advancing
+      const updatedItem = next[idx];
+      if (updatedItem.sortImportance && updatedItem.sortConsequence && updatedItem.sortResistance) {
+        setBadgeItemId(updatedItem.id);
+        setTimeout(() => setBadgeItemId(null), 800);
+      }
+      return next;
+    });
+  };
+
+  // Step 6 — Review: move items between buckets
+  const moveItem = (itemId: number, newResult: SortResult) => {
+    setItems(prev => prev.map(item => {
+      if (item.id !== itemId) return item;
+      return { ...item, sortResult: newResult };
+    }));
+  };
+
+  // Step 7 — Schedule helpers
+  const toggleScheduledDay = (idx: number, date: string) => {
+    setItems(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const dates = item.scheduledDates.includes(date)
+        ? item.scheduledDates.filter(d => d !== date)
+        : item.scheduledDates.length >= MAX_DAYS_PER_ITEM ? item.scheduledDates : [...item.scheduledDates, date];
+      return { ...item, scheduledDates: dates };
+    }));
+  };
+
+  const updateScheduleField = (idx: number, field: "scheduledStartTime" | "scheduledEndTime" | "firstMove", value: string) => {
     setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
-  const updateSchedule = (idx: number, field: "scheduledDate" | "scheduledStartTime" | "scheduledEndTime", value: string) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  };
-
-  // Commit mutation — full week or fear-only
+  // Commit mutation
   const commitMutation = useMutation({
     mutationFn: async () => {
       // Fear-only mode: save fear reflection without touching weekly entries
@@ -253,38 +374,33 @@ export default function EisenhowerPage() {
         return res.json();
       }
 
-      // Full ritual mode: commit entire week
-      const commitItems = [...handleItems, ...protectItems].map((item, i) => ({
-        task: item.text,
-        quadrant: item.classification as "q1" | "q2",
-        sortOrder: i,
-        scheduledDate: item.scheduledDate || null,
-        scheduledStartTime: item.scheduledStartTime || null,
-        scheduledEndTime: item.scheduledEndTime || null,
-      }));
+      // Full ritual mode: commit entire week with groupId expansion
+      const commitItems = committedItems.map((item, i) => {
+        const originalItem = items.find(it => it.id === item.id)!;
+        const groupId = generateGroupId();
+        return {
+          task: item.text,
+          quadrant: (item.sortResult === "handle" ? "q1" : "q2") as "q1" | "q2",
+          sortOrder: i,
+          groupId,
+          scheduledDates: originalItem.scheduledDates.length > 0 ? originalItem.scheduledDates : [weekDays[0].date],
+          scheduledStartTime: originalItem.scheduledStartTime || null,
+          scheduledEndTime: originalItem.scheduledEndTime || null,
+          firstMove: originalItem.firstMove,
+          sortImportance: originalItem.sortImportance,
+          sortConsequence: originalItem.sortConsequence,
+          sortResistance: originalItem.sortResistance,
+          sortResult: item.sortResult as "handle" | "protect",
+          sortPriority: item.sortPriority,
+        };
+      });
 
-      // If fear item is promoted to Q2 and not already in Q2, add it
-      const fearItem = fearTargetIdx !== null ? items[fearTargetIdx] : null;
-      const fearClassification = fearItem ? classifyItem(fearItem) : null;
-      const fearAlreadyQ2 = fearClassification === "q2";
-      const shouldPromote = fearData.promoteToQ2 && fearItem && !fearAlreadyQ2;
-
-      if (shouldPromote && fearItem) {
-        const currentQ2 = commitItems.filter(ci => ci.quadrant === "q2").length;
-        const alreadyIncluded = commitItems.some(ci => ci.task === fearItem.text);
-        if (!alreadyIncluded && currentQ2 < MAX_Q2) {
-          commitItems.push({
-            task: fearItem.text,
-            quadrant: "q2",
-            sortOrder: commitItems.length,
-            scheduledDate: fearItem.scheduledDate || null,
-            scheduledStartTime: fearItem.scheduledStartTime || null,
-            scheduledEndTime: fearItem.scheduledEndTime || null,
-          });
-        } else if (alreadyIncluded) {
-          const existing = commitItems.find(ci => ci.task === fearItem.text);
-          if (existing && currentQ2 < MAX_Q2) existing.quadrant = "q2";
-        }
+      // Fear item: if promoted to Q2, it's already in committedItems (sortResult set to "protect" by checkbox).
+      // Ensure its quadrant is q2 in the commit payload.
+      if (fearData.promoteToQ2 && fearTargetIdx !== null) {
+        const fearTask = items[fearTargetIdx]?.text;
+        const existing = commitItems.find(ci => ci.task === fearTask);
+        if (existing) existing.quadrant = "q2";
       }
 
       const body: any = {
@@ -314,64 +430,100 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStartStr] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/weekly-summary", weekStartStr] });
-      setLocation(fearOnlyMode ? "/plan" : "/dashboard");
+      setLocation(fearOnlyMode ? "/plan" : "/plan");
     },
     onError: (error: Error) => {
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
     },
   });
 
-  // Step navigation (1=Arrive, 2=BrainDump, 3=Cut, 4=Rank, 5=Sort, 6=Schedule, 7=Fear, 8=Commit)
-  const fearStep = fearOnlyMode ? 6 : 7; // fear-only skips to step 6 which maps to fear
-  const commitStep = fearOnlyMode ? 7 : 8;
+  // Step navigation: 1=Arrive, 2=BrainDump, 3=Cut, 4=Sort, 5=Fear, 6=ReviewBuckets, 7=Schedule+Save
+  const allItemsScheduled = scheduleIdx >= committedItems.length;
 
   const canNext = (() => {
     switch (step) {
       case 1: return true;
       case 2: return items.length >= 1;
       case 3: return selectedItems.length >= 1 && selectedItems.length <= MAX_CANDIDATES;
-      case 4: return rankedItems.length >= 1;
-      case 5: return allSorted && q1Items.length <= MAX_Q1 && q2Items.length <= MAX_Q2;
-      case 6: return fearOnlyMode
-        ? (fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim())
-        : allScheduled;
-      case 7: return fearOnlyMode
-        ? !commitMutation.isPending
-        : (fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim());
-      case 8: return !commitMutation.isPending;
+      case 4: return allSorted && handleItems.length <= MAX_Q1 && protectItems.length <= MAX_Q2;
+      case 5: // Fear step
+        return !!(fearTargetIdx !== null && fearData.fearIfFaced.trim() && fearData.fearIfAvoided.trim() && fearData.blockerChip && fearData.smallestProofMove.trim());
+      case 6: // Review buckets + caps
+        return handleItems.length <= MAX_Q1 && protectItems.length <= MAX_Q2 && committedItems.length > 0;
+      case 7: // Schedule + save
+        if (!allItemsScheduled) {
+          // Current item must have at least 1 day and a first move
+          const currentItem = committedItems[scheduleIdx];
+          if (!currentItem) return false;
+          const orig = items.find(it => it.id === currentItem.id);
+          return orig ? orig.scheduledDates.length >= 1 && orig.firstMove.trim().length > 0 : false;
+        }
+        return !commitMutation.isPending; // Final review — can commit
       default: return false;
     }
   })();
 
   const goNext = () => {
-    if (step === commitStep) {
+    if (step === 7 && !allItemsScheduled) {
+      // Advance to next item in scheduling
+      setScheduleIdx(s => s + 1);
+      return;
+    }
+    if (step === 7 && allItemsScheduled) {
+      // Final commit
       commitMutation.mutate();
       return;
     }
-    if (step === (fearOnlyMode ? 5 : 6)) {
-      // Pre-fill fear target with first item if none selected (entering fear step)
-      if (fearTargetIdx === null && selectedItems.length > 0) {
-        const firstIdx = items.findIndex(i => i.selected);
+    if (fearOnlyMode && step === 5) {
+      // Fear-only: commit directly
+      commitMutation.mutate();
+      return;
+    }
+    if (step === 4) {
+      // Entering fear step — pre-fill fear target
+      if (fearTargetIdx === null && committedItems.length > 0) {
+        const firstCommitted = committedItems[0];
+        const firstIdx = items.findIndex(i => i.id === firstCommitted.id);
         setFearTargetIdx(firstIdx);
-        setFearData(prev => ({ ...prev, targetTask: items[firstIdx].text }));
+        setFearData(prev => ({ ...prev, targetTask: firstCommitted.text }));
       }
     }
-    setStep(s => Math.min(s + 1, commitStep));
+    if (step === 6) {
+      // Entering schedule step — reset schedule index and prefill fear item's firstMove
+      setScheduleIdx(0);
+      if (fearTargetIdx !== null && fearData.smallestProofMove) {
+        setItems(prev => prev.map((item, i) =>
+          i === fearTargetIdx && !item.firstMove ? { ...item, firstMove: fearData.smallestProofMove } : item
+        ));
+      }
+    }
+    setStep(s => Math.min(s + 1, TOTAL_STEPS));
   };
+
   const goBack = () => {
-    if (fearOnlyMode && step === 6) return;
-    if (step === fearStep) {
+    if (fearOnlyMode && step === 5) return;
+    if (step === 7 && scheduleIdx > 0) {
+      // Go back to previous item in scheduling
+      setScheduleIdx(s => s - 1);
+      return;
+    }
+    if (step === 7 && allItemsScheduled) {
+      // Go back from final review to last schedule item
+      setScheduleIdx(committedItems.length - 1);
+      return;
+    }
+    if (step === 5) {
       setFearTargetIdx(null);
       setFearData({ targetTask: "", fearIfFaced: "", fearIfAvoided: "", blockerChip: "", smallestProofMove: "", promoteToQ2: false });
     }
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const fearOnlySteps = 2;
+  const fearOnlySteps = 1;
   const progressPercent = fearOnlyMode
-    ? Math.round(((step - 5) / fearOnlySteps) * 100)
+    ? Math.round(((step - 4) / fearOnlySteps) * 100)
     : Math.round((step / TOTAL_STEPS) * 100);
-  const displayStep = fearOnlyMode ? step - 5 : step;
+  const displayStep = fearOnlyMode ? step - 4 : step;
   const displayTotal = fearOnlyMode ? fearOnlySteps : TOTAL_STEPS;
 
   return (
@@ -490,145 +642,115 @@ export default function EisenhowerPage() {
           </div>
         )}
 
-        {/* ==================== STEP 4 — GUT RANK TOP 5 ==================== */}
+        {/* ==================== STEP 4 — BETTER SORT ==================== */}
         {step === 4 && (
           <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">If I followed instinct alone, what would I do first?</h2>
-              <p className="text-sm text-muted-foreground">Tap items in rank order (1 = first). Tap again to remove rank.</p>
-            </div>
-
-            {/* Ranked items */}
-            {rankedItems.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ranked</p>
-                {rankedItems.map((item) => {
-                  const originalIdx = items.findIndex(it => it.id === item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleRank(originalIdx)}
-                      className="w-full text-left flex items-center gap-3 rounded-lg border border-primary bg-primary/[0.06] px-3 py-2.5"
-                      data-testid={`rank-item-${originalIdx}`}
-                    >
-                      <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
-                        {item.rank}
-                      </div>
-                      <span className="text-sm">{item.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Unranked items */}
-            {(() => {
-              const unranked = selectedItems.filter(i => i.rank === null);
-              if (unranked.length === 0) return null;
-              return (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Unranked</p>
-                  {unranked.map((item) => {
-                    const originalIdx = items.findIndex(it => it.id === item.id);
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleRank(originalIdx)}
-                        className="w-full text-left flex items-center gap-3 rounded-lg border px-3 py-2.5 hover:border-muted-foreground/30"
-                        data-testid={`rank-item-${originalIdx}`}
-                      >
-                        <div className="h-6 w-6 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-xs text-muted-foreground shrink-0">
-                          —
-                        </div>
-                        <span className="text-sm">{item.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            <p className="text-xs text-muted-foreground text-center">
-              {rankedItems.length} / {MAX_RANKED} ranked
-            </p>
-          </div>
-        )}
-
-        {/* ==================== STEP 5 — QUIETLY SORT ==================== */}
-        {step === 5 && (
-          <div className="space-y-6">
             {!allSorted && sortItemIdx !== null ? (
-              // Show questions for the current item
+              /* ---- Classification questions (one item at a time) ---- */
               <div className="space-y-6">
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Item {selectedItems.filter(i => i.ignoreConsequence !== null && i.futureGlad !== null).length + 1} of {selectedItems.length}
+                    Item {selectedItems.filter(i => i.sortImportance !== null && i.sortConsequence !== null && i.sortResistance !== null).length + 1} of {selectedItems.length}
                   </p>
                   <h2 className="text-lg font-semibold">"{items[sortItemIdx].text}"</h2>
                 </div>
 
-                {/* Question 1 */}
+                {/* Q1 — Importance */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Will something real happen soon if I ignore this?</Label>
-                  <div className="flex gap-3">
-                    <Button
-                      variant={items[sortItemIdx].ignoreConsequence === true ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => answerSort(sortItemIdx, "ignoreConsequence", true)}
-                      data-testid="button-ignore-yes"
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      variant={items[sortItemIdx].ignoreConsequence === false ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => answerSort(sortItemIdx, "ignoreConsequence", false)}
-                      data-testid="button-ignore-no"
-                    >
-                      No
-                    </Button>
+                  <Label className="text-sm font-medium">Does this materially move my goal, values, or a key responsibility this week?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {IMPORTANCE_CHIPS.map(chip => (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => answerSort(sortItemIdx, "sortImportance", chip.value)}
+                        className={`rounded-full px-3 py-2 text-xs font-medium border transition-colors cursor-pointer min-h-[44px] ${
+                          items[sortItemIdx].sortImportance === chip.value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                        data-testid={`chip-importance-${chip.value}`}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {/* Question 2 */}
+                {/* Q2 — Consequence */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Will my future self be glad I did this?</Label>
-                  <div className="flex gap-3">
-                    <Button
-                      variant={items[sortItemIdx].futureGlad === true ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => answerSort(sortItemIdx, "futureGlad", true)}
-                      data-testid="button-glad-yes"
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      variant={items[sortItemIdx].futureGlad === false ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => answerSort(sortItemIdx, "futureGlad", false)}
-                      data-testid="button-glad-no"
-                    >
-                      No
-                    </Button>
+                  <Label className="text-sm font-medium">If I ignore this for 7 days, what happens?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {CONSEQUENCE_CHIPS.map(chip => (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => answerSort(sortItemIdx, "sortConsequence", chip.value)}
+                        className={`rounded-full px-3 py-2 text-xs font-medium border transition-colors cursor-pointer min-h-[44px] ${
+                          items[sortItemIdx].sortConsequence === chip.value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                        data-testid={`chip-consequence-${chip.value}`}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Q3 — Resistance */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Am I resisting this because it's low value, or because it matters and feels uncomfortable?</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {RESISTANCE_CHIPS.map(chip => (
+                      <button
+                        key={chip.value}
+                        type="button"
+                        onClick={() => answerSort(sortItemIdx, "sortResistance", chip.value)}
+                        className={`rounded-full px-3 py-2 text-xs font-medium border transition-colors cursor-pointer min-h-[44px] ${
+                          items[sortItemIdx].sortResistance === chip.value
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                        data-testid={`chip-resistance-${chip.value}`}
+                      >
+                        {chip.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Result badge after all 3 answered */}
+                {items[sortItemIdx].sortImportance && items[sortItemIdx].sortConsequence && items[sortItemIdx].sortResistance && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${RESULT_BADGE[classifyItem(items[sortItemIdx])].className}`}>
+                      {RESULT_BADGE[classifyItem(items[sortItemIdx])].label}
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
-              // All sorted — show results
+              /* ---- Review screen (all items sorted) ---- */
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-lg font-semibold">Your week, sorted</h2>
-                  <p className="text-sm text-muted-foreground">Here's how your items landed.</p>
+                  <p className="text-sm text-muted-foreground">Here's how your items landed. Tap to move between buckets.</p>
                 </div>
 
                 {handleItems.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-rose-500 uppercase tracking-wider">Handle this week ({handleItems.length}/{MAX_Q1})</p>
-                    {handleItems.map((item, i) => (
-                      <div key={i} className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2 text-sm">
-                        {item.text}
+                    {handleItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2">
+                        <span className="text-sm flex-1">{item.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => moveItem(item.id, "protect")}
+                          className="text-xs text-amber-600 dark:text-amber-400 hover:underline ml-2 shrink-0 min-h-[44px] flex items-center"
+                        >
+                          Move to Protect
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -637,9 +759,16 @@ export default function EisenhowerPage() {
                 {protectItems.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-amber-500 uppercase tracking-wider">Protect this week ({protectItems.length}/{MAX_Q2})</p>
-                    {protectItems.map((item, i) => (
-                      <div key={i} className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2 text-sm">
-                        {item.text}
+                    {protectItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2">
+                        <span className="text-sm flex-1">{item.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => moveItem(item.id, "handle")}
+                          className="text-xs text-rose-600 dark:text-rose-400 hover:underline ml-2 shrink-0 min-h-[44px] flex items-center"
+                        >
+                          Move to Handle
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -648,110 +777,68 @@ export default function EisenhowerPage() {
                 {discardedItems.length > 0 && (
                   <div className="space-y-1.5">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Not this week</p>
-                    {discardedItems.map((item, i) => (
-                      <div key={i} className="rounded-lg border px-3 py-2 text-sm text-muted-foreground line-through">
-                        {item.text}
+                    {discardedItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 opacity-60">
+                        <span className="text-sm text-muted-foreground line-through flex-1">{item.text}</span>
+                        <div className="flex gap-2 ml-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => moveItem(item.id, "handle")}
+                            className="text-xs text-rose-600 dark:text-rose-400 hover:underline min-h-[44px] flex items-center"
+                          >
+                            Handle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveItem(item.id, "protect")}
+                            className="text-xs text-amber-600 dark:text-amber-400 hover:underline min-h-[44px] flex items-center"
+                          >
+                            Protect
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {(q1Items.length > MAX_Q1 || q2Items.length > MAX_Q2) && (
+                {(handleItems.length > MAX_Q1 || protectItems.length > MAX_Q2) && (
                   <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 space-y-2">
                     <p className="text-sm text-destructive">
-                      {q1Items.length > MAX_Q1 && `Too many Handle items (${q1Items.length}/${MAX_Q1}). `}
-                      {q2Items.length > MAX_Q2 && `Too many Protect items (${q2Items.length}/${MAX_Q2}). `}
+                      {handleItems.length > MAX_Q1 && `Too many Handle items (${handleItems.length}/${MAX_Q1}). Move some to Protect or Not this week. `}
+                      {protectItems.length > MAX_Q2 && `Too many Protect items (${protectItems.length}/${MAX_Q2}). Choose your most important. `}
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setItems(prev => prev.map(it => it.selected ? { ...it, ignoreConsequence: null, futureGlad: null } : it));
-                      }}
-                      data-testid="button-reset-sort"
-                    >
-                      Re-sort items
-                    </Button>
                   </div>
                 )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setItems(prev => prev.map(it => it.selected
+                      ? { ...it, sortImportance: null, sortConsequence: null, sortResistance: null, sortResult: null, sortPriority: null }
+                      : it
+                    ));
+                  }}
+                  data-testid="button-reset-sort"
+                >
+                  Re-sort all items
+                </Button>
               </div>
             )}
           </div>
         )}
 
-        {/* ==================== STEP 6 — SCHEDULE ==================== */}
-        {step === 6 && !fearOnlyMode && (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold">When will you do each one?</h2>
-              <p className="text-sm text-muted-foreground">Assign a day and time to each item.</p>
-            </div>
-
-            <div className="space-y-4">
-              {schedulableItems.map((item) => {
-                const originalIdx = items.findIndex(it => it.id === item.id);
-                const isQ1 = item.classification === "q1";
-                return (
-                  <Card key={item.id} className={isQ1 ? "border-rose-200 dark:border-rose-900/40" : "border-amber-200 dark:border-amber-900/40"}>
-                    <CardContent className="p-3 space-y-2">
-                      <p className="text-sm font-medium">{item.text}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {weekDays.map(day => (
-                          <button
-                            key={day.date}
-                            type="button"
-                            onClick={() => updateSchedule(originalIdx, "scheduledDate", day.date)}
-                            className={`text-xs px-3 py-2 rounded-md border cursor-pointer min-h-[44px] ${
-                              items[originalIdx]?.scheduledDate === day.date
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "border-border text-muted-foreground hover:border-primary/40"
-                            }`}
-                          >
-                            {day.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <select
-                          value={items[originalIdx]?.scheduledStartTime || ""}
-                          onChange={e => updateSchedule(originalIdx, "scheduledStartTime", e.target.value)}
-                          className="text-xs h-8 rounded-md border border-border bg-background px-2 flex-1"
-                        >
-                          <option value="">Start</option>
-                          {TIME_SLOTS.map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={items[originalIdx]?.scheduledEndTime || ""}
-                          onChange={e => updateSchedule(originalIdx, "scheduledEndTime", e.target.value)}
-                          className="text-xs h-8 rounded-md border border-border bg-background px-2 flex-1"
-                        >
-                          <option value="">End</option>
-                          {TIME_SLOTS.filter(t => !items[originalIdx]?.scheduledStartTime || t.value > items[originalIdx].scheduledStartTime).map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ==================== STEP 7 — FACE THE FEAR ==================== */}
-        {step === fearStep && (
+        {/* ==================== STEP 5 — FACE THE FEAR ==================== */}
+        {step === 5 && (
           <div className="space-y-6">
             <div className="space-y-2">
               <h2 className="text-lg font-semibold">What important thing am I resisting?</h2>
               <p className="text-sm text-muted-foreground">Pick the one item you feel most resistance toward.</p>
             </div>
 
-            {/* Item picker */}
+            {/* Item picker — show committed items only */}
             <div className="space-y-1.5">
-              {selectedItems.map((item) => {
+              {(fearOnlyMode ? selectedItems : committedItems).map((item) => {
                 const originalIdx = items.findIndex(it => it.id === item.id);
                 const isSelected = fearTargetIdx === originalIdx;
                 return (
@@ -779,7 +866,6 @@ export default function EisenhowerPage() {
             {fearTargetIdx !== null && (
               <Card>
                 <CardContent className="pt-6 space-y-5">
-                  {/* What am I resisting? */}
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What am I resisting?</Label>
                     <p className="text-sm font-medium px-3 py-2 rounded-md bg-muted" data-testid="input-fear-target">
@@ -787,7 +873,6 @@ export default function EisenhowerPage() {
                     </p>
                   </div>
 
-                  {/* Fear if faced */}
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What am I afraid might happen if I face it?</Label>
                     <Textarea
@@ -800,7 +885,6 @@ export default function EisenhowerPage() {
                     />
                   </div>
 
-                  {/* Fear if avoided */}
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What am I afraid might happen if I keep avoiding it?</Label>
                     <Textarea
@@ -813,19 +897,18 @@ export default function EisenhowerPage() {
                     />
                   </div>
 
-                  {/* Blocker chips */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">What is most true underneath this right now?</Label>
                     <div className="flex flex-wrap gap-2">
                       {BLOCKER_CHIPS.map((chip) => {
-                        const isSelected = fearData.blockerChip === chip.value;
+                        const isChipSelected = fearData.blockerChip === chip.value;
                         return (
                           <button
                             key={chip.value}
                             type="button"
                             onClick={() => setFearData(prev => ({ ...prev, blockerChip: chip.value }))}
                             className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors cursor-pointer ${
-                              isSelected
+                              isChipSelected
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                             }`}
@@ -838,7 +921,6 @@ export default function EisenhowerPage() {
                     </div>
                   </div>
 
-                  {/* Smallest proof move */}
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What is the smallest proof move?</Label>
                     <Textarea
@@ -856,37 +938,81 @@ export default function EisenhowerPage() {
           </div>
         )}
 
-        {/* ==================== STEP 8 — COMMIT ==================== */}
-        {step === commitStep && (
+        {/* ==================== STEP 6 — REVIEW BUCKETS + FEAR + CAPS ==================== */}
+        {step === 6 && !fearOnlyMode && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold">Commit the week</h2>
-              <p className="text-sm text-muted-foreground">Review your plan and commit.</p>
+              <h2 className="text-lg font-semibold">Commit your week</h2>
+              <p className="text-sm text-muted-foreground">Review your items. Move between buckets if needed.</p>
             </div>
 
+            {/* Handle bucket */}
             {handleItems.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-rose-500 uppercase tracking-wider">Handle this week</p>
-                {handleItems.map((item, i) => (
-                  <div key={i} className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2 text-sm">
-                    {item.text}
+                <p className="text-xs font-medium text-rose-500 uppercase tracking-wider">Handle this week ({handleItems.length}/{MAX_Q1})</p>
+                {handleItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2">
+                    <span className="text-sm flex-1">{item.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => moveItem(item.id, "protect")}
+                      className="text-xs text-amber-600 dark:text-amber-400 hover:underline ml-2 shrink-0 min-h-[44px] flex items-center"
+                    >
+                      Move to Protect
+                    </button>
                   </div>
                 ))}
               </div>
             )}
 
+            {/* Protect bucket */}
             {protectItems.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-amber-500 uppercase tracking-wider">Protect this week</p>
-                {protectItems.map((item, i) => (
-                  <div key={i} className="rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2 text-sm">
-                    {item.text}
+                <p className="text-xs font-medium text-amber-500 uppercase tracking-wider">Protect this week ({protectItems.length}/{MAX_Q2})</p>
+                {protectItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2">
+                    <span className="text-sm flex-1">{item.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => moveItem(item.id, "handle")}
+                      className="text-xs text-rose-600 dark:text-rose-400 hover:underline ml-2 shrink-0 min-h-[44px] flex items-center"
+                    >
+                      Move to Handle
+                    </button>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Fear summary */}
+            {/* Not this week */}
+            {discardedItems.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Not this week</p>
+                {discardedItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 opacity-60">
+                    <span className="text-sm text-muted-foreground line-through flex-1">{item.text}</span>
+                    <div className="flex gap-2 ml-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => moveItem(item.id, "handle")}
+                        className="text-xs text-rose-600 dark:text-rose-400 hover:underline min-h-[44px] flex items-center"
+                      >
+                        Handle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveItem(item.id, "protect")}
+                        className="text-xs text-amber-600 dark:text-amber-400 hover:underline min-h-[44px] flex items-center"
+                      >
+                        Protect
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Fear item integration */}
             {fearTargetIdx !== null && fearData.targetTask && (
               <Card className="border-indigo-200 dark:border-indigo-900/40">
                 <CardHeader className="pb-2">
@@ -900,12 +1026,12 @@ export default function EisenhowerPage() {
                   {/* Promote to Q2 toggle */}
                   {(() => {
                     const fearItem = items[fearTargetIdx];
-                    const fearClass = classifyItem(fearItem);
-                    const isAlreadyQ2 = fearClass === "q2";
-                    const currentQ2Count = q2Items.length;
-                    const hasRoom = currentQ2Count < MAX_Q2 || isAlreadyQ2;
+                    const fearResult = fearItem?.sortResult;
+                    const isAlreadyProtect = fearResult === "protect";
+                    const currentProtectCount = protectItems.length;
+                    const hasRoom = currentProtectCount < MAX_Q2 || isAlreadyProtect;
 
-                    if (isAlreadyQ2) return null; // Already committed as Q2
+                    if (isAlreadyProtect) return null;
 
                     return (
                       <div className="pt-2 border-t">
@@ -913,13 +1039,23 @@ export default function EisenhowerPage() {
                           <input
                             type="checkbox"
                             checked={fearData.promoteToQ2}
-                            onChange={(e) => setFearData(prev => ({ ...prev, promoteToQ2: e.target.checked }))}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFearData(prev => ({ ...prev, promoteToQ2: checked }));
+                              // Move fear item into/out of Protect so it appears in committedItems for scheduling
+                              if (fearTargetIdx !== null) {
+                                setItems(prev => prev.map((it, idx) => {
+                                  if (idx !== fearTargetIdx) return it;
+                                  return { ...it, sortResult: checked ? "protect" : classifyItem(it) };
+                                }));
+                              }
+                            }}
                             disabled={!hasRoom && !fearData.promoteToQ2}
                             className="rounded"
                             data-testid="checkbox-promote-q2"
                           />
                           <span className="text-xs">
-                            Commit as Protect item{!hasRoom ? " (Q2 full — remove one first)" : ""}
+                            Commit as Protect item{!hasRoom ? " (Protect full — move one out first)" : ""}
                           </span>
                         </label>
                       </div>
@@ -929,9 +1065,186 @@ export default function EisenhowerPage() {
               </Card>
             )}
 
-            {commitMutation.isError && (
+            {/* Cap enforcement messages */}
+            {(handleItems.length > MAX_Q1 || protectItems.length > MAX_Q2) && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
-                <p className="text-sm text-destructive">{commitMutation.error.message}</p>
+                <p className="text-sm text-destructive">
+                  {handleItems.length > MAX_Q1 && "You can handle up to 5 items this week. Let go of the rest or move them to Protect. "}
+                  {protectItems.length > MAX_Q2 && "You can protect up to 2 items this week. Choose your most important. "}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================== STEP 7 — SCHEDULE + FIRST MOVES + SAVE ==================== */}
+        {step === 7 && !fearOnlyMode && (
+          <div className="space-y-6">
+            {!allItemsScheduled ? (
+              /* ---- Scheduling one item at a time ---- */
+              (() => {
+                const currentCommitted = committedItems[scheduleIdx];
+                if (!currentCommitted) return null;
+                const originalIdx = items.findIndex(it => it.id === currentCommitted.id);
+                const originalItem = items[originalIdx];
+                if (!originalItem) return null;
+                const isHandle = currentCommitted.sortResult === "handle";
+                const isFearItem = fearTargetIdx === originalIdx;
+
+                return (
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                        Scheduling {scheduleIdx + 1} of {committedItems.length}
+                      </p>
+                      <h2 className="text-lg font-semibold">{currentCommitted.text}</h2>
+                      <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        isHandle ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+                                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      }`}>
+                        {isHandle ? "Handle" : "Protect"}
+                      </span>
+                    </div>
+
+                    {/* Day chips */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Which days?</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {weekDays.map(day => {
+                          const isSelectedDay = originalItem.scheduledDates.includes(day.date);
+                          const atMax = originalItem.scheduledDates.length >= MAX_DAYS_PER_ITEM && !isSelectedDay;
+                          return (
+                            <button
+                              key={day.date}
+                              type="button"
+                              onClick={() => !atMax && toggleScheduledDay(originalIdx, day.date)}
+                              className={`text-xs px-3 py-2 rounded-md border cursor-pointer min-h-[44px] ${
+                                isSelectedDay
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : atMax
+                                    ? "border-border text-muted-foreground/40 cursor-not-allowed"
+                                    : "border-border text-muted-foreground hover:border-primary/40"
+                              }`}
+                            >
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {originalItem.scheduledDates.length >= MAX_DAYS_PER_ITEM && (
+                        <p className="text-xs text-amber-600">Max {MAX_DAYS_PER_ITEM} days. If something needs all 7 days, it should probably be a habit, not a weekly item.</p>
+                      )}
+                    </div>
+
+                    {/* Time slots */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">What time?</Label>
+                      <div className="flex gap-2">
+                        <select
+                          value={originalItem.scheduledStartTime || ""}
+                          onChange={e => updateScheduleField(originalIdx, "scheduledStartTime", e.target.value)}
+                          className="text-xs h-10 rounded-md border border-border bg-background px-2 flex-1"
+                        >
+                          <option value="">Start</option>
+                          {TIME_SLOTS.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={originalItem.scheduledEndTime || ""}
+                          onChange={e => updateScheduleField(originalIdx, "scheduledEndTime", e.target.value)}
+                          className="text-xs h-10 rounded-md border border-border bg-background px-2 flex-1"
+                        >
+                          <option value="">End</option>
+                          {TIME_SLOTS.filter(t => !originalItem.scheduledStartTime || t.value > originalItem.scheduledStartTime).map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* First move */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">First physical step</Label>
+                      <Input
+                        value={originalItem.firstMove}
+                        onChange={e => updateScheduleField(originalIdx, "firstMove", e.target.value)}
+                        placeholder={isFearItem ? fearData.smallestProofMove || "One concrete first step..." : "One concrete first step..."}
+                        data-testid="input-first-move"
+                      />
+                    </div>
+                  </div>
+                );
+              })()
+            ) : (
+              /* ---- Final review + save (7c) ---- */
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-lg font-semibold">Your week</h2>
+                  <p className="text-sm text-muted-foreground">Review and commit.</p>
+                </div>
+
+                {handleItems.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-rose-500 uppercase tracking-wider">Handle ({handleItems.length})</p>
+                    {handleItems.map((item) => {
+                      const orig = items.find(it => it.id === item.id);
+                      return (
+                        <div key={item.id} className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2 space-y-1">
+                          <p className="text-sm font-medium">{item.text}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {orig?.scheduledDates.map(d => {
+                              const day = weekDays.find(wd => wd.date === d);
+                              return day?.label;
+                            }).filter(Boolean).join(", ")}
+                            {orig?.scheduledStartTime && ` at ${orig.scheduledStartTime}`}
+                          </p>
+                          {orig?.firstMove && <p className="text-xs text-muted-foreground italic">First: {orig.firstMove}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {protectItems.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-amber-500 uppercase tracking-wider">Protect ({protectItems.length})</p>
+                    {protectItems.map((item) => {
+                      const orig = items.find(it => it.id === item.id);
+                      const isFearLinked = fearTargetIdx !== null && items[fearTargetIdx]?.id === item.id;
+                      return (
+                        <div key={item.id} className={`rounded-lg border ${isFearLinked ? "border-indigo-200 dark:border-indigo-900/40 bg-indigo-50/50 dark:bg-indigo-950/20" : "border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20"} px-3 py-2 space-y-1`}>
+                          <p className="text-sm font-medium">{item.text}{isFearLinked && " (fear item)"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {orig?.scheduledDates.map(d => {
+                              const day = weekDays.find(wd => wd.date === d);
+                              return day?.label;
+                            }).filter(Boolean).join(", ")}
+                            {orig?.scheduledStartTime && ` at ${orig.scheduledStartTime}`}
+                          </p>
+                          {orig?.firstMove && <p className="text-xs text-muted-foreground italic">First: {orig.firstMove}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Fear summary if not promoted */}
+                {fearTargetIdx !== null && fearData.targetTask && !fearData.promoteToQ2 && (
+                  <Card className="border-indigo-200 dark:border-indigo-900/40">
+                    <CardContent className="pt-4 space-y-1">
+                      <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Weekly fear rep</p>
+                      <p className="text-sm">{fearData.targetTask}</p>
+                      <p className="text-xs text-muted-foreground italic">Proof move: {fearData.smallestProofMove}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {commitMutation.isError && (
+                  <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3">
+                    <p className="text-sm text-destructive">{commitMutation.error.message}</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -940,21 +1253,24 @@ export default function EisenhowerPage() {
         {/* ==================== NAVIGATION ==================== */}
         {(step > 1 || fearOnlyMode) && (
           <div className="flex justify-between items-center mt-8 pt-4 border-t">
-            {!(fearOnlyMode && step === 6) ? (
+            {!(fearOnlyMode && step === 5) ? (
               <Button variant="ghost" onClick={goBack} data-testid="button-back">
+                <ArrowLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
             ) : <div />}
             <Button
               onClick={goNext}
-              disabled={!canNext || (step === commitStep && commitMutation.isPending)}
+              disabled={!canNext || ((step === 7 && allItemsScheduled || (fearOnlyMode && step === 5)) && commitMutation.isPending)}
               data-testid="button-next"
             >
-              {step === commitStep ? (
+              {(step === 7 && allItemsScheduled) || (fearOnlyMode && step === 5) ? (
                 commitMutation.isPending ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
                 ) : "Commit"
-              ) : "Next"}
+              ) : (
+                <>Next<ArrowRight className="ml-1 h-4 w-4" /></>
+              )}
             </Button>
           </div>
         )}

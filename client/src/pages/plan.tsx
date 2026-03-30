@@ -14,7 +14,7 @@ import { format, startOfWeek, addDays, getDay } from "date-fns";
 import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument, WeeklySummary } from "@shared/schema";
 import { getDayOfYear } from "date-fns";
 import { CATEGORY_COLORS } from "@/lib/constants";
-import { getWeekFocusItems } from "@/lib/eisenhower-filters";
+import { getWeekFocusItems, groupByGroupId } from "@/lib/eisenhower-filters";
 
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
@@ -78,8 +78,10 @@ export default function PlanPage() {
     return null;
   })();
 
-  const q1Items = focusItems.filter(e => e.quadrant === "q1");
-  const q2Items = focusItems.filter(e => e.quadrant === "q2");
+  // Group multi-day items by groupId so each shows once with day indicators
+  const groupedFocus = groupByGroupId(focusItems);
+  const q1Items = groupedFocus.filter(e => e.quadrant === "q1");
+  const q2Items = groupedFocus.filter(e => e.quadrant === "q2");
 
   // Week card: add flow state
   const [addingItem, setAddingItem] = useState(false);
@@ -94,11 +96,16 @@ export default function PlanPage() {
     setReplaceId(null);
   };
 
-  // Delete an item from the week
-  const deleteMutation = useToastMutation<{ id: number }>({
-    mutationFn: async ({ id }) => {
-      const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
-      if (!res.ok) throw new Error("Failed to remove item");
+  // Delete an item from the week (single request via groupId, fallback to individual delete)
+  const deleteMutation = useToastMutation<{ id: number; groupId?: string | null }>({
+    mutationFn: async ({ id, groupId }) => {
+      if (groupId) {
+        const res = await apiRequest("DELETE", `/api/eisenhower/group/${groupId}`);
+        if (!res.ok) throw new Error("Failed to remove item");
+      } else {
+        const res = await apiRequest("DELETE", `/api/eisenhower/${id}`);
+        if (!res.ok) throw new Error("Failed to remove item");
+      }
     },
     invalidateKeys: [["/api/eisenhower"]],
     errorToast: "Could not remove item",
@@ -107,12 +114,16 @@ export default function PlanPage() {
   // Add a new item (and optionally delete a replaced Q2 item)
   const addMutation = useToastMutation<{ task: string; quadrant: "q1" | "q2"; replaceId?: number }>({
     mutationFn: async ({ task, quadrant, replaceId: rid }) => {
-      // If replacing a Q2 item, delete the old one first to make room (server enforces cap)
-      // Then POST the new one. If POST fails after DELETE, user loses one item — but this
-      // ordering avoids the server rejecting the POST due to the cap being full.
+      // If replacing a Q2 item, delete all rows for that grouped item to make room
       if (rid) {
-        const delRes = await apiRequest("DELETE", `/api/eisenhower/${rid}`);
-        if (!delRes.ok) throw new Error("Failed to remove replaced item");
+        const groupedItem = q2Items.find(i => i.id === rid);
+        if (groupedItem?.groupId) {
+          const delRes = await apiRequest("DELETE", `/api/eisenhower/group/${groupedItem.groupId}`);
+          if (!delRes.ok) throw new Error("Failed to remove replaced item");
+        } else {
+          const delRes = await apiRequest("DELETE", `/api/eisenhower/${rid}`);
+          if (!delRes.ok) throw new Error("Failed to remove replaced item");
+        }
       }
       const res = await apiRequest("POST", "/api/eisenhower", {
         task,
@@ -255,13 +266,23 @@ export default function PlanPage() {
                       <div className="space-y-1">
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Handle this week ({q1Items.length}/{MAX_Q1})</p>
                         {q1Items.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 py-0.5 group">
+                          <div key={item.groupId || item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-rose-400" />
-                            <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-xs ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                              {item.scheduledDates.length > 0 && (
+                                <span className="text-[9px] text-muted-foreground ml-1">
+                                  {item.scheduledDates.map(d => {
+                                    const date = new Date(d + "T12:00:00");
+                                    return format(date, "EEE");
+                                  }).join(", ")}
+                                </span>
+                              )}
+                            </div>
                             {!(weekLocked && (item.status === "completed" || item.completionLevel)) && (
                               <button
                                 className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
-                                onClick={() => deleteMutation.mutate({ id: item.id })}
+                                onClick={() => deleteMutation.mutate({ id: item.id, groupId: item.groupId })}
                                 data-testid={`button-remove-${item.id}`}
                               >
                                 <X className="h-3 w-3" />
@@ -275,13 +296,23 @@ export default function PlanPage() {
                       <div className="space-y-1">
                         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Protect this week ({q2Items.length}/{MAX_Q2})</p>
                         {q2Items.map(item => (
-                          <div key={item.id} className="flex items-center gap-2 py-0.5 group">
+                          <div key={item.groupId || item.id} className="flex items-center gap-2 py-0.5 group">
                             <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
-                            <span className={`text-xs flex-1 ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-xs ${item.status === "completed" ? "line-through text-muted-foreground" : ""}`}>{item.task}</span>
+                              {item.scheduledDates.length > 0 && (
+                                <span className="text-[9px] text-muted-foreground ml-1">
+                                  {item.scheduledDates.map(d => {
+                                    const date = new Date(d + "T12:00:00");
+                                    return format(date, "EEE");
+                                  }).join(", ")}
+                                </span>
+                              )}
+                            </div>
                             {!(weekLocked && (item.status === "completed" || item.completionLevel)) && (
                               <button
                                 className="h-4 w-4 shrink-0 text-muted-foreground/40 hover:text-rose-500 transition-colors cursor-pointer"
-                                onClick={() => deleteMutation.mutate({ id: item.id })}
+                                onClick={() => deleteMutation.mutate({ id: item.id, groupId: item.groupId })}
                                 data-testid={`button-remove-${item.id}`}
                               >
                                 <X className="h-3 w-3" />

@@ -14,6 +14,12 @@ const decisionEnum = z.enum(["do_today", "schedule", "delegate", "delete"]);
 const sessionEnum = z.enum(["morning", "evening"]);
 const completionStatusEnum = z.enum(["completed", "skipped"]);
 
+// Sort classification enums (Step 5 Better Sort)
+export const sortImportanceEnum = z.enum(["clearly", "somewhat", "not_really"]);
+export const sortConsequenceEnum = z.enum(["real_consequence", "stays_important", "someone_annoyed", "basically_nothing"]);
+export const sortResistanceEnum = z.enum(["low_value", "uncomfortable", "straightforward"]);
+export const sortResultEnum = z.enum(["handle", "protect", "not_this_week"]);
+
 export const createEisenhowerSchema = z.object({
   task: trimmedString(1, 500),
   weekStart: dateString,
@@ -44,6 +50,13 @@ export const createEisenhowerSchema = z.object({
   timeShortMinutes: z.number().int().min(0).optional().nullable(),
   timeRange: z.enum(["morning", "afternoon", "evening"]).optional().nullable(),
   sortOrder: z.number().int().min(0).optional().nullable(),
+  groupId: z.string().max(50).optional().nullable(),
+  sortImportance: sortImportanceEnum.optional().nullable(),
+  sortConsequence: sortConsequenceEnum.optional().nullable(),
+  sortResistance: sortResistanceEnum.optional().nullable(),
+  sortResult: sortResultEnum.optional().nullable(),
+  sortPriority: z.number().int().min(0).optional().nullable(),
+  firstMove: optionalString(2000),
 });
 
 export const updateEisenhowerSchema = createEisenhowerSchema.partial();
@@ -171,9 +184,16 @@ export const commitWeekItemSchema = z.object({
   task: z.string().trim().min(1).max(500),
   quadrant: z.enum(["q1", "q2"]),
   sortOrder: z.number().int().min(0),
-  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  groupId: z.string().min(1).max(50),
+  scheduledDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(5),
   scheduledStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   scheduledEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  firstMove: z.string().trim().min(1).max(2000),
+  sortImportance: sortImportanceEnum.optional().nullable(),
+  sortConsequence: sortConsequenceEnum.optional().nullable(),
+  sortResistance: sortResistanceEnum.optional().nullable(),
+  sortResult: sortResultEnum,
+  sortPriority: z.number().int().min(0),
 });
 
 export const commitWeekSchema = z.object({

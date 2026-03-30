@@ -192,13 +192,13 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: "weekStart must be a Monday" });
       }
 
-      // Validate caps
-      const q1Count = items.filter(i => i.quadrant === "q1").length;
-      const q2Count = items.filter(i => i.quadrant === "q2").length;
-      if (q1Count > MAX_Q1) {
+      // Validate caps by distinct groupId
+      const q1Groups = new Set(items.filter(i => i.quadrant === "q1").map(i => i.groupId));
+      const q2Groups = new Set(items.filter(i => i.quadrant === "q2").map(i => i.groupId));
+      if (q1Groups.size > MAX_Q1) {
         return res.status(400).json({ error: `Max ${MAX_Q1} Handle items per week` });
       }
-      if (q2Count > MAX_Q2) {
+      if (q2Groups.size > MAX_Q2) {
         return res.status(400).json({ error: `Max ${MAX_Q2} Protect items per week` });
       }
 
@@ -208,17 +208,26 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: "Duplicate task names are not allowed" });
       }
 
-      // Build item payloads
-      const entryItems = items.map(item => ({
-        task: item.task,
-        quadrant: item.quadrant,
-        role: "",
-        sortOrder: item.sortOrder,
-        blocksGoal: item.quadrant === "q2" ? true : false,
-        scheduledDate: item.scheduledDate || null,
-        scheduledStartTime: item.scheduledStartTime || null,
-        scheduledEndTime: item.scheduledEndTime || null,
-      }));
+      // Expand items: one row per scheduled day per item
+      const entryItems = items.flatMap(item =>
+        item.scheduledDates.map((date, dayIdx) => ({
+          task: item.task,
+          quadrant: item.quadrant,
+          role: "",
+          sortOrder: item.sortOrder,
+          blocksGoal: item.quadrant === "q2" ? true : false,
+          groupId: item.groupId,
+          scheduledDate: date,
+          scheduledStartTime: item.scheduledStartTime || null,
+          scheduledEndTime: item.scheduledEndTime || null,
+          firstMove: item.firstMove,
+          sortImportance: item.sortImportance || null,
+          sortConsequence: item.sortConsequence || null,
+          sortResistance: item.sortResistance || null,
+          sortResult: item.sortResult,
+          sortPriority: item.sortPriority,
+        }))
+      );
 
       // Build fear summary payload
       const fearSummary = fearData ? {
@@ -238,6 +247,28 @@ export function registerEisenhowerRoutes(app: Express) {
     } catch (error) {
       console.error("Error committing week:", error);
       res.status(500).json({ error: "Failed to commit week" });
+    }
+  });
+
+  // Delete all entries sharing a groupId (must be before :id route)
+  app.delete("/api/eisenhower/group/:groupId", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const groupId = req.params.groupId;
+      if (!groupId || typeof groupId !== "string" || groupId.length > 50) {
+        return res.status(400).json({ error: "Invalid groupId" });
+      }
+      // Verify at least one entry with this groupId belongs to the user
+      const existing = await storage.getEisenhowerEntriesByUser(userId);
+      const owned = existing.some(e => e.groupId === groupId);
+      if (!owned) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const count = await storage.deleteEisenhowerEntriesByGroupId(userId, groupId);
+      res.json({ success: true, deleted: count });
+    } catch (error) {
+      console.error("Error deleting group entries:", error);
+      res.status(500).json({ error: "Failed to delete group" });
     }
   });
 

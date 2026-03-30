@@ -30,6 +30,7 @@ export interface IStorage {
   createEisenhowerEntry(entry: InsertEisenhowerEntry): Promise<EisenhowerEntry>;
   updateEisenhowerEntry(userId: string, id: number, entry: Partial<InsertEisenhowerEntry>): Promise<EisenhowerEntry>;
   deleteEisenhowerEntry(userId: string, id: number): Promise<void>;
+  deleteEisenhowerEntriesByGroupId(userId: string, groupId: string): Promise<number>;
   deleteBlocksGoalEntries(userId: string): Promise<number>;
   deleteEisenhowerEntriesForWeek(userId: string, weekStart: string): Promise<number>;
 
@@ -153,6 +154,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEisenhowerEntry(userId: string, id: number): Promise<void> {
     await db.delete(eisenhowerEntries).where(and(eq(eisenhowerEntries.id, id), eq(eisenhowerEntries.userId, userId)));
+  }
+
+  async deleteEisenhowerEntriesByGroupId(userId: string, groupId: string): Promise<number> {
+    const result = await db.delete(eisenhowerEntries).where(and(
+      eq(eisenhowerEntries.userId, userId),
+      eq(eisenhowerEntries.groupId, groupId),
+    )).returning();
+    return result.length;
   }
 
   async deleteBlocksGoalEntries(userId: string): Promise<number> {

@@ -67,6 +67,13 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   timeRange: varchar("time_range", { length: 20 }),
   isBinary: boolean("is_binary").default(false),
   sortOrder: integer("sort_order").default(0),
+  groupId: varchar("group_id", { length: 50 }),
+  sortImportance: varchar("sort_importance", { length: 20 }),
+  sortConsequence: varchar("sort_consequence", { length: 30 }),
+  sortResistance: varchar("sort_resistance", { length: 20 }),
+  sortResult: varchar("sort_result", { length: 20 }),
+  sortPriority: integer("sort_priority"),
+  firstMove: text("first_move"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("eisenhower_user_id_idx").on(table.userId),

@@ -46,3 +46,33 @@ export function getScheduledItems(
     (e) => e.weekStart === weekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime,
   );
 }
+
+/**
+ * Deduplicate entries by groupId for Plan page display.
+ * Returns one representative entry per groupId with an array of all scheduled dates.
+ */
+export interface GroupedEntry extends EisenhowerEntry {
+  scheduledDates: string[];
+  entryIds: number[];
+}
+
+export function groupByGroupId(entries: EisenhowerEntry[]): GroupedEntry[] {
+  const groups = new Map<string, GroupedEntry>();
+  for (const entry of entries) {
+    const key = entry.groupId || String(entry.id);
+    const existing = groups.get(key);
+    if (existing) {
+      if (entry.scheduledDate && !existing.scheduledDates.includes(entry.scheduledDate)) {
+        existing.scheduledDates.push(entry.scheduledDate);
+      }
+      existing.entryIds.push(entry.id);
+    } else {
+      groups.set(key, {
+        ...entry,
+        scheduledDates: entry.scheduledDate ? [entry.scheduledDate] : [],
+        entryIds: [entry.id],
+      });
+    }
+  }
+  return Array.from(groups.values());
+}
