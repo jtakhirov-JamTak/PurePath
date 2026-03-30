@@ -10,7 +10,7 @@ import { Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitLevelMap, buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems, getWeekFocusItems } from "@/lib/eisenhower-filters";
@@ -30,8 +30,10 @@ export default function DashboardPage() {
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
-  const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStartDate = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), weekOffset);
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+  const isCurrentWeek = weekOffset === 0;
 
 
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
@@ -57,10 +59,10 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // 7-day habit completions for streak dots
-  const streakStartStr = format(addDays(today, -6), "yyyy-MM-dd");
+  // Habit completions for Mon–Sun streak dots
+  const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
   const { data: weekStreakCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions/range/" + streakStartStr + "/" + todayStr],
+    queryKey: ["/api/habit-completions/range/" + weekStartStr + "/" + weekEndStr],
     enabled: !!user,
   });
 
@@ -90,6 +92,11 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const isToday = selectedDate === todayStr;
 
+  // Reset selected date when week changes
+  useEffect(() => {
+    setSelectedDate(isCurrentWeek ? todayStr : weekStartStr);
+  }, [weekOffset]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Completions for selected date (when browsing a different day)
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/" + selectedDate],
@@ -116,13 +123,13 @@ export default function DashboardPage() {
     const morning = new Set<string>();
     const evening = new Set<string>();
     journals.forEach((j) => {
-      if (j.date >= streakStartStr && j.date <= todayStr) {
+      if (j.date >= weekStartStr && j.date <= weekEndStr) {
         if (j.session === "morning") morning.add(j.date);
         else if (j.session === "evening") evening.add(j.date);
       }
     });
     return { morning, evening };
-  }, [journals, streakStartStr, todayStr]);
+  }, [journals, weekStartStr, weekEndStr]);
 
   // Identity statement for Daily Contract — first non-empty identity field
   const identityStatement = useMemo(() => {
@@ -311,6 +318,13 @@ export default function DashboardPage() {
           selectedDateStr={selectedDate}
           eisenhowerEntries={eisenhowerEntries}
           weekStartStr={weekStartStr}
+          weekLabel={`${format(weekStartDate, "MMM d")} – ${format(addDays(weekStartDate, 6), "MMM d")}`}
+          isCurrentWeek={isCurrentWeek}
+          canGoPrev={weekOffset > -4}
+          canGoNext={weekOffset < 1}
+          onPrevWeek={() => setWeekOffset(o => Math.max(o - 1, -4))}
+          onNextWeek={() => setWeekOffset(o => Math.min(o + 1, 1))}
+          onGoToToday={() => setWeekOffset(0)}
           onSelectDate={setSelectedDate}
         />
 
@@ -318,7 +332,7 @@ export default function DashboardPage() {
           <div data-testid="card-focus" className="relative">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{selectedDate !== todayStr && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setSelectedDate(todayStr)}>← today</button>}</span>
+              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{(!isCurrentWeek || selectedDate !== todayStr) && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setWeekOffset(0)}>← today</button>}</span>
             </div>
             <ul key={selectedDate} className="space-y-0.5">
               {sortedFocusItems.map((item, i) => (
@@ -359,7 +373,7 @@ export default function DashboardPage() {
           <div data-testid="card-focus-empty">
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[11px] uppercase text-bark font-medium">Focus</p>
-              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{selectedDate !== todayStr && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setSelectedDate(todayStr)}>← today</button>}</span>
+              <span className="text-[11px] text-muted-foreground">{format(new Date(selectedDate + "T12:00:00"), "EEEE")}{(!isCurrentWeek || selectedDate !== todayStr) && <button className="ml-1.5 text-primary hover:underline cursor-pointer" onClick={() => setWeekOffset(0)}>← today</button>}</span>
             </div>
             {getWeekFocusItems(eisenhowerEntries, weekStartStr).length > 0 ? (
               <p className="text-xs text-muted-foreground">Nothing scheduled for today</p>
@@ -378,6 +392,7 @@ export default function DashboardPage() {
         <DailyHabitsCard
           todayStr={todayStr}
           selectedDate={selectedDate}
+          weekStartStr={weekStartStr}
           readOnly={selectedDate > todayStr}
           selectedHabits={selectedHabits}
           journalHabitItems={journalHabitItems}

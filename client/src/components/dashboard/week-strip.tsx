@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { format, addDays } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EisenhowerEntry } from "@shared/schema";
 import { CATEGORY_COLORS, WEEK_DAY_TINT } from "@/lib/constants";
 import { getWeekFocusItems } from "@/lib/eisenhower-filters";
@@ -10,6 +11,13 @@ interface WeekStripProps {
   selectedDateStr: string;
   eisenhowerEntries: EisenhowerEntry[];
   weekStartStr: string;
+  weekLabel?: string;
+  isCurrentWeek?: boolean;
+  canGoPrev?: boolean;
+  canGoNext?: boolean;
+  onPrevWeek?: () => void;
+  onNextWeek?: () => void;
+  onGoToToday?: () => void;
   onSelectDate: (dateStr: string) => void;
 }
 
@@ -19,6 +27,13 @@ export function WeekStrip({
   selectedDateStr,
   eisenhowerEntries,
   weekStartStr,
+  weekLabel,
+  isCurrentWeek = true,
+  canGoPrev = false,
+  canGoNext = false,
+  onPrevWeek,
+  onNextWeek,
+  onGoToToday,
   onSelectDate,
 }: WeekStripProps) {
   const weekDays = useMemo(() => {
@@ -56,6 +71,38 @@ export function WeekStrip({
 
   return (
     <div data-testid="week-strip">
+      {(onPrevWeek || onNextWeek) && (
+        <div className="flex items-center justify-between mb-1">
+          <button
+            onClick={onPrevWeek}
+            disabled={!canGoPrev}
+            className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted/50 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+            data-testid="week-prev"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="flex flex-col items-center">
+            <span className="text-xs font-medium text-muted-foreground">{weekLabel}</span>
+            {!isCurrentWeek && onGoToToday && (
+              <button
+                onClick={onGoToToday}
+                className="text-[10px] text-primary hover:underline cursor-pointer mt-0.5"
+                data-testid="week-go-today"
+              >
+                back to this week
+              </button>
+            )}
+          </div>
+          <button
+            onClick={onNextWeek}
+            disabled={!canGoNext}
+            className="p-1 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted/50 disabled:opacity-30 cursor-pointer disabled:cursor-default"
+            data-testid="week-next"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-7 gap-1">
         {weekDays.map((day) => (
           <button

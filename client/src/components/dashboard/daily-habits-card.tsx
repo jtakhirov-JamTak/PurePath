@@ -17,6 +17,7 @@ interface JournalHabitItem {
 interface DailyHabitsCardProps {
   todayStr: string;
   selectedDate: string;
+  weekStartStr: string;
   readOnly?: boolean;
   selectedHabits: Habit[];
   journalHabitItems: JournalHabitItem[];
@@ -34,6 +35,7 @@ interface DailyHabitsCardProps {
 export function DailyHabitsCard({
   todayStr,
   selectedDate,
+  weekStartStr,
   readOnly,
   selectedHabits,
   journalHabitItems,
@@ -49,14 +51,15 @@ export function DailyHabitsCard({
 }: DailyHabitsCardProps) {
   const [popKeys, setPopKeys] = useState<Record<number, number>>({});
 
-  // Streak dots: last 7 days + per-habit completion map
-  const last7Days = useMemo(() => {
+  // Streak dots: Mon–Sun of current week
+  const weekDays = useMemo(() => {
+    const monday = new Date(weekStartStr + "T12:00:00");
     const days: string[] = [];
-    for (let i = 6; i >= 0; i--) {
-      days.push(format(addDays(new Date(todayStr + "T12:00:00"), -i), "yyyy-MM-dd"));
+    for (let i = 0; i < 7; i++) {
+      days.push(format(addDays(monday, i), "yyyy-MM-dd"));
     }
     return days;
-  }, [todayStr]);
+  }, [weekStartStr]);
 
   const streakMap = useMemo(() => {
     const map = new Map<number, Map<string, number | null>>();
@@ -126,7 +129,7 @@ export function DailyHabitsCard({
                 </button>
                 {/* 7-dot journal streak */}
                 <div className="flex gap-0.5 ml-[4.75rem] mt-0.5">
-                  {last7Days.map(dayStr => {
+                  {weekDays.map(dayStr => {
                     const done = sessionDays.has(dayStr);
                     const isToday = dayStr === todayStr;
                     return (
@@ -187,7 +190,7 @@ export function DailyHabitsCard({
                 </div>
                 {/* 7-dot streak row */}
                 <div className="flex gap-0.5 ml-[4.75rem] mt-0.5">
-                  {last7Days.map(dayStr => {
+                  {weekDays.map(dayStr => {
                     const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
                     const isToday = dayStr === todayStr;
                     return (
