@@ -72,7 +72,8 @@ export interface EveningContent {
   stepBackLesson: string;
   // Shutdown
   shutdownEnough: string;
-  // Positive data capture
+  // Positive pattern
+  positiveEvent: string;
   positiveInput: string;
   positiveInputOther: string;
   positiveState: string;
@@ -157,7 +158,8 @@ const emptyEvening: EveningContent = {
   stepBackLesson: "",
   // Shutdown
   shutdownEnough: "",
-  // Positive data capture
+  // Positive pattern
+  positiveEvent: "",
   positiveInput: "",
   positiveInputOther: "",
   positiveState: "",
@@ -767,7 +769,6 @@ export default function JournalEntryPage() {
             journalMode={journalMode}
             skippedItems={skippedItems}
             identityStatement={identityStatement}
-            valuesItems={valuesItems}
           />
         )}
 

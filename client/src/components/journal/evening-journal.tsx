@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { VoiceTextarea } from "@/components/voice-input";
-import { Moon, AlertTriangle, Eye, Power, MinusCircle, ChevronDown } from "lucide-react";
+import { Moon, AlertTriangle, Eye, Power, MinusCircle, ChevronDown, Sparkles } from "lucide-react";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
   Chip, IntensityDots,
@@ -25,23 +25,13 @@ interface EveningJournalProps {
   journalMode: "quick" | "full";
   skippedItems: Array<{ id: string; name: string; type: "habit" | "eisenhower" }>;
   identityStatement: string;
-  valuesItems: string[];
 }
 
-function IdentityContext({ identityStatement, valuesItems }: { identityStatement: string; valuesItems: string[] }) {
-  if (!identityStatement && valuesItems.length === 0) return null;
+function IdentityContext({ identityStatement }: { identityStatement: string }) {
+  if (!identityStatement) return null;
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3 space-y-1.5" data-testid="identity-context">
-      {identityStatement && (
-        <p className="text-sm text-muted-foreground italic">{identityStatement}</p>
-      )}
-      {valuesItems.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {valuesItems.map((item, i) => (
-            <Badge key={i} variant="outline" className="text-xs font-normal text-muted-foreground" data-testid={`badge-value-${i}`}>{item}</Badge>
-          ))}
-        </div>
-      )}
+    <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3" data-testid="identity-context">
+      <p className="text-sm text-muted-foreground italic">{identityStatement}</p>
     </div>
   );
 }
@@ -55,7 +45,6 @@ export function EveningJournal({
   journalMode,
   skippedItems,
   identityStatement,
-  valuesItems,
 }: EveningJournalProps) {
   return (
     <div className="space-y-6">
@@ -394,8 +383,6 @@ export function EveningJournal({
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              <IdentityContext identityStatement={identityStatement} valuesItems={valuesItems} />
-
               <div className="space-y-2">
                 <Label className="text-sm font-medium">If someone I care about had my day today, what would I tell them?</Label>
                 <VoiceTextarea
@@ -419,27 +406,37 @@ export function EveningJournal({
             </CardContent>
           </Card>
 
-          {/* Section 4 — Shutdown */}
-          <Card data-testid="card-shutdown">
+          {/* Section 4 — Positive Pattern */}
+          <Card data-testid="card-positive-pattern">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Power className="h-4 w-4 text-primary" />
+                <div className="h-7 w-7 rounded-md bg-emerald-500/[0.08] flex items-center justify-center shrink-0">
+                  <Sparkles className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm">Shutdown</CardTitle>
-                  <CardDescription>Close out your day with intention</CardDescription>
+                  <CardTitle className="text-sm">Positive Pattern</CardTitle>
+                  <CardDescription>What worked and why</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Identity context above positive capture */}
-              <IdentityContext identityStatement={identityStatement} valuesItems={valuesItems} />
+              <IdentityContext identityStatement={identityStatement} />
 
-              {/* Positive data capture */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">What went well today?</Label>
+                <VoiceTextarea
+                  value={eveningData.positiveEvent}
+                  onChange={(val) => updateEvening("positiveEvent", val)}
+                  placeholder="Something that worked, felt good, or moved things forward..."
+                  className="min-h-[80px] max-h-[120px] resize-none"
+                  data-testid="input-positive-event"
+                />
+              </div>
+
+              {/* Mechanistic chain — behind "Add more detail" */}
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">What helped most today?</Label>
+                  <Label className="text-sm font-medium">What helped most?</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {POSITIVE_INPUTS.map((opt) => (
                       <Chip
@@ -519,9 +516,23 @@ export function EveningJournal({
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
 
-              <Separator />
-
+          {/* Section 5 — Shutdown */}
+          <Card data-testid="card-shutdown">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Power className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm">Shutdown</CardTitle>
+                  <CardDescription>Close out your day</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Today was enough because:</Label>
                 <VoiceTextarea
