@@ -208,7 +208,20 @@ export default function EisenhowerPage() {
     }
     if (fearOnlyMode && existingEntries.length > 0 && !fearOnlyLoaded.current) {
       fearOnlyLoaded.current = true;
-      setItems(existingEntries.map(e => ({
+      // Deduplicate multi-day items by groupId
+      const seen = new Map<string, EisenhowerEntry & { allDates: string[] }>();
+      for (const e of existingEntries) {
+        const key = e.groupId || String(e.id);
+        const existing = seen.get(key);
+        if (existing) {
+          if (e.scheduledDate && !existing.allDates.includes(e.scheduledDate)) {
+            existing.allDates.push(e.scheduledDate);
+          }
+        } else {
+          seen.set(key, { ...e, allDates: e.scheduledDate ? [e.scheduledDate] : [] });
+        }
+      }
+      setItems(Array.from(seen.values()).map(e => ({
         id: nextId.current++,
         text: e.task,
         selected: true,
@@ -217,7 +230,7 @@ export default function EisenhowerPage() {
         sortResistance: (e.sortResistance as SortResistance) || null,
         sortResult: (e.sortResult as SortResult) || (e.quadrant === "q1" ? "handle" : e.quadrant === "q2" ? "protect" : null),
         sortPriority: e.sortPriority ?? null,
-        scheduledDates: e.scheduledDate ? [e.scheduledDate] : [],
+        scheduledDates: e.allDates,
         scheduledStartTime: e.scheduledStartTime || "",
         scheduledEndTime: e.scheduledEndTime || "",
         firstMove: e.firstMove || "",
