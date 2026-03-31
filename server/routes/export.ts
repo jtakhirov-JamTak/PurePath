@@ -309,12 +309,19 @@ export function registerExportRoutes(app: Express) {
 
       // DECISIONS
       md += `---\n\n## Decisions\n\n`;
-      const decisionList = decisionLogs as { weekStart: string; fear: string; blocker?: string | null; decisionStatement?: string | null; doorType?: string | null; firstPhysicalStep?: string | null }[];
+      const decisionList = decisionLogs as { weekStart: string; fear: string; fearDump?: string | null; blocker?: string | null; decisionStatement?: string | null; doorType?: string | null; firstPhysicalStep?: string | null }[];
       if (decisionList.length === 0) {
         md += `No decisions recorded.\n\n`;
       } else {
         decisionList.forEach((d) => {
           md += `### ${d.weekStart} — "${d.fear}"\n`;
+          if (d.fearDump) {
+            try {
+              const outcomes = JSON.parse(d.fearDump) as string[];
+              md += `**Worst outcomes:**\n`;
+              outcomes.forEach((o) => { md += `- ${o}\n`; });
+            } catch { /* skip malformed */ }
+          }
           if (d.blocker) md += `**Blocker:** ${d.blocker}\n`;
           if (d.decisionStatement) md += `**Decision:** ${d.decisionStatement}\n`;
           if (d.doorType) md += `**Door type:** ${d.doorType}\n`;

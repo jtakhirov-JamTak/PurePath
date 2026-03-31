@@ -392,6 +392,7 @@ export const decisions = pgTable("decisions", {
   mustHaves: text("must_haves"),              // JSON array
   niceToHaves: text("nice_to_haves"),         // JSON array
   notAllowed: text("not_allowed"),            // JSON array
+  fearDump: text("fear_dump"),                 // JSON array
   noFearSolutions: text("no_fear_solutions"), // JSON array
   doorType: varchar("door_type", { length: 20 }),
   decisionStatement: text("decision_statement"),

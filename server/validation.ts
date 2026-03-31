@@ -190,6 +190,7 @@ export const createDecisionSchema = z.object({
   mustHaves: optionalString(5000),
   niceToHaves: optionalString(5000),
   notAllowed: optionalString(5000),
+  fearDump: optionalString(5000),               // JSON array string
   noFearSolutions: optionalString(5000),       // JSON array string
   doorType: z.enum(["reversible", "irreversible"]).optional().nullable(),
   decisionStatement: optionalString(2000),

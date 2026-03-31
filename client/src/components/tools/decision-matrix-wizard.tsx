@@ -8,7 +8,7 @@ import { ArrowRight, ArrowLeft, X, Plus, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const BLOCKER_CHIPS = [
   { value: "perfection_over_timeliness", label: "Perfection over timeliness" },
@@ -29,11 +29,14 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
-  // Step 1
+  // Step 0
   const [fear, setFear] = useState("");
+  // Step 1 — Fear Dump
+  const [fearDump, setFearDump] = useState<string[]>([]);
+  const [fearDumpInput, setFearDumpInput] = useState("");
   // Step 2
   const [blocker, setBlocker] = useState<string | null>(null);
-  // Step 3
+  // Step 3 — Focus on Solutions
   const [problemStatement, setProblemStatement] = useState("");
   const [constraints, setConstraints] = useState<string[]>([]);
   const [constraintInput, setConstraintInput] = useState("");
@@ -70,12 +73,13 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
   const canNext = (() => {
     switch (step) {
       case 0: return fear.trim().length > 0;
-      case 1: return blocker !== null;
-      case 2: return problemStatement.trim().length > 0;
-      case 3: return solutions.length > 0;
-      case 4: return doorType !== null && decisionStatement.trim().length > 0;
-      case 5: return true; // optional
-      case 6: return firstPhysicalStep.trim().length > 0;
+      case 1: return fearDump.length > 0;
+      case 2: return blocker !== null;
+      case 3: return problemStatement.trim().length > 0;
+      case 4: return solutions.length > 0;
+      case 5: return doorType !== null && decisionStatement.trim().length > 0;
+      case 6: return true; // optional
+      case 7: return firstPhysicalStep.trim().length > 0;
       default: return false;
     }
   })();
@@ -89,6 +93,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
       const res = await apiRequest("POST", "/api/decisions", {
         weekStart: weekStartStr,
         fear: fear.trim(),
+        fearDump: fearDump.length > 0 ? JSON.stringify(fearDump) : null,
         blocker,
         problemStatement: problemStatement.trim() || null,
         constraints: constraints.length > 0 ? JSON.stringify(constraints) : null,
@@ -145,7 +150,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
           ))}
         </div>
 
-        {/* Step 1: Name the fear */}
+        {/* Step 0: Name the fear */}
         {step === 0 && (
           <div className="space-y-3">
             <Label className="text-sm font-medium">Name the fear</Label>
@@ -163,8 +168,17 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
           </div>
         )}
 
-        {/* Step 2: Find the block */}
+        {/* Step 1: Fear Dump */}
         {step === 1 && (
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Fear Dump</Label>
+            <p className="text-xs text-muted-foreground">If this goes badly, what are the worst realistic outcomes?</p>
+            <ListInput label="Worst outcomes" items={fearDump} setItems={setFearDump} input={fearDumpInput} setInput={setFearDumpInput} max={5} placeholder="e.g. I lose the deposit..." testId="fear-dump" />
+          </div>
+        )}
+
+        {/* Step 2: Find the block */}
+        {step === 2 && (
           <div className="space-y-3">
             <Label className="text-sm font-medium">What is making this hard?</Label>
             <p className="text-xs text-muted-foreground">If any of these are "Yes" — that's the blocker, not the decision itself.</p>
@@ -189,7 +203,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
         )}
 
         {/* Step 3: Focus on Solutions */}
-        {step === 2 && (
+        {step === 3 && (
           <div className="space-y-4">
             <Label className="text-sm font-medium">Focus on Solutions</Label>
 
@@ -212,7 +226,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
         )}
 
         {/* Step 4: What would I do if I wasn't scared? */}
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-3">
             <Label className="text-sm font-medium">What would I do if I wasn't scared?</Label>
             <p className="text-xs text-muted-foreground">Based on what you defined, write up to 3 solutions.</p>
@@ -244,7 +258,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
         )}
 
         {/* Step 5: Decide */}
-        {step === 4 && (
+        {step === 5 && (
           <div className="space-y-4">
             <Label className="text-sm font-medium">The two-way door rule</Label>
             <div className="grid grid-cols-2 gap-2">
@@ -283,7 +297,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
         )}
 
         {/* Step 6: Consult (optional) */}
-        {step === 5 && (
+        {step === 6 && (
           <div className="space-y-3">
             <Label className="text-sm font-medium">Consult (optional)</Label>
             <p className="text-xs text-muted-foreground">You may ask one person (or ChatGPT) one focused question: "Any red flags I'm missing?" You are not asking them to choose.</p>
@@ -300,7 +314,7 @@ export function DecisionMatrixWizard({ weekStartStr, onClose, onSaved }: Decisio
         )}
 
         {/* Step 7: First physical step */}
-        {step === 6 && (
+        {step === 7 && (
           <div className="space-y-3">
             <Label className="text-sm font-medium">Take the first physical step</Label>
             <p className="text-xs text-muted-foreground">You need "proof," not more thinking. This is the micro-move (&lt;2 min) — the antidote to rumination.</p>

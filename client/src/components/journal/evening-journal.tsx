@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { VoiceTextarea } from "@/components/voice-input";
-import { Moon, AlertTriangle, Eye, Power, MinusCircle, ChevronDown, Sparkles } from "lucide-react";
+import { Moon, AlertTriangle, Power, MinusCircle, ChevronDown, Sparkles } from "lucide-react";
 import {
   APPRAISALS, EMOTIONS, URGES, ACTIONS, BODY_STATES, RECOVERY_TIMES,
   Chip, IntensityDots,
@@ -160,7 +160,7 @@ export function EveningJournal({
             </Card>
           )}
 
-          {/* Section 1 — Trigger Check */}
+          {/* Section 1 — What got in the way? */}
           <Card data-testid="card-trigger-check">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -168,8 +168,8 @@ export function EveningJournal({
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm">Trigger Check</CardTitle>
-                  <CardDescription>Log any triggers from today <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                  <CardTitle className="text-sm">What got in the way?</CardTitle>
+                  <CardDescription>Optional — log triggers from today</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -369,44 +369,7 @@ export function EveningJournal({
             </CardContent>
           </Card>
 
-          {/* Section 3 — Step-Back Reflection */}
-          <Card data-testid="card-step-back">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                  <Eye className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm">Step-Back Reflection</CardTitle>
-                  <CardDescription>See your day through compassionate eyes</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">If someone I care about had my day today, what would I tell them?</Label>
-                <VoiceTextarea
-                  value={eveningData.stepBackAdvice}
-                  onChange={(val) => updateEvening("stepBackAdvice", val)}
-                  placeholder="I would tell them..."
-                  className="min-h-[100px] max-h-[150px] resize-none"
-                  data-testid="input-step-back-advice"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">The lesson I would want them to remember:</Label>
-                <Input
-                  value={eveningData.stepBackLesson}
-                  onChange={(e) => updateEvening("stepBackLesson", e.target.value)}
-                  placeholder="Remember that..."
-                  data-testid="input-step-back-lesson"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Section 4 — Positive Pattern */}
+          {/* Section 2 — What went well today? */}
           <Card data-testid="card-positive-pattern">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -414,8 +377,8 @@ export function EveningJournal({
                   <Sparkles className="h-4 w-4 text-emerald-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm">Positive Pattern</CardTitle>
-                  <CardDescription>What worked and why</CardDescription>
+                  <CardTitle className="text-sm">What went well today?</CardTitle>
+                  <CardDescription>Capture what worked and why</CardDescription>
                 </div>
               </div>
             </CardHeader>
