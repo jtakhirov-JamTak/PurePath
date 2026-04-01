@@ -116,8 +116,8 @@ export function EveningJournal({
                     <MinusCircle className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <CardTitle className="text-sm">Skipped today</CardTitle>
-                    <CardDescription>Quick check — what got in the way? <Badge variant="outline" className="ml-2 text-xs">Optional</Badge></CardDescription>
+                    <CardTitle className="text-sm">Did you complete these?</CardTitle>
+                    <CardDescription>If not, what got in the way?</CardDescription>
                   </div>
                 </div>
               </CardHeader>

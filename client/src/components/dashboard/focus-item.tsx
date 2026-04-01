@@ -3,17 +3,17 @@ import { Zap, Target, Pencil, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { EisenhowerEntry } from "@shared/schema";
 import { fmtTime } from "@/lib/format";
-import { getCompletionLabel, getFocusBoxClass, getNextFocusLevel } from "@/lib/completion";
 import { CATEGORY_COLORS, CATEGORY_LABELS, CATEGORY_BADGE, QUADRANT_BORDER, QUADRANT_BG_UNDONE, QUADRANT_ICON_COLOR } from "@/lib/constants";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
+import { CompletionCircle } from "./completion-circle";
 
 interface FocusItemProps {
   item: EisenhowerEntry;
   weekStartDate: Date;
-  onCycleLevel: (id: number, level: number | null, isBinary?: boolean) => void;
+  onToggleDone: (id: number, currentlyDone: boolean) => void;
 }
 
 const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
@@ -27,14 +27,13 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
   return { value: `${hh}:${mm}`, label };
 });
 
-export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps) {
+export function FocusItem({ item, weekStartDate, onToggleDone }: FocusItemProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editingName, setEditingName] = useState(false);
   const [editPanel, setEditPanel] = useState(false);
   const [nameValue, setNameValue] = useState(item.task);
   const [saving, setSaving] = useState(false);
-  const [popKey, setPopKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const savingNameRef = useRef(false);
 
@@ -79,31 +78,20 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
     setTimeout(() => { savingNameRef.current = false; }, 0);
   };
 
-  const isBin = item.isBinary || false;
-  const lvl = item.completionLevel ?? null;
-  const boxLabel = getCompletionLabel(lvl, isBin);
-  const boxClass = getFocusBoxClass(lvl, isBin);
-
-  const isUndone = item.status !== "completed" && item.status !== "skipped";
+  const isDone = item.status === "completed";
+  const isUndone = !isDone;
   const quadrant = item.quadrant || "q1";
   const borderClass = QUADRANT_BORDER[quadrant] || "";
   const bgClass = isUndone ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
 
   return (
-    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-all duration-200 ${borderClass} ${bgClass} ${item.status === "skipped" ? "opacity-60" : ""}`}>
+    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-all duration-200 ${borderClass} ${bgClass}`}>
       <div className="flex items-center gap-2 py-1.5">
-        <button
-          key={popKey}
-          onClick={() => {
-            setPopKey(k => k + 1);
-            const nextLevel = getNextFocusLevel(lvl, isBin);
-            onCycleLevel(item.id, nextLevel, isBin || undefined);
-          }}
-          className={`h-5 w-12 text-[10px] rounded-md border-2 shrink-0 font-medium cursor-pointer ${popKey > 0 ? "animate-tap-pop" : ""} ${boxClass}`}
-          data-testid={`focus-level-${item.id}`}
-        >
-          {boxLabel}
-        </button>
+        <CompletionCircle
+          done={isDone}
+          onToggle={() => onToggleDone(item.id, isDone)}
+          testId={`focus-level-${item.id}`}
+        />
         {item.quadrant === "q1"
           ? <Zap className={`h-3 w-3 ${QUADRANT_ICON_COLOR.q1} shrink-0`} />
           : <Target className={`h-3 w-3 ${QUADRANT_ICON_COLOR.q2} shrink-0`} />
@@ -130,9 +118,7 @@ export function FocusItem({ item, weekStartDate, onCycleLevel }: FocusItemProps)
           <button
             onClick={() => { setNameValue(item.task); setEditingName(true); }}
             className={`text-xs flex-1 text-left cursor-text ${
-              item.status === "completed" ? "line-through text-muted-foreground"
-              : item.status === "skipped" ? "text-muted-foreground italic"
-              : ""
+              isDone ? "line-through text-muted-foreground" : ""
             }`}
             data-testid={`focus-name-${item.id}`}
           >

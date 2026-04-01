@@ -17,6 +17,8 @@ import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import type { Journal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 import { startOfWeek } from "date-fns";
+import { getTodaysHabits } from "@/lib/habit-filters";
+import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
 
 interface MorningContent {
   sleepHours: string;
@@ -242,18 +244,20 @@ export default function JournalEntryPage() {
   });
 
   const skippedItems = (() => {
-    if (isMorning) return [];
+    if (isMorning || !date) return [];
     const items: { id: string; name: string; type: "habit" | "eisenhower" }[] = [];
-    habitCompletions.forEach(hc => {
-      if ((hc.completionLevel === 0 || hc.status === "skipped") && !hc.skipReason) {
-        const habit = habits.find(h => h.id === hc.habitId);
-        if (habit) items.push({ id: `habit_${hc.habitId}`, name: habit.name, type: "habit" });
+    const todaysHabits = getTodaysHabits(habits, date);
+    const completedHabitIds = new Set(
+      habitCompletions.filter(hc => hc.status === "completed").map(hc => hc.habitId)
+    );
+    todaysHabits.forEach(h => {
+      if (!completedHabitIds.has(h.id)) {
+        items.push({ id: `habit_${h.id}`, name: h.name, type: "habit" });
       }
     });
-    eisenhowerEntries.forEach(e => {
-      if (e.weekStart !== weekStartStr) return;
-      if (e.quadrant !== "q1" && !(e.quadrant === "q2" && e.blocksGoal)) return;
-      if ((e.completionLevel === 0 || e.status === "skipped") && !e.skipReason) {
+    const todaysFocus = getTodaysFocusItems(eisenhowerEntries, weekStartStr, date, date);
+    todaysFocus.forEach(e => {
+      if (e.status !== "completed") {
         items.push({ id: `eisenhower_${e.id}`, name: e.task, type: "eisenhower" });
       }
     });

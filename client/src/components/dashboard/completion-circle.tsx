@@ -1,0 +1,42 @@
+import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
+
+interface CompletionCircleProps {
+  done: boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+  testId?: string;
+}
+
+export function CompletionCircle({ done, onToggle, disabled, testId }: CompletionCircleProps) {
+  // Track toggles so the spring animation only fires on actual state changes, not re-renders
+  const [animKey, setAnimKey] = useState(0);
+  const prevDone = useRef(done);
+  useEffect(() => {
+    if (done !== prevDone.current) {
+      setAnimKey(k => k + 1);
+      prevDone.current = done;
+    }
+  }, [done]);
+
+  return (
+    <motion.button
+      key={animKey}
+      onClick={disabled ? undefined : onToggle}
+      whileTap={disabled ? undefined : { scale: 0.85 }}
+      animate={done && animKey > 0 ? { scale: [0.85, 1.15, 1] } : { scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+      className={`h-7 w-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+        disabled ? "cursor-default opacity-50" : "cursor-pointer"
+      } ${
+        done
+          ? "bg-emerald-500 border-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+          : "border-border bg-transparent"
+      }`}
+      data-testid={testId}
+    >
+      {done && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
+    </motion.button>
+  );
+}
