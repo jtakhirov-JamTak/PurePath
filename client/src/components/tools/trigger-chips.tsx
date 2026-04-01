@@ -33,6 +33,15 @@ export const RECOVERY_TIMES = [
   "30-60 min", "Over an hour", "Still not calm",
 ];
 
+// --- V2 preset constants (reduced, user-specified) ---
+
+export const APPRAISALS_V2 = ["Disrespect", "Unfairness", "Overwhelm", "Failure", "Loss of Control"];
+export const BODY_STATES_V2 = ["Chest Tightness", "Jaw Clenching", "Trembling", "Heat/Flushing", "Stomach Drop"];
+export const EMOTIONS_V2 = ["Anger", "Shame", "Fear", "Hurt", "Anxiety"];
+export const URGES_V2 = ["Punish", "Argue", "Withdraw", "Avoid", "Shut Down"];
+export const ACTIONS_V2 = ["Acted on Urge", "Held it in", "Used a tool to change emotional state"];
+export const RECOVERY_TIMES_V2 = ["Under 5 min", "5-15 min", "30-60 min", "Over an hour", "Still not calm"];
+
 // --- Reusable chip component ---
 
 export function Chip({

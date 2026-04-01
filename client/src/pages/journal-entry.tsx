@@ -58,6 +58,7 @@ export interface EveningContent {
   triggerText: string;
   triggerAppraisal: string[];
   triggerAppraisalOther: string;
+  triggerAppraisalText?: string;
   triggerEmotion: string;
   triggerEmotionIntensity: number | null;
   triggerUrge: string;
@@ -66,6 +67,7 @@ export interface EveningContent {
   triggerActionOther: string;
   triggerShowTier2: boolean;
   triggerBodyState: string[];
+  triggerBodyStateText?: string;
   triggerOutcome: string;
   triggerRecoveryTime: string;
   triggerReflection: string;
@@ -144,6 +146,7 @@ const emptyEvening: EveningContent = {
   triggerText: "",
   triggerAppraisal: [],
   triggerAppraisalOther: "",
+  triggerAppraisalText: "",
   triggerEmotion: "",
   triggerEmotionIntensity: null,
   triggerUrge: "",
@@ -152,6 +155,7 @@ const emptyEvening: EveningContent = {
   triggerActionOther: "",
   triggerShowTier2: false,
   triggerBodyState: [],
+  triggerBodyStateText: "",
   triggerOutcome: "",
   triggerRecoveryTime: "",
   triggerReflection: "",

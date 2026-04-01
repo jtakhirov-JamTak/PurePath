@@ -6,11 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Heart } from "lucide-react";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, addWeeks } from "date-fns";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
@@ -24,6 +24,8 @@ import { useCelebrationBeat } from "@/hooks/use-celebration-beat";
 // ─── Stories Ring constants ──────────────────────────────────────────
 const RING_R = 14;
 const RING_CIRC = 2 * Math.PI * RING_R;
+const RING_R_TODAY = 18;
+const RING_CIRC_TODAY = 2 * Math.PI * RING_R_TODAY;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function DashboardPage() {
@@ -33,7 +35,8 @@ export default function DashboardPage() {
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
-  const weekStartDate = startOfWeek(today, { weekStartsOn: 1 });
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekStartDate = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), weekOffset);
   const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
   const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
 
@@ -86,9 +89,18 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // ─── Selected date state (current week only, no weekOffset) ──────
+  // ─── Selected date state ─────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const isToday = selectedDate === todayStr;
+
+  // When navigating weeks, select today (if current week) or last day of that week
+  useEffect(() => {
+    if (weekOffset === 0) {
+      setSelectedDate(todayStr);
+    } else {
+      setSelectedDate(weekEndStr);
+    }
+  }, [weekOffset, todayStr, weekEndStr]);
 
   const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
     queryKey: ["/api/habit-completions/" + selectedDate],
@@ -191,13 +203,16 @@ export default function DashboardPage() {
       const done = completedH + completedF + (hasMorn ? 1 : 0) + (hasEve ? 1 : 0);
       const isFuture = dayStr > todayStr;
       const progress = isFuture ? 0 : total > 0 ? done / total : 0;
+      const hasIncomplete = !isFuture && total > 0 && done < total;
       return {
         dateStr: dayStr,
         label: DAY_LABELS[i],
+        dayNum: format(new Date(dayStr + "T12:00:00"), "d"),
         isToday: dayStr === todayStr,
         isSelected: dayStr === selectedDate,
         isFuture,
         progress,
+        hasIncomplete,
       };
     });
   }, [weekDays, habits, eisenhowerEntries, weekStartStr, todayStr, weekStreakCompletions, journalDayMap, selectedDate]);
@@ -307,38 +322,91 @@ export default function DashboardPage() {
       }`}>
 
         {/* ─── 1. Stories Ring Nav ──────────────────────────────── */}
-        <div className="flex justify-between py-2">
-          {ringData.map((day) => (
-            <button
-              key={day.dateStr}
-              onClick={() => setSelectedDate(day.dateStr)}
-              className={`flex flex-col items-center gap-1 ${day.isFuture ? "opacity-40" : ""} cursor-pointer`}
-            >
-              <svg width="34" height="34" viewBox="0 0 36 36">
-                {/* Background ring */}
-                <circle cx="18" cy="18" r={RING_R} fill="none" stroke="currentColor" strokeWidth="2.5"
-                  className="text-border/20" />
-                {/* Progress ring */}
-                <circle cx="18" cy="18" r={RING_R} fill="none" stroke="currentColor" strokeWidth="2.5"
-                  className={`text-emerald-500 ${day.isToday && day.progress < 1 ? "animate-dot-pulse" : ""}`}
-                  strokeDasharray={`${day.progress * RING_CIRC} ${RING_CIRC}`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 18 18)"
-                />
-                {/* Selected outer ring */}
-                {day.isSelected && (
-                  <circle cx="18" cy="18" r="17" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    className="text-primary/30" />
-                )}
-              </svg>
-              <span className={`text-[9px] font-medium ${
-                day.isToday ? "text-primary" : day.isFuture ? "text-muted-foreground/40" : "text-muted-foreground"
-              }`}>
-                {day.label}
-              </span>
-            </button>
-          ))}
+        <div className="flex items-end justify-between py-2">
+          <button
+            type="button"
+            onClick={() => { setWeekOffset(o => Math.max(o - 1, -52)); }}
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            aria-label="Previous week"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <div className="flex justify-between flex-1 px-1">
+            {ringData.map((day) => {
+              const isLarge = day.isToday;
+              const svgSize = isLarge ? 44 : 34;
+              const vb = isLarge ? "0 0 44 44" : "0 0 36 36";
+              const cx = isLarge ? 22 : 18;
+              const cy = isLarge ? 22 : 18;
+              const r = isLarge ? RING_R_TODAY : RING_R;
+              const circ = isLarge ? RING_CIRC_TODAY : RING_CIRC;
+
+              return (
+                <button
+                  key={day.dateStr}
+                  onClick={() => setSelectedDate(day.dateStr)}
+                  className={`flex flex-col items-center gap-0.5 ${day.isFuture ? "opacity-40" : ""} cursor-pointer`}
+                >
+                  <svg width={svgSize} height={svgSize} viewBox={vb}>
+                    {/* Background ring */}
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor"
+                      strokeWidth={isLarge ? "3" : "2.5"} className="text-border/20" />
+                    {/* Progress ring */}
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor"
+                      strokeWidth={isLarge ? "3" : "2.5"}
+                      className={`text-emerald-500 ${day.isToday && day.progress < 1 ? "animate-dot-pulse" : ""}`}
+                      strokeDasharray={`${day.progress * circ} ${circ}`}
+                      strokeLinecap="round"
+                      transform={`rotate(-90 ${cx} ${cy})`}
+                    />
+                    {/* Selected outer ring */}
+                    {day.isSelected && (
+                      <circle cx={cx} cy={cy} r={r + 3} fill="none" stroke="currentColor" strokeWidth="1.5"
+                        className="text-primary/30" />
+                    )}
+                    {/* Day number inside circle */}
+                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
+                      className={`fill-current ${isLarge ? "text-[10px]" : "text-[9px]"} font-semibold ${
+                        day.isToday ? "text-primary" : "text-foreground/70"
+                      }`}
+                    >
+                      {day.dayNum}
+                    </text>
+                    {/* Red notification dot for incomplete days */}
+                    {day.hasIncomplete && (
+                      <circle cx={cx + r - 2} cy={cy - r + 2} r="3.5" fill="#ef4444" />
+                    )}
+                  </svg>
+                  <span className={`text-[9px] font-medium ${
+                    day.isToday ? "text-primary" : day.isFuture ? "text-muted-foreground/40" : "text-muted-foreground"
+                  }`}>
+                    {day.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { setWeekOffset(o => Math.min(o + 1, 0)); }}
+            disabled={weekOffset === 0}
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-20"
+            aria-label="Next week"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
+        {weekOffset !== 0 && (
+          <button
+            type="button"
+            onClick={() => { setWeekOffset(0); setSelectedDate(todayStr); }}
+            className="text-[10px] text-primary hover:underline w-full text-center -mt-1 mb-1"
+          >
+            Back to this week
+          </button>
+        )}
 
         {/* ─── 2. Anchor Card ──────────────────────────────────── */}
         {showAnchor && (
@@ -370,13 +438,8 @@ export default function DashboardPage() {
           className={`rounded-lg p-3 transition-colors ${isToday && allDone ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-bark/5"}`}
           data-testid="daily-contract"
         >
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium" data-testid="contract-counts">
             {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
-          </p>
-          <p className="text-[11px] mt-1.5 font-medium" data-testid="contract-counts">
-            <span className={isToday && allDone ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}>
-              {isToday && allDone ? "Proved." : `${completedItems}/${totalItems} proved`}
-            </span>
           </p>
         </div>
 
