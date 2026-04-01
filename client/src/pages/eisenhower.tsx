@@ -14,140 +14,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useLocation } from "wouter";
 import type { EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
-
-const MAX_Q1 = 5;
-const MAX_Q2 = 2;
-const MAX_CANDIDATES = 7;
-const MAX_BRAIN_DUMP = 30;
-const MAX_DAYS_PER_ITEM = 5;
-const TOTAL_STEPS = 7;
-
-const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
-  const totalMinutes = 8 * 60 + i * 30; // 8:00am to 9:00pm
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  const hh = String(h).padStart(2, "0");
-  const mm = String(m).padStart(2, "0");
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  const label = `${h12}:${String(m).padStart(2, "0")}${h >= 12 ? "p" : "a"}`;
-  return { value: `${hh}:${mm}`, label };
-});
-
-const BLOCKER_CHIPS = [
-  { value: "getting_it_wrong", label: "Getting it wrong" },
-  { value: "being_judged", label: "Being judged" },
-  { value: "disappointing_someone", label: "Disappointing someone" },
-  { value: "uncertainty", label: "Uncertainty / no perfect choice" },
-  { value: "waiting_for_permission", label: "Waiting for permission" },
-  { value: "hoping_someone_else_decides", label: "Hoping someone else decides" },
-  { value: "shame_discomfort", label: "Shame / discomfort" },
-  { value: "succeeding_and_sustaining", label: "Succeeding and having to sustain it" },
-] as const;
-
-type SortImportance = "clearly" | "somewhat" | "not_really";
-type SortConsequence = "real_consequence" | "stays_important" | "someone_annoyed" | "basically_nothing";
-type SortResistance = "low_value" | "uncomfortable" | "straightforward";
-type SortResult = "handle" | "protect" | "not_this_week";
-
-const IMPORTANCE_CHIPS: { value: SortImportance; label: string }[] = [
-  { value: "clearly", label: "Yes, clearly" },
-  { value: "somewhat", label: "Somewhat" },
-  { value: "not_really", label: "Not really" },
-];
-
-const CONSEQUENCE_CHIPS: { value: SortConsequence; label: string }[] = [
-  { value: "real_consequence", label: "Real consequence this week" },
-  { value: "stays_important", label: "It stays important, but no immediate consequence" },
-  { value: "someone_annoyed", label: "Mostly someone else gets annoyed" },
-  { value: "basically_nothing", label: "Basically nothing" },
-];
-
-const RESISTANCE_CHIPS: { value: SortResistance; label: string }[] = [
-  { value: "low_value", label: "Low value — I should let it go" },
-  { value: "uncomfortable", label: "It matters — I'm just uncomfortable" },
-  { value: "straightforward", label: "Not resisting — it's straightforward" },
-];
-
-interface BrainDumpItem {
-  id: number;
-  text: string;
-  selected: boolean;
-  // Sort fields (Step 4 — Better Sort)
-  sortImportance: SortImportance | null;
-  sortConsequence: SortConsequence | null;
-  sortResistance: SortResistance | null;
-  sortResult: SortResult | null;
-  sortPriority: number | null;
-  // Scheduling (Step 7)
-  scheduledDates: string[];
-  scheduledStartTime: string;
-  scheduledEndTime: string;
-  firstMove: string;
-}
-
-interface FearData {
-  targetTask: string;
-  fearIfFaced: string;
-  fearIfAvoided: string;
-  blockerChip: string;
-  smallestProofMove: string;
-  promoteToQ2: boolean;
-}
-
-function classifyItem(item: BrainDumpItem): SortResult {
-  const { sortImportance: imp, sortConsequence: con, sortResistance: res } = item;
-  if (!imp || !con || !res) return "not_this_week";
-
-  // Handle: real consequence regardless of Q1/Q3
-  if (con === "real_consequence") return "handle";
-
-  // Not this week rules
-  if (imp === "not_really" && (con === "someone_annoyed" || con === "basically_nothing")) return "not_this_week";
-  if (imp === "somewhat" && con === "basically_nothing" && res === "low_value") return "not_this_week";
-
-  // Protect: important (clearly or somewhat) + non-urgent consequence
-  if (imp === "clearly" || imp === "somewhat") return "protect";
-
-  // Fallback for not_really + stays_important (edge case)
-  return "not_this_week";
-}
-
-function computeSortPriority(item: BrainDumpItem): number {
-  const { sortImportance: imp, sortConsequence: con, sortResistance: res } = item;
-  const result = classifyItem(item);
-
-  if (result === "handle") {
-    if (imp === "clearly") return 1;
-    if (imp === "somewhat") return 2;
-    return 3; // not_really + real_consequence (obligation)
-  }
-
-  if (result === "protect") {
-    if (imp === "clearly" && con === "stays_important" && res === "uncomfortable") return 1;
-    if (imp === "clearly" && con === "stays_important" && res === "straightforward") return 2;
-    if (imp === "clearly" && con === "stays_important") return 3; // low_value edge
-    if (imp === "clearly" && con === "basically_nothing") return 4;
-    if (imp === "clearly" && con === "someone_annoyed") return 5;
-    if (imp === "somewhat" && con === "stays_important" && res === "uncomfortable") return 6;
-    if (imp === "somewhat" && con === "stays_important" && res === "straightforward") return 7;
-    if (imp === "somewhat" && con === "someone_annoyed") return 8;
-    return 9;
-  }
-
-  return 99;
-}
-
-function generateGroupId(): string {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-  // Fallback for non-secure contexts (e.g., HTTP on LAN for mobile testing)
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-const RESULT_BADGE: Record<SortResult, { label: string; className: string }> = {
-  handle: { label: "Handle", className: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" },
-  protect: { label: "Protect", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
-  not_this_week: { label: "Not this week", className: "bg-muted text-muted-foreground" },
-};
+import {
+  MAX_Q1, MAX_Q2, MAX_CANDIDATES, MAX_BRAIN_DUMP, MAX_DAYS_PER_ITEM, TOTAL_STEPS,
+  TIME_SLOTS, BLOCKER_CHIPS,
+  IMPORTANCE_CHIPS, CONSEQUENCE_CHIPS, RESISTANCE_CHIPS,
+  RESULT_BADGE,
+  classifyItem, computeSortPriority, generateGroupId,
+  type BrainDumpItem, type FearData,
+  type SortResult, type SortImportance, type SortConsequence, type SortResistance,
+} from "@/lib/eisenhower-logic";
 
 export default function EisenhowerPage() {
   const queryClient = useQueryClient();

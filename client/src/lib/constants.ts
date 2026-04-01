@@ -19,24 +19,6 @@ export const CATEGORY_LABELS: Record<string, string> = {
   joy: "Joy",
 };
 
-/** Full-opacity category classes for completed items (weekly calendar) */
-export const CATEGORY_COMPLETED: Record<string, string> = {
-  health: "bg-emerald-500 text-white",
-  wealth: "bg-yellow-500 text-white",
-  relationships: "bg-rose-500 text-white",
-  growth: "bg-blue-500 text-white",
-  joy: "bg-amber-500 text-white",
-};
-
-/** Muted category classes for pending items (weekly calendar) */
-export const CATEGORY_PENDING: Record<string, string> = {
-  health: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
-  wealth: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-  relationships: "bg-rose-500/20 text-rose-700 dark:text-rose-400",
-  growth: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
-  joy: "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-};
-
 /** Timing sort order */
 export const TIMING_ORDER: Record<string, number> = {
   morning: 0,
@@ -89,5 +71,3 @@ export const WEEK_DAY_TINT: Record<string, string> = {
   neutral: "",
 };
 
-/** Warm background for undone habit completion boxes */
-export const HABIT_UNDONE_BG = "bg-rose-50/50 dark:bg-rose-950/15";

@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Save } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
+import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 
 export default function DiscoveryProfilePage() {
   const { user } = useAuth();
@@ -40,26 +41,13 @@ export default function DiscoveryProfilePage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("PUT", "/api/identity-document", {
-        identity: doc?.identity || "",
-        vision: doc?.vision || "",
-        purpose: doc?.purpose || "",
-        yearVision: doc?.yearVision || "",
-        yearVisualization: doc?.yearVisualization || "",
-        todayValue: doc?.todayValue || "",
-        todayIntention: doc?.todayIntention || "",
-        todayReflection: doc?.todayReflection || "",
-        visionBoardMain: doc?.visionBoardMain || "",
-        visionBoardLeft: doc?.visionBoardLeft || "",
-        visionBoardRight: doc?.visionBoardRight || "",
-        othersWillSee: doc?.othersWillSee || "",
-        beYourself: doc?.beYourself || "",
+      await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(doc, {
         values: values.trim(),
         strengths: strengths.trim(),
         helpingPatterns: helpingPatterns.trim(),
         hurtingPatterns: hurtingPatterns.trim(),
         stressResponses: stressResponses.trim(),
-      });
+      }));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });

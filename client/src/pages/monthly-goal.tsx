@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
+import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 
 const DEFAULT_OBSTACLES = ["Time", "Energy", "Avoidance", "Distraction", "Perfectionism"];
 const CATEGORIES = ["health", "wealth", "relationships", "growth", "joy"];
@@ -129,27 +130,9 @@ export default function MonthlyGoalPage() {
 
       // 2. Update strengths on identity doc if changed
       if (strengthsText.trim() && strengthsText.trim() !== existingStrengths) {
-        await apiRequest("PUT", "/api/identity-document", {
-          identity: identityDoc?.identity || "",
-          vision: identityDoc?.vision || "",
-          values: identityDoc?.values || "",
-          yearVision: identityDoc?.yearVision || "",
-          yearVisualization: identityDoc?.yearVisualization || "",
-          purpose: identityDoc?.purpose || "",
-          todayValue: identityDoc?.todayValue || "",
-          todayIntention: identityDoc?.todayIntention || "",
-          todayReflection: identityDoc?.todayReflection || "",
-          visionBoardMain: identityDoc?.visionBoardMain || "",
-          visionBoardLeft: identityDoc?.visionBoardLeft || "",
-          visionBoardRight: identityDoc?.visionBoardRight || "",
-          othersWillSee: identityDoc?.othersWillSee || "",
-          beYourself: identityDoc?.beYourself || "",
+        await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(identityDoc, {
           strengths: strengthsText.trim(),
-          helpingPatterns: identityDoc?.helpingPatterns || "",
-          hurtingPatterns: identityDoc?.hurtingPatterns || "",
-          stressResponses: identityDoc?.stressResponses || "",
-          visionDomain: identityDoc?.visionDomain || "",
-        });
+        }));
       }
 
       // 3. Create Q1 eisenhower item if date + time provided (only on first save, not edits)

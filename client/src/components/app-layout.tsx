@@ -19,7 +19,7 @@ import {
   Download,
 } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import type { LucideIcon } from "lucide-react";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 

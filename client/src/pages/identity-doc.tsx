@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Save, Eye, User, Users, Heart } from "lucide-react";
 import type { IdentityDocument } from "@shared/schema";
+import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 
 export default function IdentityDocPage() {
   const { user } = useAuth();
@@ -41,26 +42,12 @@ export default function IdentityDocPage() {
   const saveMutation = useToastMutation({
     mutationFn: async () => {
       if (!initialized) return;
-      await apiRequest("PUT", "/api/identity-document", {
+      await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(doc, {
         vision: vision.trim(),
         identity: identity.trim(),
         othersWillSee: othersWillSee.map(s => s.trim()).join("|||"),
         purpose: purpose.trim(),
-        values: doc?.values || "",
-        yearVision: doc?.yearVision || "",
-        yearVisualization: doc?.yearVisualization || "",
-        todayValue: doc?.todayValue || "",
-        todayIntention: doc?.todayIntention || "",
-        todayReflection: doc?.todayReflection || "",
-        visionBoardMain: doc?.visionBoardMain || "",
-        visionBoardLeft: doc?.visionBoardLeft || "",
-        visionBoardRight: doc?.visionBoardRight || "",
-        beYourself: doc?.beYourself || "",
-        strengths: doc?.strengths || "",
-        helpingPatterns: doc?.helpingPatterns || "",
-        hurtingPatterns: doc?.hurtingPatterns || "",
-        stressResponses: doc?.stressResponses || "",
-      });
+      }));
     },
     invalidateKeys: ["/api/identity-document"],
     successToast: { title: "Saved", description: "Your Identity Document has been updated." },

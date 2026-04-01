@@ -10,7 +10,8 @@ import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
-import { format, startOfWeek, addDays, addWeeks } from "date-fns";
+import { format, addDays } from "date-fns";
+import { getWeekBounds } from "@/lib/week-utils";
 import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
@@ -36,9 +37,7 @@ export default function DashboardPage() {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
   const [weekOffset, setWeekOffset] = useState(0);
-  const weekStartDate = addWeeks(startOfWeek(today, { weekStartsOn: 1 }), weekOffset);
-  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
-  const weekEndStr = format(addDays(weekStartDate, 6), "yyyy-MM-dd");
+  const { weekStart: weekStartDate, weekStartStr, weekEndStr } = getWeekBounds(today, weekOffset);
 
   // ─── Queries ─────────────────────────────────────────────────────
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({

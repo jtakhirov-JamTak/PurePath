@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { IdentityDocument, MonthlyGoal } from "@shared/schema";
+import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 
 const DOMAINS = ["Health", "Wealth", "Relationships", "Growth", "Joy"];
 const TOTAL_STEPS = 5;
@@ -82,27 +83,10 @@ export default function ScoreboardPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       await Promise.all([
-        apiRequest("PUT", "/api/identity-document", {
+        apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(doc, {
           yearVision: scene.trim(),
           visionDomain: domain.toLowerCase(),
-          identity: doc?.identity || "",
-          vision: doc?.vision || "",
-          values: doc?.values || "",
-          purpose: doc?.purpose || "",
-          yearVisualization: doc?.yearVisualization || "",
-          todayValue: doc?.todayValue || "",
-          todayIntention: doc?.todayIntention || "",
-          todayReflection: doc?.todayReflection || "",
-          visionBoardMain: doc?.visionBoardMain || "",
-          visionBoardLeft: doc?.visionBoardLeft || "",
-          visionBoardRight: doc?.visionBoardRight || "",
-          othersWillSee: doc?.othersWillSee || "",
-          beYourself: doc?.beYourself || "",
-          strengths: doc?.strengths || "",
-          helpingPatterns: doc?.helpingPatterns || "",
-          hurtingPatterns: doc?.hurtingPatterns || "",
-          stressResponses: doc?.stressResponses || "",
-        }),
+        })),
         apiRequest("PUT", "/api/monthly-goal", {
           monthKey: currentMonth,
           goalStatement: goal?.goalStatement || "",
