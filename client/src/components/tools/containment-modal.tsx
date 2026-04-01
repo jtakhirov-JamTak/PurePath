@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExerciseModal } from "@/components/exercise-modal";
 import { useMoodTracking } from "@/hooks/use-mood-tracking";
@@ -67,8 +67,10 @@ type Branch = "choose" | "overwhelmed" | "avoiding";
 export function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [branch, setBranch] = useState<Branch>("choose");
 
+  // Reset branch when modal opens (not on close, to avoid render flash)
+  useEffect(() => { if (open) setBranch("choose"); }, [open]);
+
   const handleFullClose = () => {
-    setBranch("choose");
     onClose();
   };
 

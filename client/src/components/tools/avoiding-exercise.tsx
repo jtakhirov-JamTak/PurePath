@@ -44,7 +44,7 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
   });
 
   const valueChips = (identityDoc?.values || "")
-    .split("\n")
+    .split(/[\n,]+/)
     .map(v => v.trim())
     .filter(Boolean);
 
