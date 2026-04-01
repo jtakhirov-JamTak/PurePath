@@ -426,6 +426,7 @@ export class DatabaseStorage implements IStorage {
           helpingPatterns: doc.helpingPatterns,
           hurtingPatterns: doc.hurtingPatterns,
           stressResponses: doc.stressResponses,
+          visionDomain: doc.visionDomain,
           updatedAt: new Date(),
         },
       })

@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Plus, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -354,12 +355,6 @@ export default function PlanPage() {
             </button>
           </div>
 
-          {/* Sub-card B: Values Profile */}
-          <SubCard
-            ok={discoveryFilled} title="Values Profile" subtitle="Values, strengths, patterns"
-            onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))}
-            testId="card-nav-discovery"
-          />
         </Section>
 
         {/* ─── 3. COMMIT — Monthly ───────────────────────────────── */}
@@ -368,32 +363,49 @@ export default function PlanPage() {
           completionOk={!!goalDisplay} summary={goalDisplay || "No goal set"}
           expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
         >
-          <div className="space-y-2">
-            <SubCard
-              ok={!!goalDisplay} title="Monthly Goal"
-              subtitle={goalDisplay || "Not set"}
-              onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))}
-              testId="card-monthly-goal"
-            />
-            <SubCard
-              ok={identityFilled} title="Identity Document" subtitle="Vision, identity, purpose"
-              onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))}
-              testId="card-nav-identity"
-            />
-          </div>
+          <SubCard
+            ok={!!goalDisplay} title="Monthly Goal"
+            subtitle={goalDisplay || "Not set"}
+            onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))}
+            testId="card-monthly-goal"
+          />
         </Section>
 
         {/* ─── 4. BECOME — Year ──────────────────────────────────── */}
         <Section
           id="become" verb="Become" timeLabel={yearLabel} accentClass="text-blue-600"
-          completionOk={scoreboardFilled} summary="1-Year Scoreboard"
+          completionOk={scoreboardFilled && identityFilled && discoveryFilled}
+          summary={[identityFilled && "Identity", discoveryFilled && "Values", scoreboardFilled && "Vision"].filter(Boolean).join(" \u00b7 ") || "Not started"}
           expanded={expanded.has("become")} onToggle={() => toggle("become")} celebrating={false}
         >
-          <SubCard
-            ok={scoreboardFilled} title="1-Year Scoreboard" subtitle="Outcome, obstacles, IF-THEN"
-            onClick={() => setLocation(buildProcessUrl("/scoreboard", "/plan"))}
-            testId="card-nav-scoreboard"
-          />
+          <Tabs defaultValue="identity" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 h-8">
+              <TabsTrigger value="identity" className="text-xs">Identity</TabsTrigger>
+              <TabsTrigger value="values" className="text-xs">Values</TabsTrigger>
+              <TabsTrigger value="vision" className="text-xs">Vision</TabsTrigger>
+            </TabsList>
+            <TabsContent value="identity">
+              <SubCard
+                ok={identityFilled} title="Identity Document" subtitle="Vision, identity, purpose"
+                onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))}
+                testId="card-nav-identity"
+              />
+            </TabsContent>
+            <TabsContent value="values">
+              <SubCard
+                ok={discoveryFilled} title="Values Profile" subtitle="Values, strengths, patterns"
+                onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))}
+                testId="card-nav-discovery"
+              />
+            </TabsContent>
+            <TabsContent value="vision">
+              <SubCard
+                ok={scoreboardFilled} title="1-Year Vision" subtitle="Domain, scene, obstacles, IF-THEN"
+                onClick={() => setLocation(buildProcessUrl("/scoreboard", "/plan"))}
+                testId="card-nav-scoreboard"
+              />
+            </TabsContent>
+          </Tabs>
         </Section>
       </div>
     </AppLayout>

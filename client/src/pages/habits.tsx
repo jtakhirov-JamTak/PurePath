@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { HabitDialog } from "@/components/habit-dialog";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ const TIMING_SHORT: Record<string, string> = { morning: "AM", afternoon: "PM", e
 const MAX_HABITS = 3;
 
 export default function HabitsPage() {
+  const [, setLocation] = useLocation();
   const [habitDialogOpen, setHabitDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
@@ -190,7 +192,7 @@ export default function HabitsPage() {
               </button>
               {showPastHabits && (
                 <div className="mt-2 space-y-1">
-                  {pastHabits.map(habit => (
+                  {pastHabits.slice(0, 10).map(habit => (
                     <div key={habit.id} className="flex items-center gap-2 py-1" data-testid={`past-habit-${habit.id}`}>
                       <div className="h-2 w-2 rounded-full shrink-0 bg-muted-foreground/30" />
                       <span className="text-[13px] text-muted-foreground flex-1 truncate">{habit.name}</span>
@@ -199,6 +201,14 @@ export default function HabitsPage() {
                       </span>
                     </div>
                   ))}
+                  {pastHabits.length > 10 && (
+                    <button
+                      onClick={() => setLocation("/journal")}
+                      className="text-[11px] text-primary hover:underline mt-2 block cursor-pointer"
+                    >
+                      Full history on Proof page
+                    </button>
+                  )}
                 </div>
               )}
             </div>

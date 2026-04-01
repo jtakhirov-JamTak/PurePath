@@ -1,17 +1,25 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VoiceTextarea } from "@/components/voice-input";
+import { VisionCard } from "@/components/vision-card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, Target, ShieldAlert, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { format } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import type { IdentityDocument, MonthlyGoal } from "@shared/schema";
+
+const DOMAINS = ["Health", "Wealth", "Relationships", "Growth", "Joy"];
+const TOTAL_STEPS = 5;
 
 export default function ScoreboardPage() {
   const { user } = useAuth();
@@ -29,44 +37,54 @@ export default function ScoreboardPage() {
     enabled: !!user,
   });
 
-  const [yearVision, setYearVision] = useState("");
-  const [successProof, setSuccessProof] = useState("");
-  const [proofMetric, setProofMetric] = useState("");
-  const [weeklyBehavior, setWeeklyBehavior] = useState("");
-  const [innerObstacle, setInnerObstacle] = useState("");
+  // Wizard state
+  const [step, setStep] = useState(1);
+  const [domain, setDomain] = useState("");
+  const [scene, setScene] = useState("");
+  const [proofPoint, setProofPoint] = useState("");
+  const [metric, setMetric] = useState("");
+  const [obstacle, setObstacle] = useState("");
   const [obstacleTrigger, setObstacleTrigger] = useState("");
-  const [obstacleThought, setObstacleThought] = useState("");
-  const [obstacleEmotion, setObstacleEmotion] = useState("");
-  const [obstacleBehavior, setObstacleBehavior] = useState("");
-  const [ifThenPlan1, setIfThenPlan1] = useState("");
-  const [ifThenPlan2, setIfThenPlan2] = useState("");
+  const [ifTrigger, setIfTrigger] = useState("");
+  const [ifAction, setIfAction] = useState("");
+  const [saved, setSaved] = useState(false);
 
+  // Pre-populate from existing data
   useEffect(() => {
     if (doc) {
-      setYearVision(doc.yearVision || "");
+      setDomain(doc.visionDomain || "");
+      setScene(doc.yearVision || "");
     }
   }, [doc]);
 
   useEffect(() => {
     if (goal) {
-      setSuccessProof(goal.successProof || "");
-      setProofMetric(goal.proofMetric || "");
-      setWeeklyBehavior(goal.weeklyBehavior || "");
-      setInnerObstacle(goal.innerObstacle || "");
+      setProofPoint(goal.successProof || "");
+      setMetric(goal.proofMetric || "");
+      setObstacle(goal.innerObstacle || "");
       setObstacleTrigger(goal.obstacleTrigger || "");
-      setObstacleThought(goal.obstacleThought || "");
-      setObstacleEmotion(goal.obstacleEmotion || "");
-      setObstacleBehavior(goal.obstacleBehavior || "");
-      setIfThenPlan1(goal.ifThenPlan1 || "");
-      setIfThenPlan2(goal.ifThenPlan2 || "");
+      // Parse existing ifThenPlan1 into trigger/action if it follows the format
+      const plan = goal.ifThenPlan1 || "";
+      const match = plan.match(/^If (.+?), then I will (.+)$/i);
+      if (match) {
+        setIfTrigger(match[1]);
+        setIfAction(match[2]);
+      } else if (plan) {
+        setIfAction(plan);
+      }
     }
   }, [goal]);
+
+  const formattedPlan = ifTrigger && ifAction
+    ? `If ${ifTrigger}, then I will ${ifAction}`
+    : "";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       await Promise.all([
         apiRequest("PUT", "/api/identity-document", {
-          yearVision: yearVision.trim(),
+          yearVision: scene.trim(),
+          visionDomain: domain.toLowerCase(),
           identity: doc?.identity || "",
           vision: doc?.vision || "",
           values: doc?.values || "",
@@ -88,57 +106,54 @@ export default function ScoreboardPage() {
         apiRequest("PUT", "/api/monthly-goal", {
           monthKey: currentMonth,
           goalStatement: goal?.goalStatement || "",
-          successMarker: goal?.successMarker || "",
+          nextConcreteStep: goal?.nextConcreteStep || "",
+          goalWhat: goal?.goalWhat || "",
+          goalWhen: goal?.goalWhen || "",
+          goalHow: goal?.goalHow || "",
+          deadline: goal?.deadline || "",
+          innerObstacle: obstacle.trim(),
+          obstacleTrigger: obstacleTrigger.trim(),
+          obstacleThought: goal?.obstacleThought || "",
+          obstacleEmotion: goal?.obstacleEmotion || "",
+          obstacleBehavior: goal?.obstacleBehavior || "",
+          successProof: proofPoint.trim(),
+          proofMetric: metric.trim(),
+          weeklyBehavior: goal?.weeklyBehavior || "",
+          ifThenPlan1: formattedPlan,
+          ifThenPlan2: goal?.ifThenPlan2 || "",
+          fun: goal?.fun || "",
           value: goal?.value || "",
           why: goal?.why || "",
-          nextConcreteStep: goal?.nextConcreteStep || "",
+          successMarker: goal?.successMarker || "",
           prize: goal?.prize || "",
           strengths: goal?.strengths || "",
           advantage: goal?.advantage || "",
-          goalWhat: goal?.goalWhat || "",
-          goalWhen: goal?.goalWhen || "",
           goalWhere: goal?.goalWhere || "",
-          goalHow: goal?.goalHow || "",
           blockingHabit: goal?.blockingHabit || "",
           habitAddress: goal?.habitAddress || "",
-          fun: goal?.fun || "",
-          deadline: goal?.deadline || "",
           bestResult: goal?.bestResult || "",
-          successProof: successProof.trim(),
-          proofMetric: proofMetric.trim(),
-          weeklyBehavior: weeklyBehavior.trim(),
-          innerObstacle: innerObstacle.trim(),
-          obstacleTrigger: obstacleTrigger.trim(),
-          obstacleThought: obstacleThought.trim(),
-          obstacleEmotion: obstacleEmotion.trim(),
-          obstacleBehavior: obstacleBehavior.trim(),
-          ifThenPlan1: ifThenPlan1.trim(),
-          ifThenPlan2: ifThenPlan2.trim(),
         }),
       ]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       queryClient.invalidateQueries({ queryKey: ["/api/monthly-goal"] });
-      toast({ title: "Saved", description: "Your 1-Year Scoreboard has been updated." });
+      toast({ title: "Vision saved", description: "Your 1-year vision has been locked in." });
+      setSaved(true);
     },
     onError: () => {
       toast({ title: "Error", description: "Could not save. Please try again.", variant: "destructive" });
     },
   });
 
-  const hasChanges =
-    yearVision !== (doc?.yearVision || "") ||
-    successProof !== (goal?.successProof || "") ||
-    proofMetric !== (goal?.proofMetric || "") ||
-    weeklyBehavior !== (goal?.weeklyBehavior || "") ||
-    innerObstacle !== (goal?.innerObstacle || "") ||
-    obstacleTrigger !== (goal?.obstacleTrigger || "") ||
-    obstacleThought !== (goal?.obstacleThought || "") ||
-    obstacleEmotion !== (goal?.obstacleEmotion || "") ||
-    obstacleBehavior !== (goal?.obstacleBehavior || "") ||
-    ifThenPlan1 !== (goal?.ifThenPlan1 || "") ||
-    ifThenPlan2 !== (goal?.ifThenPlan2 || "");
+  const canNext = () => {
+    if (step === 1) return !!domain;
+    if (step === 2) return !!scene.trim();
+    if (step === 3) return !!proofPoint.trim();
+    if (step === 4) return !!obstacle.trim();
+    if (step === 5) return !!ifTrigger.trim() && !!ifAction.trim();
+    return false;
+  };
 
   const isLoading = docLoading || goalLoading;
 
@@ -147,10 +162,32 @@ export default function ScoreboardPage() {
       <AppLayout>
         <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-4 w-72" />
           <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-40 w-full" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // After save — show the action card
+  if (saved) {
+    return (
+      <AppLayout>
+        <FlowBar fallback="/plan" doneLabel="Done" />
+        <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="h-12 w-12 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <Check className="h-6 w-6 text-emerald-600" />
+            </div>
+            <h1 className="text-base font-medium">Vision Locked In</h1>
+            <p className="text-sm text-muted-foreground">This will surface on Tuesday and Friday mornings.</p>
+          </div>
+          <VisionCard
+            domain={domain}
+            scene={scene}
+            proofPoint={proofPoint}
+            metric={metric}
+            ifThenPlan={formattedPlan}
+          />
         </div>
       </AppLayout>
     );
@@ -160,203 +197,210 @@ export default function ScoreboardPage() {
     <AppLayout>
       <FlowBar fallback="/plan" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
+        {/* Header */}
         <div>
-          <h1 className="text-base font-medium" data-testid="text-page-title">1-Year Scoreboard</h1>
-          <p className="text-sm text-muted-foreground mt-1" data-testid="text-page-subtitle">
-            Your realistic 1-year outcome and execution plan
-          </p>
+          <h1 className="text-base font-medium" data-testid="text-page-title">1-Year Vision</h1>
+          <p className="text-sm text-muted-foreground mt-1">Step {step} of {TOTAL_STEPS}</p>
         </div>
 
-        <Card className="overflow-visible" data-testid="card-year-vision">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                <Target className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">1-Year Vision</CardTitle>
-                <CardDescription>What does the next year look like if you follow through?</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <VoiceTextarea
-              value={yearVision}
-              onChange={setYearVision}
-              placeholder="In one year, I am the kind of person who ______"
-              className="min-h-[120px] resize-none"
-              data-testid="textarea-year-vision"
+        {/* Step indicator dots */}
+        <div className="flex justify-center gap-2">
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-2 w-2 rounded-full transition-colors",
+                i + 1 === step ? "bg-primary" : i + 1 < step ? "bg-emerald-500" : "bg-border"
+              )}
             />
-          </CardContent>
-        </Card>
+          ))}
+        </div>
 
-        <Card className="overflow-visible" data-testid="card-proof-points">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                <Target className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">Proof Points</CardTitle>
-                <CardDescription>How you'll know you're on track.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Success Proof</label>
-              <VoiceTextarea
-                value={successProof}
-                onChange={setSuccessProof}
-                placeholder="What evidence will prove you've succeeded?"
-                rows={3}
-                className="resize-none text-sm"
-                data-testid="textarea-success-proof"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Proof Metric</label>
-              <VoiceTextarea
-                value={proofMetric}
-                onChange={setProofMetric}
-                placeholder="What number or metric will you track?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-proof-metric"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Weekly Behavior</label>
-              <VoiceTextarea
-                value={weeklyBehavior}
-                onChange={setWeeklyBehavior}
-                placeholder="What must you do every week to stay on track?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-weekly-behavior"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Steps */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {step === 1 && (
+              <Card data-testid="step-domain">
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Choose one domain</Label>
+                    <p className="text-xs text-muted-foreground">Focus on one area. You can revisit other domains later.</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {DOMAINS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDomain(d.toLowerCase())}
+                        className={cn(
+                          "rounded-lg border px-4 py-3 text-sm font-medium text-left transition-colors",
+                          domain === d.toLowerCase()
+                            ? "border-primary bg-primary/5 text-foreground"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        )}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        <Card className="overflow-visible" data-testid="card-inner-obstacles">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                <ShieldAlert className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">Inner Obstacles</CardTitle>
-                <CardDescription>The patterns that get in your way.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Core Inner Obstacle</label>
-              <VoiceTextarea
-                value={innerObstacle}
-                onChange={setInnerObstacle}
-                placeholder="What internal barrier most often stops you?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-inner-obstacle"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Trigger</label>
-              <VoiceTextarea
-                value={obstacleTrigger}
-                onChange={setObstacleTrigger}
-                placeholder="What situation or cue activates this obstacle?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-obstacle-trigger"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Thought Pattern</label>
-              <VoiceTextarea
-                value={obstacleThought}
-                onChange={setObstacleThought}
-                placeholder="What do you tell yourself when triggered?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-obstacle-thought"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Emotional Response</label>
-              <VoiceTextarea
-                value={obstacleEmotion}
-                onChange={setObstacleEmotion}
-                placeholder="What emotion comes up?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-obstacle-emotion"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Resulting Behavior</label>
-              <VoiceTextarea
-                value={obstacleBehavior}
-                onChange={setObstacleBehavior}
-                placeholder="What do you end up doing (or avoiding)?"
-                rows={2}
-                className="resize-none text-sm"
-                data-testid="textarea-obstacle-behavior"
-              />
-            </div>
-          </CardContent>
-        </Card>
+            {step === 2 && (
+              <Card data-testid="step-scene">
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      One year from now, if you actually followed through, what is the best visible result?
+                    </Label>
+                    <p className="text-xs text-muted-foreground italic">
+                      Pause, close your eyes and imagine it vividly. Then write one sentence.
+                    </p>
+                  </div>
+                  <VoiceTextarea
+                    value={scene}
+                    onChange={setScene}
+                    placeholder="The best visible result in one year..."
+                    className="min-h-[100px] resize-none"
+                    data-testid="textarea-scene"
+                  />
+                </CardContent>
+              </Card>
+            )}
 
-        <Card className="overflow-visible" data-testid="card-if-then-plans">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
-                <Zap className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">IF-THEN Plans</CardTitle>
-                <CardDescription>Pre-committed responses when obstacles appear.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Plan 1</label>
-              <VoiceTextarea
-                value={ifThenPlan1}
-                onChange={setIfThenPlan1}
-                placeholder="IF [trigger happens], THEN I will [specific action]..."
-                rows={3}
-                className="resize-none text-sm"
-                data-testid="textarea-if-then-1"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Plan 2</label>
-              <VoiceTextarea
-                value={ifThenPlan2}
-                onChange={setIfThenPlan2}
-                placeholder="IF [trigger happens], THEN I will [specific action]..."
-                rows={3}
-                className="resize-none text-sm"
-                data-testid="textarea-if-then-2"
-              />
-            </div>
-          </CardContent>
-        </Card>
+            {step === 3 && (
+              <Card data-testid="step-proof">
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Proof point</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Observable — if a stranger saw it, they'd agree it's real.
+                    </p>
+                  </div>
+                  <VoiceTextarea
+                    value={proofPoint}
+                    onChange={setProofPoint}
+                    placeholder="What evidence would prove this is real?"
+                    className="min-h-[80px] resize-none"
+                    data-testid="textarea-proof"
+                  />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">Metric — put a number on it</Label>
+                    <Input
+                      value={metric}
+                      onChange={(e) => setMetric(e.target.value)}
+                      placeholder="e.g. 10 clients, 180 lbs, 3x/week"
+                      className="text-sm"
+                      data-testid="input-metric"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-        <Button
-          onClick={() => saveMutation.mutate()}
-          disabled={saveMutation.isPending || !hasChanges}
-          className="w-full"
-          data-testid="button-save-scoreboard"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {saveMutation.isPending ? "Saving..." : "Save Scoreboard"}
-        </Button>
+            {step === 4 && (
+              <Card data-testid="step-obstacle">
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      The main thing inside me that will prevent this is ______.
+                    </Label>
+                    <p className="text-xs text-muted-foreground italic">
+                      Visualize the exact real moment it happens.
+                    </p>
+                  </div>
+                  <VoiceTextarea
+                    value={obstacle}
+                    onChange={setObstacle}
+                    placeholder="The inner obstacle (trigger, emotion, behavior)..."
+                    className="min-h-[80px] resize-none"
+                    data-testid="textarea-obstacle"
+                  />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-muted-foreground">What triggers it?</Label>
+                    <Input
+                      value={obstacleTrigger}
+                      onChange={(e) => setObstacleTrigger(e.target.value)}
+                      placeholder="The situation or cue that activates this..."
+                      className="text-sm"
+                      data-testid="input-obstacle-trigger"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {step === 5 && (
+              <Card data-testid="step-ifthen">
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">If-Then Plan</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Your action must be visible, immediate, and low-friction (under 2 minutes).
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground">If this happens...</Label>
+                      <Input
+                        value={ifTrigger}
+                        onChange={(e) => setIfTrigger(e.target.value)}
+                        placeholder={obstacleTrigger || "The trigger moment..."}
+                        className="text-sm"
+                        data-testid="input-if-trigger"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium text-muted-foreground">Then I will...</Label>
+                      <Input
+                        value={ifAction}
+                        onChange={(e) => setIfAction(e.target.value)}
+                        placeholder="A 2-minute, visible action..."
+                        className="text-sm"
+                        data-testid="input-if-action"
+                      />
+                    </div>
+                  </div>
+                  {ifTrigger && ifAction && (
+                    <div className="rounded-md bg-muted/50 px-3 py-2 text-sm italic text-foreground/80">
+                      If {ifTrigger}, then I will {ifAction}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation */}
+        <div className="flex gap-3">
+          {step > 1 && (
+            <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
+              <ChevronLeft className="h-4 w-4 mr-1" /> Back
+            </Button>
+          )}
+          {step < TOTAL_STEPS ? (
+            <Button onClick={() => setStep(s => s + 1)} disabled={!canNext()} className="flex-1">
+              Next <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={!canNext() || saveMutation.isPending}
+              className="flex-1"
+              data-testid="button-save-vision"
+            >
+              {saveMutation.isPending ? "Saving..." : "Save & Finish"}
+            </Button>
+          )}
+        </div>
       </div>
     </AppLayout>
   );

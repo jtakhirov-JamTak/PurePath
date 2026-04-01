@@ -15,7 +15,8 @@ import { useLocation, useParams } from "wouter";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import { VisionCard } from "@/components/vision-card";
 import { startOfWeek } from "date-fns";
 import { getTodaysHabits } from "@/lib/habit-filters";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
@@ -229,6 +230,20 @@ export default function JournalEntryPage() {
   });
   const valuesItems = identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
   const identityStatement = identityDoc?.identity?.trim() || "";
+
+  // Tuesday/Friday vision reminder in morning journal
+  const dayOfWeek = date ? new Date(date + "T12:00:00").getDay() : -1;
+  const showVisionReminder = isMorning && (dayOfWeek === 2 || dayOfWeek === 5);
+  const visionMonth = date ? format(new Date(date + "T12:00:00"), "yyyy-MM") : "";
+  const { data: visionGoal } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", visionMonth],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${visionMonth}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!user && showVisionReminder && !!identityDoc?.yearVision,
+  });
 
   // Queries for skipped items (evening journal)
   const { data: habits = [] } = useQuery<Habit[]>({
@@ -737,6 +752,17 @@ export default function JournalEntryPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Vision Reminder — Tuesday/Friday */}
+            {showVisionReminder && identityDoc?.yearVision && (
+              <VisionCard
+                domain={identityDoc.visionDomain || ""}
+                scene={identityDoc.yearVision || ""}
+                proofPoint={visionGoal?.successProof || ""}
+                metric={visionGoal?.proofMetric || ""}
+                ifThenPlan={visionGoal?.ifThenPlan1 || ""}
+              />
+            )}
 
             {/* Section 3 — Let Go (full mode only) */}
             {journalMode === "full" && (

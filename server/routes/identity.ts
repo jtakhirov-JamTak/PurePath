@@ -9,7 +9,7 @@ export function registerIdentityRoutes(app: Express) {
     try {
       const userId = req.user.claims.sub;
       const doc = await storage.getIdentityDocument(userId);
-      res.json(doc || { userId, identity: "", vision: "", values: "", yearVision: "", yearVisualization: "", purpose: "", todayValue: "", todayIntention: "", todayReflection: "" });
+      res.json(doc || { userId, identity: "", vision: "", values: "", yearVision: "", yearVisualization: "", purpose: "", todayValue: "", todayIntention: "", todayReflection: "", visionDomain: "" });
     } catch (error) {
       console.error("Error fetching identity document:", error);
       res.status(500).json({ error: "Failed to fetch identity document" });
@@ -19,7 +19,7 @@ export function registerIdentityRoutes(app: Express) {
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight, othersWillSee, beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses } = req.body;
+      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight, othersWillSee, beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses, visionDomain } = req.body;
       const doc = await storage.upsertIdentityDocument({
         userId,
         identity: identity || "",
@@ -40,6 +40,7 @@ export function registerIdentityRoutes(app: Express) {
         helpingPatterns: helpingPatterns ?? "",
         hurtingPatterns: hurtingPatterns ?? "",
         stressResponses: stressResponses ?? "",
+        visionDomain: visionDomain ?? "",
       });
       res.json(doc);
     } catch (error) {

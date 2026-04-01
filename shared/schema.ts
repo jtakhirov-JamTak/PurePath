@@ -286,6 +286,7 @@ export const identityDocuments = pgTable("identity_documents", {
   helpingPatterns: text("helping_patterns").default(""),
   hurtingPatterns: text("hurting_patterns").default(""),
   stressResponses: text("stress_responses").default(""),
+  visionDomain: varchar("vision_domain", { length: 50 }).default(""),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
