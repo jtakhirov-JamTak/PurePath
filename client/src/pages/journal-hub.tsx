@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { getDateHabits } from "@/lib/habit-filters";
+import { getDateHabits, getTodaysHabits } from "@/lib/habit-filters";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { CATEGORY_COLORS, CATEGORY_BADGE } from "@/lib/constants";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
@@ -111,6 +111,14 @@ export default function JournalHubPage() {
   const isCurrentMonth = isSameMonth(selectedMonth, todayDate);
   const canGoForward = !isCurrentMonth;
 
+  const calMonthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
+  const calMonthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
+
+  const { data: monthHabitCompletions = [] } = useQuery<HabitCompletion[]>({
+    queryKey: ["/api/habit-completions/range/" + calMonthStart + "/" + calMonthEnd],
+    enabled: !!user,
+  });
+
   const monthJournalMap = useMemo(() => {
     const map = new Map<string, { morning: boolean; evening: boolean }>();
     const ms = startOfMonth(selectedMonth);
@@ -126,6 +134,40 @@ export default function JournalHubPage() {
     });
     return map;
   }, [journals, selectedMonth]);
+
+  // Per-day progress: journals + habits + focus items
+  const monthProgressMap = useMemo(() => {
+    const map = new Map<string, { done: number; total: number }>();
+    const daysInMonth = getDaysInMonth(selectedMonth);
+    const firstDay = startOfMonth(selectedMonth);
+
+    for (let d = 0; d < daysInMonth; d++) {
+      const dateStr = format(addDays(firstDay, d), "yyyy-MM-dd");
+      if (dateStr > todayStr) continue;
+
+      const jEntry = monthJournalMap.get(dateStr);
+      const hasMorn = jEntry?.morning ? 1 : 0;
+      const hasEve = jEntry?.evening ? 1 : 0;
+
+      const dayHabits = getTodaysHabits(habits, dateStr);
+      const completedHabitIds = new Set(
+        monthHabitCompletions.filter(hc => hc.date === dateStr && hc.status === "completed").map(hc => hc.habitId)
+      );
+      const habitsCompleted = dayHabits.filter(h => completedHabitIds.has(h.id)).length;
+
+      const weekStart = format(startOfWeek(new Date(dateStr + "T12:00:00"), { weekStartsOn: 1 }), "yyyy-MM-dd");
+      const dayFocus = eisenhowerEntries.filter(e =>
+        e.weekStart === weekStart && e.scheduledDate === dateStr &&
+        (e.quadrant === "q1" || (e.quadrant === "q2" && e.blocksGoal))
+      );
+      const focusCompleted = dayFocus.filter(e => e.status === "completed").length;
+
+      const total = dayHabits.length + dayFocus.length + 2;
+      const done = habitsCompleted + focusCompleted + hasMorn + hasEve;
+      map.set(dateStr, { done, total });
+    }
+    return map;
+  }, [selectedMonth, todayStr, monthJournalMap, habits, monthHabitCompletions, eisenhowerEntries]);
 
   const calendarCells = useMemo(() => {
     const daysInMonth = getDaysInMonth(selectedMonth);
@@ -143,13 +185,13 @@ export default function JournalHubPage() {
     return isCurrentMonth ? todayDate.getDate() : getDaysInMonth(selectedMonth);
   }, [selectedMonth, isCurrentMonth]);
 
-  const daysJournaled = useMemo(() => {
+  const daysWithActivity = useMemo(() => {
     let count = 0;
-    monthJournalMap.forEach((entry, dateStr) => {
-      if (dateStr <= todayStr && (entry.morning || entry.evening)) count++;
+    monthProgressMap.forEach((progress) => {
+      if (progress.done > 0) count++;
     });
     return count;
-  }, [monthJournalMap, todayStr]);
+  }, [monthProgressMap]);
 
   return (
     <AppLayout>
@@ -191,16 +233,16 @@ export default function JournalHubPage() {
               const { day, dateStr } = cell;
               const isFuture = dateStr > todayStr;
               const isToday = dateStr === todayStr;
-              const entry = monthJournalMap.get(dateStr);
-              const hasBoth = entry?.morning && entry?.evening;
-              const hasOne = entry && (entry.morning || entry.evening) && !hasBoth;
+              const progress = monthProgressMap.get(dateStr);
+              const ratio = progress && progress.total > 0 ? progress.done / progress.total : 0;
+              const allDone = progress ? progress.done === progress.total && progress.total > 0 : false;
               const clickable = !isFuture;
 
               let bgClass: string;
               let textClass: string;
               if (isFuture) { bgClass = ""; textClass = "text-muted-foreground/30"; }
-              else if (hasBoth) { bgClass = "bg-emerald-500 rounded-sm"; textClass = "text-white"; }
-              else if (hasOne) { bgClass = "bg-emerald-500/40 rounded-sm"; textClass = "text-foreground"; }
+              else if (allDone) { bgClass = "bg-emerald-500 rounded-sm"; textClass = "text-white"; }
+              else if (ratio > 0) { bgClass = "bg-emerald-500/40 rounded-sm"; textClass = "text-foreground"; }
               else { bgClass = "border border-border/30 rounded-sm"; textClass = "text-foreground"; }
 
               return (
@@ -219,7 +261,7 @@ export default function JournalHubPage() {
 
           {/* Month summary */}
           <p className="text-[11px] text-muted-foreground mt-3" data-testid="text-month-summary">
-            {daysJournaled} of {daysElapsed} days journaled
+            {daysWithActivity} of {daysElapsed} days active
           </p>
 
           {/* Day detail panel */}
