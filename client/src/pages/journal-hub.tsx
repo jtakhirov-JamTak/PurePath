@@ -8,7 +8,7 @@ import { useLocation } from "wouter";
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, getDaysInMonth, getDay, isSameMonth, addDays, startOfWeek } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
-import { getDateHabits, getTodaysHabits } from "@/lib/habit-filters";
+import { getDateHabits } from "@/lib/habit-filters";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { CATEGORY_COLORS, CATEGORY_BADGE } from "@/lib/constants";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
@@ -149,7 +149,7 @@ export default function JournalHubPage() {
       const hasMorn = jEntry?.morning ? 1 : 0;
       const hasEve = jEntry?.evening ? 1 : 0;
 
-      const dayHabits = getTodaysHabits(habits, dateStr);
+      const dayHabits = getDateHabits(habits, dateStr);
       const completedHabitIds = new Set(
         monthHabitCompletions.filter(hc => hc.date === dateStr && hc.status === "completed").map(hc => hc.habitId)
       );
