@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useLocation } from "wouter";
-import type { EisenhowerEntry } from "@shared/schema";
+import type { EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
 
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
@@ -206,6 +206,18 @@ export default function EisenhowerPage() {
     queryKey: ["/api/eisenhower/week", weekStartStr],
   });
   const hasExistingPlan = existingEntries.length > 0;
+
+  // Vision + goal for Weekly Reset display
+  const currentMonthKey = format(today, "yyyy-MM");
+  const { data: identityDoc } = useQuery<IdentityDocument>({ queryKey: ["/api/identity-document"] });
+  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
+    queryKey: ["/api/monthly-goal", currentMonthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
 
   // Fear-only mode: pre-load existing items so user can pick a fear target
   const fearOnlyLoaded = useRef(false);
@@ -570,10 +582,26 @@ export default function EisenhowerPage() {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Weekly Reset</h2>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{weekLabel}</p>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                Take 3 slow breaths.<br />
-                You are overloaded, not incapable.
-              </p>
+              {(identityDoc?.yearVision || monthlyGoal?.goalWhat) ? (
+                <div className="space-y-2 max-w-sm text-left">
+                  {identityDoc?.yearVision && (
+                    <div className="rounded-md bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">1-Year Vision</p>
+                      <p className="text-sm text-foreground/80">{identityDoc.yearVision}</p>
+                    </div>
+                  )}
+                  {monthlyGoal?.goalWhat && (
+                    <div className="rounded-md bg-emerald-50/50 dark:bg-emerald-950/20 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Monthly Goal</p>
+                      <p className="text-sm text-foreground/80">{monthlyGoal.goalWhat}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Set your vision and goal to see them here.
+                </p>
+              )}
             </div>
             {/* Week toggle */}
             {!fearOnlyMode && (

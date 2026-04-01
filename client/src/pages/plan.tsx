@@ -139,9 +139,11 @@ export default function PlanPage() {
   const [addingItem, setAddingItem] = useState(false);
   const [addTask, setAddTask] = useState("");
   const [addType, setAddType] = useState<"q1" | "q2">("q1");
+  const [addDate, setAddDate] = useState("");
+  const [addTime, setAddTime] = useState("");
   const [replaceId, setReplaceId] = useState<number | null>(null);
 
-  const resetAddForm = () => { setAddingItem(false); setAddTask(""); setAddType("q1"); setReplaceId(null); };
+  const resetAddForm = () => { setAddingItem(false); setAddTask(""); setAddType("q1"); setAddDate(""); setAddTime(""); setReplaceId(null); };
 
   // ─── Mutations ───────────────────────────────────────────────────
   const deleteMutation = useToastMutation<{ id: number; groupId?: string | null }>({
@@ -169,6 +171,7 @@ export default function PlanPage() {
       }
       const res = await apiRequest("POST", "/api/eisenhower", {
         task, weekStart: weekStartStr, quadrant, blocksGoal: quadrant === "q2", sortOrder: focusItems.length, isBinary: false,
+        scheduledDate: addDate || null, scheduledStartTime: addTime || null,
       });
       if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed to add item"); }
     },
@@ -310,6 +313,10 @@ export default function PlanPage() {
                       <button className={`text-[10px] px-2 py-1 rounded-md border cursor-pointer ${addType === "q2" ? "bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-950/30 dark:border-amber-500 dark:text-amber-400" : "border-border text-muted-foreground"}`} onClick={() => { setAddType("q2"); setReplaceId(null); }}>
                         Protect {q2Items.length >= MAX_Q2 && "(replace)"}
                       </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input type="date" value={addDate} onChange={e => setAddDate(e.target.value)} className="text-xs h-8 w-36" data-testid="input-add-date" />
+                      <Input type="time" value={addTime} onChange={e => setAddTime(e.target.value)} className="text-xs h-8 w-28" data-testid="input-add-time" />
                     </div>
                     {addType === "q1" && q1Items.length >= MAX_Q1 && (
                       <p className="text-[10px] text-rose-500">At {MAX_Q1} Handle items. Remove one first.</p>
