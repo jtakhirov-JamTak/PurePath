@@ -346,7 +346,7 @@ export default function JournalEntryPage() {
       });
 
       // Also save trigger log entry if evening trigger data is filled
-      if (!isMorning && eveningData.triggerText.trim() && eveningData.triggerEmotion && eveningData.triggerUrge) {
+      if (!isMorning && eveningData.triggerText.trim() && eveningData.triggerEmotion && eveningData.triggerUrge && eveningData.triggerEmotionIntensity != null && eveningData.triggerUrgeIntensity != null) {
         const appraisalParts = [...eveningData.triggerAppraisal.filter((a) => a !== "Other")];
         if (eveningData.triggerAppraisal.includes("Other") && eveningData.triggerAppraisalOther.trim()) {
           appraisalParts.push(eveningData.triggerAppraisalOther.trim());

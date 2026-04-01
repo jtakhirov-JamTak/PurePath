@@ -12,6 +12,7 @@ import { FreeTextOrChips } from "@/components/journal/free-text-or-chips";
 import type { EveningContent } from "@/pages/journal-entry";
 
 const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have the energy", "Avoided it"];
+const POSITIVE_INPUTS = ["Sleep", "Exercise", "Progress", "People", "Environment", "Mindset", "Other"];
 const POSITIVE_STATES = ["Calm", "Energy", "Focus", "Confidence", "Connection", "Joy", "Other"];
 const POSITIVE_DOWNSTREAMS = ["Habits", "Work", "Hard conversation", "Rest", "Planning", "Other"];
 
@@ -307,6 +308,28 @@ export function EveningJournal({
 
               {eveningData.positiveEvent.trim() && (
                 <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">What helped most?</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {POSITIVE_INPUTS.map((opt) => (
+                        <Chip
+                          key={opt}
+                          label={opt}
+                          selected={eveningData.positiveInput === opt}
+                          onClick={() => updateEvening("positiveInput", eveningData.positiveInput === opt ? "" : opt)}
+                        />
+                      ))}
+                    </div>
+                    {eveningData.positiveInput === "Other" && (
+                      <Input
+                        value={eveningData.positiveInputOther}
+                        onChange={(e) => updateEvening("positiveInputOther", e.target.value)}
+                        placeholder="Describe..."
+                        className="text-sm mt-1.5"
+                      />
+                    )}
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium">What state did it create?</Label>
                     <div className="flex flex-wrap gap-1.5">
