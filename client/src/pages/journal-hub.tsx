@@ -241,9 +241,12 @@ export default function JournalHubPage() {
               let bgClass: string;
               let textClass: string;
               if (isFuture) { bgClass = ""; textClass = "text-muted-foreground/30"; }
-              else if (allDone) { bgClass = "bg-emerald-500 rounded-sm"; textClass = "text-white"; }
-              else if (ratio > 0) { bgClass = "bg-emerald-500/40 rounded-sm"; textClass = "text-foreground"; }
-              else { bgClass = "border border-border/30 rounded-sm"; textClass = "text-foreground"; }
+              else if (allDone) { bgClass = "bg-emerald-600 rounded-sm"; textClass = "text-white"; }
+              else if (ratio >= 0.75) { bgClass = "bg-emerald-400/70 rounded-sm"; textClass = "text-foreground"; }
+              else if (ratio >= 0.5) { bgClass = "bg-green-400/60 rounded-sm"; textClass = "text-foreground"; }
+              else if (ratio >= 0.25) { bgClass = "bg-lime-400/60 rounded-sm"; textClass = "text-foreground"; }
+              else if (ratio > 0) { bgClass = "bg-yellow-400/60 rounded-sm"; textClass = "text-foreground"; }
+              else { bgClass = "border border-amber-400/50 rounded-sm"; textClass = "text-foreground"; }
 
               return (
                 <button
