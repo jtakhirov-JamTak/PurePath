@@ -19,28 +19,7 @@ import { CATEGORY_COLORS, CATEGORY_BADGE, TIMING_LABELS, TIMING_ORDER } from "@/
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
-
-// ─── Celebration beat hook ───────────────────────────────────────────
-function useCelebrationBeat(allDone: boolean): boolean {
-  const [celebrating, setCelebrating] = useState(false);
-  const prevDone = useRef(allDone);
-  const mounted = useRef(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => {
-    if (!mounted.current) { mounted.current = true; prevDone.current = allDone; return; }
-    if (allDone && !prevDone.current) {
-      setCelebrating(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCelebrating(false), 1200);
-    } else if (!allDone) {
-      setCelebrating(false);
-      if (timerRef.current) clearTimeout(timerRef.current);
-    }
-    prevDone.current = allDone;
-  }, [allDone]);
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
-  return celebrating;
-}
+import { useCelebrationBeat } from "@/hooks/use-celebration-beat";
 
 // ─── Stories Ring constants ──────────────────────────────────────────
 const RING_R = 14;
