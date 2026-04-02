@@ -353,7 +353,7 @@ export default function JournalEntryPage() {
             const habitId = key.replace("habit_", "");
             await apiRequest("PATCH", `/api/habit-completions/${habitId}/${date}`, {
               status: "skipped",
-              completionLevel: 0,
+              completionLevel: null,
               skipReason: reason,
               skipReasonSource: "reflection",
               skipReasonTimestamp: new Date().toISOString(),
