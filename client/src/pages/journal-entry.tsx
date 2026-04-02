@@ -55,8 +55,23 @@ interface MorningContent {
 export interface EveningContent {
   // Win of the Day
   promiseProof: string;
-  // Challenges (maps to journal.challenges column)
+  // Trigger log fields (chip-based)
   triggerText: string;
+  triggerAppraisal: string[];
+  triggerAppraisalOther: string;
+  triggerAppraisalText?: string;
+  triggerEmotion: string;
+  triggerEmotionIntensity: number | null;
+  triggerUrge: string;
+  triggerUrgeIntensity: number | null;
+  triggerAction: string;
+  triggerActionOther: string;
+  triggerShowTier2: boolean;
+  triggerBodyState: string[];
+  triggerBodyStateText?: string;
+  triggerOutcome: string;
+  triggerRecoveryTime: string;
+  triggerReflection: string;
   // Step-Back Reflection
   stepBackAdvice: string;
   stepBackLesson: string;
@@ -80,6 +95,14 @@ export interface EveningContent {
   insight: string;
   lesson: string;
   trigger: string;
+  triggerStory: string;
+  triggerImpulse: string;
+  triggerEmotionOther: string;
+  triggerEmotionLevel: string;
+  triggerUrgeOther: string;
+  triggerUrgeLevel: string;
+  triggerBehavior: string;
+  triggerNextTime: string;
   satisfied: string;
   dissatisfied: string;
   winOfTheDay: string;
@@ -120,7 +143,23 @@ const emptyMorning: MorningContent = {
 
 const emptyEvening: EveningContent = {
   promiseProof: "",
+  // Trigger fields
   triggerText: "",
+  triggerAppraisal: [],
+  triggerAppraisalOther: "",
+  triggerAppraisalText: "",
+  triggerEmotion: "",
+  triggerEmotionIntensity: null,
+  triggerUrge: "",
+  triggerUrgeIntensity: null,
+  triggerAction: "",
+  triggerActionOther: "",
+  triggerShowTier2: false,
+  triggerBodyState: [],
+  triggerBodyStateText: "",
+  triggerOutcome: "",
+  triggerRecoveryTime: "",
+  triggerReflection: "",
   // Step-Back
   stepBackAdvice: "",
   stepBackLesson: "",
@@ -144,6 +183,14 @@ const emptyEvening: EveningContent = {
   insight: "",
   lesson: "",
   trigger: "",
+  triggerStory: "",
+  triggerImpulse: "",
+  triggerEmotionOther: "",
+  triggerEmotionLevel: "",
+  triggerUrgeOther: "",
+  triggerUrgeLevel: "",
+  triggerBehavior: "",
+  triggerNextTime: "",
   satisfied: "",
   dissatisfied: "",
   winOfTheDay: "",

@@ -100,6 +100,7 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - Habit filtering must be consistent across all views — canonical logic in journal-hub.tsx
 - Auto-created eisenhower entries (e.g. from monthly goal nextConcreteStep) must dedupe before POSTing — re-saving the goal duplicated items on the calendar
 - Dashboard Daily Contract (or any "today's commitment" UI) must derive from `todayFocusItems` pinned to `todayStr`, not `focusItems` which follows `selectedDate` in the week strip
+- Trigger log section in evening journal is a KEEP — only the standalone Trigger Log tool/modal was removed, not the embedded evening journal trigger section ("What got in the way?")
 - (Add new lessons here as they arise)
 
 ## Docs
