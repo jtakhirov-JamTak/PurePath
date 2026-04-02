@@ -27,16 +27,16 @@ export function CompletionCircle({ done, onToggle, disabled, testId }: Completio
       whileTap={disabled ? undefined : { scale: 0.85 }}
       animate={done && animKey > 0 ? { scale: [0.85, 1.15, 1] } : { scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 15 }}
-      className={`h-7 w-7 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+      className={`h-[30px] w-[30px] rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
         disabled ? "cursor-default opacity-50" : "cursor-pointer"
       } ${
         done
-          ? "bg-emerald-500 border-emerald-600 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-          : "border-border bg-transparent"
+          ? "bg-primary border-primary shadow-[0_0_8px_hsl(var(--primary)/0.25)]"
+          : "border-border bg-background"
       }`}
       data-testid={testId}
     >
-      {done && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
+      {done && <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />}
     </motion.button>
   );
 }

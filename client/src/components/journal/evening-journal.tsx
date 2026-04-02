@@ -283,8 +283,8 @@ export function EveningJournal({
           <Card data-testid="card-positive-pattern">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="h-7 w-7 rounded-md bg-emerald-500/[0.08] flex items-center justify-center shrink-0">
-                  <Sparkles className="h-4 w-4 text-emerald-500" />
+                <div className="h-7 w-7 rounded-md bg-primary/[0.08] flex items-center justify-center shrink-0">
+                  <Sparkles className="h-4 w-4 text-primary" />
                 </div>
                 <div>
                   <CardTitle className="text-sm">What went well today?</CardTitle>

@@ -184,7 +184,7 @@ export default function HabitsPage() {
             <div className="pt-4 border-t" data-testid="section-past-habits">
               <button
                 onClick={() => setShowPastHabits(!showPastHabits)}
-                className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-bark font-medium cursor-pointer"
+                className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground font-medium cursor-pointer"
                 data-testid="button-toggle-past-habits"
               >
                 Past Habits ({pastHabits.length})

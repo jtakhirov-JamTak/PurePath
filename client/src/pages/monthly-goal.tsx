@@ -191,7 +191,7 @@ export default function MonthlyGoalPage() {
               key={s}
               onClick={() => setStep(s)}
               className={`h-2.5 w-2.5 rounded-full cursor-pointer ${
-                s === step ? "bg-emerald-500" : s < step ? "bg-emerald-500/50" : "bg-muted"
+                s === step ? "bg-primary" : s < step ? "bg-primary/50" : "bg-muted"
               }`}
               data-testid={`step-dot-${s}`}
             />
@@ -201,7 +201,7 @@ export default function MonthlyGoalPage() {
         {/* Step 1: Set the Goal */}
         {step === 1 && (
           <div className="space-y-4" data-testid="step-1">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Set the Goal</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Set the Goal</p>
 
             {(identityStatement || existingStrengths) && (
               <div>
@@ -214,7 +214,7 @@ export default function MonthlyGoalPage() {
                   {showIdentity ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
                 {showIdentity && (
-                  <div className="mt-1.5 border-l-[3px] border-l-[#6B4226] dark:border-l-[#A67B5B] bg-bark/5 rounded-r-md p-2.5 space-y-1">
+                  <div className="mt-1.5 border-l-[3px] border-l-primary bg-muted/50 rounded-r-md p-2.5 space-y-1">
                     {identityStatement && <p className="text-[10px] text-muted-foreground italic">{identityStatement}</p>}
                     {existingStrengths && <p className="text-[10px] text-muted-foreground">{existingStrengths}</p>}
                   </div>
@@ -277,14 +277,14 @@ export default function MonthlyGoalPage() {
         {/* Step 2: Why I Can Do This */}
         {step === 2 && (
           <div className="space-y-4" data-testid="step-2">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Why I Can Do This</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Why I Can Do This</p>
 
             {helpingChips.length > 0 && (
-              <div className="border-l-[3px] border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10 rounded-r-md p-2.5">
+              <div className="border-l-[3px] border-l-primary bg-primary/5 dark:bg-primary/10 rounded-r-md p-2.5">
                 <p className="text-[10px] text-muted-foreground mb-1">Your helping patterns:</p>
                 <div className="flex flex-wrap gap-1">
                   {helpingChips.map((chip, i) => (
-                    <span key={i} className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{chip}</span>
+                    <span key={i} className="text-[10px] text-primary dark:text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded-full">{chip}</span>
                   ))}
                 </div>
               </div>
@@ -309,10 +309,10 @@ export default function MonthlyGoalPage() {
         {/* Step 3: Main Obstacles */}
         {step === 3 && (
           <div className="space-y-4" data-testid="step-3">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Main Obstacles</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Main Obstacles</p>
 
             {frictionChips.length > 0 && (
-              <div className="border-l-[3px] border-l-[#6B4226] dark:border-l-[#A67B5B] bg-bark/5 rounded-r-md p-2.5">
+              <div className="border-l-[3px] border-l-primary bg-muted/50 rounded-r-md p-2.5">
                 <p className="text-[10px] text-muted-foreground mb-1">Your friction points:</p>
                 <div className="flex flex-wrap gap-1">
                   {frictionChips.map((chip, i) => (
@@ -368,7 +368,7 @@ export default function MonthlyGoalPage() {
         {/* Step 4: Lock the First Move */}
         {step === 4 && (
           <div className="space-y-4" data-testid="step-4">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Lock the First Move</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Lock the First Move</p>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium">What's the next concrete step?</label>
@@ -433,9 +433,9 @@ export default function MonthlyGoalPage() {
         {/* Step 5: Commit */}
         {step === 5 && (
           <div className="space-y-4" data-testid="step-5">
-            <p className="text-[11px] uppercase tracking-wide text-bark font-medium">Commit</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Commit</p>
 
-            <div className="border-l-[3px] border-l-[#6B4226] dark:border-l-[#A67B5B] bg-bark/5 rounded-r-md p-3 space-y-1.5">
+            <div className="border-l-[3px] border-l-primary bg-muted/50 rounded-r-md p-3 space-y-1.5">
               {goalWhat && <p className="text-xs font-medium">{goalWhat}</p>}
               {deadline && <p className="text-[10px] text-muted-foreground">By: {format(new Date(deadline + "T00:00:00"), "MMM d, yyyy")}</p>}
               {goalHowJoined && <p className="text-[10px] text-muted-foreground">How: {[goalHow1, goalHow2, goalHow3].filter(Boolean).join(" · ")}</p>}
@@ -447,7 +447,7 @@ export default function MonthlyGoalPage() {
               {eisenhowerCategory && <p className="text-[10px] capitalize">Category: {eisenhowerCategory}</p>}
             </div>
 
-            <p className="text-[10px] text-bark italic">Read this aloud.</p>
+            <p className="text-[10px] text-muted-foreground italic">Read this aloud.</p>
           </div>
         )}
 
@@ -462,7 +462,7 @@ export default function MonthlyGoalPage() {
           ) : (
             <Button
               size="sm"
-              className="text-xs bg-emerald-600 hover:bg-emerald-700"
+              className="text-xs bg-primary hover:bg-primary/90"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
               data-testid="button-save"

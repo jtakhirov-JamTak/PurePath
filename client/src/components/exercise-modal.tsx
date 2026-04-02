@@ -11,7 +11,7 @@ const MOOD_LEVELS = [
   { level: 2, icon: Frown, label: "Low", color: "text-orange-500" },
   { level: 3, icon: Meh, label: "Neutral", color: "text-yellow-500" },
   { level: 4, icon: Smile, label: "Good", color: "text-lime-500" },
-  { level: 5, icon: Laugh, label: "Great", color: "text-emerald-500" },
+  { level: 5, icon: Laugh, label: "Great", color: "text-primary" },
 ];
 
 function MoodCheckIn({
@@ -146,7 +146,7 @@ export function ExerciseModal({
           />
         ) : mood.phase === "done" ? (
           <div className="text-center space-y-3 py-4" data-testid="mood-done">
-            <Check className="h-10 w-10 text-emerald-500 mx-auto" />
+            <Check className="h-10 w-10 text-primary mx-auto" />
             <p className="text-sm font-medium">Exercise complete</p>
             <p className="text-xs text-muted-foreground">Your mood check-in has been saved.</p>
             <Button size="sm" onClick={resetAndClose} data-testid="button-mood-done-close">Close</Button>

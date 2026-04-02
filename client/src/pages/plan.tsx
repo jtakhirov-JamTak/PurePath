@@ -28,8 +28,8 @@ function Section({
   onToggle: () => void; celebrating: boolean; headerExtra?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className={`rounded-xl border border-border/60 overflow-hidden transition-colors duration-500 ${
-      celebrating ? "bg-emerald-50/80 dark:bg-emerald-950/30" : completionOk && expanded ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""
+    <div className={`rounded-[10px] border border-border/40 overflow-hidden transition-colors duration-500 ${
+      celebrating ? "bg-primary/5 dark:bg-primary/10" : completionOk && expanded ? "bg-primary/[0.03] dark:bg-primary/5" : "bg-card"
     }`}>
       <div className="flex items-center w-full p-3">
         <button
@@ -38,13 +38,13 @@ function Section({
           data-testid={`section-${id}`}
         >
           <div className="flex-1 min-w-0">
-            <span className={`text-sm font-semibold ${accentClass}`}>{verb}</span>
+            <span className={`text-base font-serif font-normal ${accentClass}`}>{verb}</span>
             <span className="text-[11px] uppercase tracking-wide text-muted-foreground ml-2">{timeLabel}</span>
             {!expanded && (
               <p className="text-[10px] text-muted-foreground truncate mt-0.5">{summary}</p>
             )}
           </div>
-          <span className={`h-2 w-2 rounded-full shrink-0 mx-2 ${completionOk ? "bg-emerald-500" : "bg-rose-400"}`} />
+          <span className={`h-2 w-2 rounded-full shrink-0 mx-2 ${completionOk ? "bg-primary" : "bg-muted-foreground/30"}`} />
           <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
         </button>
         {headerExtra}
@@ -77,7 +77,7 @@ function SubCard({ ok, title, subtitle, onClick, testId }: {
       data-testid={testId}
     >
       <div className="flex items-start gap-2">
-        <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${ok ? "bg-emerald-500" : "bg-rose-400"}`} />
+        <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${ok ? "bg-primary" : "bg-muted-foreground/30"}`} />
         <div>
           <p className="text-xs font-medium">{title}</p>
           <p className="text-[10px] text-muted-foreground">{subtitle}</p>
@@ -184,7 +184,7 @@ export default function PlanPage() {
 
         {/* ─── 1. PROVE — Daily ──────────────────────────────────── */}
         <Section
-          id="prove" verb="Prove" timeLabel="Daily" accentClass="text-emerald-600"
+          id="prove" verb="Prove" timeLabel="Daily" accentClass="text-primary"
           completionOk={activeHabits.length > 0} summary={activeHabits.length > 0 ? `${activeHabits.length} active habits` : "No habits set"}
           expanded={expanded.has("prove")} onToggle={() => toggle("prove")} celebrating={false}
         >
@@ -196,7 +196,7 @@ export default function PlanPage() {
                   className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1"
                   onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
                 >
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[h.category || "health"] || "bg-emerald-500"}`} />
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[h.category || "health"] || "bg-primary"}`} />
                   <span className="text-xs flex-1">{h.name}</span>
                   <span className="text-[10px] text-muted-foreground">{TIMING_LABELS[h.timing || "afternoon"] || "PM"}</span>
                 </div>
@@ -220,7 +220,7 @@ export default function PlanPage() {
 
         {/* ─── 2. DECIDE — Weekly ────────────────────────────────── */}
         <Section
-          id="decide" verb="Decide" timeLabel={weekLabel} accentClass="text-amber-600"
+          id="decide" verb="Decide" timeLabel={weekLabel} accentClass="text-[#B09340]"
           completionOk={focusItems.length > 0} summary={focusItems.length > 0 ? `${focusItems.length} items committed` : "Week not planned"}
           expanded={expanded.has("decide")} onToggle={() => toggle("decide")} celebrating={false}
           headerExtra={
@@ -359,7 +359,7 @@ export default function PlanPage() {
 
         {/* ─── 3. COMMIT — Monthly ───────────────────────────────── */}
         <Section
-          id="commit" verb="Commit" timeLabel={monthLabel} accentClass="text-rose-600"
+          id="commit" verb="Commit" timeLabel={monthLabel} accentClass="text-[#B8706A]"
           completionOk={!!goalDisplay} summary={goalDisplay || "No goal set"}
           expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
         >

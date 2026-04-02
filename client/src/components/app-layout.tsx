@@ -200,7 +200,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       </header>
 
       {showInstallBanner && (
-        <div className="bg-bark/5 border-b border-bark/20 px-4 py-2 flex items-center justify-between text-xs">
+        <div className="bg-muted/50 border-b border-border/40 px-4 py-2 flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Add Leaf to your home screen for the best experience</span>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setShowInstallBanner(false)} className="text-[10px] h-6 px-2">

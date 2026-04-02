@@ -159,8 +159,8 @@ export default function ScoreboardPage() {
         <FlowBar fallback="/profile" doneLabel="Done" />
         <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
           <div className="text-center space-y-2">
-            <div className="h-12 w-12 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <Check className="h-6 w-6 text-emerald-600" />
+            <div className="h-12 w-12 mx-auto rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+              <Check className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-base font-medium">Vision Locked In</h1>
             <p className="text-sm text-muted-foreground">This will surface on Tuesday and Friday mornings.</p>
@@ -194,7 +194,7 @@ export default function ScoreboardPage() {
               key={i}
               className={cn(
                 "h-2 w-2 rounded-full transition-colors",
-                i + 1 === step ? "bg-primary" : i + 1 < step ? "bg-emerald-500" : "bg-border"
+                i + 1 === step ? "bg-primary" : i + 1 < step ? "bg-primary/50" : "bg-border"
               )}
             />
           ))}

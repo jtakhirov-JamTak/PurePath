@@ -568,8 +568,8 @@ export default function JournalEntryPage() {
                             title={label}
                             className={`w-5 h-5 rounded-full border-2 transition-colors cursor-pointer ${
                               selected
-                                ? "bg-emerald-500 border-emerald-500"
-                                : "bg-transparent border-border hover:border-emerald-500/50"
+                                ? "bg-primary border-primary"
+                                : "bg-transparent border-border hover:border-primary/50"
                             }`}
                             data-testid={`button-energy-${i}`}
                             aria-label={label}
@@ -698,7 +698,7 @@ export default function JournalEntryPage() {
 
                 {/* Read this aloud — identity statement */}
                 {identityStatement ? (
-                  <div className="rounded-lg border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B] bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="identity-read-aloud">
+                  <div className="rounded-lg border-l-4 border-l-primary bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="identity-read-aloud">
                     <p className="text-xs font-medium text-muted-foreground">Read this aloud:</p>
                     <p className="text-base italic text-foreground">{identityStatement}</p>
                   </div>

@@ -86,7 +86,7 @@ export function FocusItem({ item, weekStartDate, isToday, onToggleDone }: FocusI
   const bgClass = isUndone && isToday ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
 
   return (
-    <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-all duration-200 ${borderClass} ${bgClass}`}>
+    <div data-testid={`focus-item-${item.id}`} className={`border-l-[3px] rounded-r-lg pl-3 pr-1 transition-all duration-200 ${borderClass} ${bgClass}`}>
       <div className="flex items-center gap-2 py-1.5">
         <CompletionCircle
           done={isDone}

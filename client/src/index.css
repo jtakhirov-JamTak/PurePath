@@ -18,16 +18,16 @@
   --sidebar: 28 10% 95%;
   --sidebar-foreground: 25 10% 10%;
   --sidebar-border: 30 6% 88%;
-  --sidebar-primary: 152 48% 46%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 163 40% 30%;
+  --sidebar-primary-foreground: 40 20% 98%;
   --sidebar-accent: 28 8% 91%;
   --sidebar-accent-foreground: 25 10% 10%;
-  --sidebar-ring: 152 48% 46%;
+  --sidebar-ring: 163 40% 30%;
   --popover: 30 8% 99%;
   --popover-foreground: 25 10% 10%;
   --popover-border: 30 6% 88%;
-  --primary: 152 48% 46%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 163 40% 30%;
+  --primary-foreground: 40 20% 98%;
   --secondary: 28 12% 94%;
   --secondary-foreground: 25 10% 15%;
   --muted: 28 8% 91%;
@@ -37,22 +37,22 @@
   --destructive: 0 60% 48%;
   --destructive-foreground: 0 0% 98%;
   --input: 30 6% 84%;
-  --ring: 152 48% 46%;
-  --chart-1: 152 48% 46%;
+  --ring: 163 40% 30%;
+  --chart-1: 163 40% 30%;
   --chart-2: 165 42% 42%;
   --chart-3: 25 35% 40%;
   --chart-4: 38 50% 50%;
   --chart-5: 190 40% 45%;
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-serif: "Inter", system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
   --font-mono: "JetBrains Mono", Menlo, monospace;
   --radius: .375rem;
-  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,.02);
-  --shadow-xs: 0 1px 2px 0 rgba(0,0,0,.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0,0,0,.04), 0 1px 2px -1px rgba(0,0,0,.03);
-  --shadow: 0 2px 6px -1px rgba(0,0,0,.04), 0 1px 3px -1px rgba(0,0,0,.03);
-  --shadow-md: 0 4px 8px -2px rgba(0,0,0,.05), 0 2px 4px -2px rgba(0,0,0,.03);
-  --shadow-lg: 0 8px 16px -4px rgba(0,0,0,.06), 0 4px 6px -2px rgba(0,0,0,.03);
+  --shadow-2xs: 0 1px 2px 0 rgba(100,85,60,0.03);
+  --shadow-xs: 0 1px 2px 0 rgba(100,85,60,0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(100,85,60,0.05), 0 1px 2px -1px rgba(100,85,60,0.04);
+  --shadow: 0 2px 6px -1px rgba(100,85,60,0.05), 0 1px 3px -1px rgba(100,85,60,0.04);
+  --shadow-md: 0 4px 8px -2px rgba(100,85,60,0.06), 0 2px 4px -2px rgba(100,85,60,0.04);
+  --shadow-lg: 0 8px 16px -4px rgba(100,85,60,0.07), 0 4px 6px -2px rgba(100,85,60,0.04);
   --shadow-xl: 0 16px 32px -8px rgba(0,0,0,.07), 0 8px 16px -4px rgba(0,0,0,.03);
   --shadow-2xl: 0 24px 48px -12px rgba(0,0,0,.08);
   --tracking-normal: 0em;
@@ -102,16 +102,16 @@
   --sidebar: 25 8% 9%;
   --sidebar-foreground: 30 8% 88%;
   --sidebar-border: 25 6% 18%;
-  --sidebar-primary: 152 50% 52%;
-  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-primary: 163 38% 45%;
+  --sidebar-primary-foreground: 40 20% 98%;
   --sidebar-accent: 25 6% 16%;
   --sidebar-accent-foreground: 30 8% 88%;
-  --sidebar-ring: 152 50% 52%;
+  --sidebar-ring: 163 38% 45%;
   --popover: 25 8% 10%;
   --popover-foreground: 30 8% 88%;
   --popover-border: 25 6% 20%;
-  --primary: 152 50% 52%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 163 38% 45%;
+  --primary-foreground: 40 20% 98%;
   --secondary: 25 8% 14%;
   --secondary-foreground: 30 8% 82%;
   --muted: 25 6% 16%;
@@ -121,8 +121,8 @@
   --destructive: 0 55% 45%;
   --destructive-foreground: 0 0% 98%;
   --input: 25 6% 22%;
-  --ring: 152 50% 52%;
-  --chart-1: 152 50% 52%;
+  --ring: 163 38% 45%;
+  --chart-1: 163 38% 45%;
   --chart-2: 165 42% 48%;
   --chart-3: 25 30% 50%;
   --chart-4: 38 45% 55%;
@@ -290,21 +290,6 @@
     inset: -1px;
   }
 
-  /* Tree brown accent utilities */
-  .text-bark { color: #6B4226; }
-  .dark .text-bark { color: #A67B5B; }
-  .bg-bark { background-color: #6B4226; }
-  .bg-bark\/5 { background-color: rgba(107, 66, 38, 0.05); }
-  .bg-bark\/10 { background-color: rgba(107, 66, 38, 0.1); }
-  .border-bark { border-color: #6B4226; }
-  .border-bark\/20 { border-color: rgba(107, 66, 38, 0.2); }
-  .border-bark\/30 { border-color: rgba(107, 66, 38, 0.3); }
-  .dark .bg-bark { background-color: #A67B5B; }
-  .dark .bg-bark\/5 { background-color: rgba(166, 123, 91, 0.05); }
-  .dark .bg-bark\/10 { background-color: rgba(166, 123, 91, 0.1); }
-  .dark .border-bark { border-color: #A67B5B; }
-  .dark .border-bark\/20 { border-color: rgba(166, 123, 91, 0.2); }
-  .dark .border-bark\/30 { border-color: rgba(166, 123, 91, 0.3); }
 }
 
 @media (display-mode: standalone) {

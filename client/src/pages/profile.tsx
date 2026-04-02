@@ -63,12 +63,12 @@ export default function ProfilePage() {
               <span
                 className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                   card.filled
-                    ? "bg-emerald-500"
+                    ? "bg-primary"
                     : "border-2 border-muted-foreground/30"
                 }`}
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{card.title}</p>
+                <p className="text-[15px] font-serif">{card.title}</p>
                 <p className="text-xs text-muted-foreground">{card.subtitle}</p>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />

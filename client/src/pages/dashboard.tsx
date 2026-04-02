@@ -16,11 +16,11 @@ import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, Ide
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
 import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
-import { CATEGORY_COLORS, CATEGORY_BADGE, TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
+import { TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
 import { ContainmentModal } from "@/components/tools/containment-modal";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
-import { useCelebrationBeat } from "@/hooks/use-celebration-beat";
+
 
 // ─── Stories Ring constants ──────────────────────────────────────────
 const RING_R = 14;
@@ -180,10 +180,7 @@ export default function DashboardPage() {
   // Close moment: everything done except evening, today only
   const isCloseMoment = isToday && allAboveDone && !hasEvening;
 
-  // Celebration beats
-  const focusCelebrating = useCelebrationBeat(allFocusDone);
-  const habitsCelebrating = useCelebrationBeat(allHabitsDone);
-  const morningCelebrating = useCelebrationBeat(hasMorning);
+  // (celebration beats removed — no per-section visual consumer)
 
   // ─── Stories ring per-day progress ───────────────────────────────
   const ringData = useMemo(() => {
@@ -304,19 +301,9 @@ export default function DashboardPage() {
 
   const readOnly = selectedDate > todayStr;
 
-  // ─── Section wrapper helper ──────────────────────────────────────
-  const sectionClass = (sectionAllDone: boolean, celebrating: boolean) =>
-    `py-3 transition-colors duration-500 ${
-      celebrating
-        ? "bg-emerald-50/80 dark:bg-emerald-950/40 rounded-lg px-3"
-        : sectionAllDone
-          ? "bg-emerald-50/40 dark:bg-emerald-950/20 rounded-lg px-3"
-          : ""
-    }`;
-
   return (
     <AppLayout>
-      <div className={`container mx-auto px-4 py-3 max-w-2xl space-y-5 transition-colors duration-700 ${
+      <div className={`container mx-auto px-5 py-6 max-w-2xl space-y-6 transition-colors duration-700 ${
         isCloseMoment ? "bg-gradient-to-b from-amber-50/30 dark:from-amber-950/15" : ""
       }`}>
 
@@ -354,7 +341,7 @@ export default function DashboardPage() {
                     {/* Progress ring */}
                     <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor"
                       strokeWidth={isLarge ? "3" : "2.5"}
-                      className={`text-emerald-500 ${day.isToday && day.progress < 1 ? "animate-dot-pulse" : ""}`}
+                      className={`text-primary ${day.isToday && day.progress < 1 ? "animate-dot-pulse" : ""}`}
                       strokeDasharray={`${day.progress * circ} ${circ}`}
                       strokeLinecap="round"
                       transform={`rotate(-90 ${cx} ${cy})`}
@@ -409,23 +396,21 @@ export default function DashboardPage() {
 
         {/* ─── 2. Anchor Card ──────────────────────────────────── */}
         {showAnchor && (
-          <div className="relative rounded-lg p-3 bg-gradient-to-br from-emerald-50/60 via-card to-card dark:from-emerald-950/20 overflow-hidden">
-            {/* Decorative circle */}
-            <div className="absolute -top-4 -right-4 h-16 w-16 rounded-full bg-emerald-100/30 dark:bg-emerald-900/10" />
-            <div className="relative space-y-1">
+          <div className="rounded-[10px] p-5 bg-gradient-to-br from-card via-card to-secondary/20 dark:to-secondary/10 shadow-sm border border-border/40 overflow-hidden">
+            <div className="space-y-2">
               {anchorIdentity && (
-                <p className="text-xs italic text-foreground/80 line-clamp-2">
+                <p className="font-serif text-base italic text-foreground/90 leading-relaxed line-clamp-2">
                   &ldquo;{anchorIdentity}&rdquo;
                 </p>
               )}
               {anchorValues && (
-                <p className="text-[10px] text-muted-foreground">
-                  <span className="font-medium">Values:</span> {anchorValues}
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-medium text-foreground/70">Values:</span> {anchorValues}
                 </p>
               )}
               {anchorGoal && (
-                <p className="text-[10px] text-muted-foreground">
-                  <span className="font-medium">Goal:</span> {anchorGoal}
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground/70">Goal:</span> {anchorGoal}
                 </p>
               )}
             </div>
@@ -434,172 +419,156 @@ export default function DashboardPage() {
 
         {/* ─── 3. Daily Contract ───────────────────────────────── */}
         <div
-          className={`py-3 transition-colors ${isToday && allDone ? "bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3" : ""}`}
+          className={`py-4 transition-colors ${isToday && allDone ? "bg-primary/5 rounded-[10px] px-4" : ""}`}
           data-testid="daily-contract"
         >
-          <p className="text-sm font-medium" data-testid="contract-counts">
+          <p className="font-serif text-[22px] font-normal tracking-tight leading-tight" data-testid="contract-counts">
             {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
           </p>
-          <p className={`text-xs mt-0.5 ${allDone ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-muted-foreground"}`}>
-            {allDone ? "Proved." : `${completedItems}/${totalItems} proved`}
+          <p className={`text-[13px] mt-1.5 ${allDone ? "text-primary font-medium" : "text-muted-foreground"}`}>
+            {allDone ? "Proved." : `${completedItems} of ${totalItems} proved`}
           </p>
         </div>
 
-        {/* ─── 4. Morning Journal ──────────────────────────────── */}
-        <div className={sectionClass(hasMorning, morningCelebrating)}>
+        {/* ─── Daily Actions Card ──────────────────────────────── */}
+        <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden">
+
+          {/* Morning Journal */}
           <button
-            className="flex items-center gap-3 w-full text-left"
+            className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
             onClick={() => { setLocation(`/journal/${selectedDate}/morning?returnTo=/dashboard`); window.scrollTo(0, 0); }}
             data-testid="journal-row-morning"
           >
             <CompletionCircle
               done={hasMorning}
-              onToggle={() => {/* handled by parent button */}}
+              onToggle={() => {}}
             />
             <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : ""}`}>
-              Check in with yourself
+              Check in
             </span>
             {hasMorning && (
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Done</span>
+              <span className="text-[11px] text-primary font-medium">Done</span>
             )}
           </button>
-        </div>
 
-        {/* ─── 5. Focus Section ────────────────────────────────── */}
-        {focusItems.length > 0 && (
-          <div className={sectionClass(allFocusDone, focusCelebrating)} data-testid="card-focus">
-            <div className="flex justify-end mb-1">
-              <span className="text-[11px] text-muted-foreground">
-                {completedFocusCount}/{focusItems.length}
-              </span>
-            </div>
-            <AnimatePresence mode="popLayout">
-              {sortedFocusItems.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className={item.status === "completed" ? "opacity-50" : ""}
-                >
-                  <FocusItem
-                    item={item}
-                    weekStartDate={weekStartDate}
-                    isToday={isToday}
-                    onToggleDone={(id, currentlyDone) =>
-                      setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
-                    }
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-
-        {/* ─── 6. Habits Section ───────────────────────────────── */}
-        {selectedHabits.length > 0 && (
-          <div className={sectionClass(allHabitsDone, habitsCelebrating)} data-testid="card-daily-habits">
-            <div className="flex justify-end mb-1">
-              <span className="text-[11px] text-muted-foreground">
-                {completedHabits}/{selectedHabits.length}
-              </span>
-            </div>
-            <AnimatePresence mode="popLayout">
-              {sortedHabits.map((habit) => {
-                const isDone = habitStatusMap.get(habit.id) === "completed";
-                const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
-
-                return (
-                  <motion.div
-                    key={habit.id}
-                    layout
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className={`py-1.5 ${isDone ? "opacity-50" : ""}`}
-                    data-testid={`habit-item-${habit.id}`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CompletionCircle
-                        done={isDone}
-                        onToggle={() => {
-                          if (readOnly) return;
-                          setHabitLevelMutation.mutate({
-                            habitId: habit.id,
-                            level: isDone ? null : 2,
-                          });
-                        }}
-                        disabled={readOnly}
-                        testId={`habit-level-${habit.id}`}
+          {/* Focus Items */}
+          {focusItems.length > 0 && (
+            <>
+              <div className="h-px bg-border/40 mx-5" />
+              <div className="py-1" data-testid="card-focus">
+                <AnimatePresence mode="popLayout">
+                  {sortedFocusItems.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className={item.status === "completed" ? "opacity-40" : ""}
+                    >
+                      <FocusItem
+                        item={item}
+                        weekStartDate={weekStartDate}
+                        isToday={isToday}
+                        onToggleDone={(id, currentlyDone) =>
+                          setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
+                        }
                       />
-                      <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-emerald-500"}`} />
-                      {habit.category && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${CATEGORY_BADGE[habit.category] || "bg-muted text-muted-foreground"}`}>
-                          {habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
-                        </span>
-                      )}
-                      <span className={`text-xs flex-1 ${isDone ? "line-through text-muted-foreground" : ""}`}>
-                        {habit.name}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{timingLabel}</span>
-                    </div>
-                    {/* 7-dot streak row */}
-                    <div className="flex gap-0.5 ml-[2.75rem] mt-0.5">
-                      {weekDays.map(dayStr => {
-                        const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
-                        const isDayToday = dayStr === todayStr;
-                        return (
-                          <span
-                            key={dayStr}
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              lvl !== null && lvl >= 1 ? "bg-emerald-500"
-                              : isDayToday ? "ring-1 ring-border bg-transparent"
-                              : "bg-muted"
-                            } ${isDayToday && lvl !== null && lvl >= 1 ? "animate-dot-spring" : ""}`}
-                          />
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </>
+          )}
 
-        {/* ─── 7. Evening Journal ──────────────────────────────── */}
-        <div
-          className={`${sectionClass(hasEvening, false)} transition-transform duration-300 ${
-            isCloseMoment ? "scale-[1.01]" : ""
-          }`}
-        >
+          {/* Habits */}
+          {selectedHabits.length > 0 && (
+            <>
+              <div className="h-px bg-border/40 mx-5" />
+              <div className="py-1" data-testid="card-daily-habits">
+                <AnimatePresence mode="popLayout">
+                  {sortedHabits.map((habit) => {
+                    const isDone = habitStatusMap.get(habit.id) === "completed";
+                    const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
+                    return (
+                      <motion.div
+                        key={habit.id}
+                        layout
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className={isDone ? "opacity-40" : ""}
+                        data-testid={`habit-item-${habit.id}`}
+                      >
+                        <div className="flex items-center gap-3 px-5 py-[14px]">
+                          <CompletionCircle
+                            done={isDone}
+                            onToggle={() => {
+                              if (readOnly) return;
+                              setHabitLevelMutation.mutate({ habitId: habit.id, level: isDone ? null : 2 });
+                            }}
+                            disabled={readOnly}
+                            testId={`habit-level-${habit.id}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>
+                              {habit.name}
+                            </span>
+                            {/* 7-dot streak row */}
+                            <div className="flex gap-[3px] mt-1.5">
+                              {weekDays.map(dayStr => {
+                                const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
+                                const isDayToday = dayStr === todayStr;
+                                return (
+                                  <span
+                                    key={dayStr}
+                                    className={`h-[5px] w-[5px] rounded-full ${
+                                      lvl !== null && lvl >= 1 ? "bg-primary"
+                                      : isDayToday ? "ring-1 ring-border bg-transparent"
+                                      : "bg-muted"
+                                    } ${isDayToday && lvl !== null && lvl >= 1 ? "animate-dot-spring" : ""}`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <span className="text-[11px] text-muted-foreground shrink-0">{timingLabel}</span>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            </>
+          )}
+
+          {/* Evening */}
+          <div className="h-px bg-border/40 mx-5" />
           <button
-            className="flex items-center gap-3 w-full text-left"
+            className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${
+              isCloseMoment ? "scale-[1.01]" : ""
+            }`}
             onClick={() => { setLocation(`/journal/${selectedDate}/evening?returnTo=/dashboard`); window.scrollTo(0, 0); }}
             data-testid="journal-row-evening"
           >
             <CompletionCircle
               done={hasEvening}
-              onToggle={() => {/* handled by parent button */}}
+              onToggle={() => {}}
             />
             <span className={`flex-1 ${
-              isCloseMoment ? "text-sm font-bold" : "text-sm"
+              isCloseMoment ? "text-sm font-semibold" : "text-sm"
             } ${hasEvening ? "line-through text-muted-foreground" : ""}`}>
               {isCloseMoment ? "Close the day" : "Evening reflection"}
             </span>
             {hasEvening && (
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">Done</span>
+              <span className="text-[11px] text-primary font-medium">Done</span>
             )}
           </button>
         </div>
 
-        {/* ─── 8. Containment ──────────────────────────────────── */}
+        {/* ─── Containment ──────────────────────────────────── */}
         <button
-          className="flex items-center gap-2 py-3 px-1 text-muted-foreground hover:text-foreground transition-colors w-full cursor-pointer"
+          className="flex items-center gap-3 py-2 px-1 text-muted-foreground hover:text-foreground transition-colors w-full cursor-pointer"
           onClick={() => setContainmentOpen(true)}
         >
-          <Heart className="h-4 w-4 text-rose-400" />
-          <div className="text-left">
-            <span className="text-xs font-medium block">Containment</span>
-            <span className="text-[10px] text-muted-foreground">Slow down before reacting</span>
-          </div>
+          <Heart className="h-4 w-4 text-[#B8706A]" />
+          <span className="text-xs text-muted-foreground">Containment</span>
         </button>
       </div>
 

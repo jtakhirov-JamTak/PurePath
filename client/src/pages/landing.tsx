@@ -26,7 +26,7 @@ export default function LandingPage() {
       <main className="container mx-auto px-6 max-w-2xl">
         {/* Hero */}
         <section className="pt-16 pb-14">
-          <p className="text-[11px] uppercase tracking-widest text-bark mb-3">One session. Real change.</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-3">One session. Real change.</p>
           <h1 className="text-base font-medium mb-3 leading-tight">
             Clarity <span className="text-muted-foreground font-normal mx-1">&rarr;</span> Commitment <span className="text-muted-foreground font-normal mx-1">&rarr;</span> System
           </h1>
@@ -48,7 +48,7 @@ export default function LandingPage() {
 
         {/* What You Leave With */}
         <section className="pb-14">
-          <p className="text-[11px] uppercase tracking-widest text-bark mb-4">What you leave with</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-4">What you leave with</p>
           <div className="grid sm:grid-cols-3 gap-x-8 gap-y-3">
             <div>
               <p className="font-medium text-sm">Discovery Profile</p>
@@ -79,7 +79,7 @@ export default function LandingPage() {
 
         {/* The Framework */}
         <section className="pb-14">
-          <p className="text-[11px] uppercase tracking-widest text-bark mb-4">The framework</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-4">The framework</p>
           <div className="space-y-3 sm:space-y-0 sm:flex sm:items-start sm:gap-3">
             {[
               { label: "Discover", desc: "Values, vision, strengths, friction points" },
@@ -99,7 +99,7 @@ export default function LandingPage() {
 
         {/* The Workshop */}
         <section className="pb-14">
-          <p className="text-[11px] uppercase tracking-widest text-bark mb-4">The workshop</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-4">The workshop</p>
           <div className="grid sm:grid-cols-2 gap-8" style={{ borderTop: "0.5px solid hsl(var(--border))", paddingTop: 16 }}>
             <div className="space-y-2">
               <div className="flex justify-between text-sm"><span className="text-muted-foreground">Duration</span><span>3.5 hours</span></div>
@@ -117,8 +117,8 @@ export default function LandingPage() {
 
         {/* Pricing */}
         <section id="pricing" className="pb-16">
-          <p className="text-[11px] uppercase tracking-widest text-bark mb-4">Pricing</p>
-          <div className="rounded-md p-6 border-l-4 border-l-[#6B4226] dark:border-l-[#A67B5B]" style={{ border: "0.5px solid hsl(var(--border))", borderLeftWidth: 4, borderLeftColor: "#6B4226", background: "hsl(var(--muted) / 0.3)" }}>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-4">Pricing</p>
+          <div className="rounded-md p-6 border-l-4 border-l-primary" style={{ border: "0.5px solid hsl(var(--border))", borderLeftWidth: 4, borderLeftColor: "hsl(var(--primary))", background: "hsl(var(--muted) / 0.3)" }}>
             <p className="font-medium text-sm mb-2">The Leaf Workshop</p>
             <div className="flex items-baseline gap-2 mb-4">
               <span className="text-xl font-bold">$899</span>

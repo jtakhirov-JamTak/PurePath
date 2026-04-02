@@ -37,20 +37,20 @@ export const TIMING_LABELS: Record<string, string> = {
 
 /** Quadrant left-border accent on focus items */
 export const QUADRANT_BORDER: Record<string, string> = {
-  q1: "border-l-rose-500",
-  q2: "border-l-amber-500",
+  q1: "border-l-[#B8706A]",
+  q2: "border-l-[#B09340]",
 };
 
 /** Warm background for undone focus items by quadrant */
 export const QUADRANT_BG_UNDONE: Record<string, string> = {
-  q1: "bg-rose-50 dark:bg-rose-950/20",
-  q2: "bg-amber-50 dark:bg-amber-950/20",
+  q1: "bg-[#B8706A]/5 dark:bg-[#B8706A]/10",
+  q2: "bg-[#B09340]/5 dark:bg-[#B09340]/10",
 };
 
 /** Quadrant icon colors */
 export const QUADRANT_ICON_COLOR: Record<string, string> = {
-  q1: "text-rose-500",
-  q2: "text-amber-500",
+  q1: "text-[#B8706A]",
+  q2: "text-[#B09340]",
 };
 
 /** Category badge classes for inline labels on focus items */
@@ -65,7 +65,7 @@ export const CATEGORY_BADGE: Record<string, string> = {
 
 /** Week strip day cell tints based on completion */
 export const WEEK_DAY_TINT: Record<string, string> = {
-  allDone: "bg-emerald-50 dark:bg-emerald-950/20",
+  allDone: "bg-primary/5 dark:bg-primary/10",
   hasQ1Open: "bg-rose-50 dark:bg-rose-950/15",
   hasQ2Open: "bg-amber-50 dark:bg-amber-950/15",
   neutral: "",

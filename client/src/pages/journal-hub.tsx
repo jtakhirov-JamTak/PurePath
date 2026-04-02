@@ -241,12 +241,12 @@ export default function JournalHubPage() {
               let bgClass: string;
               let textClass: string;
               if (isFuture) { bgClass = ""; textClass = "text-muted-foreground/30"; }
-              else if (allDone) { bgClass = "bg-emerald-700 rounded-sm"; textClass = "text-white"; }
-              else if (ratio >= 0.75) { bgClass = "bg-emerald-500 rounded-sm"; textClass = "text-white"; }
-              else if (ratio >= 0.5) { bgClass = "bg-green-400 rounded-sm"; textClass = "text-foreground"; }
-              else if (ratio >= 0.25) { bgClass = "bg-lime-400 rounded-sm"; textClass = "text-foreground"; }
-              else if (ratio > 0) { bgClass = "bg-yellow-400 rounded-sm"; textClass = "text-foreground"; }
-              else { bgClass = "border border-amber-400/50 rounded-sm"; textClass = "text-foreground"; }
+              else if (allDone) { bgClass = "bg-primary rounded-sm"; textClass = "text-primary-foreground"; }
+              else if (ratio >= 0.75) { bgClass = "bg-primary/70 rounded-sm"; textClass = "text-primary-foreground"; }
+              else if (ratio >= 0.5) { bgClass = "bg-primary/40 rounded-sm"; textClass = "text-foreground"; }
+              else if (ratio >= 0.25) { bgClass = "bg-primary/20 rounded-sm"; textClass = "text-foreground"; }
+              else if (ratio > 0) { bgClass = "bg-[#B09340]/20 rounded-sm"; textClass = "text-foreground"; }
+              else { bgClass = "border border-border/50 rounded-sm"; textClass = "text-foreground"; }
 
               return (
                 <button
@@ -299,7 +299,7 @@ export default function JournalHubPage() {
                       >
                         <Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                         <span className="text-[11px] flex-1">Morning</span>
-                        <span className={`text-[10px] px-1.5 py-0 rounded ${selectedDateJournals.morning ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                        <span className={`text-[10px] px-1.5 py-0 rounded ${selectedDateJournals.morning ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary" : "bg-muted text-muted-foreground"}`}>
                           {selectedDateJournals.morning ? "Completed" : "Not started"}
                         </span>
                       </button>
@@ -344,7 +344,7 @@ export default function JournalHubPage() {
                                   onToggle={() => habitMutation.mutate({ habitId: habit.id, done: isDone, date: selectedDate! })}
                                   testId={`detail-habit-level-${habit.id}`}
                                 />
-                                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-emerald-500"}`} />
+                                <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[habit.category || "health"] || "bg-primary"}`} />
                                 <span className={`text-xs flex-1 ${isDone ? "line-through text-muted-foreground" : ""}`}>
                                   {habit.name}
                                 </span>
@@ -362,7 +362,7 @@ export default function JournalHubPage() {
                       >
                         <Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                         <span className="text-[11px] flex-1">Evening</span>
-                        <span className={`text-[10px] px-1.5 py-0 rounded ${selectedDateJournals.evening ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+                        <span className={`text-[10px] px-1.5 py-0 rounded ${selectedDateJournals.evening ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary" : "bg-muted text-muted-foreground"}`}>
                           {selectedDateJournals.evening ? "Completed" : "Not started"}
                         </span>
                       </button>
