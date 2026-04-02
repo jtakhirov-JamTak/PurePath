@@ -1,17 +1,14 @@
 import { db } from "./db";
 import {
-  users, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, containmentLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
-  type EmpathyExercise, type InsertEmpathyExercise,
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
   type IdentityDocument, type InsertIdentityDocument,
   type MonthlyGoal, type InsertMonthlyGoal,
   type ToolUsageLog, type InsertToolUsageLog,
-  type TriggerLog, type InsertTriggerLog,
   type AvoidanceLog, type InsertAvoidanceLog,
-  type Decision, type InsertDecision,
   type ContainmentLog, type InsertContainmentLog,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
@@ -41,12 +38,6 @@ export interface IStorage {
   upsertWeeklySummary(summary: InsertWeeklySummary): Promise<WeeklySummary>;
   commitWeek(userId: string, weekStart: string, items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[], fearSummary?: InsertWeeklySummary): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }>;
 
-  // Empathy Exercises
-  getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]>;
-  createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise>;
-  updateEmpathyExercise(userId: string, id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise>;
-  deleteEmpathyExercise(userId: string, id: number): Promise<void>;
-  
   // Habits
   getHabitsByUser(userId: string): Promise<Habit[]>;
   createHabit(habit: InsertHabit): Promise<Habit>;
@@ -76,18 +67,11 @@ export interface IStorage {
   createToolUsageLog(log: InsertToolUsageLog): Promise<ToolUsageLog>;
   updateToolUsageLog(userId: string, id: number, updates: Partial<InsertToolUsageLog>): Promise<ToolUsageLog>;
 
-  // Trigger Logs
-  getTriggerLogsByUser(userId: string): Promise<TriggerLog[]>;
-  createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog>;
 
   // Avoidance Logs
   getAvoidanceLogsByUser(userId: string): Promise<AvoidanceLog[]>;
   createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog>;
 
-  // Decisions
-  getDecisionsByUser(userId: string): Promise<Decision[]>;
-  getDecisionsForWeek(userId: string, weekStart: string): Promise<Decision[]>;
-  createDecision(decision: InsertDecision): Promise<Decision>;
 
   // Containment Logs
   getContainmentLogsByUser(userId: string): Promise<ContainmentLog[]>;
@@ -286,25 +270,6 @@ export class DatabaseStorage implements IStorage {
 
       return { entries, summary };
     });
-  }
-
-  // Empathy Exercises
-  async getEmpathyExercisesByUser(userId: string): Promise<EmpathyExercise[]> {
-    return db.select().from(empathyExercises).where(eq(empathyExercises.userId, userId)).orderBy(desc(empathyExercises.createdAt));
-  }
-
-  async createEmpathyExercise(exercise: InsertEmpathyExercise): Promise<EmpathyExercise> {
-    const [newExercise] = await db.insert(empathyExercises).values(exercise).returning();
-    return newExercise;
-  }
-
-  async updateEmpathyExercise(userId: string, id: number, exercise: Partial<InsertEmpathyExercise>): Promise<EmpathyExercise> {
-    const [updated] = await db.update(empathyExercises).set(exercise).where(and(eq(empathyExercises.id, id), eq(empathyExercises.userId, userId))).returning();
-    return updated;
-  }
-
-  async deleteEmpathyExercise(userId: string, id: number): Promise<void> {
-    await db.delete(empathyExercises).where(and(eq(empathyExercises.id, id), eq(empathyExercises.userId, userId)));
   }
 
   // Habits
@@ -508,34 +473,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getTriggerLogsByUser(userId: string): Promise<TriggerLog[]> {
-    return db.select().from(triggerLogs).where(eq(triggerLogs.userId, userId)).orderBy(desc(triggerLogs.createdAt));
-  }
-
-  async createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog> {
-    const [created] = await db.insert(triggerLogs).values(log).returning();
-    return created;
-  }
-
   async getAvoidanceLogsByUser(userId: string): Promise<AvoidanceLog[]> {
     return db.select().from(avoidanceLogs).where(eq(avoidanceLogs.userId, userId)).orderBy(desc(avoidanceLogs.createdAt));
   }
 
   async createAvoidanceLog(log: InsertAvoidanceLog): Promise<AvoidanceLog> {
     const [created] = await db.insert(avoidanceLogs).values(log).returning();
-    return created;
-  }
-
-  async getDecisionsByUser(userId: string): Promise<Decision[]> {
-    return db.select().from(decisions).where(eq(decisions.userId, userId)).orderBy(desc(decisions.createdAt));
-  }
-
-  async getDecisionsForWeek(userId: string, weekStart: string): Promise<Decision[]> {
-    return db.select().from(decisions).where(and(eq(decisions.userId, userId), eq(decisions.weekStart, weekStart))).orderBy(desc(decisions.createdAt));
-  }
-
-  async createDecision(decision: InsertDecision): Promise<Decision> {
-    const [created] = await db.insert(decisions).values(decision).returning();
     return created;
   }
 

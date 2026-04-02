@@ -15,22 +15,16 @@ export function registerExportRoutes(app: Express) {
         journals,
         habits,
         eisenhowerEntries,
-        empathyExercises,
-        triggerLogs,
         avoidanceLogs,
         toolUsageLogs,
-        decisionLogs,
         containmentLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getJournalsByUser(userId),
         storage.getHabitsByUser(userId),
         storage.getEisenhowerEntriesByUser(userId),
-        storage.getEmpathyExercisesByUser(userId),
-        storage.getTriggerLogsByUser(userId),
         storage.getAvoidanceLogsByUser(userId),
         storage.getToolUsageLogsByUser(userId),
-        storage.getDecisionsByUser(userId),
         storage.getContainmentLogsByUser(userId),
       ]);
 
@@ -232,54 +226,6 @@ export function registerExportRoutes(app: Express) {
         });
       }
 
-      // EQ MODULE
-      md += `---\n\n## EQ Module (Empathy Exercises)\n\n`;
-      if (empathyExercises.length === 0) {
-        md += `No empathy exercises recorded.\n\n`;
-      } else {
-        empathyExercises.forEach(e => {
-          md += `### ${e.date} — ${e.exerciseType === "prep" ? "Prep" : "Debrief"} with ${e.who}\n\n`;
-          if (e.context) md += `**Context:** ${e.context}\n`;
-          if (e.theirEmotionalState) md += `**Their Emotional State:** ${e.theirEmotionalState}\n`;
-          if (e.myEmotionalState) md += `**My Emotional State:** ${e.myEmotionalState}\n`;
-          if (e.factsObserved) md += `**Facts Observed:** ${e.factsObserved}\n`;
-          if (e.howICameAcross) md += `**How I Came Across:** ${e.howICameAcross}\n`;
-          if (e.howTheyLikelyFelt) md += `**How They Likely Felt:** ${e.howTheyLikelyFelt}\n`;
-          if (e.whatMattersToThem) md += `**What Matters to Them:** ${e.whatMattersToThem}\n`;
-          if (e.whatTheyNeed) md += `**What They Need:** ${e.whatTheyNeed}\n`;
-          if (e.nextAction) md += `**Next Action:** ${e.nextAction}\n`;
-          if (e.didConfirm) md += `**Did Confirm:** ${e.didConfirm}\n`;
-          if (e.intention) md += `**Intention:** ${e.intention}\n`;
-          if (e.leaveThemFeeling) md += `**Leave Them Feeling:** ${e.leaveThemFeeling}\n`;
-          if (e.triggerRiskIfThen) md += `**Trigger Risk IF-THEN:** ${e.triggerRiskIfThen}\n`;
-          if (e.themHypothesis) md += `**Hypothesis About Them:** ${e.themHypothesis}\n`;
-          if (e.realityCheckQuestion) md += `**Reality Check Question:** ${e.realityCheckQuestion}\n`;
-          if (e.reflectionValidation) md += `**Reflection/Validation:** ${e.reflectionValidation}\n`;
-          md += `\n`;
-        });
-      }
-
-      // TRIGGER LOGS
-      md += `---\n\n## Trigger Logs\n\n`;
-      if (triggerLogs.length === 0) {
-        md += `No trigger logs recorded.\n\n`;
-      } else {
-        triggerLogs.forEach(t => {
-          md += `### ${t.date}${t.timeOfDay ? ` (${t.timeOfDay})` : ""}\n\n`;
-          md += `**Trigger:** ${t.triggerText}\n`;
-          md += `**Emotion:** ${t.emotion} (${t.emotionIntensity}/5)\n`;
-          md += `**Urge:** ${t.urge} (${t.urgeIntensity}/5)\n`;
-          if (t.appraisal) md += `**Appraisal:** ${t.appraisal}\n`;
-          if (t.actionTaken) md += `**Action Taken:** ${t.actionTaken}\n`;
-          if (t.whatIDid) md += `**What I Did:** ${t.whatIDid}\n`;
-          if (t.bodyState) md += `**Body State:** ${t.bodyState}\n`;
-          if (t.outcome) md += `**Outcome:** ${t.outcome}\n`;
-          if (t.recoveryTime) md += `**Recovery Time:** ${t.recoveryTime}\n`;
-          if (t.reflection) md += `**Reflection:** ${t.reflection}\n`;
-          md += `\n`;
-        });
-      }
-
       // AVOIDANCE LOGS
       md += `---\n\n## Avoidance Logs\n\n`;
       if (avoidanceLogs.length === 0) {
@@ -305,29 +251,6 @@ export function registerExportRoutes(app: Express) {
           md += `- **${t.date}** — ${t.toolName}: mood ${t.moodBefore}→${t.moodAfter ?? "?"}/5, emotion: ${t.emotionBefore}→${t.emotionAfter || "?"}, ${t.completed ? "completed" : "not completed"}\n`;
         });
         md += `\n`;
-      }
-
-      // DECISIONS
-      md += `---\n\n## Decisions\n\n`;
-      const decisionList = decisionLogs as { weekStart: string; fear: string; fearDump?: string | null; blocker?: string | null; decisionStatement?: string | null; doorType?: string | null; firstPhysicalStep?: string | null }[];
-      if (decisionList.length === 0) {
-        md += `No decisions recorded.\n\n`;
-      } else {
-        decisionList.forEach((d) => {
-          md += `### ${d.weekStart} — "${d.fear}"\n`;
-          if (d.fearDump) {
-            try {
-              const outcomes = JSON.parse(d.fearDump) as string[];
-              md += `**Worst outcomes:**\n`;
-              outcomes.forEach((o) => { md += `- ${o}\n`; });
-            } catch { /* skip malformed */ }
-          }
-          if (d.blocker) md += `**Blocker:** ${d.blocker}\n`;
-          if (d.decisionStatement) md += `**Decision:** ${d.decisionStatement}\n`;
-          if (d.doorType) md += `**Door type:** ${d.doorType}\n`;
-          if (d.firstPhysicalStep) md += `**First step:** ${d.firstPhysicalStep}\n`;
-          md += `\n`;
-        });
       }
 
       // CONTAINMENT LOGS

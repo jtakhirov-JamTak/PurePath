@@ -6,10 +6,8 @@
 let _habits: any[] = [];
 let _habitCompletions: any[] = [];
 let _eisenhower: any[] = [];
-let _empathy: any[] = [];
 let _identityDocs: any[] = [];
 let _toolUsage: any[] = [];
-let _triggerLogs: any[] = [];
 let _avoidanceLogs: any[] = [];
 let _monthlyGoals: any[] = [];
 let _journals: any[] = [];
@@ -22,10 +20,8 @@ export function resetStorage() {
   _habits = [];
   _habitCompletions = [];
   _eisenhower = [];
-  _empathy = [];
   _identityDocs = [];
   _toolUsage = [];
-  _triggerLogs = [];
   _avoidanceLogs = [];
   _monthlyGoals = [];
   _journals = [];
@@ -96,20 +92,6 @@ export const storage = {
   },
   deleteEisenhowerEntry: async (userId: string, id: number) => { _eisenhower = _eisenhower.filter(e => !(e.id === id && e.userId === userId)); },
 
-  // Empathy
-  getEmpathyExercisesByUser: async (userId: string) => _empathy.filter(e => e.userId === userId),
-  createEmpathyExercise: async (data: any) => {
-    const e = { id: nextId(), ...data };
-    _empathy.push(e);
-    return e;
-  },
-  updateEmpathyExercise: async (userId: string, id: number, data: any) => {
-    const e = _empathy.find(e => e.id === id && e.userId === userId);
-    if (e) Object.assign(e, data);
-    return e;
-  },
-  deleteEmpathyExercise: async (userId: string, id: number) => { _empathy = _empathy.filter(e => !(e.id === id && e.userId === userId)); },
-
   // Identity
   getIdentityDocument: async (userId: string) => _identityDocs.find(d => d.userId === userId) || null,
   upsertIdentityDocument: async (data: any) => {
@@ -158,14 +140,6 @@ export const storage = {
     return t;
   },
 
-  // Trigger logs
-  getTriggerLogsByUser: async (userId: string) => _triggerLogs.filter(t => t.userId === userId),
-  createTriggerLog: async (data: any) => {
-    const t = { id: nextId(), ...data };
-    _triggerLogs.push(t);
-    return t;
-  },
-
   // Avoidance logs
   getAvoidanceLogsByUser: async (userId: string) => _avoidanceLogs.filter(a => a.userId === userId),
   createAvoidanceLog: async (data: any) => {
@@ -173,11 +147,6 @@ export const storage = {
     _avoidanceLogs.push(a);
     return a;
   },
-
-  // Decisions
-  getDecisionsByUser: async (userId: string) => [] as any[],
-  getDecisionsForWeek: async (userId: string, weekStart: string) => [] as any[],
-  createDecision: async (data: any) => ({ id: nextId(), ...data }),
 
   // Containment Logs
   getContainmentLogsByUser: async (userId: string) => [] as any[],
@@ -196,5 +165,7 @@ export const storage = {
     const s = _userSettings.find(s => s.userId === userId);
     return s?.hasAccess === true;
   },
+
+  getAllUsersWithSettings: async () => [],
 
 };

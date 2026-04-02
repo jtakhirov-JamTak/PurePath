@@ -115,7 +115,7 @@ export const insertWeeklySummarySchema = createInsertSchema(weeklySummaries).omi
 export type WeeklySummary = typeof weeklySummaries.$inferSelect;
 export type InsertWeeklySummary = z.infer<typeof insertWeeklySummarySchema>;
 
-// Empathy exercises - reflection after interactions
+// DEPRECATED: feature removed, table retained for historical data
 export const empathyExercises = pgTable("empathy_exercises", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -325,6 +325,7 @@ export const insertToolUsageLogSchema = createInsertSchema(toolUsageLogs).omit({
 export type ToolUsageLog = typeof toolUsageLogs.$inferSelect;
 export type InsertToolUsageLog = z.infer<typeof insertToolUsageLogSchema>;
 
+// DEPRECATED: feature removed, table retained for historical data
 export const triggerLogs = pgTable("trigger_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -382,7 +383,7 @@ export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
 export type AvoidanceLog = typeof avoidanceLogs.$inferSelect;
 export type InsertAvoidanceLog = z.infer<typeof insertAvoidanceLogSchema>;
 
-// Decision Matrix entries
+// DEPRECATED: feature removed, table retained for historical data
 export const decisions = pgTable("decisions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),

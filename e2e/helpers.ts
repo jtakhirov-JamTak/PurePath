@@ -131,10 +131,6 @@ export async function mockDashboardData(page: Page, overrides: {
     route.fulfill({ json: customTools }),
   );
 
-  await page.route("**/api/trigger-logs", (route) =>
-    route.fulfill({ json: { success: true } }),
-  );
-
   await page.route("**/api/avoidance-logs", (route) =>
     route.fulfill({ json: { success: true } }),
   );
