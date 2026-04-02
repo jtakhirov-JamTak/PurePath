@@ -166,6 +166,8 @@ export const storage = {
     return s?.hasAccess === true;
   },
 
-  getAllUsersWithSettings: async () => [],
+  getAllUsersWithStats: async () => [],
+  getUserActivityDates: async () => [],
+  batchUpdateAccess: async () => {},
 
 };

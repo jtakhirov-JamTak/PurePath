@@ -13,7 +13,7 @@ import {
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -82,14 +82,17 @@ export interface IStorage {
 
   // User Settings
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
-  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string }): Promise<UserSettings>;
+  upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string; cohort?: string | null }): Promise<UserSettings>;
 
   // Admin
-  getAllUsersWithSettings(): Promise<Array<{
+  getAllUsersWithStats(): Promise<Array<{
     id: string; email: string | null; firstName: string | null; lastName: string | null;
     profileImageUrl: string | null; createdAt: Date | null;
     hasAccess: boolean; personalEmail: string | null; onboardingComplete: boolean;
+    cohort: string | null; journalCount: number; habitCompletionCount: number; lastActive: Date | null;
   }>>;
+  getUserActivityDates(userId: string, startDate: string, endDate: string): Promise<string[]>;
+  batchUpdateAccess(userIds: string[], hasAccess: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -502,7 +505,7 @@ export class DatabaseStorage implements IStorage {
     return settings;
   }
 
-  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string }): Promise<UserSettings> {
+  async upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string; cohort?: string | null }): Promise<UserSettings> {
     const [result] = await db
       .insert(userSettings)
       .values({ userId, ...updates, updatedAt: new Date() })
@@ -517,7 +520,7 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getAllUsersWithSettings() {
+  async getAllUsersWithStats() {
     const rows = await db
       .select({
         id: users.id,
@@ -529,6 +532,17 @@ export class DatabaseStorage implements IStorage {
         hasAccess: userSettings.hasAccess,
         personalEmail: userSettings.personalEmail,
         onboardingComplete: userSettings.onboardingComplete,
+        cohort: userSettings.cohort,
+        journalCount: sql<number>`(SELECT COUNT(*)::int FROM journals WHERE user_id = ${users.id})`,
+        habitCompletionCount: sql<number>`(SELECT COUNT(*)::int FROM habit_completions WHERE user_id = ${users.id})`,
+        lastActive: sql<Date>`(SELECT GREATEST(
+          (SELECT MAX(created_at) FROM journals WHERE user_id = ${users.id}),
+          (SELECT MAX(created_at) FROM habit_completions WHERE user_id = ${users.id}),
+          (SELECT MAX(created_at) FROM eisenhower_entries WHERE user_id = ${users.id}),
+          (SELECT MAX(created_at) FROM containment_logs WHERE user_id = ${users.id}),
+          (SELECT MAX(created_at) FROM avoidance_logs WHERE user_id = ${users.id}),
+          (SELECT MAX(created_at) FROM tool_usage_logs WHERE user_id = ${users.id})
+        ))`,
       })
       .from(users)
       .leftJoin(userSettings, eq(users.id, userSettings.userId))
@@ -538,7 +552,42 @@ export class DatabaseStorage implements IStorage {
       ...r,
       hasAccess: r.hasAccess === true,
       onboardingComplete: r.onboardingComplete === true,
+      cohort: r.cohort ?? null,
+      journalCount: r.journalCount ?? 0,
+      habitCompletionCount: r.habitCompletionCount ?? 0,
+      lastActive: r.lastActive ?? null,
     }));
+  }
+
+  async getUserActivityDates(userId: string, startDate: string, endDate: string): Promise<string[]> {
+    const result = await db.execute(sql`
+      SELECT DISTINCT d::text AS active_date FROM (
+        SELECT date AS d FROM journals WHERE user_id = ${userId} AND date >= ${startDate}::date AND date <= ${endDate}::date
+        UNION
+        SELECT date AS d FROM habit_completions WHERE user_id = ${userId} AND date >= ${startDate}::date AND date <= ${endDate}::date
+        UNION
+        SELECT created_at::date AS d FROM eisenhower_entries WHERE user_id = ${userId} AND created_at::date >= ${startDate}::date AND created_at::date <= ${endDate}::date
+        UNION
+        SELECT date AS d FROM containment_logs WHERE user_id = ${userId} AND date >= ${startDate}::date AND date <= ${endDate}::date
+        UNION
+        SELECT date AS d FROM avoidance_logs WHERE user_id = ${userId} AND date >= ${startDate}::date AND date <= ${endDate}::date
+        UNION
+        SELECT date AS d FROM tool_usage_logs WHERE user_id = ${userId} AND date >= ${startDate}::date AND date <= ${endDate}::date
+      ) sub ORDER BY active_date
+    `);
+    return (result.rows as any[]).map(r => r.active_date);
+  }
+
+  async batchUpdateAccess(userIds: string[], hasAccess: boolean): Promise<void> {
+    if (userIds.length === 0) return;
+    // Ensure all users have a settings row, then bulk update
+    await db.transaction(async (tx) => {
+      for (const userId of userIds) {
+        await tx.insert(userSettings)
+          .values({ userId, hasAccess, updatedAt: new Date() })
+          .onConflictDoUpdate({ target: userSettings.userId, set: { hasAccess, updatedAt: new Date() } });
+      }
+    });
   }
 }
 

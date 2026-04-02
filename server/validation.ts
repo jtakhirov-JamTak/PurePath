@@ -288,3 +288,12 @@ export const reorderSchema = z.object({
 export const updateAccessSchema = z.object({
   hasAccess: z.boolean(),
 });
+
+export const updateCohortSchema = z.object({
+  cohort: z.string().trim().max(100).nullable(),
+});
+
+export const batchAccessSchema = z.object({
+  userIds: z.array(z.string().min(1)).min(1).max(200),
+  hasAccess: z.boolean(),
+});
