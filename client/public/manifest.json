@@ -1,8 +1,10 @@
 {
+  "id": "/",
   "name": "The Leaf",
   "short_name": "Leaf",
   "description": "Daily practice app for self-transformation",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f5f4f2",
   "theme_color": "#50C878",
@@ -12,13 +14,25 @@
       "src": "/icons/leaf-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icons/leaf-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/leaf-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/leaf-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -345,37 +345,6 @@ export default function JournalEntryPage() {
         challenges: isMorning ? (existingJournal?.challenges || "") : eveningData.triggerText,
       });
 
-      // Also save trigger log entry if evening trigger data is filled
-      if (!isMorning && eveningData.triggerText.trim() && eveningData.triggerEmotion && eveningData.triggerUrge && eveningData.triggerEmotionIntensity != null && eveningData.triggerUrgeIntensity != null) {
-        const appraisalParts = [...eveningData.triggerAppraisal.filter((a) => a !== "Other")];
-        if (eveningData.triggerAppraisal.includes("Other") && eveningData.triggerAppraisalOther.trim()) {
-          appraisalParts.push(eveningData.triggerAppraisalOther.trim());
-        }
-        const actionValue = eveningData.triggerAction === "Other" && eveningData.triggerActionOther.trim()
-          ? eveningData.triggerActionOther.trim()
-          : eveningData.triggerAction || undefined;
-
-        await apiRequest("POST", "/api/trigger-logs", {
-          date,
-          triggerText: eveningData.triggerText,
-          appraisal: appraisalParts.length > 0 ? appraisalParts.join(", ") : undefined,
-          emotion: eveningData.triggerEmotion === "Other" && eveningData.triggerEmotionOther.trim()
-            ? eveningData.triggerEmotionOther.trim()
-            : eveningData.triggerEmotion,
-          emotionIntensity: eveningData.triggerEmotionIntensity,
-          urge: eveningData.triggerUrge === "Other" && eveningData.triggerUrgeOther.trim()
-            ? eveningData.triggerUrgeOther.trim()
-            : eveningData.triggerUrge,
-          urgeIntensity: eveningData.triggerUrgeIntensity,
-          whatIDid: actionValue,
-          actionTaken: actionValue,
-          bodyState: eveningData.triggerBodyState.length > 0 ? eveningData.triggerBodyState.join(", ") : undefined,
-          outcome: eveningData.triggerOutcome.trim() || undefined,
-          recoveryTime: eveningData.triggerRecoveryTime || undefined,
-          reflection: eveningData.triggerReflection.trim() || undefined,
-        });
-      }
-
       // Write skip reasons back to habit completions and eisenhower entries
       if (!isMorning && eveningData.skipReasons) {
         for (const [key, reason] of Object.entries(eveningData.skipReasons)) {
@@ -403,9 +372,6 @@ export default function JournalEntryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
-      if (!isMorning && eveningData.triggerText.trim()) {
-        queryClient.invalidateQueries({ queryKey: ["/api/trigger-logs"] });
-      }
       if (!isMorning) {
         queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
         queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
@@ -451,13 +417,6 @@ export default function JournalEntryPage() {
 
   const updateEveningField = <K extends keyof EveningContent>(field: K, value: EveningContent[K]) => {
     setEveningData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const toggleEveningChip = (field: "triggerAppraisal" | "triggerBodyState", val: string) => {
-    setEveningData(prev => {
-      const arr = prev[field];
-      return { ...prev, [field]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
-    });
   };
 
   // Identity context for morning section
@@ -798,7 +757,6 @@ export default function JournalEntryPage() {
             eveningData={eveningData}
             updateEvening={updateEvening}
             updateEveningField={updateEveningField}
-            toggleEveningChip={toggleEveningChip}
             setEveningData={setEveningData}
             journalMode={journalMode}
             skippedItems={skippedItems}

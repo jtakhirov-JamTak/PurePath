@@ -136,6 +136,67 @@ export const createToolUsageSchema = z.object({
 
 export const updateToolUsageSchema = createToolUsageSchema.partial();
 
+export const identityDocumentSchema = z.object({
+  identity: optionalTrimmedString(5000),
+  vision: optionalTrimmedString(5000),
+  values: optionalTrimmedString(5000),
+  yearVision: optionalTrimmedString(5000),
+  yearVisualization: optionalTrimmedString(5000),
+  purpose: optionalTrimmedString(5000),
+  todayValue: optionalTrimmedString(2000),
+  todayIntention: optionalTrimmedString(2000),
+  todayReflection: optionalTrimmedString(2000),
+  visionBoardMain: optionalString(10 * 1024 * 1024),
+  visionBoardLeft: optionalString(10 * 1024 * 1024),
+  visionBoardRight: optionalString(10 * 1024 * 1024),
+  othersWillSee: optionalTrimmedString(5000),
+  beYourself: optionalTrimmedString(5000),
+  strengths: optionalTrimmedString(5000),
+  helpingPatterns: optionalTrimmedString(5000),
+  hurtingPatterns: optionalTrimmedString(5000),
+  stressResponses: optionalTrimmedString(5000),
+  visionDomain: optionalTrimmedString(500),
+});
+
+export const monthlyGoalSchema = z.object({
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/, "Must be YYYY-MM format").optional(),
+  goalStatement: optionalTrimmedString(2000),
+  successMarker: optionalTrimmedString(2000),
+  value: optionalTrimmedString(500),
+  why: optionalTrimmedString(2000),
+  nextConcreteStep: optionalTrimmedString(2000),
+  prize: optionalTrimmedString(500),
+  strengths: optionalTrimmedString(2000),
+  advantage: optionalTrimmedString(2000),
+  goalWhat: optionalTrimmedString(2000),
+  goalWhen: optionalTrimmedString(500),
+  goalWhere: optionalTrimmedString(500),
+  goalHow: optionalTrimmedString(2000),
+  blockingHabit: optionalTrimmedString(2000),
+  habitAddress: optionalTrimmedString(2000),
+  fun: optionalTrimmedString(2000),
+  deadline: optionalTrimmedString(500),
+  successProof: optionalTrimmedString(2000),
+  proofMetric: optionalTrimmedString(2000),
+  weeklyBehavior: optionalTrimmedString(2000),
+  bestResult: optionalTrimmedString(2000),
+  innerObstacle: optionalTrimmedString(2000),
+  obstacleTrigger: optionalTrimmedString(2000),
+  obstacleThought: optionalTrimmedString(2000),
+  obstacleEmotion: optionalTrimmedString(2000),
+  obstacleBehavior: optionalTrimmedString(2000),
+  ifThenPlan1: optionalTrimmedString(2000),
+  ifThenPlan2: optionalTrimmedString(2000),
+});
+
+export const updateHabitCompletionSchema = z.object({
+  status: z.enum(["completed", "skipped", "minimum"]),
+  completionLevel: z.number().int().min(0).max(2).optional().nullable(),
+  skipReason: optionalString(500),
+  skipReasonSource: z.enum(["reflection", "in_moment"]).optional().nullable(),
+  skipReasonTimestamp: z.string().datetime().optional().nullable(),
+});
+
 export const visionBoardSchema = z.object({
   slot: z.enum(["main", "left", "right"]),
   imageData: z.string().max(10 * 1024 * 1024, "Image data must be at most 10MB").optional().nullable(),

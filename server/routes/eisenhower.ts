@@ -363,6 +363,12 @@ export function registerEisenhowerRoutes(app: Express) {
       if (tasks.length > 20) {
         return res.status(400).json({ error: "Maximum 20 tasks at a time" });
       }
+      if (!tasks.every((t: unknown) => typeof t === "string" && t.length <= 500)) {
+        return res.status(400).json({ error: "Each task must be a string of at most 500 characters" });
+      }
+      if (typeof weekStart !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+        return res.status(400).json({ error: "weekStart must be a valid YYYY-MM-DD date" });
+      }
 
       const weekDate = new Date(weekStart + "T00:00:00");
       const weekDays: Record<string, string> = {};

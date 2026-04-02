@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
-import { visionBoardSchema } from "../validation";
+import { visionBoardSchema, identityDocumentSchema, monthlyGoalSchema } from "../validation";
 
 export function registerIdentityRoutes(app: Express) {
   app.get("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
@@ -18,29 +18,33 @@ export function registerIdentityRoutes(app: Express) {
 
   app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = identityDocumentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { identity, vision, values, yearVision, yearVisualization, purpose, todayValue, todayIntention, todayReflection, visionBoardMain, visionBoardLeft, visionBoardRight, othersWillSee, beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses, visionDomain } = req.body;
+      const d = parsed.data;
       const doc = await storage.upsertIdentityDocument({
         userId,
-        identity: identity || "",
-        vision: vision || "",
-        values: values || "",
-        yearVision: yearVision ?? "",
-        yearVisualization: yearVisualization ?? "",
-        purpose: purpose ?? "",
-        todayValue: todayValue || "",
-        todayIntention: todayIntention ?? "",
-        todayReflection: todayReflection ?? "",
-        visionBoardMain: visionBoardMain ?? "",
-        visionBoardLeft: visionBoardLeft ?? "",
-        visionBoardRight: visionBoardRight ?? "",
-        othersWillSee: othersWillSee ?? "",
-        beYourself: beYourself ?? "",
-        strengths: strengths ?? "",
-        helpingPatterns: helpingPatterns ?? "",
-        hurtingPatterns: hurtingPatterns ?? "",
-        stressResponses: stressResponses ?? "",
-        visionDomain: visionDomain ?? "",
+        identity: d.identity || "",
+        vision: d.vision || "",
+        values: d.values || "",
+        yearVision: d.yearVision ?? "",
+        yearVisualization: d.yearVisualization ?? "",
+        purpose: d.purpose ?? "",
+        todayValue: d.todayValue || "",
+        todayIntention: d.todayIntention ?? "",
+        todayReflection: d.todayReflection ?? "",
+        visionBoardMain: d.visionBoardMain ?? "",
+        visionBoardLeft: d.visionBoardLeft ?? "",
+        visionBoardRight: d.visionBoardRight ?? "",
+        othersWillSee: d.othersWillSee ?? "",
+        beYourself: d.beYourself ?? "",
+        strengths: d.strengths ?? "",
+        helpingPatterns: d.helpingPatterns ?? "",
+        hurtingPatterns: d.hurtingPatterns ?? "",
+        stressResponses: d.stressResponses ?? "",
+        visionDomain: d.visionDomain ?? "",
       });
       res.json(doc);
     } catch (error) {
@@ -100,40 +104,42 @@ export function registerIdentityRoutes(app: Express) {
 
   app.put("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = monthlyGoalSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { monthKey, goalStatement, successMarker, value, why, nextConcreteStep, prize,
-        strengths, advantage, goalWhat, goalWhen, goalWhere, goalHow, blockingHabit, habitAddress, fun, deadline,
-        successProof, proofMetric, weeklyBehavior, bestResult, innerObstacle, obstacleTrigger, obstacleThought, obstacleEmotion, obstacleBehavior, ifThenPlan1, ifThenPlan2 } = req.body;
+      const g = parsed.data;
       const goal = await storage.upsertMonthlyGoal({
         userId,
-        monthKey: monthKey || format(new Date(), "yyyy-MM"),
-        goalStatement: goalStatement || "",
-        successMarker: successMarker ?? "",
-        value: value ?? "",
-        why: why ?? "",
-        nextConcreteStep: nextConcreteStep || "",
-        prize: prize ?? "",
-        strengths: strengths ?? "",
-        advantage: advantage ?? "",
-        goalWhat: goalWhat ?? "",
-        goalWhen: goalWhen ?? "",
-        goalWhere: goalWhere ?? "",
-        goalHow: goalHow ?? "",
-        blockingHabit: blockingHabit ?? "",
-        habitAddress: habitAddress ?? "",
-        fun: fun ?? "",
-        deadline: deadline ?? "",
-        successProof: successProof ?? "",
-        proofMetric: proofMetric ?? "",
-        weeklyBehavior: weeklyBehavior ?? "",
-        bestResult: bestResult ?? "",
-        innerObstacle: innerObstacle ?? "",
-        obstacleTrigger: obstacleTrigger ?? "",
-        obstacleThought: obstacleThought ?? "",
-        obstacleEmotion: obstacleEmotion ?? "",
-        obstacleBehavior: obstacleBehavior ?? "",
-        ifThenPlan1: ifThenPlan1 ?? "",
-        ifThenPlan2: ifThenPlan2 ?? "",
+        monthKey: g.monthKey || format(new Date(), "yyyy-MM"),
+        goalStatement: g.goalStatement || "",
+        successMarker: g.successMarker ?? "",
+        value: g.value ?? "",
+        why: g.why ?? "",
+        nextConcreteStep: g.nextConcreteStep || "",
+        prize: g.prize ?? "",
+        strengths: g.strengths ?? "",
+        advantage: g.advantage ?? "",
+        goalWhat: g.goalWhat ?? "",
+        goalWhen: g.goalWhen ?? "",
+        goalWhere: g.goalWhere ?? "",
+        goalHow: g.goalHow ?? "",
+        blockingHabit: g.blockingHabit ?? "",
+        habitAddress: g.habitAddress ?? "",
+        fun: g.fun ?? "",
+        deadline: g.deadline ?? "",
+        successProof: g.successProof ?? "",
+        proofMetric: g.proofMetric ?? "",
+        weeklyBehavior: g.weeklyBehavior ?? "",
+        bestResult: g.bestResult ?? "",
+        innerObstacle: g.innerObstacle ?? "",
+        obstacleTrigger: g.obstacleTrigger ?? "",
+        obstacleThought: g.obstacleThought ?? "",
+        obstacleEmotion: g.obstacleEmotion ?? "",
+        obstacleBehavior: g.obstacleBehavior ?? "",
+        ifThenPlan1: g.ifThenPlan1 ?? "",
+        ifThenPlan2: g.ifThenPlan2 ?? "",
       });
       res.json(goal);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Component, useEffect, type ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -12,7 +12,6 @@ import AccessGatePage from "@/pages/access-gate";
 import DashboardPage from "@/pages/dashboard";
 import JournalEntryPage from "@/pages/journal-entry";
 import EisenhowerPage from "@/pages/eisenhower";
-import EmpathyPage from "@/pages/empathy";
 import HabitsPage from "@/pages/habits";
 
 import PlanPage from "@/pages/plan";
@@ -77,9 +76,19 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
 }
 
 function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { data: accessStatus, isLoading: accessLoading } = useQuery<{ hasAccess: boolean }>({
+    queryKey: ["/api/access-status"],
+    enabled: isAuthenticated,
+  });
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isAuthenticated && !accessLoading && accessStatus && !accessStatus.hasAccess) {
+      window.location.href = "/access";
+    }
+  }, [isAuthenticated, accessLoading, accessStatus]);
+
+  if (authLoading || (isAuthenticated && accessLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -87,11 +96,20 @@ function HomePage() {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && accessStatus?.hasAccess) {
     return <DashboardPage />;
   }
 
-  return <LandingPage />;
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
+
+  // Authenticated but access status pending/redirecting — show loader
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
 }
 
 function Router() {
@@ -109,9 +127,6 @@ function Router() {
       </Route>
       <Route path="/eisenhower">
         {() => <AccessGatedRoute component={EisenhowerPage} />}
-      </Route>
-      <Route path="/empathy">
-        {() => <AccessGatedRoute component={EmpathyPage} />}
       </Route>
       <Route path="/habits">
         {() => <AccessGatedRoute component={HabitsPage} />}
@@ -156,19 +171,51 @@ function RedirectToHome() {
   return null;
 }
 
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("Uncaught render error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+          <h1 className="text-lg font-semibold mb-2">Something went wrong</h1>
+          <p className="text-sm text-muted-foreground mb-4">Please refresh the page to continue.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+          >
+            Refresh
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="inner-journey-theme">
-        <TooltipProvider>
-          <UnsavedGuardProvider>
-            <Toaster />
-            <RedirectToHome />
-            <Router />
-          </UnsavedGuardProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="light" storageKey="inner-journey-theme">
+          <TooltipProvider>
+            <UnsavedGuardProvider>
+              <Toaster />
+              <RedirectToHome />
+              <Router />
+            </UnsavedGuardProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

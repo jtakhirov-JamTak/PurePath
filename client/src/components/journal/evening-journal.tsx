@@ -3,12 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { VoiceTextarea } from "@/components/voice-input";
-import { Moon, AlertTriangle, Power, MinusCircle, Sparkles } from "lucide-react";
-import {
-  APPRAISALS_V2, EMOTIONS_V2, URGES_V2, ACTIONS_V2, BODY_STATES_V2, RECOVERY_TIMES_V2,
-  Chip,
-} from "@/components/tools/trigger-chips";
-import { FreeTextOrChips } from "@/components/journal/free-text-or-chips";
+import { Moon, Power, MinusCircle, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { EveningContent } from "@/pages/journal-entry";
 
 const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have the energy", "Avoided it"];
@@ -16,23 +12,27 @@ const POSITIVE_INPUTS = ["Sleep", "Exercise", "Progress", "People", "Environment
 const POSITIVE_STATES = ["Calm", "Energy", "Focus", "Confidence", "Connection", "Joy", "Other"];
 const POSITIVE_DOWNSTREAMS = ["Habits", "Work", "Hard conversation", "Rest", "Planning", "Other"];
 
-/** Normalize old array fields to a single string for FreeTextOrChips.
- *  If old data had "Other" selected, include the custom text instead. */
-function normalizeToString(val: string | string[] | undefined, otherText?: string): string {
-  if (!val) return "";
-  if (Array.isArray(val)) {
-    const parts = val.filter(v => v !== "Other");
-    if (val.includes("Other") && otherText) parts.push(otherText);
-    return parts.join(", ");
-  }
-  return val;
+function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+        selected
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+      )}
+    >
+      {label}
+    </button>
+  );
 }
 
 interface EveningJournalProps {
   eveningData: EveningContent;
   updateEvening: (field: keyof EveningContent, value: string) => void;
   updateEveningField: <K extends keyof EveningContent>(field: K, value: EveningContent[K]) => void;
-  toggleEveningChip?: (field: "triggerAppraisal" | "triggerBodyState", val: string) => void;
   setEveningData: React.Dispatch<React.SetStateAction<EveningContent>>;
   journalMode: "quick" | "full";
   skippedItems: Array<{ id: string; name: string; type: "habit" | "eisenhower" }>;
@@ -161,125 +161,7 @@ export function EveningJournal({
             </Card>
           )}
 
-          {/* Section 1 — What got in the way? */}
-          <Card data-testid="card-trigger-check">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="h-7 w-7 rounded-md bg-amber-500/[0.08] flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm">What got in the way?</CardTitle>
-                  <CardDescription>Optional — log triggers from today</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Gate: What happened */}
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">What happened?</Label>
-                <Input
-                  value={eveningData.triggerText}
-                  onChange={(e) => updateEvening("triggerText", e.target.value)}
-                  placeholder="Brief description of the situation"
-                  className="text-sm"
-                  data-testid="input-journal-trigger-text"
-                />
-              </div>
-
-              {eveningData.triggerText.trim() && (
-                <>
-                  <FreeTextOrChips
-                    label="This felt like..."
-                    value={eveningData.triggerAppraisalText || normalizeToString(eveningData.triggerAppraisal, eveningData.triggerAppraisalOther)}
-                    onChange={(val) => updateEvening("triggerAppraisalText" as keyof EveningContent, val)}
-                    presets={APPRAISALS_V2}
-                    placeholder="Type or choose below..."
-                  />
-
-                  <FreeTextOrChips
-                    label="What did you feel in your body?"
-                    value={eveningData.triggerBodyStateText || normalizeToString(eveningData.triggerBodyState)}
-                    onChange={(val) => updateEvening("triggerBodyStateText" as keyof EveningContent, val)}
-                    presets={BODY_STATES_V2}
-                    placeholder="Type or choose below..."
-                  />
-
-                  <Separator />
-
-                  <FreeTextOrChips
-                    label="Emotion"
-                    value={eveningData.triggerEmotion}
-                    onChange={(val) => updateEvening("triggerEmotion", val)}
-                    presets={EMOTIONS_V2}
-                    placeholder="Type or choose below..."
-                  />
-
-                  <FreeTextOrChips
-                    label="Urge"
-                    value={eveningData.triggerUrge}
-                    onChange={(val) => updateEvening("triggerUrge", val)}
-                    presets={URGES_V2}
-                    placeholder="Type or choose below..."
-                  />
-
-                  <Separator />
-
-                  <FreeTextOrChips
-                    label="What did you do?"
-                    value={eveningData.triggerAction}
-                    onChange={(val) => updateEvening("triggerAction", val)}
-                    presets={ACTIONS_V2}
-                    placeholder="Type or choose below..."
-                  />
-
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">What was the outcome?</Label>
-                    <Input
-                      value={eveningData.triggerOutcome}
-                      onChange={(e) => updateEvening("triggerOutcome", e.target.value)}
-                      placeholder="What happened next..."
-                      className="text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">How long until you felt calm?</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {RECOVERY_TIMES_V2.map((r) => (
-                        <Chip
-                          key={r}
-                          label={r}
-                          selected={eveningData.triggerRecoveryTime === r}
-                          onClick={() => updateEvening("triggerRecoveryTime", eveningData.triggerRecoveryTime === r ? "" : r)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium">
-                      Reflection <span className="text-xs text-muted-foreground">(optional)</span>
-                    </Label>
-                    <VoiceTextarea
-                      value={eveningData.triggerReflection}
-                      onChange={(val) => updateEvening("triggerReflection", val)}
-                      placeholder="Any insight about this pattern?"
-                      className="min-h-[60px] resize-none"
-                    />
-                  </div>
-                </>
-              )}
-
-              {!eveningData.triggerText.trim() && (
-                <p className="text-xs text-muted-foreground">No trigger? That's a win — skip this section.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Section 2 — What went well today? */}
+          {/* Section 1 — What went well today? */}
           <Card data-testid="card-positive-pattern">
             <CardHeader>
               <div className="flex items-center gap-3">

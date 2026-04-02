@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { HABIT_CATEGORIES } from "@shared/schema";
-import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema, reorderSchema } from "../validation";
+import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema, updateHabitCompletionSchema, reorderSchema } from "../validation";
 import { parseId, parseDateParam } from "./helpers";
 
 const VERSIONED_FIELDS = ["name", "category", "cadence", "timing", "duration", "isBinary"] as const;
@@ -210,18 +210,25 @@ export function registerHabitRoutes(app: Express) {
 
   app.patch("/api/habit-completions/:habitId/:date", isAuthenticated, async (req: any, res: Response) => {
     try {
+      const parsed = updateHabitCompletionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
       const userId = req.user.claims.sub;
-      const { habitId, date } = req.params;
-      const { status, completionLevel, skipReason, skipReasonSource, skipReasonTimestamp } = req.body;
-      const validStatus = status === "skipped" ? "skipped" : status === "minimum" ? "minimum" : "completed";
+      const habitId = parseId(req.params.habitId);
+      const date = parseDateParam(req.params.date);
+      if (!habitId || !date) {
+        return res.status(400).json({ error: "Invalid habitId or date" });
+      }
+      const { status, completionLevel, skipReason, skipReasonSource, skipReasonTimestamp } = parsed.data;
       const updates: Record<string, unknown> = {
-        status: validStatus,
+        status,
         completionLevel: completionLevel ?? null,
         skipReason: skipReason ?? null,
       };
       if (skipReasonSource !== undefined) updates.skipReasonSource = skipReasonSource;
       if (skipReasonTimestamp !== undefined) updates.skipReasonTimestamp = skipReasonTimestamp ? new Date(skipReasonTimestamp) : null;
-      await storage.updateHabitCompletionFull(userId, parseInt(habitId), date, updates as any);
+      await storage.updateHabitCompletionFull(userId, habitId, date, updates as any);
       res.json({ success: true });
     } catch (error) {
       console.error("Error updating habit completion:", error);

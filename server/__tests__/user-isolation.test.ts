@@ -162,45 +162,6 @@ describe("Eisenhower isolation", () => {
 });
 
 // ──────────────────────────────────────────────
-// EMPATHY EXERCISES
-// ──────────────────────────────────────────────
-describe("Empathy isolation", () => {
-  it("User B cannot see User A's exercises", async () => {
-    const create = await asUser(app, USER_A)
-      .post("/api/empathy")
-      .send({ exerciseType: "prep", date: "2026-01-05", who: "Test Person", context: "Private" });
-    expect(create.status).toBe(200);
-    const exerciseIdA = create.body.id;
-
-    const list = await asUser(app, USER_B).get("/api/empathy");
-    expect(list.status).toBe(200);
-    expect(list.body.map((e: any) => e.id)).not.toContain(exerciseIdA);
-  });
-
-  it("User B cannot update User A's exercise", async () => {
-    const create = await asUser(app, USER_A)
-      .post("/api/empathy")
-      .send({ exerciseType: "prep", date: "2026-01-05", who: "Person", context: "Private" });
-    const exerciseIdA = create.body.id;
-
-    const res = await asUser(app, USER_B)
-      .patch(`/api/empathy/${exerciseIdA}`)
-      .send({ context: "Hacked" });
-    expect(res.status).toBe(403);
-  });
-
-  it("User B cannot delete User A's exercise", async () => {
-    const create = await asUser(app, USER_A)
-      .post("/api/empathy")
-      .send({ exerciseType: "prep", date: "2026-01-05", who: "Person", context: "Ctx" });
-    const exerciseIdA = create.body.id;
-
-    const res = await asUser(app, USER_B).delete(`/api/empathy/${exerciseIdA}`);
-    expect(res.status).toBe(403);
-  });
-});
-
-// ──────────────────────────────────────────────
 // IDENTITY DOCUMENT
 // ──────────────────────────────────────────────
 describe("Identity document isolation", () => {
@@ -277,16 +238,13 @@ describe("Unauthenticated requests are rejected", () => {
   const endpoints = [
     ["GET", "/api/habits"],
     ["GET", "/api/eisenhower"],
-    ["GET", "/api/empathy"],
     ["GET", "/api/identity-document"],
     ["GET", "/api/tool-usage"],
     ["GET", "/api/export-all"],
     ["POST", "/api/habits"],
     ["POST", "/api/eisenhower"],
-    ["POST", "/api/empathy"],
     ["DELETE", "/api/habits/1"],
     ["DELETE", "/api/eisenhower/1"],
-    ["DELETE", "/api/empathy/1"],
   ] as const;
 
   for (const [method, url] of endpoints) {

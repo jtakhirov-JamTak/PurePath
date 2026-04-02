@@ -46,7 +46,6 @@ vi.mock("../replit_integrations/auth", () => ({
 // Now import route registrars (they'll get mocked deps)
 import { registerHabitRoutes } from "../routes/habits";
 import { registerEisenhowerRoutes } from "../routes/eisenhower";
-import { registerEmpathyRoutes } from "../routes/empathy";
 import { registerJournalRoutes } from "../routes/journals";
 import { registerIdentityRoutes } from "../routes/identity";
 import { registerToolRoutes } from "../routes/tools";
@@ -59,7 +58,6 @@ export function createTestApp() {
 
   registerHabitRoutes(app);
   registerEisenhowerRoutes(app);
-  registerEmpathyRoutes(app);
   registerJournalRoutes(app);
   registerIdentityRoutes(app);
   registerToolRoutes(app);

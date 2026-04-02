@@ -34,7 +34,7 @@ export function csvEscape(val: string | null | undefined): string {
 
 export const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 5,
   message: { error: "Too many AI requests. Please wait a minute before trying again." },
   standardHeaders: true,
   legacyHeaders: false,

@@ -22,6 +22,7 @@ import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation } from "wouter";
 import type { LucideIcon } from "lucide-react";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavItem {
   label: string;
@@ -43,6 +44,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const { safeNavigate } = useUnsavedGuard();
+  const { toast } = useToast();
 
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -144,8 +146,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                     Today
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={async () => {
-                    const response = await fetch("/api/export-all", { credentials: "include" });
-                    if (response.ok) {
+                    try {
+                      const response = await fetch("/api/export-all", { credentials: "include" });
+                      if (!response.ok) {
+                        toast({ title: "Export failed", description: "Please try again.", variant: "destructive" });
+                        return;
+                      }
                       const blob = await response.blob();
                       const url = window.URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -153,6 +159,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                       a.download = `the-leaf-export-${new Date().toISOString().split("T")[0]}.md`;
                       a.click();
                       window.URL.revokeObjectURL(url);
+                    } catch {
+                      toast({ title: "Export failed", description: "Please try again.", variant: "destructive" });
                     }
                   }} data-testid="menu-export">
                     <Download className="h-4 w-4 mr-2" />

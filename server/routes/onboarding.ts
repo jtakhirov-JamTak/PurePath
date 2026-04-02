@@ -15,7 +15,7 @@ export function registerOnboardingRoutes(app: Express) {
         onboardingComplete: settings.onboardingComplete,
       });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 
@@ -38,7 +38,7 @@ export function registerOnboardingRoutes(app: Express) {
         onboardingComplete: settings.onboardingComplete,
       });
     } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: "Internal server error" });
     }
   });
 }

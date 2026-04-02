@@ -139,7 +139,9 @@ export const empathyExercises = pgTable("empathy_exercises", {
   realityCheckQuestion: text("reality_check_question"),
   reflectionValidation: text("reflection_validation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("empathy_user_id_idx").on(table.userId),
+]);
 
 export const insertEmpathyExerciseSchema = createInsertSchema(empathyExercises).omit({
   id: true,

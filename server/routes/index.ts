@@ -4,7 +4,6 @@ import { setupAuth, registerAuthRoutes } from "../replit_integrations/auth";
 
 import { registerJournalRoutes } from "./journals";
 import { registerEisenhowerRoutes } from "./eisenhower";
-import { registerEmpathyRoutes } from "./empathy";
 import { registerHabitRoutes } from "./habits";
 import { registerIdentityRoutes } from "./identity";
 import { registerToolRoutes } from "./tools";
@@ -21,7 +20,6 @@ export async function registerRoutes(
 
   registerJournalRoutes(app);
   registerEisenhowerRoutes(app);
-  registerEmpathyRoutes(app);
   registerHabitRoutes(app);
   registerIdentityRoutes(app);
   registerToolRoutes(app);
