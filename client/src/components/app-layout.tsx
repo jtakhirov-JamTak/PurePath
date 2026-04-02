@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +18,7 @@ import {
   TreePine,
   Award,
   Download,
+  Shield,
 } from "lucide-react";
 import { LeafLogo } from "@/components/leaf-logo";
 import { useLocation } from "wouter";
@@ -45,6 +47,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
   const { safeNavigate } = useUnsavedGuard();
   const { toast } = useToast();
+  const { data: adminCheck } = useQuery<{ isAdmin: boolean }>({
+    queryKey: ["/api/admin/check"],
+    enabled: isAuthenticated,
+    retry: false,
+    staleTime: Infinity,
+  });
+  const showAdminLink = adminCheck?.isAdmin === true;
 
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -145,6 +154,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <Sprout className="h-4 w-4 mr-2" />
                     Today
                   </DropdownMenuItem>
+                  {showAdminLink && (
+                    <DropdownMenuItem onClick={() => safeNavigate("/admin")} data-testid="menu-admin">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Admin
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={async () => {
                     try {
                       const response = await fetch("/api/export-all", { credentials: "include" });

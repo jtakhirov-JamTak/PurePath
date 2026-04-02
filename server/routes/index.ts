@@ -10,6 +10,7 @@ import { registerToolRoutes } from "./tools";
 import { registerOnboardingRoutes } from "./onboarding";
 import { registerAccessRoutes } from "./access";
 import { registerExportRoutes } from "./export";
+import { registerAdminRoutes } from "./admin";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -26,6 +27,7 @@ export async function registerRoutes(
   registerOnboardingRoutes(app);
   registerAccessRoutes(app);
   registerExportRoutes(app);
+  registerAdminRoutes(app);
 
   return httpServer;
 }

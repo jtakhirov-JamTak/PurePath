@@ -329,3 +329,7 @@ export const reorderItemSchema = z.object({
 export const reorderSchema = z.object({
   items: z.array(reorderItemSchema).min(1).max(100),
 });
+
+export const updateAccessSchema = z.object({
+  hasAccess: z.boolean(),
+});

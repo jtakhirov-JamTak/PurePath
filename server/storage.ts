@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, containmentLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, empathyExercises, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, triggerLogs, avoidanceLogs, decisions, containmentLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type EmpathyExercise, type InsertEmpathyExercise,
@@ -99,6 +99,13 @@ export interface IStorage {
   // User Settings
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string }): Promise<UserSettings>;
+
+  // Admin
+  getAllUsersWithSettings(): Promise<Array<{
+    id: string; email: string | null; firstName: string | null; lastName: string | null;
+    profileImageUrl: string | null; createdAt: Date | null;
+    hasAccess: boolean; personalEmail: string | null; onboardingComplete: boolean;
+  }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -565,6 +572,30 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  async getAllUsersWithSettings() {
+    const rows = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        createdAt: users.createdAt,
+        hasAccess: userSettings.hasAccess,
+        personalEmail: userSettings.personalEmail,
+        onboardingComplete: userSettings.onboardingComplete,
+      })
+      .from(users)
+      .leftJoin(userSettings, eq(users.id, userSettings.userId))
+      .orderBy(desc(users.createdAt));
+
+    return rows.map(r => ({
+      ...r,
+      hasAccess: r.hasAccess === true,
+      onboardingComplete: r.onboardingComplete === true,
+    }));
   }
 }
 

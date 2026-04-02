@@ -1,4 +1,4 @@
-import type { Request, Response } from "express";
+import type { Request, RequestHandler, Response } from "express";
 import rateLimit from "express-rate-limit";
 
 export interface AuthRequest extends Request {
@@ -31,6 +31,14 @@ export function csvEscape(val: string | null | undefined): string {
   }
   return s;
 }
+
+export const isAdmin: RequestHandler = (req: any, res, next) => {
+  const userId = req.user?.claims?.sub;
+  if (!userId || userId !== process.env.ADMIN_USER_ID) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next();
+};
 
 export const aiRateLimit = rateLimit({
   windowMs: 60 * 1000,

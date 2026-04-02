@@ -22,6 +22,7 @@ import DiscoveryProfilePage from "@/pages/discovery-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import SetupWizardPage from "@/pages/setup-wizard";
+import AdminPage from "@/pages/admin";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 
@@ -65,6 +66,39 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
   }, [accessLoading, accessStatus]);
 
   if (authLoading || accessLoading || !isAuthenticated || !accessStatus?.hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return <Component />;
+}
+
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  const { data: adminCheck, isLoading: adminLoading, isError } = useQuery<{ isAdmin: boolean }>({
+    queryKey: ["/api/admin/check"],
+    enabled: isAuthenticated,
+    retry: false,
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      window.location.href = "/api/login";
+    }
+  }, [authLoading, isAuthenticated]);
+
+  useEffect(() => {
+    if (isError) {
+      setLocation("/");
+    }
+  }, [isError, setLocation]);
+
+  if (authLoading || adminLoading || !isAuthenticated || !adminCheck) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -151,6 +185,9 @@ function Router() {
       </Route>
       <Route path="/setup">
         {() => <AccessGatedRoute component={SetupWizardPage} />}
+      </Route>
+      <Route path="/admin">
+        {() => <AdminRoute component={AdminPage} />}
       </Route>
       <Route component={NotFound} />
     </Switch>
