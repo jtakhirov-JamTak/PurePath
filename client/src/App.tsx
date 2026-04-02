@@ -22,6 +22,7 @@ import DiscoveryProfilePage from "@/pages/discovery-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import SetupWizardPage from "@/pages/setup-wizard";
+import ProfilePage from "@/pages/profile";
 import AdminPage from "@/pages/admin";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
@@ -167,6 +168,9 @@ function Router() {
       </Route>
       <Route path="/plan">
         {() => <AccessGatedRoute component={PlanPage} />}
+      </Route>
+      <Route path="/profile">
+        {() => <AccessGatedRoute component={ProfilePage} />}
       </Route>
       <Route path="/journal">
         {() => <AccessGatedRoute component={JournalHubPage} />}

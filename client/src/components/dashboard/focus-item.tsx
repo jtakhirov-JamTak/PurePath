@@ -13,6 +13,7 @@ import { CompletionCircle } from "./completion-circle";
 interface FocusItemProps {
   item: EisenhowerEntry;
   weekStartDate: Date;
+  isToday?: boolean;
   onToggleDone: (id: number, currentlyDone: boolean) => void;
 }
 
@@ -27,7 +28,7 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
   return { value: `${hh}:${mm}`, label };
 });
 
-export function FocusItem({ item, weekStartDate, onToggleDone }: FocusItemProps) {
+export function FocusItem({ item, weekStartDate, isToday, onToggleDone }: FocusItemProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [editingName, setEditingName] = useState(false);
@@ -82,7 +83,7 @@ export function FocusItem({ item, weekStartDate, onToggleDone }: FocusItemProps)
   const isUndone = !isDone;
   const quadrant = item.quadrant || "q1";
   const borderClass = QUADRANT_BORDER[quadrant] || "";
-  const bgClass = isUndone ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
+  const bgClass = isUndone && isToday ? (QUADRANT_BG_UNDONE[quadrant] || "") : "";
 
   return (
     <div data-testid={`focus-item-${item.id}`} className={`border-l-2 rounded-r pl-2 transition-all duration-200 ${borderClass} ${bgClass}`}>

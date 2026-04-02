@@ -3,7 +3,6 @@ import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Plus, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -13,7 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { format, addDays, getDay } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { EisenhowerEntry, Habit, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_LABELS } from "@/lib/constants";
 import { getWeekFocusItems, groupByGroupId } from "@/lib/eisenhower-filters";
 
@@ -98,7 +97,6 @@ export default function PlanPage() {
   const isCurrentWeek = weekOffset === 0;
   const currentMonthKey = format(today, "yyyy-MM");
   const monthLabel = format(today, "MMMM yyyy");
-  const yearLabel = format(today, "yyyy");
 
   const dayOfWeek = getDay(today);
   const weekLocked = dayOfWeek === 0 || dayOfWeek === 6;
@@ -111,7 +109,6 @@ export default function PlanPage() {
     queryFn: async () => { const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed to fetch"); return res.json(); },
     enabled: !!user,
   });
-  const { data: identityDoc } = useQuery<IdentityDocument>({ queryKey: ["/api/identity-document"], enabled: !!user });
 
   // ─── Computed ────────────────────────────────────────────────────
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
@@ -121,9 +118,6 @@ export default function PlanPage() {
   const q1Items = groupedFocus.filter(e => e.quadrant === "q1");
   const q2Items = groupedFocus.filter(e => e.quadrant === "q2");
 
-  const discoveryFilled = !!(identityDoc?.strengths?.trim() || identityDoc?.helpingPatterns?.trim());
-  const identityFilled = !!(identityDoc?.identity?.trim() || identityDoc?.vision?.trim());
-  const scoreboardFilled = !!(identityDoc?.yearVision?.trim());
 
   // ─── Accordion state ─────────────────────────────────────────────
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["prove", "decide"]));
@@ -376,44 +370,8 @@ export default function PlanPage() {
             testId="card-monthly-goal"
           />
         </Section>
-
-        {/* ─── 4. BECOME — Year ──────────────────────────────────── */}
-        <Section
-          id="become" verb="Become" timeLabel={yearLabel} accentClass="text-blue-600"
-          completionOk={scoreboardFilled && identityFilled && discoveryFilled}
-          summary={[identityFilled && "Identity", discoveryFilled && "Values", scoreboardFilled && "Vision"].filter(Boolean).join(" \u00b7 ") || "Not started"}
-          expanded={expanded.has("become")} onToggle={() => toggle("become")} celebrating={false}
-        >
-          <Tabs defaultValue="identity" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 h-8">
-              <TabsTrigger value="identity" className="text-xs">Identity</TabsTrigger>
-              <TabsTrigger value="values" className="text-xs">Values</TabsTrigger>
-              <TabsTrigger value="vision" className="text-xs">Vision</TabsTrigger>
-            </TabsList>
-            <TabsContent value="identity">
-              <SubCard
-                ok={identityFilled} title="Identity Document" subtitle="Vision, identity, purpose"
-                onClick={() => setLocation(buildProcessUrl("/identity", "/plan"))}
-                testId="card-nav-identity"
-              />
-            </TabsContent>
-            <TabsContent value="values">
-              <SubCard
-                ok={discoveryFilled} title="Values Profile" subtitle="Values, strengths, patterns"
-                onClick={() => setLocation(buildProcessUrl("/discovery-profile", "/plan"))}
-                testId="card-nav-discovery"
-              />
-            </TabsContent>
-            <TabsContent value="vision">
-              <SubCard
-                ok={scoreboardFilled} title="1-Year Vision" subtitle="Domain, scene, obstacles, IF-THEN"
-                onClick={() => setLocation(buildProcessUrl("/scoreboard", "/plan"))}
-                testId="card-nav-scoreboard"
-              />
-            </TabsContent>
-          </Tabs>
-        </Section>
       </div>
     </AppLayout>
   );
 }
+

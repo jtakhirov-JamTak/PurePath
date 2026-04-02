@@ -81,7 +81,7 @@ export default function DiscoveryProfilePage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/plan" doneLabel="Done" />
+      <FlowBar fallback="/profile" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
         <div>
           <h1 className="text-base font-medium" data-testid="text-page-title">Discovery Profile</h1>

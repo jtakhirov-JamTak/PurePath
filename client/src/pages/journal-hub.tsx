@@ -195,7 +195,7 @@ export default function JournalHubPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-md mx-auto px-4 py-4 space-y-4" data-testid="proof-hub">
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4" data-testid="proof-hub">
 
         {/* ─── HISTORY — Calendar Heatmap ───────────────────────── */}
         <section data-testid="journal-history-section">

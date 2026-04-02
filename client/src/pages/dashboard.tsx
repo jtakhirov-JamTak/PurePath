@@ -306,17 +306,17 @@ export default function DashboardPage() {
 
   // ─── Section wrapper helper ──────────────────────────────────────
   const sectionClass = (sectionAllDone: boolean, celebrating: boolean) =>
-    `rounded-lg border border-border/60 p-3 transition-colors duration-500 ${
+    `py-3 transition-colors duration-500 ${
       celebrating
-        ? "bg-emerald-50/80 dark:bg-emerald-950/40"
+        ? "bg-emerald-50/80 dark:bg-emerald-950/40 rounded-lg px-3"
         : sectionAllDone
-          ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+          ? "bg-emerald-50/40 dark:bg-emerald-950/20 rounded-lg px-3"
           : ""
     }`;
 
   return (
     <AppLayout>
-      <div className={`container mx-auto px-4 py-3 max-w-2xl space-y-3 transition-colors duration-700 ${
+      <div className={`container mx-auto px-4 py-3 max-w-2xl space-y-5 transition-colors duration-700 ${
         isCloseMoment ? "bg-gradient-to-b from-amber-50/30 dark:from-amber-950/15" : ""
       }`}>
 
@@ -434,11 +434,14 @@ export default function DashboardPage() {
 
         {/* ─── 3. Daily Contract ───────────────────────────────── */}
         <div
-          className={`rounded-lg p-3 transition-colors ${isToday && allDone ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-bark/5"}`}
+          className={`py-3 transition-colors ${isToday && allDone ? "bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3" : ""}`}
           data-testid="daily-contract"
         >
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium" data-testid="contract-counts">
+          <p className="text-sm font-medium" data-testid="contract-counts">
             {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
+          </p>
+          <p className={`text-xs mt-0.5 ${allDone ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-muted-foreground"}`}>
+            {allDone ? "Proved." : `${completedItems}/${totalItems} proved`}
           </p>
         </div>
 
@@ -446,7 +449,7 @@ export default function DashboardPage() {
         <div className={sectionClass(hasMorning, morningCelebrating)}>
           <button
             className="flex items-center gap-3 w-full text-left"
-            onClick={() => { setLocation(`/journal/${selectedDate}/morning`); window.scrollTo(0, 0); }}
+            onClick={() => { setLocation(`/journal/${selectedDate}/morning?returnTo=/dashboard`); window.scrollTo(0, 0); }}
             data-testid="journal-row-morning"
           >
             <CompletionCircle
@@ -465,8 +468,7 @@ export default function DashboardPage() {
         {/* ─── 5. Focus Section ────────────────────────────────── */}
         {focusItems.length > 0 && (
           <div className={sectionClass(allFocusDone, focusCelebrating)} data-testid="card-focus">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-bark">Focus</span>
+            <div className="flex justify-end mb-1">
               <span className="text-[11px] text-muted-foreground">
                 {completedFocusCount}/{focusItems.length}
               </span>
@@ -482,6 +484,7 @@ export default function DashboardPage() {
                   <FocusItem
                     item={item}
                     weekStartDate={weekStartDate}
+                    isToday={isToday}
                     onToggleDone={(id, currentlyDone) =>
                       setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
                     }
@@ -495,20 +498,10 @@ export default function DashboardPage() {
         {/* ─── 6. Habits Section ───────────────────────────────── */}
         {selectedHabits.length > 0 && (
           <div className={sectionClass(allHabitsDone, habitsCelebrating)} data-testid="card-daily-habits">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium uppercase tracking-wide text-bark">Habits</span>
+            <div className="flex justify-end mb-1">
               <span className="text-[11px] text-muted-foreground">
                 {completedHabits}/{selectedHabits.length}
               </span>
-            </div>
-            {/* Progress bar */}
-            <div className="h-1 w-full bg-muted rounded-full overflow-hidden mb-2">
-              <motion.div
-                className="h-full bg-emerald-500 rounded-full"
-                initial={false}
-                animate={{ width: `${selectedHabits.length > 0 ? (completedHabits / selectedHabits.length) * 100 : 0}%` }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
             </div>
             <AnimatePresence mode="popLayout">
               {sortedHabits.map((habit) => {
@@ -579,7 +572,7 @@ export default function DashboardPage() {
         >
           <button
             className="flex items-center gap-3 w-full text-left"
-            onClick={() => { setLocation(`/journal/${selectedDate}/evening`); window.scrollTo(0, 0); }}
+            onClick={() => { setLocation(`/journal/${selectedDate}/evening?returnTo=/dashboard`); window.scrollTo(0, 0); }}
             data-testid="journal-row-evening"
           >
             <CompletionCircle

@@ -17,6 +17,7 @@ import {
   Sprout,
   TreePine,
   Award,
+  User,
   Download,
   Shield,
 } from "lucide-react";
@@ -35,6 +36,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Today", path: "/dashboard", icon: Sprout },
   { label: "Plan", path: "/plan", icon: TreePine },
+  { label: "Profile", path: "/profile", icon: User },
   { label: "Proof", path: "/journal", icon: Award },
 ];
 

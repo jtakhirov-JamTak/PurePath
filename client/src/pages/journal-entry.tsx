@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Sun, Moon, Save, Loader2, Heart, BedDouble, Compass } from "lucide-react";
 import { useLocation, useParams } from "wouter";
+import { useReturnTo } from "@/hooks/use-return-to";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -200,6 +201,7 @@ const emptyEvening: EveningContent = {
 export default function JournalEntryPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { returnTo, finish } = useReturnTo("/journal");
   const params = useParams<{ date: string; session: string }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -378,7 +380,7 @@ export default function JournalEntryPage() {
         // "Day closed." moment — fade content, show text, then navigate
         setShowDayClosed(true);
         setTimeout(() => {
-          setLocation("/");
+          finish();
           window.scrollTo(0, 0);
         }, 1800);
         return;
@@ -451,7 +453,7 @@ export default function JournalEntryPage() {
       <header className="border-b border-border/50 sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setLocation("/journal")} data-testid="button-back">
+            <Button variant="ghost" size="icon" onClick={() => finish()} data-testid="button-back">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-3">

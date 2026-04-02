@@ -77,7 +77,7 @@ export default function IdentityDocPage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/dashboard" doneLabel="Done" />
+      <FlowBar fallback="/profile" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-10">
           <h1 className="text-base font-medium" data-testid="text-identity-title">Identity Document</h1>
