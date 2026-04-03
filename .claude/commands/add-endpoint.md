@@ -1,6 +1,6 @@
 ---
 name: add-endpoint
-description: Scaffold a new API endpoint following Leaf patterns
+description: Scaffold a new API endpoint following Proof Arc patterns
 ---
 
 When I describe a new API endpoint, follow these steps in order:

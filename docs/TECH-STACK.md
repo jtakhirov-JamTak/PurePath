@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains the technology choices for the Leaf platform and why each was selected.
+This document explains the technology choices for the Proof Arc platform and why each was selected.
 
 ---
 

@@ -1,8 +1,8 @@
-# Leaf - Self-Discovery Course Platform
+# Proof Arc - Self-Discovery Course Platform
 
 ## Overview
 
-Leaf is a 3-phase self-discovery and personal growth course platform that integrates AI-powered features. It offers courses focused on self-reflection, personal structure, and transformation, available individually or as a bundle. The platform uses a natural, organic theme with green/leaf tones throughout (primary color: HSL 142 50% 40%) and nature-inspired iconography (Leaf, Sprout, TreePine from lucide-react). The custom LeafLogo component (`client/src/components/leaf-logo.tsx`) renders an SVG leaf with white vein details and green stems. Brand text uses light green (`text-primary`).
+Proof Arc is a self-discovery and personal growth platform that integrates AI-powered features. It offers a live workshop + daily practice app focused on self-reflection, personal structure, and transformation. The platform uses a warm teal palette (primary color: HSL 163 40% 30%) with nature-inspired iconography (Sprout, TreePine from lucide-react). The BrandLogo component (`client/src/components/brand-logo.tsx`) renders an SVG arc mark. Brand text uses `text-primary`.
 
 ## User Preferences
 
@@ -15,7 +15,7 @@ Preferred communication style: Simple, everyday language.
 - **Routing**: Wouter for client-side routing.
 - **State Management**: TanStack React Query for server state.
 - **UI Components**: shadcn/ui built on Radix UI, styled with Tailwind CSS and CSS variables for theming.
-- **Design System**: Natural green leaf theme (HSL 142), Inter for body, Plus Jakarta Sans for headings, 16px base font, 1.6 line-height, 12px border radius, nature-inspired icon palette (Sprout, TreePine, CalendarDays, Leaf).
+- **Design System**: Warm teal palette (HSL 163 40% 30%), Inter for body, Source Serif 4 for headings, 16px base font, 1.6 line-height, 12px border radius, nature-inspired icon palette (Sprout, TreePine, CalendarDays).
 - **Navigation Structure**: Three main tabs:
   - **Today** (default landing): Daily-focused dashboard with due habits, top 3 tasks, Q2 blocks, journal quick entry, quick tools
   - **Plan**: Vision board, monthly goal, habits overview, Eisenhower matrix links with inline planning wizard stepper
@@ -44,14 +44,13 @@ Preferred communication style: Simple, everyday language.
   - **Navigation Framework**: Lightweight process navigation with two features:
     - **returnTo system** (`client/src/hooks/use-return-to.ts`): `useReturnTo(fallback)` hook reads `?returnTo=` query param from URL, validates it (must be internal path), provides `finish()` to navigate back. `buildProcessUrl(path, returnTo)` creates launch URLs. Used by goal-wizard, and launch links from dashboard/plan.
     - **Unsaved Changes Guard** (`client/src/hooks/use-unsaved-guard.tsx`): `UnsavedGuardProvider` wraps the app. Components call `useUnsavedGuard()` to get `register()/unregister()` for dirty state tracking, and `safeNavigate()` which shows Save/Discard/Cancel modal before navigating when dirty. Applied to goal-wizard and eisenhower wizard. All AppLayout nav links use `safeNavigate`. `beforeunload` handler fires when dirty.
-    - **Process Registry** (`client/src/lib/process-registry.ts`): Lean metadata for all process flows (id, title, path, defaultReturnTo, requiresDirtyGuard). No route generation — routes still in App.tsx.
+    - Process flow metadata is managed inline — routes are defined in App.tsx.
 
 ## Navigation Framework Rules
 
 When adding or modifying any process flow, follow this checklist:
 
-1. Register the process in `client/src/lib/process-registry.ts`
-2. Launch links must use `buildProcessUrl(path, currentPath)` to embed returnTo
+1. Launch links must use `buildProcessUrl(path, currentPath)` from `use-return-to.ts` to embed returnTo
 3. Completion must call `useReturnTo(fallback).finish()` to return to origin
 4. All AppLayout nav links must use `safeNavigate()` — never raw `<Link>` or `setLocation()`
 5. Full-page processes with data entry: register with `useUnsavedGuard()`

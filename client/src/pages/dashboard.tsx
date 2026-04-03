@@ -425,7 +425,7 @@ export default function DashboardPage() {
           <p className="font-serif text-[22px] font-normal tracking-tight leading-tight" data-testid="contract-counts">
             {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
           </p>
-          <p className={`text-[13px] mt-1.5 ${allDone ? "text-primary font-medium" : "text-muted-foreground"}`}>
+          <p className={`text-[13px] mt-1.5 ${allDone ? "text-primary font-medium" : "text-muted-foreground"}`} data-testid="text-habits-progress">
             {allDone ? "Proved." : `${completedItems} of ${totalItems} proved`}
           </p>
         </div>

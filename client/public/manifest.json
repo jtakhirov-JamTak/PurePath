@@ -1,13 +1,13 @@
 {
   "id": "/",
-  "name": "The Leaf",
-  "short_name": "Leaf",
-  "description": "Daily practice app for self-transformation",
+  "name": "Proof Arc",
+  "short_name": "Proof Arc",
+  "description": "Turn your goals into daily follow-through",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f4f2",
-  "theme_color": "#50C878",
+  "theme_color": "#2C6355",
   "orientation": "portrait",
   "icons": [
     {

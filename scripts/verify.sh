@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Inner Journey: verify ==="
+echo "=== Proof Arc: verify ==="
 echo ""
 
 echo "1) Type check (project code)..."
@@ -43,19 +43,8 @@ else
 fi
 echo ""
 
-echo "3) Process registry check..."
-REGISTRY="client/src/lib/process-registry.ts"
-if [ -f "$REGISTRY" ]; then
-  PROCESS_COUNT=$(grep -c 'id:' "$REGISTRY" 2>/dev/null || true)
-  PROCESS_COUNT=${PROCESS_COUNT:-0}
-  echo "   ✓ Registry has $PROCESS_COUNT processes"
-else
-  echo "   ⚠ WARNING: process-registry.ts not found"
-fi
-echo ""
-
-echo "4) Smoke tests..."
-npx tsx scripts/smoke-tests.ts
+echo "3) Unit tests..."
+npm run test
 echo ""
 
 echo "=== verify complete ==="

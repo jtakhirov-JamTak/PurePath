@@ -113,7 +113,7 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
   return (
     <div className="text-center space-y-8 py-12">
       <div className="space-y-3">
-        <h1 className="text-lg font-medium" data-testid="text-welcome-heading">Welcome to Leaf</h1>
+        <h1 className="text-lg font-medium" data-testid="text-welcome-heading">Welcome to Proof Arc</h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto" data-testid="text-welcome-subtext">
           Let's set up your daily system using what you created in the workshop. This takes about 10 minutes.
         </p>

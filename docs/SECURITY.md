@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines security practices for the Leaf platform. Follow these patterns to prevent common vulnerabilities.
+This document outlines security practices for the Proof Arc platform. Follow these patterns to prevent common vulnerabilities.
 
 ---
 

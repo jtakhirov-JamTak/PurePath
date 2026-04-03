@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 ## Project Overview
-Leaf — One live 3.5-hour workshop ($899) + mobile-first daily practice app (PWA).
+Proof Arc — One live 3.5-hour workshop ($899) + mobile-first daily practice app (PWA).
 Users journal, track habits, set goals, and build self-awareness through structured exercises.
 Data is mechanistic/structured for future AI pattern analysis.
 
@@ -35,7 +35,7 @@ client/src/pages/          # One file per page (monolithic — state + UI + logi
 client/src/components/     # Shared components + shadcn/ui in components/ui/
 client/src/components/ui/  # shadcn/ui — do NOT modify directly
 client/src/hooks/          # use-auth, use-return-to, use-unsaved-guard, use-toast
-client/src/lib/            # queryClient, process-registry, utils
+client/src/lib/            # queryClient, utils
 server/routes/             # One file per domain (habits, journals, eisenhower, etc.)
 server/routes/helpers.ts   # Rate limiters, CSV escape, ID parsing
 server/storage.ts          # IStorage interface — ALL db ops go here, never direct queries
@@ -56,8 +56,8 @@ Path aliases: `@/*` → `client/src/*`, `@shared/*` → `shared/*`, `@assets` �
 ## Adding a Page
 1. Page component → `client/src/pages/`
 2. Route → `App.tsx` wrapped in `AccessGatedRoute`
-3. Process flow? Register in `process-registry.ts`, use `buildProcessUrl()` + `useReturnTo()`
-4. Nav entry → `app-layout.tsx` using `safeNavigate()` (NEVER raw `<Link>`)
+3. Nav entry → `app-layout.tsx` using `safeNavigate()` (NEVER raw `<Link>`)
+4. Process flow? Use `buildProcessUrl()` + `useReturnTo()` from `use-return-to.ts`
 5. Data entry? Use `useUnsavedGuard()` for dirty form protection
 
 ## Data Flow
@@ -90,7 +90,8 @@ Path aliases: `@/*` → `client/src/*`, `@shared/*` → `shared/*`, `@assets` �
 ## Security Rules
 - All routes: `isAuthenticated` + userId filtering. Never trust client-provided userId
 - Validate all input with Zod before DB ops
-- Never log or expose user content (journals, emotions, triggers) in errors
+- Never log or expose user content (journals, emotions, triggers) in errors or request logs
+- Never log API response bodies — they contain sensitive personal data
 - Rate limit AI/export endpoints (see `routes/helpers.ts`)
 
 ## Deployment
@@ -101,6 +102,8 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - Auto-created eisenhower entries (e.g. from monthly goal nextConcreteStep) must dedupe before POSTing — re-saving the goal duplicated items on the calendar
 - Dashboard Daily Contract (or any "today's commitment" UI) must derive from `todayFocusItems` pinned to `todayStr`, not `focusItems` which follows `selectedDate` in the week strip
 - Trigger log section in evening journal is a KEEP — only the standalone Trigger Log tool/modal was removed, not the embedded evening journal trigger section ("What got in the way?")
+- Request logger must NEVER capture response bodies — found logging up to 500 chars of every API response (journals, identity docs, emotions) to server logs. Only log method/path/status/duration.
+- Unregistered route files without auth are a security footgun — delete them rather than leaving them dormant. audio/routes.ts and image/routes.ts were deleted for this reason.
 - (Add new lessons here as they arise)
 
 ## Docs

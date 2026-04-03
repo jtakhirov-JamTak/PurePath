@@ -1,11 +1,11 @@
 ---
 name: add-crud-feature
-description: Build a complete CRUD feature — table, API, page — following Leaf patterns
+description: Build a complete CRUD feature — table, API, page — following Proof Arc patterns
 ---
 
 # Add CRUD Feature
 
-Build a complete CRUD feature following Leaf's established patterns.
+Build a complete CRUD feature following Proof Arc's established patterns.
 
 ## Inputs needed:
 - Feature name (e.g., "reflections")

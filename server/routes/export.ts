@@ -42,7 +42,7 @@ export function registerExportRoutes(app: Express) {
 
       const allCompletions = await storage.getHabitCompletionsForRange(userId, "2000-01-01", "2099-12-31");
 
-      let md = `# The Leaf — Complete Data Export\n`;
+      let md = `# Proof Arc — Complete Data Export\n`;
       md += `**User:** ${userName}\n`;
       md += `**Exported:** ${format(new Date(), "yyyy-MM-dd HH:mm")}\n\n`;
       md += `---\n\n`;
@@ -269,9 +269,9 @@ export function registerExportRoutes(app: Express) {
       }
 
       md += `---\n\n`;
-      md += `*Exported from The Leaf on ${format(new Date(), "MMMM d, yyyy")}. This document contains all user data and can be used as context for AI analysis.*\n`;
+      md += `*Exported from Proof Arc on ${format(new Date(), "MMMM d, yyyy")}. This document contains all user data and can be used as context for AI analysis.*\n`;
 
-      const filename = `the-leaf-export-${format(new Date(), "yyyy-MM-dd")}.md`;
+      const filename = `proof-arc-export-${format(new Date(), "yyyy-MM-dd")}.md`;
       res.setHeader("Content-Type", "text/markdown; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(md);

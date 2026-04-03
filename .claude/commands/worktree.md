@@ -11,12 +11,12 @@ git worktree list
 ```
 
 1. Create a new branch: `feature/$ARGUMENTS`
-2. Create a worktree at `../the-leaf-v2-$ARGUMENTS`
+2. Create a worktree at `../proof-arc-$ARGUMENTS`
 3. Report the path so you can open a second Claude Code session there
 
 When done, merge back with:
 ```
-git checkout main && git merge feature/$ARGUMENTS && git worktree remove ../the-leaf-v2-$ARGUMENTS
+git checkout main && git merge feature/$ARGUMENTS && git worktree remove ../proof-arc-$ARGUMENTS
 ```
 
 Task name: $ARGUMENTS

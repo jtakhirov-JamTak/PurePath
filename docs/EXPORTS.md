@@ -35,7 +35,7 @@ The export includes all user data, in this order:
 ## Output Format
 
 ```markdown
-# The Leaf — Complete Data Export
+# Proof Arc — Complete Data Export
 **User:** Jordan
 **Exported:** 2026-03-22 14:30
 
@@ -93,7 +93,7 @@ The export includes all user data, in this order:
 
 ---
 
-*Exported from The Leaf on March 22, 2026.*
+*Exported from Proof Arc on March 22, 2026.*
 ```
 
 ---

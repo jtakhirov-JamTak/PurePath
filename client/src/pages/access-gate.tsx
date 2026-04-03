@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { LeafLogo } from "@/components/leaf-logo";
+import { BrandLogo } from "@/components/brand-logo";
 import { Loader2 } from "lucide-react";
 
 export default function AccessGatePage() {
@@ -41,7 +41,7 @@ export default function AccessGatePage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-3">
-          <LeafLogo size={48} />
+          <BrandLogo size={48} className="text-primary" />
           <h1 className="text-base font-medium text-foreground">Enter Access Code</h1>
           <p className="text-sm text-muted-foreground text-center">
             Enter the code you received at the workshop
@@ -73,8 +73,7 @@ export default function AccessGatePage() {
 
           <Button
             type="submit"
-            className="w-full"
-            style={{ backgroundColor: "#50C878" }}
+            className="w-full bg-primary text-primary-foreground hover:opacity-90"
             disabled={!code.trim() || !email.includes("@") || !email.includes(".") || verifyMutation.isPending}
             data-testid="button-verify-code"
           >
