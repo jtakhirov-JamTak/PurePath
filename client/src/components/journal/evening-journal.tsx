@@ -8,7 +8,7 @@ import {
   APPRAISALS_V2, EMOTIONS_V2, URGES_V2, ACTIONS_V2, BODY_STATES_V2, RECOVERY_TIMES_V2,
   Chip,
 } from "@/components/tools/trigger-chips";
-import { FreeTextOrChips } from "@/components/journal/free-text-or-chips";
+import { FreeTextOrChips } from "@/components/free-text-or-chips";
 import { cn } from "@/lib/utils";
 import type { EveningContent } from "@/pages/journal-entry";
 

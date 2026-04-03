@@ -8,9 +8,9 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
-import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { IdentityDocument } from "@shared/schema";
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 6;
 
 interface AvoidingExerciseProps {
   onFinish: () => void; // called after saving, triggers mood.finishExercise()
@@ -27,17 +27,7 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
 
-  const currentMonthKey = format(new Date(), "yyyy-MM");
   const todayStr = format(new Date(), "yyyy-MM-dd");
-
-  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", currentMonthKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
 
   const { data: identityDoc } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
@@ -50,13 +40,12 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
 
   const canNext = (() => {
     switch (step) {
-      case 0: return true; // context step, always can advance
-      case 1: return avoidingWhat.trim().length > 0;
-      case 2: return selectedValue.length > 0;
-      case 3: return discomfort !== null;
-      case 4: return anticipatedOutcome.trim().length > 0;
-      case 5: return smallestExposure.trim().length > 0;
-      case 6: return scheduledTime.length > 0;
+      case 0: return avoidingWhat.trim().length > 0;
+      case 1: return selectedValue.length > 0;
+      case 2: return discomfort !== null;
+      case 3: return anticipatedOutcome.trim().length > 0;
+      case 4: return smallestExposure.trim().length > 0;
+      case 5: return scheduledTime.length > 0;
       default: return false;
     }
   })();
@@ -102,8 +91,6 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
     if (step > 0) setStep(s => s - 1);
   };
 
-  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
-
   return (
     <div className="space-y-4">
       {/* Progress */}
@@ -113,23 +100,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         ))}
       </div>
 
-      {/* Step 1: Monthly goal context */}
+      {/* Step 1: What am I avoiding? */}
       {step === 0 && (
-        <div className="space-y-3 text-center">
-          <p className="text-sm font-medium">Your current focus</p>
-          {goalDisplay ? (
-            <div className="rounded-lg border bg-muted/50 px-4 py-3">
-              <p className="text-sm">{goalDisplay}</p>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">No monthly goal set yet.</p>
-          )}
-          <p className="text-xs text-muted-foreground">Keep this in mind as you explore what you're avoiding.</p>
-        </div>
-      )}
-
-      {/* Step 2: What am I avoiding? */}
-      {step === 1 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">What am I avoiding?</Label>
           <Textarea
@@ -144,8 +116,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         </div>
       )}
 
-      {/* Step 3: Which value does facing this serve? */}
-      {step === 2 && (
+      {/* Step 2: Which value does facing this serve? */}
+      {step === 1 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">Which value does facing this serve?</Label>
           {valueChips.length > 0 ? (
@@ -181,8 +153,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         </div>
       )}
 
-      {/* Step 4: Discomfort level */}
-      {step === 3 && (
+      {/* Step 3: Discomfort level */}
+      {step === 2 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">Discomfort level</Label>
           <p className="text-xs text-muted-foreground">How uncomfortable does facing this feel?</p>
@@ -210,8 +182,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         </div>
       )}
 
-      {/* Step 5: Anticipated outcome */}
-      {step === 4 && (
+      {/* Step 4: Anticipated outcome */}
+      {step === 3 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">What do I think will happen if I do this?</Label>
           <p className="text-xs text-muted-foreground">My fear is that...</p>
@@ -227,8 +199,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         </div>
       )}
 
-      {/* Step 6: Smallest exposure rep */}
-      {step === 5 && (
+      {/* Step 5: Smallest exposure rep */}
+      {step === 4 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">Smallest exposure rep</Label>
           <p className="text-xs text-muted-foreground">The tiniest step I could take toward this...</p>
@@ -244,8 +216,8 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
         </div>
       )}
 
-      {/* Step 7: Time picker */}
-      {step === 6 && (
+      {/* Step 6: Time picker */}
+      {step === 5 && (
         <div className="space-y-3">
           <Label className="text-sm font-medium">I'll do this at:</Label>
           <Input

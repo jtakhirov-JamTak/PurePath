@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type Habit, type InsertHabit,
@@ -10,6 +10,7 @@ import {
   type ToolUsageLog, type InsertToolUsageLog,
   type AvoidanceLog, type InsertAvoidanceLog,
   type ContainmentLog, type InsertContainmentLog,
+  type TriggerLog, type InsertTriggerLog,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
@@ -76,6 +77,10 @@ export interface IStorage {
   // Containment Logs
   getContainmentLogsByUser(userId: string): Promise<ContainmentLog[]>;
   createContainmentLog(log: InsertContainmentLog): Promise<ContainmentLog>;
+
+  // Trigger Logs
+  getTriggerLogsByUser(userId: string): Promise<TriggerLog[]>;
+  createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog>;
 
   // Habit completion level updates
   updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void>;
@@ -491,6 +496,15 @@ export class DatabaseStorage implements IStorage {
 
   async createContainmentLog(log: InsertContainmentLog): Promise<ContainmentLog> {
     const [created] = await db.insert(containmentLogs).values(log).returning();
+    return created;
+  }
+
+  async getTriggerLogsByUser(userId: string): Promise<TriggerLog[]> {
+    return db.select().from(triggerLogs).where(eq(triggerLogs.userId, userId)).orderBy(desc(triggerLogs.createdAt));
+  }
+
+  async createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog> {
+    const [created] = await db.insert(triggerLogs).values(log).returning();
     return created;
   }
 

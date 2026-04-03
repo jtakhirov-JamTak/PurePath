@@ -325,7 +325,6 @@ export const insertToolUsageLogSchema = createInsertSchema(toolUsageLogs).omit({
 export type ToolUsageLog = typeof toolUsageLogs.$inferSelect;
 export type InsertToolUsageLog = z.infer<typeof insertToolUsageLogSchema>;
 
-// DEPRECATED: feature removed, table retained for historical data
 export const triggerLogs = pgTable("trigger_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -333,10 +332,10 @@ export const triggerLogs = pgTable("trigger_logs", {
   timeOfDay: varchar("time_of_day", { length: 20 }),
   context: varchar("context", { length: 50 }),
   triggerText: text("trigger_text").notNull(),
-  emotion: varchar("emotion", { length: 50 }).notNull(),
-  emotionIntensity: integer("emotion_intensity").notNull(),
-  urge: varchar("urge", { length: 50 }).notNull(),
-  urgeIntensity: integer("urge_intensity").notNull(),
+  emotion: varchar("emotion", { length: 50 }),
+  emotionIntensity: integer("emotion_intensity"),
+  urge: varchar("urge", { length: 50 }),
+  urgeIntensity: integer("urge_intensity"),
   whatIDid: text("what_i_did"),
   outcome: text("outcome"),
   recoveryMinutes: integer("recovery_minutes"),

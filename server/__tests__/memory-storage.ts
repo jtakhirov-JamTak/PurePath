@@ -152,6 +152,10 @@ export const storage = {
   getContainmentLogsByUser: async (userId: string) => [] as any[],
   createContainmentLog: async (data: any) => ({ id: nextId(), ...data }),
 
+  // Trigger Logs
+  getTriggerLogsByUser: async (userId: string) => [] as any[],
+  createTriggerLog: async (data: any) => ({ id: nextId(), ...data }),
+
   // User settings / access
   getUserSettings: async (userId: string) => _userSettings.find(s => s.userId === userId) || null,
   upsertUserSettings: async (userId: string, data: any) => {

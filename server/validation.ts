@@ -273,6 +273,15 @@ export const createContainmentLogSchema = z.object({
   completed: z.boolean().optional().nullable(),
 });
 
+export const createTriggerLogSchema = z.object({
+  date: dateString,
+  triggerText: trimmedString(1, 2000),
+  appraisal: optionalString(2000),
+  emotion: optionalString(50),
+  urge: optionalString(50),
+  whatIDid: optionalString(2000),
+});
+
 export const reorderItemSchema = z.object({
   id: z.number().int().positive(),
   sortOrder: z.number().int().min(0),

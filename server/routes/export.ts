@@ -18,6 +18,7 @@ export function registerExportRoutes(app: Express) {
         avoidanceLogs,
         toolUsageLogs,
         containmentLogs,
+        triggerLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getJournalsByUser(userId),
@@ -26,6 +27,7 @@ export function registerExportRoutes(app: Express) {
         storage.getAvoidanceLogsByUser(userId),
         storage.getToolUsageLogsByUser(userId),
         storage.getContainmentLogsByUser(userId),
+        storage.getTriggerLogsByUser(userId),
       ]);
 
       // Collect monthly goals from all months
@@ -265,6 +267,23 @@ export function registerExportRoutes(app: Express) {
           if (c.emotionReason) md += `**Because:** ${c.emotionReason}\n`;
           if (c.moveAction) md += `**Move action:** ${c.moveAction}\n`;
           md += `**Completed:** ${c.completed ? "Yes" : "No"}\n\n`;
+        });
+      }
+
+      // TRIGGER LOGS
+      md += `---\n\n## Trigger Logs\n\n`;
+      const tLogs = triggerLogs as { date: string; triggerText: string; appraisal?: string | null; emotion?: string | null; urge?: string | null; whatIDid?: string | null }[];
+      if (tLogs.length === 0) {
+        md += `No trigger logs recorded.\n\n`;
+      } else {
+        tLogs.forEach((t) => {
+          md += `### ${t.date}\n`;
+          md += `**What happened:** ${t.triggerText}\n`;
+          if (t.appraisal) md += `**Story I told myself:** ${t.appraisal}\n`;
+          if (t.emotion) md += `**What I felt:** ${t.emotion}\n`;
+          if (t.urge) md += `**What I wanted to do:** ${t.urge}\n`;
+          if (t.whatIDid) md += `**What I did:** ${t.whatIDid}\n`;
+          md += `\n`;
         });
       }
 

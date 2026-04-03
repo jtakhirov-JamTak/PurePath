@@ -8,16 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Heart, Shield, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
+  Heart, Shield, Zap, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { AvoidingExercise } from "./avoiding-exercise";
+import { TriggerExercise } from "./trigger-exercise";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 
 const CONTAINMENT_STEPS = [
   { label: "FEEL", instruction: "Close your eyes. Notice where the emotion lives in your body - throat, chest, stomach, jaw. Don't push it away, just observe.", duration: 15 },
   { label: "LABEL", instruction: "Name the emotion using this sentence:", duration: 0 },
-  { label: "REGULATE", instruction: "Take slow breaths. In through your nose (4 counts), hold (4 counts), out through your mouth (6 counts).", duration: 20 },
+  { label: "REGULATE", instruction: "Take slow breaths. In through your nose (4 counts), hold (4 counts), out through your mouth (6 counts).", duration: 45 },
   { label: "MOVE", instruction: "Choose one small action to shift your state: stand up, stretch, drink water, or write one sentence.", duration: 0 },
 ];
 
@@ -62,7 +63,7 @@ function TimerCircle({ timer, color, testId }: { timer: ReturnType<typeof useTim
   );
 }
 
-type Branch = "choose" | "overwhelmed" | "avoiding";
+type Branch = "choose" | "overwhelmed" | "avoiding" | "trigger";
 
 export function ContainmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [branch, setBranch] = useState<Branch>("choose");
@@ -78,14 +79,13 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
   if (branch === "choose") {
     return (
       <Dialog open={open} onOpenChange={(o) => { if (!o) handleFullClose(); }}>
-        <DialogContent className="sm:max-w-md" data-testid="modal-containment-choose">
+        <DialogContent className="sm:max-w-lg" data-testid="modal-containment-choose">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-rose-500" />
               What's happening right now?
             </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 py-2">
             <button
               onClick={() => setBranch("overwhelmed")}
               className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
@@ -108,6 +108,17 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
                 <p className="text-[10px] text-muted-foreground">Face what I'm putting off</p>
               </div>
             </button>
+            <button
+              onClick={() => setBranch("trigger")}
+              className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
+              data-testid="button-branch-trigger"
+            >
+              <Zap className="h-8 w-8 text-primary" />
+              <div className="text-center">
+                <p className="text-sm font-medium">I Got Triggered</p>
+                <p className="text-[10px] text-muted-foreground">Log and process a reaction</p>
+              </div>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -118,7 +129,11 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
     return <OverwhelmedExercise open={open} onClose={handleFullClose} />;
   }
 
-  return <AvoidingExerciseModal open={open} onClose={handleFullClose} />;
+  if (branch === "avoiding") {
+    return <AvoidingExerciseModal open={open} onClose={handleFullClose} />;
+  }
+
+  return <TriggerExerciseModal open={open} onClose={handleFullClose} />;
 }
 
 // ─── Overwhelmed path (existing 4-step exercise) ───
@@ -319,6 +334,32 @@ function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () =
           branch: "avoiding",
           completed: true,
         }).catch(() => {});
+        mood.finishExercise();
+      }} />
+    </ExerciseModal>
+  );
+}
+
+// ─── Trigger path ───
+
+function TriggerExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const mood = useMoodTracking("Trigger");
+
+  const handleClose = () => {
+    mood.reset();
+    onClose();
+  };
+
+  return (
+    <ExerciseModal
+      open={open}
+      onClose={handleClose}
+      mood={mood}
+      title="Log a Trigger"
+      icon={<Zap className="h-5 w-5 text-primary" />}
+      testId="modal-trigger"
+    >
+      <TriggerExercise onFinish={() => {
         mood.finishExercise();
       }} />
     </ExerciseModal>
