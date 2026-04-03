@@ -57,10 +57,12 @@ const framework = [
 const faqs = [
   {
     q: "It's expensive.",
+    reframe: "That assumes the cost is the $599. The real cost is another year of the same pattern.",
     a: "Another year of the same pattern is more expensive. You're not paying for a workshop — you're paying to stop drifting.",
   },
   {
     q: "I can do this on my own.",
+    reframe: "That assumes the problem is effort. The problem is you've never had a room that won't let you edit the truth.",
     a: "You've been trying on your own. That's the point. Proof Arc gives you a room, a structure, and people who won't let you edit the truth.",
   },
   {
@@ -77,11 +79,12 @@ const faqs = [
   },
   {
     q: "What if it doesn't work?",
+    reframe: "That assumes the system does it for you. The system holds the mirror — you do the work.",
     a: "It works if you face it and use it. The room creates the shift. The system keeps it alive.",
   },
 ];
 
-function FAQ({ q, a }: { q: string; a: string }) {
+function FAQ({ q, a, reframe }: { q: string; a: string; reframe?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-border/40">
@@ -96,7 +99,12 @@ function FAQ({ q, a }: { q: string; a: string }) {
         />
       </button>
       {open && (
-        <p className="text-muted-foreground text-sm pb-4 leading-relaxed">{a}</p>
+        <div className="pb-4 space-y-2">
+          {reframe && (
+            <p className="text-sm italic text-muted-foreground/80 leading-relaxed">{reframe}</p>
+          )}
+          <p className="text-muted-foreground text-sm leading-relaxed">{a}</p>
+        </div>
       )}
     </div>
   );
@@ -163,6 +171,23 @@ export default function LandingPage() {
           <p>
             The problem was never information. The problem is you haven't faced the gap between who you are and who your goals actually require you to become.
           </p>
+        </div>
+      </section>
+
+      {/* ── WHY THIS EXISTS ── */}
+      <section className="max-w-2xl mx-auto px-6 pb-16 sm:pb-20">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-6">
+          Why This Exists
+        </p>
+        <div className="space-y-5 text-[15px] leading-relaxed">
+          <p>This system exists because of a breakup.</p>
+          <p>
+            Not because of heartbreak — but because of what it revealed. The founder realized he didn't understand what had gone wrong because he didn't understand himself. He'd been outsourcing decisions, reacting from blind spots, and living from patterns he'd never examined honestly.
+          </p>
+          <p>
+            So he built a system: foundational self-examination, daily practices, trigger awareness, weekly review, and evidence over time. It worked — not because it was inspiring, but because it was true.
+          </p>
+          <p>Proof Arc is that system, turned into something other people can use.</p>
         </div>
       </section>
 
@@ -286,7 +311,7 @@ export default function LandingPage() {
         </p>
         <div>
           {faqs.map((faq) => (
-            <FAQ key={faq.q} q={faq.q} a={faq.a} />
+            <FAQ key={faq.q} q={faq.q} a={faq.a} reframe={faq.reframe} />
           ))}
         </div>
       </section>
