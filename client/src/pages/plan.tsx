@@ -95,8 +95,11 @@ export default function PlanPage() {
   const { weekStart, weekStartStr } = getWeekBounds(today, weekOffset);
   const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d")}`;
   const isCurrentWeek = weekOffset === 0;
-  const currentMonthKey = format(today, "yyyy-MM");
-  const monthLabel = format(today, "MMMM yyyy");
+  const [monthOffset, setMonthOffset] = useState(0);
+  const monthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const currentMonthKey = format(monthDate, "yyyy-MM");
+  const monthLabel = format(monthDate, "MMMM yyyy");
+  const isCurrentMonth = monthOffset === 0;
 
   const dayOfWeek = getDay(today);
   const weekLocked = dayOfWeek === 0 || dayOfWeek === 6;
@@ -120,7 +123,7 @@ export default function PlanPage() {
 
 
   // ─── Accordion state ─────────────────────────────────────────────
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(["prove", "decide"]));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggle = (key: string) => setExpanded(prev => {
     const next = new Set(prev);
     next.has(key) ? next.delete(key) : next.add(key);
@@ -182,62 +185,60 @@ export default function PlanPage() {
     <AppLayout>
       <div className="container mx-auto px-4 py-4 max-w-2xl space-y-3">
 
-        {/* ─── 1. PROVE — Daily ──────────────────────────────────── */}
+        {/* ─── 1. COMMIT — Monthly ───────────────────────────────── */}
         <Section
-          id="prove" verb="Prove" timeLabel="Daily" accentClass="text-primary"
-          completionOk={activeHabits.length > 0} summary={activeHabits.length > 0 ? `${activeHabits.length} active habits` : "No habits set"}
-          expanded={expanded.has("prove")} onToggle={() => toggle("prove")} celebrating={false}
+          id="commit" verb="Commit" timeLabel="Monthly" accentClass="text-[#B8706A]"
+          completionOk={!!goalDisplay} summary={goalDisplay || "No goal set"}
+          expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
         >
-          {activeHabits.length > 0 ? (
-            <div className="space-y-1">
-              {activeHabits.map(h => (
-                <div
-                  key={h.id}
-                  className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1"
-                  onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
-                >
-                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[h.category || "health"] || "bg-primary"}`} />
-                  <span className="text-xs flex-1">{h.name}</span>
-                  <span className="text-[10px] text-muted-foreground">{TIMING_LABELS[h.timing || "afternoon"] || "PM"}</span>
-                </div>
-              ))}
-              <button
-                className="text-[11px] text-primary hover:underline cursor-pointer mt-1"
-                onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
-              >
-                Manage habits →
-              </button>
+          <div className="rounded-lg border border-border/60 p-3" data-testid="card-this-month">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium">This Month</p>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">{monthLabel}</span>
+                <button onClick={() => setMonthOffset(o => Math.max(o - 1, -6))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-month-prev">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setMonthOffset(o => Math.min(o + 1, 1))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-month-next">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-          ) : (
-            <button
-              className="text-xs text-primary hover:underline cursor-pointer"
-              onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+            <div
+              className="flex items-start gap-2 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 py-1"
+              onClick={() => setLocation(buildProcessUrl(`/monthly-goal${!isCurrentMonth ? `?month=${currentMonthKey}` : ""}`, "/plan"))}
+              data-testid="card-monthly-goal"
             >
-              Set up habits →
-            </button>
-          )}
+              <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${goalDisplay ? "bg-primary" : "bg-muted-foreground/30"}`} />
+              <div>
+                <p className="text-xs font-medium">Monthly Goal</p>
+                <p className="text-[10px] text-muted-foreground">{goalDisplay || "Not set"}</p>
+              </div>
+            </div>
+          </div>
         </Section>
 
         {/* ─── 2. DECIDE — Weekly ────────────────────────────────── */}
         <Section
-          id="decide" verb="Decide" timeLabel={weekLabel} accentClass="text-[#B09340]"
+          id="decide" verb="Decide" timeLabel="Weekly" accentClass="text-[#B09340]"
           completionOk={focusItems.length > 0} summary={focusItems.length > 0 ? `${focusItems.length} items committed` : "Week not planned"}
           expanded={expanded.has("decide")} onToggle={() => toggle("decide")} celebrating={false}
-          headerExtra={
-            <div className="flex items-center gap-0.5 ml-1">
-              <button onClick={() => setWeekOffset(o => Math.max(o - 1, -4))} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-week-prev">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button onClick={() => setWeekOffset(o => Math.min(o + 1, 1))} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-week-next">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          }
         >
 
           {/* Sub-card A: This Week */}
           <div className="rounded-lg border border-border/60 p-3 mb-2" data-testid="card-this-week">
-            <p className="text-xs font-medium mb-2">This Week</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-medium">This Week</p>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">{weekLabel}</span>
+                <button onClick={() => setWeekOffset(o => Math.max(o - 1, -4))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-week-prev">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setWeekOffset(o => Math.min(o + 1, 1))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-week-next">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
             {focusItems.length > 0 ? (
               <div className="space-y-2">
                 {q1Items.length > 0 && (
@@ -357,18 +358,40 @@ export default function PlanPage() {
 
         </Section>
 
-        {/* ─── 3. COMMIT — Monthly ───────────────────────────────── */}
+        {/* ─── 3. PROVE — Daily ──────────────────────────────────── */}
         <Section
-          id="commit" verb="Commit" timeLabel={monthLabel} accentClass="text-[#B8706A]"
-          completionOk={!!goalDisplay} summary={goalDisplay || "No goal set"}
-          expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
+          id="prove" verb="Prove" timeLabel="Daily" accentClass="text-primary"
+          completionOk={activeHabits.length > 0} summary={activeHabits.length > 0 ? `${activeHabits.length} active habits` : "No habits set"}
+          expanded={expanded.has("prove")} onToggle={() => toggle("prove")} celebrating={false}
         >
-          <SubCard
-            ok={!!goalDisplay} title="Monthly Goal"
-            subtitle={goalDisplay || "Not set"}
-            onClick={() => setLocation(buildProcessUrl("/monthly-goal", "/plan"))}
-            testId="card-monthly-goal"
-          />
+          {activeHabits.length > 0 ? (
+            <div className="space-y-1">
+              {activeHabits.map(h => (
+                <div
+                  key={h.id}
+                  className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1"
+                  onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+                >
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[h.category || "health"] || "bg-primary"}`} />
+                  <span className="text-xs flex-1">{h.name}</span>
+                  <span className="text-[10px] text-muted-foreground">{TIMING_LABELS[h.timing || "afternoon"] || "PM"}</span>
+                </div>
+              ))}
+              <button
+                className="text-[11px] text-primary hover:underline cursor-pointer mt-1"
+                onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+              >
+                Manage habits →
+              </button>
+            </div>
+          ) : (
+            <button
+              className="text-xs text-primary hover:underline cursor-pointer"
+              onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+            >
+              Set up habits →
+            </button>
+          )}
         </Section>
       </div>
     </AppLayout>
