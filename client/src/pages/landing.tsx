@@ -123,7 +123,16 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background text-foreground">
       {/* ── HERO (dark) ── */}
       <section className="bg-[#0B1120] text-white">
-        <div className="max-w-2xl mx-auto px-6 py-20 sm:py-28">
+        <div className="max-w-2xl mx-auto px-6 pt-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white/70">
+            <BrandLogo size={20} />
+            <span className="text-sm font-medium">Proof Arc</span>
+          </div>
+          <a href="/api/login" className="text-xs text-white/50 hover:text-white/80 transition-colors">
+            Sign In
+          </a>
+        </div>
+        <div className="max-w-2xl mx-auto px-6 py-16 sm:py-24">
           <p className="text-[11px] uppercase tracking-[0.2em] text-white/50 mb-6">
             Proof Arc Live
           </p>
