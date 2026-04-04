@@ -13,16 +13,19 @@ This document maps all routes, their access requirements, and the middleware pat
 | Route | Purpose | Notes |
 |-------|---------|-------|
 | `/` | Landing page | Hero, features, pricing |
-| `/access` | Access code entry | User enters workshop access code to unlock the app |
+| `/auth` | Login / Register | Email + password auth with access code at registration |
+| `POST /api/auth/register` | Create account | Rate-limited, requires access code |
+| `POST /api/auth/login` | Sign in | Rate-limited |
+| `POST /api/auth/logout` | Sign out | Destroys session |
+| `GET /api/logout` | Sign out (GET) | Backward compat, redirects to `/` |
 
 ### Authenticated Routes (Login Required)
 
 | Route | Purpose | Middleware |
 |-------|---------|------------|
 | `/dashboard` | User's main dashboard | `isAuthenticated` |
-| `/api/user` | Current user info | `isAuthenticated` |
-| `/api/access-status` | Check if user has access | `isAuthenticated` |
-| `/api/verify-access-code` | Submit access code | `isAuthenticated` |
+| `GET /api/auth/user` | Current user info | `isAuthenticated` |
+| `GET /api/access-status` | Check if user has access | `isAuthenticated` |
 
 ### Access-Gated Routes (Access Code Required)
 
@@ -31,7 +34,8 @@ This document maps all routes, their access requirements, and the middleware pat
 | `/api/journals` | Journal CRUD | `isAuthenticated` + access check |
 | `/api/habits` | Habit CRUD | `isAuthenticated` + access check |
 | `/api/eisenhower` | Weekly planning | `isAuthenticated` + access check |
-| `/api/empathy` | EQ exercises | `isAuthenticated` + access check |
+| `/api/identity-document` | Identity doc | `isAuthenticated` + access check |
+| `/api/tools/*` | Containment, triggers, avoidance | `isAuthenticated` + access check |
 | `/api/export-all` | Full data export | `isAuthenticated` + rate limit |
 
 ---
@@ -48,8 +52,8 @@ Request → isAuthenticated → Route Handler → Response
 
 ```typescript
 function isAuthenticated(req, res, next) {
-  if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ error: "Not authenticated" });
+  if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
   next();
 }
@@ -59,7 +63,7 @@ function isAuthenticated(req, res, next) {
 
 ### Access Checking
 
-Access is controlled via `userSettings.hasAccess`, set when a valid access code is verified.
+Access is controlled via `userSettings.hasAccess`, set automatically when a valid access code is provided during registration.
 
 ```typescript
 // Server-side: check access status
@@ -67,16 +71,6 @@ app.get("/api/access-status", isAuthenticated, async (req, res) => {
   const userId = req.user.claims.sub;
   const settings = await storage.getUserSettings(userId);
   res.json({ hasAccess: settings?.hasAccess === true });
-});
-
-// Server-side: verify access code
-app.post("/api/verify-access-code", isAuthenticated, async (req, res) => {
-  const { code } = req.body;
-  if (code.trim() !== VALID_ACCESS_CODE) {
-    return res.status(403).json({ error: "Invalid access code" });
-  }
-  await storage.upsertUserSettings(userId, { hasAccess: true });
-  res.json({ success: true });
 });
 ```
 
@@ -86,7 +80,7 @@ app.post("/api/verify-access-code", isAuthenticated, async (req, res) => {
 
 ### AccessGatedRoute Component
 
-Routes that require access are wrapped in `AccessGatedRoute`, which checks `userSettings.hasAccess` and redirects to the access code page if not granted.
+Routes that require access are wrapped in `AccessGatedRoute`, which checks `userSettings.hasAccess` and redirects to `/auth` if not granted.
 
 ---
 

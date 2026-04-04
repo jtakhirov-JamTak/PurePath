@@ -121,10 +121,11 @@ export default function AuthPage() {
 
           {mode === "register" && (
             <Input
-              type="text"
+              type="password"
               value={accessCode}
               onChange={(e) => { setAccessCode(e.target.value); clearError(); }}
               placeholder="Access code"
+              autoComplete="off"
               data-testid="input-access-code"
             />
           )}
