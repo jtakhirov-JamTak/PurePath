@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LifeBuoy, ChevronLeft, ChevronRight } from "lucide-react";
+import { Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -567,7 +567,7 @@ export default function DashboardPage() {
           className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors w-full cursor-pointer"
           onClick={() => setContainmentOpen(true)}
         >
-          <LifeBuoy className="h-4 w-4 text-muted-foreground" />
+          <Zap className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Stuck?</span>
         </button>
       </div>

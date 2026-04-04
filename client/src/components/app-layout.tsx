@@ -14,8 +14,8 @@ import {
 import {
   LogOut,
   ChevronDown,
-  Sprout,
-  TreePine,
+  Compass,
+  Map,
   Award,
   User,
   Download,
@@ -34,8 +34,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Today", path: "/dashboard", icon: Sprout },
-  { label: "Plan", path: "/plan", icon: TreePine },
+  { label: "Today", path: "/dashboard", icon: Compass },
+  { label: "Plan", path: "/plan", icon: Map },
   { label: "Profile", path: "/profile", icon: User },
   { label: "Proof", path: "/journal", icon: Award },
 ];
@@ -153,7 +153,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => safeNavigate("/dashboard")} data-testid="menu-dashboard">
-                    <Sprout className="h-4 w-4 mr-2" />
+                    <Compass className="h-4 w-4 mr-2" />
                     Today
                   </DropdownMenuItem>
                   {showAdminLink && (

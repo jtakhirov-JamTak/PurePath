@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Heart, Shield, Zap, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
+  Flame, Shield, Zap, ArrowRight, Play, Pause, RotateCcw, Plus, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { AvoidingExercise } from "./avoiding-exercise";
 import { TriggerExercise } from "./trigger-exercise";
@@ -91,7 +91,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
               className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
               data-testid="button-branch-overwhelmed"
             >
-              <Heart className="h-8 w-8 text-rose-500" />
+              <Zap className="h-8 w-8 text-amber-500" />
               <div className="text-center">
                 <p className="text-sm font-medium">I'm Overwhelmed</p>
                 <p className="text-[10px] text-muted-foreground">Regulate intense emotion</p>
@@ -102,7 +102,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
               className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
               data-testid="button-branch-avoiding"
             >
-              <Shield className="h-8 w-8 text-amber-500" />
+              <Shield className="h-8 w-8 text-primary" />
               <div className="text-center">
                 <p className="text-sm font-medium">I'm Avoiding</p>
                 <p className="text-[10px] text-muted-foreground">Face what I'm putting off</p>
@@ -113,7 +113,7 @@ export function ContainmentModal({ open, onClose }: { open: boolean; onClose: ()
               className="flex flex-col items-center gap-3 rounded-lg border p-4 hover:border-primary/40 transition-colors cursor-pointer min-h-[120px]"
               data-testid="button-branch-trigger"
             >
-              <Zap className="h-8 w-8 text-primary" />
+              <Flame className="h-8 w-8 text-rose-500" />
               <div className="text-center">
                 <p className="text-sm font-medium">I Got Triggered</p>
                 <p className="text-[10px] text-muted-foreground">Log and process a reaction</p>
@@ -189,7 +189,7 @@ function OverwhelmedExercise({ open, onClose }: { open: boolean; onClose: () => 
       onClose={handleClose}
       mood={mood}
       title="Emotional Containment"
-      icon={<Heart className="h-5 w-5 text-rose-500" />}
+      icon={<Zap className="h-5 w-5 text-amber-500" />}
       testId="modal-containment"
     >
       <div className="space-y-4">
@@ -325,7 +325,7 @@ function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () =
       onClose={handleClose}
       mood={mood}
       title="Face the Avoidance"
-      icon={<Shield className="h-5 w-5 text-amber-500" />}
+      icon={<Shield className="h-5 w-5 text-primary" />}
       testId="modal-avoidance"
     >
       <AvoidingExercise onFinish={() => {
@@ -356,7 +356,7 @@ function TriggerExerciseModal({ open, onClose }: { open: boolean; onClose: () =>
       onClose={handleClose}
       mood={mood}
       title="Log a Trigger"
-      icon={<Zap className="h-5 w-5 text-primary" />}
+      icon={<Flame className="h-5 w-5 text-rose-500" />}
       testId="modal-trigger"
     >
       <TriggerExercise onFinish={() => {
