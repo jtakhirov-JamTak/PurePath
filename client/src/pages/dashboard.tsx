@@ -22,12 +22,18 @@ import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
 
 
-// ─── Stories Ring constants ──────────────────────────────────────────
+// ─── Week strip constants ───────────────────────────────────────────
 const RING_R = 14;
-const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_R_TODAY = 18;
-const RING_CIRC_TODAY = 2 * Math.PI * RING_R_TODAY;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const getHeatmapClass = (progress: number, isFuture: boolean) => {
+  if (isFuture) return "fill-transparent";
+  if (progress === 0) return "fill-muted";
+  if (progress < 0.5) return "fill-primary/15";
+  if (progress < 1) return "fill-primary/35";
+  return "fill-primary/55";
+};
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -199,7 +205,6 @@ export default function DashboardPage() {
       const done = completedH + completedF + (hasMorn ? 1 : 0) + (hasEve ? 1 : 0);
       const isFuture = dayStr > todayStr;
       const progress = isFuture ? 0 : total > 0 ? done / total : 0;
-      const hasIncomplete = !isFuture && total > 0 && done < total;
       return {
         dateStr: dayStr,
         label: DAY_LABELS[i],
@@ -208,7 +213,6 @@ export default function DashboardPage() {
         isSelected: dayStr === selectedDate,
         isFuture,
         progress,
-        hasIncomplete,
       };
     });
   }, [weekDays, habits, eisenhowerEntries, weekStartStr, todayStr, weekStreakCompletions, journalDayMap, selectedDate]);
@@ -300,6 +304,9 @@ export default function DashboardPage() {
   const showAnchor = anchorIdentity || anchorValues || anchorGoal;
 
   const readOnly = selectedDate > todayStr;
+  const isPastDate = selectedDate < todayStr;
+  const yesterday = format(addDays(today, -1), "yyyy-MM-dd");
+  const canEditJournal = selectedDate >= yesterday;
 
   return (
     <AppLayout>
@@ -326,7 +333,6 @@ export default function DashboardPage() {
               const cx = isLarge ? 22 : 18;
               const cy = isLarge ? 22 : 18;
               const r = isLarge ? RING_R_TODAY : RING_R;
-              const circ = isLarge ? RING_CIRC_TODAY : RING_CIRC;
 
               return (
                 <button
@@ -335,34 +341,25 @@ export default function DashboardPage() {
                   className={`flex flex-col items-center gap-0.5 ${day.isFuture ? "opacity-40" : ""} cursor-pointer`}
                 >
                   <svg width={svgSize} height={svgSize} viewBox={vb}>
-                    {/* Background ring */}
-                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor"
-                      strokeWidth={isLarge ? "3" : "2.5"} className="text-border/20" />
-                    {/* Progress ring */}
-                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="currentColor"
-                      strokeWidth={isLarge ? "3" : "2.5"}
-                      className={`text-primary ${day.isToday && day.progress < 1 ? "animate-dot-pulse" : ""}`}
-                      strokeDasharray={`${day.progress * circ} ${circ}`}
-                      strokeLinecap="round"
-                      transform={`rotate(-90 ${cx} ${cy})`}
+                    {/* Heatmap fill */}
+                    <circle cx={cx} cy={cy} r={r}
+                      className={getHeatmapClass(day.progress, day.isFuture)}
+                      stroke={day.isToday ? "hsl(var(--primary))" : "none"}
+                      strokeWidth={day.isToday ? "1.5" : "0"}
                     />
                     {/* Selected outer ring */}
                     {day.isSelected && (
-                      <circle cx={cx} cy={cy} r={r + 3} fill="none" stroke="currentColor" strokeWidth="1.5"
-                        className="text-primary/30" />
+                      <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5"
+                        opacity="0.4" />
                     )}
-                    {/* Day number inside circle */}
+                    {/* Day number */}
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                      className={`fill-current ${isLarge ? "text-[10px]" : "text-[9px]"} font-semibold ${
+                      className={`fill-current ${isLarge ? "text-[11px]" : "text-[10px]"} font-semibold ${
                         day.isToday ? "text-primary" : "text-foreground/70"
                       }`}
                     >
                       {day.dayNum}
                     </text>
-                    {/* Red notification dot for incomplete days */}
-                    {day.hasIncomplete && (
-                      <circle cx={cx + r - 2} cy={cy - r + 2} r="3.5" fill="#ef4444" />
-                    )}
                   </svg>
                   <span className={`text-[9px] font-medium ${
                     day.isToday ? "text-primary" : day.isFuture ? "text-muted-foreground/40" : "text-muted-foreground"
@@ -434,22 +431,41 @@ export default function DashboardPage() {
         <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden">
 
           {/* Morning Journal */}
-          <button
-            className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
-            onClick={() => { setLocation(`/journal/${selectedDate}/morning?returnTo=/dashboard`); window.scrollTo(0, 0); }}
-            data-testid="journal-row-morning"
-          >
-            <CompletionCircle
-              done={hasMorning}
-              onToggle={() => {}}
-            />
-            <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : ""}`}>
-              Check in
-            </span>
-            {hasMorning && (
-              <span className="text-[11px] text-primary font-medium">Done</span>
-            )}
-          </button>
+          {canEditJournal ? (
+            <button
+              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
+              onClick={() => { setLocation(`/journal/${selectedDate}/morning?returnTo=/dashboard`); window.scrollTo(0, 0); }}
+              data-testid="journal-row-morning"
+            >
+              <CompletionCircle
+                done={hasMorning}
+                onToggle={() => {}}
+              />
+              <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : ""}`}>
+                Check in
+              </span>
+              {hasMorning && (
+                <span className="text-[11px] text-primary font-medium">Done</span>
+              )}
+            </button>
+          ) : (
+            <div
+              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px] opacity-50"
+              data-testid="journal-row-morning"
+            >
+              <CompletionCircle
+                done={hasMorning}
+                onToggle={() => {}}
+                disabled
+              />
+              <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                {hasMorning ? "Check in" : "Not logged"}
+              </span>
+              {hasMorning && (
+                <span className="text-[11px] text-primary font-medium">Done</span>
+              )}
+            </div>
+          )}
 
           {/* Focus Items */}
           {focusItems.length > 0 && (
@@ -457,23 +473,27 @@ export default function DashboardPage() {
               <div className="h-px bg-border/40 mx-5" />
               <div className="py-1" data-testid="card-focus">
                 <AnimatePresence mode="popLayout">
-                  {sortedFocusItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                      className={item.status === "completed" ? "opacity-40" : ""}
-                    >
-                      <FocusItem
-                        item={item}
-                        weekStartDate={weekStartDate}
-                        isToday={isToday}
-                        onToggleDone={(id, currentlyDone) =>
-                          setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
-                        }
-                      />
-                    </motion.div>
-                  ))}
+                  {sortedFocusItems.map((item) => {
+                    const focusDone = item.status === "completed";
+                    const pastIncomplete = isPastDate && !focusDone;
+                    return (
+                      <motion.div
+                        key={item.id}
+                        layout
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        className={focusDone ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
+                      >
+                        <FocusItem
+                          item={item}
+                          weekStartDate={weekStartDate}
+                          isToday={isToday}
+                          onToggleDone={(id, currentlyDone) =>
+                            setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
+                          }
+                        />
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             </>
@@ -487,13 +507,14 @@ export default function DashboardPage() {
                 <AnimatePresence mode="popLayout">
                   {sortedHabits.map((habit) => {
                     const isDone = habitStatusMap.get(habit.id) === "completed";
+                    const pastIncomplete = isPastDate && !isDone;
                     const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
                     return (
                       <motion.div
                         key={habit.id}
                         layout
                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={isDone ? "opacity-40" : ""}
+                        className={isDone ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
                         data-testid={`habit-item-${habit.id}`}
                       >
                         <div className="flex items-center gap-3 px-5 py-[14px]">
@@ -507,7 +528,7 @@ export default function DashboardPage() {
                             testId={`habit-level-${habit.id}`}
                           />
                           <div className="flex-1 min-w-0">
-                            <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : ""}`}>
+                            <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : pastIncomplete ? "line-through decoration-muted-foreground/30 text-muted-foreground" : ""}`}>
                               {habit.name}
                             </span>
                             {/* 7-dot streak row */}
@@ -540,26 +561,45 @@ export default function DashboardPage() {
 
           {/* Evening */}
           <div className="h-px bg-border/40 mx-5" />
-          <button
-            className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${
-              isCloseMoment ? "scale-[1.01]" : ""
-            }`}
-            onClick={() => { setLocation(`/journal/${selectedDate}/evening?returnTo=/dashboard`); window.scrollTo(0, 0); }}
-            data-testid="journal-row-evening"
-          >
-            <CompletionCircle
-              done={hasEvening}
-              onToggle={() => {}}
-            />
-            <span className={`flex-1 ${
-              isCloseMoment ? "text-sm font-semibold" : "text-sm"
-            } ${hasEvening ? "line-through text-muted-foreground" : ""}`}>
-              {isCloseMoment ? "Close the day" : "Evening reflection"}
-            </span>
-            {hasEvening && (
-              <span className="text-[11px] text-primary font-medium">Done</span>
-            )}
-          </button>
+          {canEditJournal ? (
+            <button
+              className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${
+                isCloseMoment ? "scale-[1.01]" : ""
+              }`}
+              onClick={() => { setLocation(`/journal/${selectedDate}/evening?returnTo=/dashboard`); window.scrollTo(0, 0); }}
+              data-testid="journal-row-evening"
+            >
+              <CompletionCircle
+                done={hasEvening}
+                onToggle={() => {}}
+              />
+              <span className={`flex-1 ${
+                isCloseMoment ? "text-sm font-semibold" : "text-sm"
+              } ${hasEvening ? "line-through text-muted-foreground" : ""}`}>
+                {isCloseMoment ? "Close the day" : "Evening reflection"}
+              </span>
+              {hasEvening && (
+                <span className="text-[11px] text-primary font-medium">Done</span>
+              )}
+            </button>
+          ) : (
+            <div
+              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px] opacity-50"
+              data-testid="journal-row-evening"
+            >
+              <CompletionCircle
+                done={hasEvening}
+                onToggle={() => {}}
+                disabled
+              />
+              <span className={`text-sm flex-1 ${hasEvening ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                {hasEvening ? "Evening reflection" : "Not logged"}
+              </span>
+              {hasEvening && (
+                <span className="text-[11px] text-primary font-medium">Done</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ─── Stuck? ─────────────────────────────────────── */}

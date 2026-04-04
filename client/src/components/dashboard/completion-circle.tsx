@@ -25,18 +25,18 @@ export function CompletionCircle({ done, onToggle, disabled, testId }: Completio
       key={animKey}
       onClick={disabled ? undefined : onToggle}
       whileTap={disabled ? undefined : { scale: 0.85 }}
-      animate={done && animKey > 0 ? { scale: [0.85, 1.15, 1] } : { scale: 1 }}
+      animate={done && animKey > 0 ? { scale: [0.95, 1.05, 1] } : { scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 15 }}
-      className={`h-[30px] w-[30px] rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+      className={`h-[22px] w-[22px] rounded-[4px] border shrink-0 flex items-center justify-center transition-colors ${
         disabled ? "cursor-default opacity-50" : "cursor-pointer"
       } ${
         done
-          ? "bg-primary border-primary shadow-[0_0_8px_hsl(var(--primary)/0.25)]"
+          ? "bg-primary border-primary"
           : "border-border bg-background"
       }`}
       data-testid={testId}
     >
-      {done && <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />}
+      {done && <Check className="h-3 w-3 text-primary-foreground" strokeWidth={3} />}
     </motion.button>
   );
 }
