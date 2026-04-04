@@ -27,8 +27,13 @@ const RING_R = 14;
 const RING_R_TODAY = 18;
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const getHeatmapClass = (progress: number, isFuture: boolean) => {
+const getHeatmapClass = (progress: number, isFuture: boolean, isToday: boolean) => {
   if (isFuture) return "fill-transparent";
+  if (isToday) {
+    if (progress === 0) return "fill-muted";
+    if (progress < 1) return "fill-primary/20";
+    return "fill-emerald-400/70";
+  }
   if (progress === 0) return "fill-muted";
   if (progress < 1) return "fill-lime-400/50";
   return "fill-primary/55";
@@ -368,7 +373,7 @@ export default function DashboardPage() {
                   <svg width={svgSize} height={svgSize} viewBox={vb}>
                     {/* Heatmap fill */}
                     <circle cx={cx} cy={cy} r={r}
-                      className={getHeatmapClass(day.progress, day.isFuture)}
+                      className={getHeatmapClass(day.progress, day.isFuture, day.isToday)}
                       stroke={day.isToday ? "hsl(var(--primary))" : "none"}
                       strokeWidth={day.isToday ? "1.5" : "0"}
                     />
@@ -376,6 +381,10 @@ export default function DashboardPage() {
                     {day.isSelected && (
                       <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5"
                         opacity="0.4" />
+                    )}
+                    {/* Red dot on today until all done */}
+                    {day.isToday && day.progress < 1 && (
+                      <circle cx={cx + r - 2} cy={cy - r + 2} r="3" fill="#ef4444" />
                     )}
                     {/* Day number */}
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
