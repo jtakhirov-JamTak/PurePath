@@ -30,8 +30,7 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const getHeatmapClass = (progress: number, isFuture: boolean) => {
   if (isFuture) return "fill-transparent";
   if (progress === 0) return "fill-muted";
-  if (progress < 0.5) return "fill-primary/15";
-  if (progress < 1) return "fill-primary/35";
+  if (progress < 1) return "fill-lime-400/50";
   return "fill-primary/55";
 };
 
@@ -137,22 +136,48 @@ export default function DashboardPage() {
   }, [journals, weekStartStr, weekEndStr]);
 
   const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate, todayStr);
-  const sortedFocusItems = useMemo(() => {
-    const incomplete = focusItems.filter(e => e.status !== "completed");
-    const complete = focusItems.filter(e => e.status === "completed");
-    incomplete.sort((a, b) => (a.scheduledStartTime || "99:99").localeCompare(b.scheduledStartTime || "99:99"));
-    return [...incomplete, ...complete];
-  }, [focusItems]);
+  // ─── Unified daily items (sorted by time, incomplete on top) ──────
+  type DailyItem =
+    | { kind: "journal"; session: "morning" | "evening"; done: boolean; sortKey: number }
+    | { kind: "habit"; habit: Habit; done: boolean; sortKey: number }
+    | { kind: "focus"; item: EisenhowerEntry; done: boolean; sortKey: number };
 
-  // ─── Habit sorting with sink ─────────────────────────────────────
-  const sortedHabits = useMemo(() => {
-    const incomplete = selectedHabits.filter(h => habitStatusMap.get(h.id) !== "completed");
-    const complete = selectedHabits.filter(h => habitStatusMap.get(h.id) === "completed");
-    const sorter = (a: Habit, b: Habit) => (TIMING_ORDER[a.timing || "afternoon"] ?? 1) - (TIMING_ORDER[b.timing || "afternoon"] ?? 1);
-    incomplete.sort(sorter);
-    complete.sort(sorter);
+  const HABIT_SORT: Record<string, number> = { morning: 1, afternoon: 3, evening: 4 };
+
+  const sortedDailyItems = useMemo((): DailyItem[] => {
+    const items: DailyItem[] = [];
+
+    // Journals
+    items.push({ kind: "journal", session: "morning", done: hasMorning, sortKey: 0 });
+    items.push({ kind: "journal", session: "evening", done: hasEvening, sortKey: 5 });
+
+    // Habits — morning=1, afternoon=3, evening=4
+    selectedHabits.forEach(h => {
+      items.push({
+        kind: "habit", habit: h,
+        done: habitStatusMap.get(h.id) === "completed",
+        sortKey: HABIT_SORT[h.timing || "afternoon"] ?? 3,
+      });
+    });
+
+    // Focus items — slotted at 2.xx by scheduled time, unscheduled at 2.99
+    focusItems.forEach(item => {
+      const t = item.scheduledStartTime;
+      const timeSortKey = t ? 2 + parseInt(t.slice(0, 2)) / 100 + parseInt(t.slice(3, 5)) / 10000 : 2.99;
+      items.push({
+        kind: "focus", item,
+        done: item.status === "completed",
+        sortKey: timeSortKey,
+      });
+    });
+
+    // Partition incomplete/complete, sort each by sortKey
+    const incomplete = items.filter(i => !i.done);
+    const complete = items.filter(i => i.done);
+    incomplete.sort((a, b) => a.sortKey - b.sortKey);
+    complete.sort((a, b) => a.sortKey - b.sortKey);
     return [...incomplete, ...complete];
-  }, [selectedHabits, habitStatusMap]);
+  }, [selectedHabits, habitStatusMap, focusItems, hasMorning, hasEvening]);
 
   // ─── Streak data ─────────────────────────────────────────────────
   const weekDays = useMemo(() => {
@@ -429,177 +454,113 @@ export default function DashboardPage() {
 
         {/* ─── Daily Actions Card ──────────────────────────────── */}
         <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden">
+          <AnimatePresence mode="popLayout">
+            {sortedDailyItems.map((dailyItem, idx) => {
+              const itemKey = dailyItem.kind === "journal" ? `journal-${dailyItem.session}`
+                : dailyItem.kind === "habit" ? `habit-${dailyItem.habit.id}`
+                : `focus-${dailyItem.item.id}`;
+              const pastIncomplete = isPastDate && !dailyItem.done;
 
-          {/* Morning Journal */}
-          {canEditJournal ? (
-            <button
-              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
-              onClick={() => { setLocation(`/journal/${selectedDate}/morning?returnTo=/dashboard`); window.scrollTo(0, 0); }}
-              data-testid="journal-row-morning"
-            >
-              <CompletionCircle
-                done={hasMorning}
-                onToggle={() => {}}
-              />
-              <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : ""}`}>
-                Check in
-              </span>
-              {hasMorning && (
-                <span className="text-[11px] text-primary font-medium">Done</span>
-              )}
-            </button>
-          ) : (
-            <div
-              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px] opacity-50"
-              data-testid="journal-row-morning"
-            >
-              <CompletionCircle
-                done={hasMorning}
-                onToggle={() => {}}
-                disabled
-              />
-              <span className={`text-sm flex-1 ${hasMorning ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                {hasMorning ? "Check in" : "Not logged"}
-              </span>
-              {hasMorning && (
-                <span className="text-[11px] text-primary font-medium">Done</span>
-              )}
-            </div>
-          )}
+              return (
+                <motion.div
+                  key={itemKey}
+                  layout
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className={dailyItem.done ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
+                >
+                  {idx > 0 && <div className="h-px bg-border/40 mx-5" />}
 
-          {/* Focus Items */}
-          {focusItems.length > 0 && (
-            <>
-              <div className="h-px bg-border/40 mx-5" />
-              <div className="py-1" data-testid="card-focus">
-                <AnimatePresence mode="popLayout">
-                  {sortedFocusItems.map((item) => {
-                    const focusDone = item.status === "completed";
-                    const pastIncomplete = isPastDate && !focusDone;
-                    return (
-                      <motion.div
-                        key={item.id}
-                        layout
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={focusDone ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
+                  {/* ── Journal row ── */}
+                  {dailyItem.kind === "journal" && (() => {
+                    const isEvening = dailyItem.session === "evening";
+                    const label = isEvening
+                      ? (isCloseMoment ? "Close the day" : "Evening reflection")
+                      : "Check in";
+                    const isCloseCTA = isEvening && isCloseMoment;
+                    const locked = !canEditJournal;
+
+                    return locked ? (
+                      <div
+                        className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
+                        data-testid={`journal-row-${dailyItem.session}`}
                       >
-                        <FocusItem
-                          item={item}
-                          weekStartDate={weekStartDate}
-                          isToday={isToday}
-                          onToggleDone={(id, currentlyDone) =>
-                            setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
-                          }
-                        />
-                      </motion.div>
+                        <CompletionCircle done={dailyItem.done} onToggle={() => {}} disabled />
+                        <span className={`text-sm flex-1 ${dailyItem.done ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
+                          {dailyItem.done ? label : "Not logged"}
+                        </span>
+                        {dailyItem.done && <span className="text-[11px] text-primary font-medium">Done</span>}
+                      </div>
+                    ) : (
+                      <button
+                        className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${isCloseCTA ? "scale-[1.01]" : ""}`}
+                        onClick={() => { setLocation(`/journal/${selectedDate}/${dailyItem.session}?returnTo=/dashboard`); window.scrollTo(0, 0); }}
+                        data-testid={`journal-row-${dailyItem.session}`}
+                      >
+                        <CompletionCircle done={dailyItem.done} onToggle={() => {}} />
+                        <span className={`text-sm flex-1 ${isCloseCTA ? "font-semibold" : ""} ${dailyItem.done ? "line-through text-muted-foreground" : ""}`}>
+                          {label}
+                        </span>
+                        {dailyItem.done && <span className="text-[11px] text-primary font-medium">Done</span>}
+                      </button>
                     );
-                  })}
-                </AnimatePresence>
-              </div>
-            </>
-          )}
+                  })()}
 
-          {/* Habits */}
-          {selectedHabits.length > 0 && (
-            <>
-              <div className="h-px bg-border/40 mx-5" />
-              <div className="py-1" data-testid="card-daily-habits">
-                <AnimatePresence mode="popLayout">
-                  {sortedHabits.map((habit) => {
-                    const isDone = habitStatusMap.get(habit.id) === "completed";
-                    const pastIncomplete = isPastDate && !isDone;
+                  {/* ── Habit row ── */}
+                  {dailyItem.kind === "habit" && (() => {
+                    const habit = dailyItem.habit;
                     const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
                     return (
-                      <motion.div
-                        key={habit.id}
-                        layout
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        className={isDone ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
-                        data-testid={`habit-item-${habit.id}`}
-                      >
-                        <div className="flex items-center gap-3 px-5 py-[14px]">
-                          <CompletionCircle
-                            done={isDone}
-                            onToggle={() => {
-                              if (readOnly) return;
-                              setHabitLevelMutation.mutate({ habitId: habit.id, level: isDone ? null : 2 });
-                            }}
-                            disabled={readOnly}
-                            testId={`habit-level-${habit.id}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-sm ${isDone ? "line-through text-muted-foreground" : pastIncomplete ? "line-through decoration-muted-foreground/30 text-muted-foreground" : ""}`}>
-                              {habit.name}
-                            </span>
-                            {/* 7-dot streak row */}
-                            <div className="flex gap-[3px] mt-1.5">
-                              {weekDays.map(dayStr => {
-                                const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
-                                const isDayToday = dayStr === todayStr;
-                                return (
-                                  <span
-                                    key={dayStr}
-                                    className={`h-[5px] w-[5px] rounded-full ${
-                                      lvl !== null && lvl >= 1 ? "bg-primary"
-                                      : isDayToday ? "ring-1 ring-border bg-transparent"
-                                      : "bg-muted"
-                                    } ${isDayToday && lvl !== null && lvl >= 1 ? "animate-dot-spring" : ""}`}
-                                  />
-                                );
-                              })}
-                            </div>
+                      <div className="flex items-center gap-3 px-5 py-[14px]" data-testid={`habit-item-${habit.id}`}>
+                        <CompletionCircle
+                          done={dailyItem.done}
+                          onToggle={() => {
+                            if (readOnly) return;
+                            setHabitLevelMutation.mutate({ habitId: habit.id, level: dailyItem.done ? null : 2 });
+                          }}
+                          disabled={readOnly}
+                          testId={`habit-level-${habit.id}`}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-sm ${dailyItem.done ? "line-through text-muted-foreground" : pastIncomplete ? "line-through decoration-muted-foreground/30 text-muted-foreground" : ""}`}>
+                            {habit.name}
+                          </span>
+                          <div className="flex gap-[3px] mt-1.5">
+                            {weekDays.map(dayStr => {
+                              const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
+                              const isDayToday = dayStr === todayStr;
+                              return (
+                                <span
+                                  key={dayStr}
+                                  className={`h-[5px] w-[5px] rounded-full ${
+                                    lvl !== null && lvl >= 1 ? "bg-primary"
+                                    : isDayToday ? "ring-1 ring-border bg-transparent"
+                                    : "bg-muted"
+                                  } ${isDayToday && lvl !== null && lvl >= 1 ? "animate-dot-spring" : ""}`}
+                                />
+                              );
+                            })}
                           </div>
-                          <span className="text-[11px] text-muted-foreground shrink-0">{timingLabel}</span>
                         </div>
-                      </motion.div>
+                        <span className="text-[11px] text-muted-foreground shrink-0">{timingLabel}</span>
+                      </div>
                     );
-                  })}
-                </AnimatePresence>
-              </div>
-            </>
-          )}
+                  })()}
 
-          {/* Evening */}
-          <div className="h-px bg-border/40 mx-5" />
-          {canEditJournal ? (
-            <button
-              className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${
-                isCloseMoment ? "scale-[1.01]" : ""
-              }`}
-              onClick={() => { setLocation(`/journal/${selectedDate}/evening?returnTo=/dashboard`); window.scrollTo(0, 0); }}
-              data-testid="journal-row-evening"
-            >
-              <CompletionCircle
-                done={hasEvening}
-                onToggle={() => {}}
-              />
-              <span className={`flex-1 ${
-                isCloseMoment ? "text-sm font-semibold" : "text-sm"
-              } ${hasEvening ? "line-through text-muted-foreground" : ""}`}>
-                {isCloseMoment ? "Close the day" : "Evening reflection"}
-              </span>
-              {hasEvening && (
-                <span className="text-[11px] text-primary font-medium">Done</span>
-              )}
-            </button>
-          ) : (
-            <div
-              className="flex items-center gap-3.5 w-full text-left px-5 py-[18px] opacity-50"
-              data-testid="journal-row-evening"
-            >
-              <CompletionCircle
-                done={hasEvening}
-                onToggle={() => {}}
-                disabled
-              />
-              <span className={`text-sm flex-1 ${hasEvening ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                {hasEvening ? "Evening reflection" : "Not logged"}
-              </span>
-              {hasEvening && (
-                <span className="text-[11px] text-primary font-medium">Done</span>
-              )}
-            </div>
-          )}
+                  {/* ── Focus item row ── */}
+                  {dailyItem.kind === "focus" && (
+                    <FocusItem
+                      item={dailyItem.item}
+                      weekStartDate={weekStartDate}
+                      isToday={isToday}
+                      onToggleDone={(id, currentlyDone) =>
+                        setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
+                      }
+                    />
+                  )}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
 
         {/* ─── Stuck? ─────────────────────────────────────── */}
