@@ -462,7 +462,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ─── Daily Actions Card ──────────────────────────────── */}
-        <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden">
+        <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden" data-testid="card-daily-habits">
           <AnimatePresence mode="popLayout">
             {sortedDailyItems.map((dailyItem, idx) => {
               const itemKey = dailyItem.kind === "journal" ? `journal-${dailyItem.session}`
