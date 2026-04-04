@@ -306,3 +306,20 @@ export const batchAccessSchema = z.object({
   userIds: z.array(z.string().min(1)).min(1).max(200),
   hasAccess: z.boolean(),
 });
+
+export const registerSchema = z.object({
+  email: z.string().email("A valid email is required").max(255),
+  password: z.string().min(8, "Password must be at least 8 characters").max(128),
+  firstName: z.string().trim().min(1, "First name is required").max(100),
+  lastName: z.string().trim().min(1, "Last name is required").max(100),
+  accessCode: z.string().min(1, "Access code is required").max(50),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("A valid email is required").max(255),
+  password: z.string().min(1, "Password is required").max(128),
+});
+
+export const updateOnboardingSchema = z.object({
+  step: z.number().int("Step must be an integer").min(0).max(10),
+});

@@ -24,8 +24,8 @@ Environment: Requires `DATABASE_URL`. Dev server binds to `0.0.0.0:5000`.
 - **Frontend:** React 18, TypeScript, Vite, Wouter, TanStack React Query, shadcn/ui, Tailwind, Framer Motion
 - **Backend:** Express v5, TypeScript (tsx runner), esbuild production build
 - **DB:** PostgreSQL + Drizzle ORM — schema in `shared/schema.ts`
-- **Auth:** Replit Auth (OIDC + Passport.js + PG session store)
-- **Access:** Single-use access codes (workshop attendees)
+- **Auth:** Local email/password (Passport.js passport-local + bcryptjs + PG session store)
+- **Access:** Access code validated at registration (workshop attendees)
 - **AI:** OpenAI API (chat, voice, image, task suggestions)
 - **Tests:** Vitest (unit), Playwright (e2e)
 

@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/pages/landing";
-import AccessGatePage from "@/pages/access-gate";
+import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
 import JournalEntryPage from "@/pages/journal-entry";
 import EisenhowerPage from "@/pages/eisenhower";
@@ -29,12 +29,13 @@ import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 
 function AuthenticatedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      setLocation("/auth");
     }
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, setLocation]);
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -49,6 +50,7 @@ function AuthenticatedRoute({ component: Component }: { component: React.Compone
 
 function AccessGatedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: accessStatus, isLoading: accessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/access-status"],
     enabled: isAuthenticated,
@@ -56,15 +58,15 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      setLocation("/auth");
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
     if (!accessLoading && accessStatus && !accessStatus.hasAccess) {
-      window.location.href = "/access";
+      setLocation("/auth");
     }
-  }, [accessLoading, accessStatus]);
+  }, [accessLoading, accessStatus, setLocation]);
 
   if (authLoading || accessLoading || !isAuthenticated || !accessStatus?.hasAccess) {
     return (
@@ -89,9 +91,9 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      window.location.href = "/api/login";
+      setLocation("/auth");
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, setLocation]);
 
   useEffect(() => {
     if (isError) {
@@ -112,6 +114,7 @@ function AdminRoute({ component: Component }: { component: React.ComponentType }
 
 function HomePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [, setLocation] = useLocation();
   const { data: accessStatus, isLoading: accessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/access-status"],
     enabled: isAuthenticated,
@@ -119,9 +122,9 @@ function HomePage() {
 
   useEffect(() => {
     if (isAuthenticated && !accessLoading && accessStatus && !accessStatus.hasAccess) {
-      window.location.href = "/access";
+      setLocation("/auth");
     }
-  }, [isAuthenticated, accessLoading, accessStatus]);
+  }, [isAuthenticated, accessLoading, accessStatus, setLocation]);
 
   if (authLoading || (isAuthenticated && accessLoading)) {
     return (
@@ -151,9 +154,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
-      <Route path="/access">
-        {() => <AuthenticatedRoute component={AccessGatePage} />}
-      </Route>
+      <Route path="/auth" component={AuthPage} />
       <Route path="/dashboard">
         {() => <AccessGatedRoute component={DashboardPage} />}
       </Route>
@@ -202,7 +203,7 @@ function RedirectToHome() {
   const [location, setLocation] = useLocation();
   useEffect(() => {
     const alreadyRedirected = sessionStorage.getItem("ij-session-started");
-    if (!alreadyRedirected && location !== "/" && location !== "/access") {
+    if (!alreadyRedirected && location !== "/" && location !== "/auth") {
       sessionStorage.setItem("ij-session-started", "1");
       setLocation("/");
     } else {

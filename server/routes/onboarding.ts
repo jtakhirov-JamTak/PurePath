@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
+import { updateOnboardingSchema } from "../validation";
 
 export function registerOnboardingRoutes(app: Express) {
   app.get("/api/onboarding", isAuthenticated, async (req: any, res) => {
@@ -22,10 +23,11 @@ export function registerOnboardingRoutes(app: Express) {
   app.patch("/api/onboarding", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { step } = req.body;
-      if (typeof step !== "number") {
-        return res.status(400).json({ error: "step must be a number" });
+      const parsed = updateOnboardingSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       }
+      const { step } = parsed.data;
       const updates: { onboardingStep: number; onboardingComplete?: boolean } = {
         onboardingStep: step,
       };

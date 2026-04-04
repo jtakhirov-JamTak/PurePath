@@ -4,7 +4,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 
-const requiredEnvVars = ["DATABASE_URL", "SESSION_SECRET"];
+const requiredEnvVars = ["DATABASE_URL", "SESSION_SECRET", "ACCESS_CODE"];
 const missingVars = requiredEnvVars.filter(k => !process.env[k]);
 if (missingVars.length > 0) {
   console.error(`Missing required environment variables: ${missingVars.join(", ")}`);
@@ -33,12 +33,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Vite injects inline scripts/styles; Replit Auth uses external redirects
-    // Disabled for Replit canvas iframe embedding; re-enable when hosting on own domain
-    frameguard: false,
-    crossOriginOpenerPolicy: false,
-    crossOriginResourcePolicy: false,
-    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: false, // Vite injects inline scripts/styles
   }),
 );
 

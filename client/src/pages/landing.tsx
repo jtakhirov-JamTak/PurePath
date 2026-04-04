@@ -115,7 +115,7 @@ function CTABlock({ dark = false }: { dark?: boolean }) {
   return (
     <div className="flex flex-col items-center gap-2">
       <Button asChild size="lg" className="bg-primary text-primary-foreground hover:opacity-90 px-8 py-3 text-base font-medium">
-        <a href="#pricing">Reserve Your Seat — $599</a>
+        <a href="/auth">Reserve Your Seat — $599</a>
       </Button>
       <p className={`text-xs ${mutedClass}`}>
         Regular $899. Launch cohort pricing. Limited seats.
@@ -136,7 +136,7 @@ export default function LandingPage() {
             <BrandLogo size={20} />
             <span className="text-sm font-medium">Proof Arc</span>
           </div>
-          <a href="/api/login" className="text-xs text-white/50 hover:text-white/80 transition-colors">
+          <a href="/auth" className="text-xs text-white/50 hover:text-white/80 transition-colors">
             Sign In
           </a>
         </div>
@@ -328,7 +328,7 @@ export default function LandingPage() {
           <CTABlock dark />
           <p className="text-xs text-white/40 mt-8">
             Already attended?{" "}
-            <a href="/api/login" className="underline hover:text-white/60 transition-colors">
+            <a href="/auth" className="underline hover:text-white/60 transition-colors">
               Sign in to access your app.
             </a>
           </p>

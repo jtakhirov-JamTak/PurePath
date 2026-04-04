@@ -192,7 +192,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               </DropdownMenu>
             ) : (
               <Button variant="ghost" asChild data-testid="link-login">
-                <a href="/api/login">Sign In</a>
+                <a href="/auth">Sign In</a>
               </Button>
             )}
           </div>

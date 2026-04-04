@@ -36,17 +36,18 @@ Stores authenticated user information.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| id | VARCHAR | PRIMARY KEY | Unique user identifier (from auth provider) |
-| email | VARCHAR | | User's email address |
+| id | VARCHAR | PRIMARY KEY | UUID generated at registration |
+| email | VARCHAR | UNIQUE | User's email address |
 | first_name | VARCHAR | | First name |
 | last_name | VARCHAR | | Last name |
+| password_hash | VARCHAR(255) | | bcryptjs hash (cost 12) |
 | profile_image_url | VARCHAR | | Avatar URL |
 | created_at | TIMESTAMP | DEFAULT NOW() | Account creation time |
 | updated_at | TIMESTAMP | | Last update time |
 
 **Notes:**
-- ID comes from authentication provider (Replit Auth uses string IDs)
-- User is upserted on each login to sync profile changes
+- ID is a UUID string generated at registration via `crypto.randomUUID()`
+- Password hash stored using bcryptjs (cost 12), never returned in API responses
 
 ### sessions
 

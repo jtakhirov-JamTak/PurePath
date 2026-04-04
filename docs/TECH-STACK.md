@@ -46,11 +46,11 @@ This document explains the technology choices for the Proof Arc platform and why
 
 ## Auth & Access
 
-### Auth: Replit Auth (migrating to Clerk)
-**Why:** Zero-configuration authentication for Replit apps. Handles OAuth flow, session management, and user identity. Clerk migration planned for production independence.
+### Auth: Local email/password (Passport.js + bcryptjs)
+**Why:** Self-hosted authentication with passport-local strategy. Passwords hashed with bcryptjs (cost 12). Sessions stored in PostgreSQL via connect-pg-simple with 7-day TTL.
 
-### Access: Single-use access codes (replacing Stripe)
-**Why:** Workshop attendees receive an access code that unlocks the app. Verified server-side, stored as `hasAccess` flag in `userSettings`. No payment processing needed — workshop fee is collected separately.
+### Access: Access code validated at registration
+**Why:** Workshop attendees provide an access code during registration that grants `hasAccess` in `userSettings`. No payment processing needed — workshop fee is collected separately.
 
 ---
 
@@ -71,13 +71,12 @@ This document explains the technology choices for the Proof Arc platform and why
 
 | Variable | Purpose | Managed By |
 |----------|---------|------------|
-| `DATABASE_URL` | PostgreSQL connection string | Replit |
+| `DATABASE_URL` | PostgreSQL connection string | Hosting provider |
 | `SESSION_SECRET` | Session encryption key | User (set as secret) |
 | `ACCESS_CODE` | Workshop access code | User (set as secret) |
-| `AI_INTEGRATIONS_OPENAI_API_KEY` | OpenAI API access | Replit AI Integrations |
-| `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI API endpoint | Replit AI Integrations |
-| `REPL_ID` | Replit app identifier | Replit |
-| `ISSUER_URL` | Auth OIDC issuer | Replit |
+| `AI_INTEGRATIONS_OPENAI_API_KEY` | OpenAI API access | User (set as secret) |
+| `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI API endpoint | User (set as secret) |
+| `ADMIN_USER_ID` | Admin user's ID | User (set as secret) |
 
 ---
 
