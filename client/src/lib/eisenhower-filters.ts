@@ -35,19 +35,6 @@ export function getWeekFocusItems(
 }
 
 /**
- * Get scheduled items with date+time for the weekly calendar (Proof tab).
- * Q1 + Q2 with a scheduledDate and scheduledStartTime.
- */
-export function getScheduledItems(
-  entries: EisenhowerEntry[],
-  weekStartStr: string,
-): EisenhowerEntry[] {
-  return entries.filter(
-    (e) => e.weekStart === weekStartStr && (e.quadrant === "q1" || e.quadrant === "q2") && e.scheduledDate && e.scheduledStartTime,
-  );
-}
-
-/**
  * Deduplicate entries by groupId for Plan page display.
  * Returns one representative entry per groupId with an array of all scheduled dates.
  */

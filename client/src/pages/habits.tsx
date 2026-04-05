@@ -11,10 +11,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import type { Habit } from "@shared/schema";
 
-const TIMING_ORDER: Record<string, number> = { morning: 0, afternoon: 1, evening: 2 };
-const TIMING_SHORT: Record<string, string> = { morning: "AM", afternoon: "PM", evening: "EVE" };
-
-const MAX_HABITS = 3;
+import { TIMING_ORDER, TIMING_LABELS } from "@/lib/constants";
+import { MAX_ACTIVE_HABITS } from "@/lib/habit-filters";
+const TIMING_SHORT = TIMING_LABELS;
+const MAX_HABITS = MAX_ACTIVE_HABITS;
 
 export default function HabitsPage() {
   const [, setLocation] = useLocation();

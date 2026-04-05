@@ -16,8 +16,7 @@ import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_LABELS } from "@/lib/constants";
 import { getWeekFocusItems, groupByGroupId } from "@/lib/eisenhower-filters";
 
-const MAX_Q1 = 5;
-const MAX_Q2 = 2;
+import { MAX_Q1, MAX_Q2 } from "@/lib/eisenhower-logic";
 
 // ─── Accordion section ──────────────────────────────────────────────
 function Section({

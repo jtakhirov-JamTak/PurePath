@@ -63,11 +63,3 @@ export const CATEGORY_BADGE: Record<string, string> = {
 };
 
 
-/** Week strip day cell tints based on completion */
-export const WEEK_DAY_TINT: Record<string, string> = {
-  allDone: "bg-primary/5 dark:bg-primary/10",
-  hasQ1Open: "bg-rose-50 dark:bg-rose-950/15",
-  hasQ2Open: "bg-amber-50 dark:bg-amber-950/15",
-  neutral: "",
-};
-
