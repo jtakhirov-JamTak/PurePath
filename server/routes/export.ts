@@ -1,11 +1,11 @@
 import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
-import { exportRateLimit } from "./helpers";
+import { exportRateLimit, requireAccess } from "./helpers";
 import { format } from "date-fns";
 
 export function registerExportRoutes(app: Express) {
-  app.get("/api/export-all", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
+  app.get("/api/export-all", isAuthenticated, requireAccess, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const userName = req.user.claims.first_name || req.user.claims.email || "User";
@@ -30,17 +30,9 @@ export function registerExportRoutes(app: Express) {
         storage.getTriggerLogsByUser(userId),
       ]);
 
-      // Collect monthly goals from all months
-      const monthKeys = new Set<string>();
-      monthKeys.add(format(new Date(), "yyyy-MM"));
-      journals.forEach(j => monthKeys.add(j.date.substring(0, 7)));
-      const monthlyGoals = [];
-      for (const mk of Array.from(monthKeys).sort()) {
-        const goal = await storage.getMonthlyGoal(userId, mk);
-        if (goal && (goal.goalStatement?.trim() || goal.goalWhat?.trim())) {
-          monthlyGoals.push(goal);
-        }
-      }
+      // Collect monthly goals in a single query (avoids N+1)
+      const allMonthlyGoals = await storage.getMonthlyGoalsByUser(userId);
+      const monthlyGoals = allMonthlyGoals.filter(g => g.goalStatement?.trim() || g.goalWhat?.trim());
 
       const allCompletions = await storage.getHabitCompletionsForRange(userId, "2000-01-01", "2099-12-31");
 

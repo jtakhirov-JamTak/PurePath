@@ -5,8 +5,24 @@ Proof Arc — One live 3.5-hour workshop ($899) + mobile-first daily practice ap
 Users journal, track habits, set goals, and build self-awareness through structured exercises.
 Data is mechanistic/structured for future AI pattern analysis.
 
-Solo founder, low technical experience — explain briefly before making changes.
+Solo founder, non-technical — explain in plain language, wait for approval before changing code.
 When Claude makes a mistake, add the lesson to the "Lessons Learned" section below.
+
+## Business Context
+- Revenue model: One-time $899 workshop fee, app included for attendees
+- No external services yet (Stripe, email, analytics, CRM — all planned)
+- Current priority: UX/UI polish to match workshop PPT, not new features
+- "Done" for features: works on mobile, passes `npm run check`, reviewed by pipeline
+
+## Workflow
+- Claude (chat) writes prompts based on PPT/business goals
+- Prompts pasted into Claude Code in plan mode for review
+- Plan approved → implementation → auto-run review pipeline
+- Pipeline: `/grill` → `/test-and-fix` → `/review-changes` → security-reviewer → staff-reviewer → verify-app
+- Only push to GitHub after full pipeline passes
+
+## Known Bugs
+- (none currently)
 
 ## Commands
 | Task | Command |

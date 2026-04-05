@@ -3,9 +3,10 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
 import { visionBoardSchema, identityDocumentSchema, monthlyGoalSchema } from "../validation";
+import { requireAccess, writeRateLimit } from "./helpers";
 
 export function registerIdentityRoutes(app: Express) {
-  app.get("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/identity-document", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const doc = await storage.getIdentityDocument(userId);
@@ -16,7 +17,7 @@ export function registerIdentityRoutes(app: Express) {
     }
   });
 
-  app.put("/api/identity-document", isAuthenticated, async (req: any, res: Response) => {
+  app.put("/api/identity-document", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = identityDocumentSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -53,7 +54,7 @@ export function registerIdentityRoutes(app: Express) {
     }
   });
 
-  app.put("/api/vision-board", isAuthenticated, async (req: any, res: Response) => {
+  app.put("/api/vision-board", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = visionBoardSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -90,7 +91,7 @@ export function registerIdentityRoutes(app: Express) {
     }
   });
 
-  app.get("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/monthly-goal", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
@@ -102,7 +103,7 @@ export function registerIdentityRoutes(app: Express) {
     }
   });
 
-  app.put("/api/monthly-goal", isAuthenticated, async (req: any, res: Response) => {
+  app.put("/api/monthly-goal", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = monthlyGoalSchema.safeParse(req.body);
       if (!parsed.success) {

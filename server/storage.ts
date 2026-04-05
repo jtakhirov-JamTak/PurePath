@@ -60,6 +60,7 @@ export interface IStorage {
 
   // Monthly Goals
   getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
+  getMonthlyGoalsByUser(userId: string): Promise<MonthlyGoal[]>;
   upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal>;
 
   // Tool Usage Logs
@@ -419,6 +420,10 @@ export class DatabaseStorage implements IStorage {
       and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey))
     );
     return goal;
+  }
+
+  async getMonthlyGoalsByUser(userId: string): Promise<MonthlyGoal[]> {
+    return db.select().from(monthlyGoals).where(eq(monthlyGoals.userId, userId)).orderBy(desc(monthlyGoals.monthKey));
   }
 
   async upsertMonthlyGoal(goal: InsertMonthlyGoal): Promise<MonthlyGoal> {

@@ -20,8 +20,12 @@ beforeAll(() => {
   app = createTestApp();
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   resetStorage();
+  // Grant access to both test users so requireAccess middleware passes
+  const { storage } = await import("./memory-storage");
+  await storage.upsertUserSettings(USER_A, { hasAccess: true });
+  await storage.upsertUserSettings(USER_B, { hasAccess: true });
 });
 
 // ──────────────────────────────────────────────

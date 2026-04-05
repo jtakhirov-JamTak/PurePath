@@ -105,6 +105,8 @@ export const storage = {
   // Monthly goals
   getMonthlyGoal: async (userId: string, monthKey: string) =>
     _monthlyGoals.find(g => g.userId === userId && g.monthKey === monthKey) || null,
+  getMonthlyGoalsByUser: async (userId: string) =>
+    _monthlyGoals.filter(g => g.userId === userId),
   upsertMonthlyGoal: async (data: any) => {
     const idx = _monthlyGoals.findIndex(g => g.userId === data.userId && g.monthKey === data.monthKey);
     if (idx >= 0) { Object.assign(_monthlyGoals[idx], data); return _monthlyGoals[idx]; }

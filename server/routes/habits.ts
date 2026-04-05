@@ -4,12 +4,12 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { HABIT_CATEGORIES } from "@shared/schema";
 import { createHabitSchema, updateHabitSchema, createHabitCompletionSchema, updateHabitCompletionSchema, reorderSchema } from "../validation";
-import { parseId, parseDateParam } from "./helpers";
+import { parseId, parseDateParam, requireAccess, writeRateLimit } from "./helpers";
 
 const VERSIONED_FIELDS = ["name", "category", "cadence", "timing", "duration", "isBinary"] as const;
 
 export function registerHabitRoutes(app: Express) {
-  app.get("/api/habits", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/habits", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const habits = await storage.getHabitsByUser(userId);
@@ -20,7 +20,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.post("/api/habits", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/habits", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createHabitSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -61,7 +61,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.patch("/api/habits/:id", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -98,7 +98,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.post("/api/habits/:id/new-version", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/habits/:id/new-version", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -116,7 +116,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/habits/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/habits/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -134,7 +134,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.post("/api/habits/reorder", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/habits/reorder", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = reorderSchema.safeParse(req.body);
@@ -160,7 +160,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.get("/api/habit-completions/range/:startDate/:endDate", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/habit-completions/range/:startDate/:endDate", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { startDate, endDate } = req.params;
@@ -172,7 +172,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.get("/api/habit-completions/:date", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/habit-completions/:date", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { date } = req.params;
@@ -184,7 +184,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.post("/api/habit-completions", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/habit-completions", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createHabitCompletionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -208,7 +208,7 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/habit-completions/:habitId/:date", isAuthenticated, async (req: any, res: Response) => {
+  app.patch("/api/habit-completions/:habitId/:date", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = updateHabitCompletionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -219,6 +219,11 @@ export function registerHabitRoutes(app: Express) {
       const date = parseDateParam(req.params.date);
       if (!habitId || !date) {
         return res.status(400).json({ error: "Invalid habitId or date" });
+      }
+      // Verify habit belongs to this user
+      const userHabits = await storage.getHabitsByUser(userId);
+      if (!userHabits.some(h => h.id === habitId)) {
+        return res.status(403).json({ error: "Not authorized" });
       }
       const { status, completionLevel, skipReason, skipReasonSource, skipReasonTimestamp } = parsed.data;
       const updates: Record<string, unknown> = {
@@ -236,11 +241,20 @@ export function registerHabitRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/habit-completions/:habitId/:date", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/habit-completions/:habitId/:date", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { habitId, date } = req.params;
-      await storage.deleteHabitCompletion(userId, parseInt(habitId), date);
+      const habitId = parseId(req.params.habitId);
+      const date = parseDateParam(req.params.date);
+      if (!habitId || !date) {
+        return res.status(400).json({ error: "Invalid habitId or date" });
+      }
+      // Verify habit belongs to this user
+      const userHabits = await storage.getHabitsByUser(userId);
+      if (!userHabits.some(h => h.id === habitId)) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      await storage.deleteHabitCompletion(userId, habitId, date);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting habit completion:", error);

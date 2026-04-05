@@ -48,6 +48,9 @@ export default function SetupWizardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
     },
+    onError: () => {
+      toast({ title: "Could not save progress", description: "Please try again.", variant: "destructive" });
+    },
   });
 
   const skipSetup = useMutation({
@@ -57,6 +60,9 @@ export default function SetupWizardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
       navigate("/dashboard");
+    },
+    onError: () => {
+      toast({ title: "Could not skip setup", description: "Please try again.", variant: "destructive" });
     },
   });
 

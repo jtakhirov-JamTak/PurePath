@@ -1,5 +1,6 @@
 import type { Request, RequestHandler, Response } from "express";
 import rateLimit from "express-rate-limit";
+import { storage } from "../storage";
 
 export interface AuthRequest extends Request {
   user: { claims: { sub: string; email?: string } };
@@ -38,6 +39,21 @@ export const isAdmin: RequestHandler = (req: any, res, next) => {
     return res.status(403).json({ message: "Forbidden" });
   }
   next();
+};
+
+/** Middleware: reject users without hasAccess (must run after isAuthenticated) */
+export const requireAccess: RequestHandler = async (req: any, res, next) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+    const hasUserAccess = await storage.hasAccess(userId);
+    if (!hasUserAccess) {
+      return res.status(403).json({ error: "Access code required" });
+    }
+    next();
+  } catch {
+    res.status(500).json({ error: "Failed to check access" });
+  }
 };
 
 export const aiRateLimit = rateLimit({

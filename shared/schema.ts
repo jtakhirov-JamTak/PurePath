@@ -22,6 +22,7 @@ export const journals = pgTable("journals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("journals_user_date_session_idx").on(table.userId, table.date, table.session),
+  index("journals_user_id_idx").on(table.userId),
   check("journal_session_check", sql`${table.session} IN ('morning', 'evening')`),
 ]);
 
@@ -256,6 +257,7 @@ export const monthlyGoals = pgTable("monthly_goals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("monthly_goals_user_month_idx").on(table.userId, table.monthKey),
+  index("monthly_goals_user_id_idx").on(table.userId),
 ]);
 
 export const insertMonthlyGoalSchema = createInsertSchema(monthlyGoals).omit({
@@ -347,6 +349,8 @@ export const triggerLogs = pgTable("trigger_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("trigger_logs_user_id_idx").on(table.userId),
+  check("trigger_emotion_intensity_range", sql`${table.emotionIntensity} IS NULL OR ${table.emotionIntensity} BETWEEN 1 AND 10`),
+  check("trigger_urge_intensity_range", sql`${table.urgeIntensity} IS NULL OR ${table.urgeIntensity} BETWEEN 1 AND 10`),
 ]);
 
 export const insertTriggerLogSchema = createInsertSchema(triggerLogs).omit({
@@ -372,6 +376,7 @@ export const avoidanceLogs = pgTable("avoidance_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("avoidance_logs_user_id_idx").on(table.userId),
+  check("avoidance_discomfort_range", sql`${table.discomfort} BETWEEN 1 AND 5`),
 ]);
 
 export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({

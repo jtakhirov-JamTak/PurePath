@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import OpenAI from "openai";
 import { z } from "zod";
 import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema } from "../validation";
-import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit } from "./helpers";
+import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
@@ -28,7 +28,7 @@ const reorderSchema = z.object({
 });
 
 export function registerEisenhowerRoutes(app: Express) {
-  app.get("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/eisenhower", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const entries = await storage.getEisenhowerEntriesByUser(userId);
@@ -39,7 +39,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/eisenhower/week/:weekStart", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/eisenhower/week/:weekStart", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { weekStart } = req.params;
@@ -51,7 +51,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/eisenhower", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/eisenhower", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const parsed = createEisenhowerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -80,7 +80,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.patch("/api/eisenhower/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const parsed = updateEisenhowerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -119,7 +119,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // Get weekly summary (fear data) for a specific week
-  app.get("/api/eisenhower/weekly-summary/:weekStart", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/eisenhower/weekly-summary/:weekStart", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const weekStart = parseMondayParam(req.params.weekStart);
@@ -133,7 +133,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // Save fear reflection standalone (without wiping the week)
-  app.post("/api/eisenhower/weekly-summary", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.post("/api/eisenhower/weekly-summary", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = saveFearSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -163,7 +163,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // Wipe all entries for a week (Rebuild Week)
-  app.delete("/api/eisenhower/week/:weekStart", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/week/:weekStart", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const weekStart = parseMondayParam(req.params.weekStart);
@@ -177,7 +177,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // Atomic commit: wipe existing week, save new items + fear summary
-  app.post("/api/eisenhower/commit-week", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.post("/api/eisenhower/commit-week", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = commitWeekSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -251,7 +251,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // Delete all entries sharing a groupId (must be before :id route)
-  app.delete("/api/eisenhower/group/:groupId", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/group/:groupId", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const groupId = req.params.groupId;
@@ -273,7 +273,7 @@ export function registerEisenhowerRoutes(app: Express) {
   });
 
   // One-time cleanup: remove all auto-created blocksGoal entries (must be before :id route)
-  app.delete("/api/eisenhower/cleanup-goal-entries", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/cleanup-goal-entries", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const count = await storage.deleteBlocksGoalEntries(userId);
@@ -284,7 +284,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.delete("/api/eisenhower/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -302,7 +302,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/eisenhower/reorder", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/eisenhower/reorder", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = reorderSchema.safeParse(req.body);
@@ -331,7 +331,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.get("/api/eisenhower/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
+  app.get("/api/eisenhower/export", isAuthenticated, requireAccess, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const entries = await storage.getEisenhowerEntriesByUser(userId);
@@ -354,7 +354,7 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
-  app.post("/api/eisenhower/parse-tasks", isAuthenticated, aiRateLimit, async (req: any, res: Response) => {
+  app.post("/api/eisenhower/parse-tasks", isAuthenticated, requireAccess, aiRateLimit, async (req: any, res: Response) => {
     try {
       const { tasks, weekStart } = req.body;
       if (!Array.isArray(tasks) || tasks.length === 0) {

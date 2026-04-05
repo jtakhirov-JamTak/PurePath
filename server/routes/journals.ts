@@ -2,18 +2,12 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { createJournalSchema } from "../validation";
-import { parseDateParam, exportRateLimit } from "./helpers";
+import { parseDateParam, exportRateLimit, requireAccess, writeRateLimit } from "./helpers";
 
 export function registerJournalRoutes(app: Express) {
-  app.get("/api/journals", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/journals", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      
-      const hasUserAccess = await storage.hasAccess(userId);
-      if (!hasUserAccess) {
-        return res.status(403).json({ error: "Access code required" });
-      }
-
       const journals = await storage.getJournalsByUser(userId);
       res.json(journals);
     } catch (error) {
@@ -22,16 +16,10 @@ export function registerJournalRoutes(app: Express) {
     }
   });
 
-  app.get("/api/journals/:date/:session", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/journals/:date/:session", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const { date, session } = req.params;
-
-      const hasUserAccess = await storage.hasAccess(userId);
-      if (!hasUserAccess) {
-        return res.status(403).json({ error: "Access code required" });
-      }
-
       const journal = await storage.getJournal(userId, date, session);
       res.json(journal || null);
     } catch (error) {
@@ -40,19 +28,13 @@ export function registerJournalRoutes(app: Express) {
     }
   });
 
-  app.post("/api/journals", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/journals", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createJournalSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
       const userId = req.user.claims.sub;
-
-      const hasUserAccess = await storage.hasAccess(userId);
-      if (!hasUserAccess) {
-        return res.status(403).json({ error: "Access code required" });
-      }
-
       const journal = await storage.createOrUpdateJournal({
         userId,
         ...parsed.data,
@@ -65,15 +47,13 @@ export function registerJournalRoutes(app: Express) {
     }
   });
 
-  app.get("/api/journals/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
+  app.get("/api/journals/export", isAuthenticated, requireAccess, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const startDate = req.query.startDate as string | undefined;
-      const endDate = req.query.endDate as string | undefined;
-
-      const hasUserAccess = await storage.hasAccess(userId);
-      if (!hasUserAccess) {
-        return res.status(403).json({ error: "Access code required" });
+      const startDate = req.query.startDate ? parseDateParam(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? parseDateParam(req.query.endDate as string) : undefined;
+      if ((req.query.startDate && !startDate) || (req.query.endDate && !endDate)) {
+        return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
       }
 
       let journals = await storage.getJournalsByUser(userId);

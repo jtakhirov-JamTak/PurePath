@@ -5,16 +5,20 @@ import {
   createToolUsageSchema, updateToolUsageSchema,
   createAvoidanceLogSchema, createContainmentLogSchema, createTriggerLogSchema,
 } from "../validation";
-import { parseId, csvEscape, exportRateLimit, writeRateLimit } from "./helpers";
+import { parseId, parseDateParam, csvEscape, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 
 export function registerToolRoutes(app: Express) {
-  app.get("/api/tool-usage", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/tool-usage", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { startDate, endDate } = req.query;
+      const startDate = req.query.startDate ? parseDateParam(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? parseDateParam(req.query.endDate as string) : undefined;
+      if ((req.query.startDate && !startDate) || (req.query.endDate && !endDate)) {
+        return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+      }
       let logs;
       if (startDate && endDate) {
-        logs = await storage.getToolUsageLogsForRange(userId, startDate as string, endDate as string);
+        logs = await storage.getToolUsageLogsForRange(userId, startDate, endDate);
       } else {
         logs = await storage.getToolUsageLogsByUser(userId);
       }
@@ -25,7 +29,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.post("/api/tool-usage", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/tool-usage", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createToolUsageSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -40,7 +44,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/tool-usage/:id", isAuthenticated, async (req: any, res: Response) => {
+  app.patch("/api/tool-usage/:id", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -62,13 +66,17 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.get("/api/tool-usage/export", isAuthenticated, exportRateLimit, async (req: any, res: Response) => {
+  app.get("/api/tool-usage/export", isAuthenticated, requireAccess, exportRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
-      const { startDate, endDate } = req.query;
+      const startDate = req.query.startDate ? parseDateParam(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? parseDateParam(req.query.endDate as string) : undefined;
+      if ((req.query.startDate && !startDate) || (req.query.endDate && !endDate)) {
+        return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+      }
       let logs;
       if (startDate && endDate) {
-        logs = await storage.getToolUsageLogsForRange(userId, startDate as string, endDate as string);
+        logs = await storage.getToolUsageLogsForRange(userId, startDate, endDate);
       } else {
         logs = await storage.getToolUsageLogsByUser(userId);
       }
@@ -89,7 +97,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.get("/api/avoidance-logs", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/avoidance-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const logs = await storage.getAvoidanceLogsByUser(userId);
@@ -100,7 +108,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.post("/api/avoidance-logs", isAuthenticated, async (req: any, res: Response) => {
+  app.post("/api/avoidance-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const parsed = createAvoidanceLogSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -116,7 +124,7 @@ export function registerToolRoutes(app: Express) {
   });
 
   // Containment Logs
-  app.get("/api/containment-logs", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/containment-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const logs = await storage.getContainmentLogsByUser(userId);
@@ -127,7 +135,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.post("/api/containment-logs", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.post("/api/containment-logs", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createContainmentLogSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -143,7 +151,7 @@ export function registerToolRoutes(app: Express) {
   });
 
   // Trigger Logs
-  app.get("/api/trigger-logs", isAuthenticated, async (req: any, res: Response) => {
+  app.get("/api/trigger-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const logs = await storage.getTriggerLogsByUser(userId);
@@ -154,7 +162,7 @@ export function registerToolRoutes(app: Express) {
     }
   });
 
-  app.post("/api/trigger-logs", isAuthenticated, writeRateLimit, async (req: any, res: Response) => {
+  app.post("/api/trigger-logs", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createTriggerLogSchema.safeParse(req.body);
       if (!parsed.success) {
