@@ -329,7 +329,13 @@ export default function DashboardPage() {
 
   // ─── Anchor card data ────────────────────────────────────────────
   const anchorIdentity = identityDoc?.identity?.trim() || "";
-  const anchorValues = identityDoc?.values?.trim() || "";
+  const anchorValues = (() => {
+    try {
+      const parsed = JSON.parse(identityDoc?.values || "");
+      if (Array.isArray(parsed)) return parsed.map((v: { value: string }) => v.value).filter(Boolean).join(", ");
+    } catch { /* legacy plain text */ }
+    return identityDoc?.values?.trim() || "";
+  })();
   const anchorGoal = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const showAnchor = anchorIdentity || anchorValues || anchorGoal;
 

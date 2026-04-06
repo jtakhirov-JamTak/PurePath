@@ -48,7 +48,18 @@ export function registerExportRoutes(app: Express) {
       if (identityDoc) {
         if (identityDoc.identity) md += `**Identity Statement:** ${identityDoc.identity}\n\n`;
         if (identityDoc.vision) md += `**Vision:** ${identityDoc.vision}\n\n`;
-        if (identityDoc.values) md += `**Values:** ${identityDoc.values}\n\n`;
+        if (identityDoc.values) {
+          try {
+            const parsed = JSON.parse(identityDoc.values);
+            if (Array.isArray(parsed)) {
+              md += `**Values:**\n${parsed.map((v: { value: string; why: string }) => `- ${v.value}${v.why ? ` — ${v.why}` : ""}`).join("\n")}\n\n`;
+            } else {
+              md += `**Values:** ${identityDoc.values}\n\n`;
+            }
+          } catch {
+            md += `**Values:** ${identityDoc.values}\n\n`;
+          }
+        }
         if (identityDoc.purpose) md += `**Purpose:** ${identityDoc.purpose}\n\n`;
         if (identityDoc.yearVision) md += `**1-Year Commitment:** ${identityDoc.yearVision}\n\n`;
         if (identityDoc.othersWillSee) md += `**Others Will See:** ${identityDoc.othersWillSee.replace(/\|\|\|/g, ", ")}\n\n`;

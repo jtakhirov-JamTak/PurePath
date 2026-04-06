@@ -230,7 +230,13 @@ export default function JournalEntryPage() {
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
-  const valuesItems = identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
+  const valuesItems = (() => {
+    try {
+      const parsed = JSON.parse(identityDoc?.values || "");
+      if (Array.isArray(parsed)) return parsed.map((v: { value: string }) => v.value).filter(Boolean);
+    } catch { /* legacy plain text */ }
+    return identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
+  })();
   const identityStatement = identityDoc?.identity?.trim() || "";
 
   // Tuesday/Friday vision reminder in morning journal

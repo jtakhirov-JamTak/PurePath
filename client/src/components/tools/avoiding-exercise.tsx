@@ -33,10 +33,13 @@ export function AvoidingExercise({ onFinish }: AvoidingExerciseProps) {
     queryKey: ["/api/identity-document"],
   });
 
-  const valueChips = (identityDoc?.values || "")
-    .split(/[\n,]+/)
-    .map(v => v.trim())
-    .filter(Boolean);
+  const valueChips = (() => {
+    try {
+      const parsed = JSON.parse(identityDoc?.values || "");
+      if (Array.isArray(parsed)) return parsed.map((v: { value: string }) => v.value).filter(Boolean);
+    } catch { /* legacy plain text */ }
+    return (identityDoc?.values || "").split(/[\n,]+/).map(v => v.trim()).filter(Boolean);
+  })();
 
   const canNext = (() => {
     switch (step) {
