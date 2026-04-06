@@ -10,7 +10,7 @@ import { FreeTextOrChips } from "@/components/free-text-or-chips";
 import { EMOTIONS_V2, URGES_V2 } from "./trigger-chips";
 import type { PatternProfile } from "@shared/schema";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 interface TriggerExerciseProps {
   onFinish: () => void;
@@ -24,6 +24,7 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
   const [emotion, setEmotion] = useState("");
   const [wantedToDo, setWantedToDo] = useState("");
   const [whatIDid, setWhatIDid] = useState("");
+  const [outcome, setOutcome] = useState("");
   const [fromTemplate, setFromTemplate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -43,6 +44,7 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
       case 2: return emotion.length > 0;
       case 3: return true;
       case 4: return true;
+      case 5: return true;
       default: return false;
     }
   })();
@@ -58,6 +60,7 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
         emotion: emotion || null,
         urge: wantedToDo || null,
         whatIDid: whatIDid.trim() || null,
+        outcome: outcome.trim() || null,
         fromTemplate,
       });
       if (!res.ok) {
@@ -162,6 +165,21 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
             value={whatIDid}
             onChange={e => setWhatIDid(e.target.value)}
             placeholder="What actually happened next..."
+            rows={3}
+            className="resize-none text-sm"
+            autoFocus
+          />
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="space-y-3">
+          <p className="text-sm font-medium">What was the outcome?</p>
+          <p className="text-xs text-muted-foreground">What happened as a result of what you did?</p>
+          <Textarea
+            value={outcome}
+            onChange={e => setOutcome(e.target.value)}
+            placeholder="The result was..."
             rows={3}
             className="resize-none text-sm"
             autoFocus

@@ -278,6 +278,7 @@ export const createTriggerLogSchema = z.object({
   emotion: optionalString(50),
   urge: optionalString(50),
   whatIDid: optionalString(2000),
+  outcome: optionalString(2000),
   fromTemplate: z.boolean().optional().default(false),
 });
 
