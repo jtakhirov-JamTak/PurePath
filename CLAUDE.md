@@ -127,6 +127,7 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - Range slider on mobile needs explicit `h-10` or similar — native `<input type="range">` track is ~4px, nearly impossible to grab on touch screens.
 - Pages with many input fields (30+) need progressive disclosure (collapsible sections, tabs, or wizard) — a single scroll of 39 inputs overwhelms mobile users.
 - `console.error("msg:", error)` in routes can log sensitive user content (triggers, blind spots) to server logs. Use `(error as Error).message` instead.
+- When a prompt restructures one page deeply but only lists surface edits for a related page, ask whether the related page also needs structural changes. Don't assume label tweaks are the full picture — cross-reference against the overall data architecture.
 - (Add new lessons here as they arise)
 
 ## Docs
