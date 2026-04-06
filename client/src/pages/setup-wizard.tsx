@@ -164,9 +164,21 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
   );
 }
 
+const VALUE_LABELS_WIZARD = ["Core Value 1", "Core Value 2", "Aspirational Value"];
+
+function parseValuesJson(raw: string): { value: string; why: string }[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length === 3) return parsed;
+  } catch { /* fall through */ }
+  return [{ value: raw || "", why: "" }, { value: "", why: "" }, { value: "", why: "" }];
+}
+
 function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { toast } = useToast();
-  const [values, setValues] = useState("");
+  const [entries, setEntries] = useState([
+    { value: "", why: "" }, { value: "", why: "" }, { value: "", why: "" },
+  ]);
   const [saving, setSaving] = useState(false);
 
   const { data: existing, isLoading } = useQuery<any>({
@@ -175,15 +187,23 @@ function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
 
   useEffect(() => {
     if (existing) {
-      setValues(existing.values || "");
+      setEntries(parseValuesJson(existing.values || ""));
     }
   }, [existing]);
+
+  const updateEntry = (idx: number, field: "value" | "why", val: string) => {
+    setEntries(prev => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: val };
+      return updated;
+    });
+  };
 
   const save = async () => {
     setSaving(true);
     try {
       await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(existing, {
-        values,
+        values: JSON.stringify(entries.map(e => ({ value: e.value.trim(), why: e.why.trim() }))),
       }));
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       return true;
@@ -213,15 +233,23 @@ function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
       saving={saving}
     >
       <div className="space-y-4">
-        <FieldGroup label="Core Values">
-          <Textarea
-            placeholder="Your 2 core values and 1 aspirational value, with reasons"
-            value={values}
-            onChange={(e) => setValues(e.target.value)}
-            rows={4}
-            data-testid="input-core-values"
-          />
-        </FieldGroup>
+        {entries.map((entry, i) => (
+          <FieldGroup key={i} label={VALUE_LABELS_WIZARD[i]}>
+            <Input
+              placeholder={i < 2 ? "A core value I live by..." : "A value I'm growing into..."}
+              value={entry.value}
+              onChange={(e) => updateEntry(i, "value", e.target.value)}
+              data-testid={`input-value-${i}`}
+            />
+            <Input
+              placeholder="Why this matters to me..."
+              value={entry.why}
+              onChange={(e) => updateEntry(i, "why", e.target.value)}
+              className="mt-1.5"
+              data-testid={`input-value-why-${i}`}
+            />
+          </FieldGroup>
+        ))}
         <p className="text-xs text-muted-foreground italic">
           Patterns and strengths can be added on your Pattern Profile after setup.
         </p>
