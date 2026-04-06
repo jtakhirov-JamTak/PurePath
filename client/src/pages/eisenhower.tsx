@@ -461,7 +461,7 @@ export default function EisenhowerPage() {
                 <div className="space-y-2 max-w-sm text-left">
                   {identityDoc?.yearVision && (
                     <div className="rounded-md bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">1-Year Vision</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">1-Year Commitment</p>
                       <p className="text-sm text-foreground/80">{identityDoc.yearVision}</p>
                     </div>
                   )}

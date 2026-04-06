@@ -12,6 +12,7 @@ export function registerExportRoutes(app: Express) {
 
       const [
         identityDoc,
+        patternProfile,
         journals,
         habits,
         eisenhowerEntries,
@@ -21,6 +22,7 @@ export function registerExportRoutes(app: Express) {
         triggerLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
+        storage.getPatternProfile(userId),
         storage.getJournalsByUser(userId),
         storage.getHabitsByUser(userId),
         storage.getEisenhowerEntriesByUser(userId),
@@ -48,15 +50,70 @@ export function registerExportRoutes(app: Express) {
         if (identityDoc.vision) md += `**Vision:** ${identityDoc.vision}\n\n`;
         if (identityDoc.values) md += `**Values:** ${identityDoc.values}\n\n`;
         if (identityDoc.purpose) md += `**Purpose:** ${identityDoc.purpose}\n\n`;
-        if (identityDoc.yearVision) md += `**1-Year Vision:** ${identityDoc.yearVision}\n\n`;
+        if (identityDoc.yearVision) md += `**1-Year Commitment:** ${identityDoc.yearVision}\n\n`;
         if (identityDoc.othersWillSee) md += `**Others Will See:** ${identityDoc.othersWillSee.replace(/\|\|\|/g, ", ")}\n\n`;
-        if (identityDoc.strengths) md += `**Strengths:** ${identityDoc.strengths}\n\n`;
-        if (identityDoc.helpingPatterns) md += `**Helping Patterns:** ${identityDoc.helpingPatterns}\n\n`;
-        if (identityDoc.hurtingPatterns) md += `**Friction Points:** ${identityDoc.hurtingPatterns}\n\n`;
-        if (identityDoc.stressResponses) md += `**Stress Responses:** ${identityDoc.stressResponses}\n\n`;
+        // Legacy fields (deprecated, may contain historical data)
+        if (identityDoc.strengths) md += `**Strengths (legacy):** ${identityDoc.strengths}\n\n`;
+        if (identityDoc.helpingPatterns) md += `**Helping Patterns (legacy):** ${identityDoc.helpingPatterns}\n\n`;
+        if (identityDoc.hurtingPatterns) md += `**Friction Points (legacy):** ${identityDoc.hurtingPatterns}\n\n`;
+        if (identityDoc.stressResponses) md += `**Stress Responses (legacy):** ${identityDoc.stressResponses}\n\n`;
       } else {
         md += `No identity document set up.\n\n`;
       }
+
+      // PATTERN PROFILE
+      md += `## Pattern Profile\n\n`;
+      if (patternProfile) {
+        const hp = (n: number) => {
+          const c = (patternProfile as any)[`helpingPattern${n}Condition`] || "";
+          const b = (patternProfile as any)[`helpingPattern${n}Behavior`] || "";
+          const i = (patternProfile as any)[`helpingPattern${n}Impact`] || "";
+          const o = (patternProfile as any)[`helpingPattern${n}Outcome`] || "";
+          return (c || b || i || o) ? `- **Pattern ${n}:** When ${c || "..."} → I ${b || "..."} → People feel ${i || "..."} → It leads to ${o || "..."}\n` : "";
+        };
+        const hpSection = hp(1) + hp(2) + hp(3);
+        if (hpSection) md += `**Helping Patterns:**\n${hpSection}\n`;
+
+        const up = (n: number) => {
+          const c = (patternProfile as any)[`hurtingPattern${n}Condition`] || "";
+          const b = (patternProfile as any)[`hurtingPattern${n}Behavior`] || "";
+          const i = (patternProfile as any)[`hurtingPattern${n}Impact`] || "";
+          const o = (patternProfile as any)[`hurtingPattern${n}Outcome`] || "";
+          return (c || b || i || o) ? `- **Pattern ${n}:** When ${c || "..."} → I ${b || "..."} → People feel ${i || "..."} → It leads to ${o || "..."}\n` : "";
+        };
+        const upSection = up(1) + up(2) + up(3);
+        if (upSection) md += `**Hurting Patterns:**\n${upSection}\n`;
+
+        if (patternProfile.repeatingLoopStory || patternProfile.repeatingLoopAvoidance || patternProfile.repeatingLoopCost) {
+          md += `**Repeating Loop:**\n`;
+          if (patternProfile.repeatingLoopStory) md += `- Story: ${patternProfile.repeatingLoopStory}\n`;
+          if (patternProfile.repeatingLoopAvoidance) md += `- Avoids: ${patternProfile.repeatingLoopAvoidance}\n`;
+          if (patternProfile.repeatingLoopCost) md += `- Cost: ${patternProfile.repeatingLoopCost}\n`;
+          md += `\n`;
+        }
+
+        if (patternProfile.triggerPatternTrigger) {
+          md += `**Trigger Pattern:**\n`;
+          md += `- Trigger: ${patternProfile.triggerPatternTrigger}\n`;
+          if (patternProfile.triggerPatternInterpretation) md += `- Interpretation: ${patternProfile.triggerPatternInterpretation}\n`;
+          if (patternProfile.triggerPatternEmotion) md += `- Emotion: ${patternProfile.triggerPatternEmotion}\n`;
+          if (patternProfile.triggerPatternUrge) md += `- Urge: ${patternProfile.triggerPatternUrge}\n`;
+          if (patternProfile.triggerPatternBehavior) md += `- Behavior: ${patternProfile.triggerPatternBehavior}\n`;
+          if (patternProfile.triggerPatternOutcome) md += `- Outcome: ${patternProfile.triggerPatternOutcome}\n`;
+          md += `\n`;
+        }
+
+        const bs = (n: number) => {
+          const p = (patternProfile as any)[`blindSpot${n}Pattern`] || "";
+          const o = (patternProfile as any)[`blindSpot${n}Outcome`] || "";
+          return (p || o) ? `- **Blind Spot ${n}:** ${p || "..."} → ${o || "..."}\n` : "";
+        };
+        const bsSection = bs(1) + bs(2) + bs(3);
+        if (bsSection) md += `**Blind Spots:**\n${bsSection}\n`;
+      } else {
+        md += `No pattern profile set up.\n\n`;
+      }
+      md += `\n`;
 
       // MONTHLY GOALS
       md += `---\n\n## Monthly Goals\n\n`;
@@ -77,6 +134,8 @@ export function registerExportRoutes(app: Express) {
           if (g.obstacleBehavior) md += `**Obstacle Behavior:** ${g.obstacleBehavior}\n`;
           if (g.ifThenPlan1) md += `**IF-THEN Plan 1:** ${g.ifThenPlan1}\n`;
           if (g.ifThenPlan2) md += `**IF-THEN Plan 2:** ${g.ifThenPlan2}\n`;
+          if (g.personStatement) md += `**Person Statement:** ${g.personStatement}\n`;
+          if (g.confidenceCheck != null) md += `**Confidence Check:** ${g.confidenceCheck}/10\n`;
           if (g.value) md += `**Value:** ${g.value}\n`;
           if (g.why) md += `**Why:** ${g.why}\n`;
           if (g.prize) md += `**Prize:** ${g.prize}\n`;
@@ -264,7 +323,7 @@ export function registerExportRoutes(app: Express) {
 
       // TRIGGER LOGS
       md += `---\n\n## Trigger Logs\n\n`;
-      const tLogs = triggerLogs as { date: string; triggerText: string; appraisal?: string | null; emotion?: string | null; urge?: string | null; whatIDid?: string | null }[];
+      const tLogs = triggerLogs as { date: string; triggerText: string; appraisal?: string | null; emotion?: string | null; urge?: string | null; whatIDid?: string | null; fromTemplate?: boolean | null }[];
       if (tLogs.length === 0) {
         md += `No trigger logs recorded.\n\n`;
       } else {
@@ -275,6 +334,7 @@ export function registerExportRoutes(app: Express) {
           if (t.emotion) md += `**What I felt:** ${t.emotion}\n`;
           if (t.urge) md += `**What I wanted to do:** ${t.urge}\n`;
           if (t.whatIDid) md += `**What I did:** ${t.whatIDid}\n`;
+          if (t.fromTemplate) md += `*(from pattern profile template)*\n`;
           md += `\n`;
         });
       }
@@ -287,7 +347,7 @@ export function registerExportRoutes(app: Express) {
       res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
       res.send(md);
     } catch (error) {
-      console.error("Error exporting all data:", error);
+      console.error("Error exporting all data:", (error as Error).message);
       res.status(500).json({ error: "Failed to export data" });
     }
   });

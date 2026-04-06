@@ -35,6 +35,7 @@ This document maps all routes, their access requirements, and the middleware pat
 | `/api/habits` | Habit CRUD | `isAuthenticated` + access check |
 | `/api/eisenhower` | Weekly planning | `isAuthenticated` + access check |
 | `/api/identity-document` | Identity doc | `isAuthenticated` + access check |
+| `/api/pattern-profile` | Pattern profile (GET/PUT) | `isAuthenticated` + access check |
 | `/api/tools/*` | Containment, triggers, avoidance | `isAuthenticated` + access check |
 | `/api/export-all` | Full data export | `isAuthenticated` + rate limit |
 

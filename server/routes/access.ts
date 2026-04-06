@@ -9,7 +9,7 @@ export function registerAccessRoutes(app: Express) {
       const settings = await storage.getUserSettings(userId);
       res.json({ hasAccess: settings?.hasAccess === true });
     } catch (error) {
-      console.error("Error checking access:", error);
+      console.error("Error checking access:", (error as Error).message);
       res.status(500).json({ error: "Failed to check access" });
     }
   });

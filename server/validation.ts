@@ -121,7 +121,7 @@ export const createJournalSchema = z.object({
   reflections: optionalString(5000),
   highlights: optionalString(5000),
   challenges: optionalString(5000),
-  content: z.string().optional().nullable(),
+  content: z.string().max(100000, "Content must be at most 100KB").optional().nullable(),
 });
 
 export const createToolUsageSchema = z.object({
@@ -150,11 +150,7 @@ export const identityDocumentSchema = z.object({
   visionBoardLeft: optionalString(10 * 1024 * 1024),
   visionBoardRight: optionalString(10 * 1024 * 1024),
   othersWillSee: optionalTrimmedString(5000),
-  beYourself: optionalTrimmedString(5000),
-  strengths: optionalTrimmedString(5000),
-  helpingPatterns: optionalTrimmedString(5000),
-  hurtingPatterns: optionalTrimmedString(5000),
-  stressResponses: optionalTrimmedString(5000),
+  // DEPRECATED: beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses moved to patternProfiles
   visionDomain: optionalTrimmedString(500),
 });
 
@@ -187,6 +183,8 @@ export const monthlyGoalSchema = z.object({
   obstacleBehavior: optionalTrimmedString(2000),
   ifThenPlan1: optionalTrimmedString(2000),
   ifThenPlan2: optionalTrimmedString(2000),
+  personStatement: optionalTrimmedString(2000),
+  confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
 });
 
 export const updateHabitCompletionSchema = z.object({
@@ -280,6 +278,49 @@ export const createTriggerLogSchema = z.object({
   emotion: optionalString(50),
   urge: optionalString(50),
   whatIDid: optionalString(2000),
+  fromTemplate: z.boolean().optional().default(false),
+});
+
+export const patternProfileSchema = z.object({
+  helpingPattern1Condition: optionalTrimmedString(5000),
+  helpingPattern1Behavior: optionalTrimmedString(5000),
+  helpingPattern1Impact: optionalTrimmedString(5000),
+  helpingPattern1Outcome: optionalTrimmedString(5000),
+  helpingPattern2Condition: optionalTrimmedString(5000),
+  helpingPattern2Behavior: optionalTrimmedString(5000),
+  helpingPattern2Impact: optionalTrimmedString(5000),
+  helpingPattern2Outcome: optionalTrimmedString(5000),
+  helpingPattern3Condition: optionalTrimmedString(5000),
+  helpingPattern3Behavior: optionalTrimmedString(5000),
+  helpingPattern3Impact: optionalTrimmedString(5000),
+  helpingPattern3Outcome: optionalTrimmedString(5000),
+  hurtingPattern1Condition: optionalTrimmedString(5000),
+  hurtingPattern1Behavior: optionalTrimmedString(5000),
+  hurtingPattern1Impact: optionalTrimmedString(5000),
+  hurtingPattern1Outcome: optionalTrimmedString(5000),
+  hurtingPattern2Condition: optionalTrimmedString(5000),
+  hurtingPattern2Behavior: optionalTrimmedString(5000),
+  hurtingPattern2Impact: optionalTrimmedString(5000),
+  hurtingPattern2Outcome: optionalTrimmedString(5000),
+  hurtingPattern3Condition: optionalTrimmedString(5000),
+  hurtingPattern3Behavior: optionalTrimmedString(5000),
+  hurtingPattern3Impact: optionalTrimmedString(5000),
+  hurtingPattern3Outcome: optionalTrimmedString(5000),
+  repeatingLoopStory: optionalTrimmedString(5000),
+  repeatingLoopAvoidance: optionalTrimmedString(5000),
+  repeatingLoopCost: optionalTrimmedString(5000),
+  triggerPatternTrigger: optionalTrimmedString(5000),
+  triggerPatternInterpretation: optionalTrimmedString(5000),
+  triggerPatternEmotion: optionalTrimmedString(5000),
+  triggerPatternUrge: optionalTrimmedString(5000),
+  triggerPatternBehavior: optionalTrimmedString(5000),
+  triggerPatternOutcome: optionalTrimmedString(5000),
+  blindSpot1Pattern: optionalTrimmedString(5000),
+  blindSpot1Outcome: optionalTrimmedString(5000),
+  blindSpot2Pattern: optionalTrimmedString(5000),
+  blindSpot2Outcome: optionalTrimmedString(5000),
+  blindSpot3Pattern: optionalTrimmedString(5000),
+  blindSpot3Outcome: optionalTrimmedString(5000),
 });
 
 export const reorderItemSchema = z.object({

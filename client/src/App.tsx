@@ -18,7 +18,7 @@ import PlanPage from "@/pages/plan";
 import JournalHubPage from "@/pages/journal-hub";
 
 import IdentityDocPage from "@/pages/identity-doc";
-import DiscoveryProfilePage from "@/pages/discovery-profile";
+import PatternProfilePage from "@/pages/pattern-profile";
 import ScoreboardPage from "@/pages/scoreboard";
 import MonthlyGoalPage from "@/pages/monthly-goal";
 import SetupWizardPage from "@/pages/setup-wizard";
@@ -179,8 +179,8 @@ function Router() {
       <Route path="/identity">
         {() => <AccessGatedRoute component={IdentityDocPage} />}
       </Route>
-      <Route path="/discovery-profile">
-        {() => <AccessGatedRoute component={DiscoveryProfilePage} />}
+      <Route path="/pattern-profile">
+        {() => <AccessGatedRoute component={PatternProfilePage} />}
       </Route>
       <Route path="/scoreboard">
         {() => <AccessGatedRoute component={ScoreboardPage} />}

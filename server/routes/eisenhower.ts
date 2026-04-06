@@ -34,7 +34,7 @@ export function registerEisenhowerRoutes(app: Express) {
       const entries = await storage.getEisenhowerEntriesByUser(userId);
       res.json(entries);
     } catch (error) {
-      console.error("Error fetching eisenhower entries:", error);
+      console.error("Error fetching eisenhower entries:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch entries" });
     }
   });
@@ -46,12 +46,12 @@ export function registerEisenhowerRoutes(app: Express) {
       const entries = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
       res.json(entries);
     } catch (error) {
-      console.error("Error fetching weekly entries:", error);
+      console.error("Error fetching weekly entries:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch entries" });
     }
   });
 
-  app.post("/api/eisenhower", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.post("/api/eisenhower", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createEisenhowerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -75,12 +75,12 @@ export function registerEisenhowerRoutes(app: Express) {
       const entry = await storage.createEisenhowerEntry({ userId, ...parsed.data });
       res.json(entry);
     } catch (error) {
-      console.error("Error creating entry:", error);
+      console.error("Error creating entry:", (error as Error).message);
       res.status(500).json({ error: "Failed to create entry" });
     }
   });
 
-  app.patch("/api/eisenhower/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.patch("/api/eisenhower/:id", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = updateEisenhowerSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -113,7 +113,7 @@ export function registerEisenhowerRoutes(app: Express) {
       const entry = await storage.updateEisenhowerEntry(userId, id, body);
       res.json(entry);
     } catch (error) {
-      console.error("Error updating entry:", error);
+      console.error("Error updating entry:", (error as Error).message);
       res.status(500).json({ error: "Failed to update entry" });
     }
   });
@@ -127,7 +127,7 @@ export function registerEisenhowerRoutes(app: Express) {
       const summary = await storage.getWeeklySummary(userId, weekStart);
       res.json(summary || null);
     } catch (error) {
-      console.error("Error fetching weekly summary:", error);
+      console.error("Error fetching weekly summary:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch weekly summary" });
     }
   });
@@ -157,7 +157,7 @@ export function registerEisenhowerRoutes(app: Express) {
       });
       res.json(summary);
     } catch (error) {
-      console.error("Error saving fear reflection:", error);
+      console.error("Error saving fear reflection:", (error as Error).message);
       res.status(500).json({ error: "Failed to save fear reflection" });
     }
   });
@@ -171,7 +171,7 @@ export function registerEisenhowerRoutes(app: Express) {
       const count = await storage.deleteEisenhowerEntriesForWeek(userId, weekStart);
       res.json({ success: true, deleted: count });
     } catch (error) {
-      console.error("Error wiping week:", error);
+      console.error("Error wiping week:", (error as Error).message);
       res.status(500).json({ error: "Failed to wipe week" });
     }
   });
@@ -245,7 +245,7 @@ export function registerEisenhowerRoutes(app: Express) {
       const result = await storage.commitWeek(userId, weekStart, entryItems, fearSummary);
       res.json(result);
     } catch (error) {
-      console.error("Error committing week:", error);
+      console.error("Error committing week:", (error as Error).message);
       res.status(500).json({ error: "Failed to commit week" });
     }
   });
@@ -267,24 +267,24 @@ export function registerEisenhowerRoutes(app: Express) {
       const count = await storage.deleteEisenhowerEntriesByGroupId(userId, groupId);
       res.json({ success: true, deleted: count });
     } catch (error) {
-      console.error("Error deleting group entries:", error);
+      console.error("Error deleting group entries:", (error as Error).message);
       res.status(500).json({ error: "Failed to delete group" });
     }
   });
 
   // One-time cleanup: remove all auto-created blocksGoal entries (must be before :id route)
-  app.delete("/api/eisenhower/cleanup-goal-entries", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/cleanup-goal-entries", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const count = await storage.deleteBlocksGoalEntries(userId);
       res.json({ success: true, deleted: count });
     } catch (error) {
-      console.error("Error cleaning up goal entries:", error);
+      console.error("Error cleaning up goal entries:", (error as Error).message);
       res.status(500).json({ error: "Failed to clean up" });
     }
   });
 
-  app.delete("/api/eisenhower/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.delete("/api/eisenhower/:id", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -297,12 +297,12 @@ export function registerEisenhowerRoutes(app: Express) {
       await storage.deleteEisenhowerEntry(userId, id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting entry:", error);
+      console.error("Error deleting entry:", (error as Error).message);
       res.status(500).json({ error: "Failed to delete entry" });
     }
   });
 
-  app.post("/api/eisenhower/reorder", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.post("/api/eisenhower/reorder", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = reorderSchema.safeParse(req.body);
@@ -326,7 +326,7 @@ export function registerEisenhowerRoutes(app: Express) {
       }
       res.json({ success: true });
     } catch (error) {
-      console.error("Error reordering entries:", error);
+      console.error("Error reordering entries:", (error as Error).message);
       res.status(500).json({ error: "Failed to reorder entries" });
     }
   });
@@ -349,7 +349,7 @@ export function registerEisenhowerRoutes(app: Express) {
       res.setHeader("Content-Disposition", "attachment; filename=eisenhower-matrix.csv");
       res.send(csv);
     } catch (error) {
-      console.error("Error exporting eisenhower:", error);
+      console.error("Error exporting eisenhower:", (error as Error).message);
       res.status(500).json({ error: "Failed to export" });
     }
   });
@@ -415,7 +415,7 @@ Return a JSON object with a single key "items" containing an array of parsed tas
       const parsed = JSON.parse(content);
       res.json(parsed);
     } catch (error) {
-      console.error("Error parsing tasks with AI:", error);
+      console.error("Error parsing tasks with AI:", (error as Error).message);
       res.status(500).json({ error: "Failed to parse tasks" });
     }
   });

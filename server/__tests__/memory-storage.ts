@@ -7,6 +7,7 @@ let _habits: any[] = [];
 let _habitCompletions: any[] = [];
 let _eisenhower: any[] = [];
 let _identityDocs: any[] = [];
+let _patternProfiles: any[] = [];
 let _toolUsage: any[] = [];
 let _avoidanceLogs: any[] = [];
 let _monthlyGoals: any[] = [];
@@ -21,6 +22,7 @@ export function resetStorage() {
   _habitCompletions = [];
   _eisenhower = [];
   _identityDocs = [];
+  _patternProfiles = [];
   _toolUsage = [];
   _avoidanceLogs = [];
   _monthlyGoals = [];
@@ -100,6 +102,16 @@ export const storage = {
     const doc = { id: nextId(), ...data };
     _identityDocs.push(doc);
     return doc;
+  },
+
+  // Pattern Profile
+  getPatternProfile: async (userId: string) => _patternProfiles.find(p => p.userId === userId) || null,
+  upsertPatternProfile: async (data: any) => {
+    const idx = _patternProfiles.findIndex(p => p.userId === data.userId);
+    if (idx >= 0) { Object.assign(_patternProfiles[idx], data); return _patternProfiles[idx]; }
+    const profile = { id: nextId(), ...data };
+    _patternProfiles.push(profile);
+    return profile;
   },
 
   // Monthly goals

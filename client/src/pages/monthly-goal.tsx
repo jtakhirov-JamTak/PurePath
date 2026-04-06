@@ -14,8 +14,7 @@ import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { MonthlyGoal, IdentityDocument } from "@shared/schema";
-import { buildIdentityDocPayload } from "@/lib/identity-helpers";
+import type { MonthlyGoal, IdentityDocument, PatternProfile } from "@shared/schema";
 
 const DEFAULT_OBSTACLES = ["Time", "Energy", "Avoidance", "Distraction", "Perfectionism"];
 const CATEGORIES = ["health", "wealth", "relationships", "growth", "joy"];
@@ -62,6 +61,11 @@ export default function MonthlyGoalPage() {
     enabled: !!user,
   });
 
+  const { data: patternProfile } = useQuery<PatternProfile>({
+    queryKey: ["/api/pattern-profile"],
+    enabled: !!user,
+  });
+
   // Pre-fill from existing data
   const [initialized, setInitialized] = useState(false);
   useEffect(() => {
@@ -83,21 +87,24 @@ export default function MonthlyGoalPage() {
       setIfThenPlan1(monthlyGoal.ifThenPlan1 || "");
       setNextConcreteStep(monthlyGoal.nextConcreteStep || "");
       setGoalWhen(monthlyGoal.goalWhen || "");
+      setStrengthsText(monthlyGoal.strengths || "");
       setInitialized(true);
     }
   }, [monthlyGoal, initialized]);
 
-  // Pre-fill strengths from identity doc
-  useEffect(() => {
-    if (identityDoc?.strengths && !strengthsText) {
-      setStrengthsText(identityDoc.strengths);
-    }
-  }, [identityDoc]);
-
+  // Pre-fill strengths from monthly goal data (user-entered on this page)
   const identityStatement = identityDoc?.identity?.trim() || "";
-  const existingStrengths = identityDoc?.strengths?.trim() || "";
-  const frictionChips = (identityDoc?.hurtingPatterns || "").split(",").map(s => s.trim()).filter(Boolean);
-  const helpingChips = (identityDoc?.helpingPatterns || "").split(",").map(s => s.trim()).filter(Boolean);
+  const existingStrengths = strengthsText.trim();
+
+  // Derive chips from pattern profile (structured fields)
+  const helpingChips = patternProfile
+    ? [patternProfile.helpingPattern1Behavior, patternProfile.helpingPattern2Behavior, patternProfile.helpingPattern3Behavior]
+        .map(s => (s || "").trim()).filter(Boolean)
+    : [];
+  const frictionChips = patternProfile
+    ? [patternProfile.hurtingPattern1Behavior, patternProfile.hurtingPattern2Behavior, patternProfile.hurtingPattern3Behavior]
+        .map(s => (s || "").trim()).filter(Boolean)
+    : [];
   const allObstacleChips = Array.from(new Set([...frictionChips, ...DEFAULT_OBSTACLES]));
 
   const toggleObstacle = (chip: string) => {
@@ -122,20 +129,14 @@ export default function MonthlyGoalPage() {
         nextConcreteStep,
         goalWhen,
         goalStatement: goalWhat,
+        strengths: strengthsText.trim(),
       });
       if (!res.ok) {
         const body = await res.json();
         throw new Error(body.error || "Failed to save goal");
       }
 
-      // 2. Update strengths on identity doc if changed
-      if (strengthsText.trim() && strengthsText.trim() !== existingStrengths) {
-        await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(identityDoc, {
-          strengths: strengthsText.trim(),
-        }));
-      }
-
-      // 3. Create Q1 eisenhower item if date + time provided (only on first save, not edits)
+      // 2. Create Q1 eisenhower item if date + time provided (only on first save, not edits)
       if (!initialized && goalWhen && eisenhowerTime && nextConcreteStep.trim()) {
         const weekStart = format(
           startOfWeek(new Date(goalWhen + "T12:00:00"), { weekStartsOn: 1 }),
@@ -164,7 +165,6 @@ export default function MonthlyGoalPage() {
     errorToast: "Could not save goal",
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       setLocation("/dashboard");
     },
   });

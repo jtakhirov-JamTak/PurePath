@@ -48,6 +48,7 @@ import { registerHabitRoutes } from "../routes/habits";
 import { registerEisenhowerRoutes } from "../routes/eisenhower";
 import { registerJournalRoutes } from "../routes/journals";
 import { registerIdentityRoutes } from "../routes/identity";
+import { registerPatternRoutes } from "../routes/patterns";
 import { registerToolRoutes } from "../routes/tools";
 import { registerExportRoutes } from "../routes/export";
 
@@ -60,6 +61,7 @@ export function createTestApp() {
   registerEisenhowerRoutes(app);
   registerJournalRoutes(app);
   registerIdentityRoutes(app);
+  registerPatternRoutes(app);
   registerToolRoutes(app);
   registerExportRoutes(app);
 

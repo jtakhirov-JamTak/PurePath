@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import { ArrowRight, ArrowLeft, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { FreeTextOrChips } from "@/components/free-text-or-chips";
 import { EMOTIONS_V2, URGES_V2 } from "./trigger-chips";
+import type { PatternProfile } from "@shared/schema";
 
 const TOTAL_STEPS = 5;
 
@@ -15,15 +17,24 @@ interface TriggerExerciseProps {
 }
 
 export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [whatHappened, setWhatHappened] = useState("");
   const [storyTold, setStoryTold] = useState("");
   const [emotion, setEmotion] = useState("");
   const [wantedToDo, setWantedToDo] = useState("");
   const [whatIDid, setWhatIDid] = useState("");
+  const [fromTemplate, setFromTemplate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const queryClient = useQueryClient();
+
+  const { data: patternProfile } = useQuery<PatternProfile>({
+    queryKey: ["/api/pattern-profile"],
+    enabled: !!user,
+  });
+
+  const hasSavedTrigger = !!(patternProfile?.triggerPatternTrigger?.trim());
 
   const canNext = (() => {
     switch (step) {
@@ -47,6 +58,7 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
         emotion: emotion || null,
         urge: wantedToDo || null,
         whatIDid: whatIDid.trim() || null,
+        fromTemplate,
       });
       if (!res.ok) {
         const err = await res.json();
@@ -84,6 +96,19 @@ export function TriggerExercise({ onFinish }: TriggerExerciseProps) {
       {step === 0 && (
         <div className="space-y-3">
           <p className="text-sm font-medium">What happened?</p>
+          {hasSavedTrigger && !fromTemplate && (
+            <button
+              type="button"
+              onClick={() => {
+                setWhatHappened(patternProfile!.triggerPatternTrigger!);
+                setFromTemplate(true);
+              }}
+              className="flex items-center gap-1.5 text-xs text-primary hover:bg-primary/5 rounded-md px-3 py-2 border border-primary/20 transition-colors min-h-[44px]"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              Use saved trigger from Pattern Profile
+            </button>
+          )}
           <Textarea
             value={whatHappened}
             onChange={e => setWhatHappened(e.target.value)}

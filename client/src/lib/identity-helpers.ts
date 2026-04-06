@@ -24,11 +24,7 @@ export function buildIdentityDocPayload(
     visionBoardLeft: doc?.visionBoardLeft || "",
     visionBoardRight: doc?.visionBoardRight || "",
     othersWillSee: doc?.othersWillSee || "",
-    beYourself: doc?.beYourself || "",
-    strengths: doc?.strengths || "",
-    helpingPatterns: doc?.helpingPatterns || "",
-    hurtingPatterns: doc?.hurtingPatterns || "",
-    stressResponses: doc?.stressResponses || "",
+    // DEPRECATED fields (beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses) removed
     visionDomain: doc?.visionDomain || "",
     ...overrides,
   };

@@ -120,6 +120,13 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - Trigger log section in evening journal is a KEEP — only the standalone Trigger Log tool/modal was removed, not the embedded evening journal trigger section ("What got in the way?")
 - Request logger must NEVER capture response bodies — found logging up to 500 chars of every API response (journals, identity docs, emotions) to server logs. Only log method/path/status/duration.
 - Unregistered route files without auth are a security footgun — delete them rather than leaving them dormant. audio/routes.ts and image/routes.ts were deleted for this reason.
+- Deprecating schema fields: stop writing in storage upsert + remove from Zod validation, but keep columns in table definition (SELECT * still returns them). Never remove columns without a migration.
+- Setup wizard sends partial PUT payloads — always use `buildIdentityDocPayload(existing, overrides)` to preserve fields you're not editing. Sending `{ values }` alone wipes vision, identity, purpose, etc.
+- When adding a new route file (e.g. `patterns.ts`), must also register it in BOTH `server/routes/index.ts` AND `server/__tests__/test-app.ts` — forgetting the test app causes isolation tests to 404.
+- When adding a new storage method to `IStorage`, must also add it to `server/__tests__/memory-storage.ts` — forgetting causes export tests to crash with "not a function".
+- Range slider on mobile needs explicit `h-10` or similar — native `<input type="range">` track is ~4px, nearly impossible to grab on touch screens.
+- Pages with many input fields (30+) need progressive disclosure (collapsible sections, tabs, or wizard) — a single scroll of 39 inputs overwhelms mobile users.
+- `console.error("msg:", error)` in routes can log sensitive user content (triggers, blind spots) to server logs. Use `(error as Error).message` instead.
 - (Add new lessons here as they arise)
 
 ## Docs

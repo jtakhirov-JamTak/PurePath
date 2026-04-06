@@ -9,3 +9,7 @@ vite.config.ts.*
 .env.production
 *.local
 .claude/settings.local.json
+.archive/
+session-context.md
+playwright-report/
+test-results/

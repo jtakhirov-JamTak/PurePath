@@ -11,7 +11,7 @@ export function registerJournalRoutes(app: Express) {
       const journals = await storage.getJournalsByUser(userId);
       res.json(journals);
     } catch (error) {
-      console.error("Error fetching journals:", error);
+      console.error("Error fetching journals:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch journals" });
     }
   });
@@ -23,7 +23,7 @@ export function registerJournalRoutes(app: Express) {
       const journal = await storage.getJournal(userId, date, session);
       res.json(journal || null);
     } catch (error) {
-      console.error("Error fetching journal:", error);
+      console.error("Error fetching journal:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch journal" });
     }
   });
@@ -42,7 +42,7 @@ export function registerJournalRoutes(app: Express) {
 
       res.json(journal);
     } catch (error) {
-      console.error("Error saving journal:", error);
+      console.error("Error saving journal:", (error as Error).message);
       res.status(500).json({ error: "Failed to save journal" });
     }
   });
@@ -172,7 +172,7 @@ export function registerJournalRoutes(app: Express) {
       res.setHeader("Content-Disposition", `attachment; filename=journal-export${startDate ? `-${startDate}` : ""}${endDate ? `-to-${endDate}` : ""}.txt`);
       res.send(content);
     } catch (error) {
-      console.error("Error exporting journals:", error);
+      console.error("Error exporting journals:", (error as Error).message);
       res.status(500).json({ error: "Failed to export journals" });
     }
   });

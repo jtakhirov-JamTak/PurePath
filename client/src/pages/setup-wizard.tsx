@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ArrowRight, Check, Sparkles, User, Target, Repeat, BookOpen } from "lucide-react";
 
@@ -166,10 +167,6 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
 function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { toast } = useToast();
   const [values, setValues] = useState("");
-  const [strengths, setStrengths] = useState("");
-  const [patternsHelping, setPatternsHelping] = useState("");
-  const [patternsHurting, setPatternsHurting] = useState("");
-  const [stressResponses, setStressResponses] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { data: existing, isLoading } = useQuery<any>({
@@ -179,31 +176,15 @@ function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
   useEffect(() => {
     if (existing) {
       setValues(existing.values || "");
-      try {
-        const parsed = JSON.parse(existing.beYourself || "{}");
-        setStrengths(parsed.strengths || "");
-        setPatternsHelping(parsed.patternsHelping || "");
-        setPatternsHurting(parsed.patternsHurting || "");
-        setStressResponses(parsed.stressResponses || "");
-      } catch {
-        // ignore
-      }
     }
   }, [existing]);
 
   const save = async () => {
     setSaving(true);
     try {
-      const discoveryData = JSON.stringify({
-        strengths,
-        patternsHelping,
-        patternsHurting,
-        stressResponses,
-      });
-      await apiRequest("PUT", "/api/identity-document", {
+      await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(existing, {
         values,
-        beYourself: discoveryData,
-      });
+      }));
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       return true;
     } catch (error: any) {
@@ -225,8 +206,8 @@ function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
 
   return (
     <StepShell
-      heading="Your Discovery Profile"
-      subtext="Enter what you discovered about yourself in Lesson 1."
+      heading="Your Values"
+      subtext="Enter what you discovered in the workshop."
       onBack={onBack}
       onNext={handleNext}
       saving={saving}
@@ -237,46 +218,13 @@ function DiscoveryStep({ onNext, onBack }: { onNext: () => void; onBack: () => v
             placeholder="Your 2 core values and 1 aspirational value, with reasons"
             value={values}
             onChange={(e) => setValues(e.target.value)}
-            rows={3}
+            rows={4}
             data-testid="input-core-values"
           />
         </FieldGroup>
-        <FieldGroup label="Strengths">
-          <Textarea
-            placeholder="What others consistently recognize in you"
-            value={strengths}
-            onChange={(e) => setStrengths(e.target.value)}
-            rows={2}
-            data-testid="input-strengths"
-          />
-        </FieldGroup>
-        <FieldGroup label="Patterns — Helping">
-          <Textarea
-            placeholder="Top 3 behaviors that serve you"
-            value={patternsHelping}
-            onChange={(e) => setPatternsHelping(e.target.value)}
-            rows={2}
-            data-testid="input-patterns-helping"
-          />
-        </FieldGroup>
-        <FieldGroup label="Patterns — Hurting">
-          <Textarea
-            placeholder="Top 3 behaviors to transform"
-            value={patternsHurting}
-            onChange={(e) => setPatternsHurting(e.target.value)}
-            rows={2}
-            data-testid="input-patterns-hurting"
-          />
-        </FieldGroup>
-        <FieldGroup label="Stress Responses">
-          <Textarea
-            placeholder="How you react under pressure"
-            value={stressResponses}
-            onChange={(e) => setStressResponses(e.target.value)}
-            rows={2}
-            data-testid="input-stress-responses"
-          />
-        </FieldGroup>
+        <p className="text-xs text-muted-foreground italic">
+          Patterns and strengths can be added on your Pattern Profile after setup.
+        </p>
       </div>
     </StepShell>
   );
@@ -334,7 +282,7 @@ function IdentityStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
   return (
     <StepShell
       heading="Your Identity Document"
-      subtext="Who you're choosing to become. From Lesson 2."
+      subtext="Who you're choosing to become — from the workshop."
       onBack={onBack}
       onNext={handleNext}
       saving={saving}
@@ -342,7 +290,7 @@ function IdentityStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       <div className="space-y-4">
         <FieldGroup label="Vision">
           <Textarea
-            placeholder="Your 10+ year vision statement"
+            placeholder="Your 5-year vision"
             value={vision}
             onChange={(e) => setVision(e.target.value)}
             rows={3}

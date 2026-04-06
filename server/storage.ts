@@ -1,11 +1,12 @@
 import { db } from "./db";
 import {
-  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, patternProfiles, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type Habit, type InsertHabit,
   type HabitCompletion, type InsertHabitCompletion,
   type IdentityDocument, type InsertIdentityDocument,
+  type PatternProfile, type InsertPatternProfile,
   type MonthlyGoal, type InsertMonthlyGoal,
   type ToolUsageLog, type InsertToolUsageLog,
   type AvoidanceLog, type InsertAvoidanceLog,
@@ -57,6 +58,10 @@ export interface IStorage {
   // Identity Document
   getIdentityDocument(userId: string): Promise<IdentityDocument | undefined>;
   upsertIdentityDocument(doc: InsertIdentityDocument): Promise<IdentityDocument>;
+
+  // Pattern Profile
+  getPatternProfile(userId: string): Promise<PatternProfile | undefined>;
+  upsertPatternProfile(profile: InsertPatternProfile): Promise<PatternProfile>;
 
   // Monthly Goals
   getMonthlyGoal(userId: string, monthKey: string): Promise<MonthlyGoal | undefined>;
@@ -402,12 +407,66 @@ export class DatabaseStorage implements IStorage {
           todayIntention: doc.todayIntention,
           todayReflection: doc.todayReflection,
           othersWillSee: doc.othersWillSee,
-          beYourself: doc.beYourself,
-          strengths: doc.strengths,
-          helpingPatterns: doc.helpingPatterns,
-          hurtingPatterns: doc.hurtingPatterns,
-          stressResponses: doc.stressResponses,
+          // DEPRECATED fields (beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses) no longer written
           visionDomain: doc.visionDomain,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getPatternProfile(userId: string): Promise<PatternProfile | undefined> {
+    const [profile] = await db.select().from(patternProfiles).where(eq(patternProfiles.userId, userId));
+    return profile;
+  }
+
+  async upsertPatternProfile(profile: InsertPatternProfile): Promise<PatternProfile> {
+    const [result] = await db
+      .insert(patternProfiles)
+      .values({ ...profile, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: patternProfiles.userId,
+        set: {
+          helpingPattern1Condition: profile.helpingPattern1Condition,
+          helpingPattern1Behavior: profile.helpingPattern1Behavior,
+          helpingPattern1Impact: profile.helpingPattern1Impact,
+          helpingPattern1Outcome: profile.helpingPattern1Outcome,
+          helpingPattern2Condition: profile.helpingPattern2Condition,
+          helpingPattern2Behavior: profile.helpingPattern2Behavior,
+          helpingPattern2Impact: profile.helpingPattern2Impact,
+          helpingPattern2Outcome: profile.helpingPattern2Outcome,
+          helpingPattern3Condition: profile.helpingPattern3Condition,
+          helpingPattern3Behavior: profile.helpingPattern3Behavior,
+          helpingPattern3Impact: profile.helpingPattern3Impact,
+          helpingPattern3Outcome: profile.helpingPattern3Outcome,
+          hurtingPattern1Condition: profile.hurtingPattern1Condition,
+          hurtingPattern1Behavior: profile.hurtingPattern1Behavior,
+          hurtingPattern1Impact: profile.hurtingPattern1Impact,
+          hurtingPattern1Outcome: profile.hurtingPattern1Outcome,
+          hurtingPattern2Condition: profile.hurtingPattern2Condition,
+          hurtingPattern2Behavior: profile.hurtingPattern2Behavior,
+          hurtingPattern2Impact: profile.hurtingPattern2Impact,
+          hurtingPattern2Outcome: profile.hurtingPattern2Outcome,
+          hurtingPattern3Condition: profile.hurtingPattern3Condition,
+          hurtingPattern3Behavior: profile.hurtingPattern3Behavior,
+          hurtingPattern3Impact: profile.hurtingPattern3Impact,
+          hurtingPattern3Outcome: profile.hurtingPattern3Outcome,
+          repeatingLoopStory: profile.repeatingLoopStory,
+          repeatingLoopAvoidance: profile.repeatingLoopAvoidance,
+          repeatingLoopCost: profile.repeatingLoopCost,
+          triggerPatternTrigger: profile.triggerPatternTrigger,
+          triggerPatternInterpretation: profile.triggerPatternInterpretation,
+          triggerPatternEmotion: profile.triggerPatternEmotion,
+          triggerPatternUrge: profile.triggerPatternUrge,
+          triggerPatternBehavior: profile.triggerPatternBehavior,
+          triggerPatternOutcome: profile.triggerPatternOutcome,
+          blindSpot1Pattern: profile.blindSpot1Pattern,
+          blindSpot1Outcome: profile.blindSpot1Outcome,
+          blindSpot2Pattern: profile.blindSpot2Pattern,
+          blindSpot2Outcome: profile.blindSpot2Outcome,
+          blindSpot3Pattern: profile.blindSpot3Pattern,
+          blindSpot3Outcome: profile.blindSpot3Outcome,
           updatedAt: new Date(),
         },
       })
@@ -460,6 +519,8 @@ export class DatabaseStorage implements IStorage {
           obstacleBehavior: goal.obstacleBehavior,
           ifThenPlan1: goal.ifThenPlan1,
           ifThenPlan2: goal.ifThenPlan2,
+          personStatement: goal.personStatement,
+          confidenceCheck: goal.confidenceCheck,
           updatedAt: new Date(),
         },
       })

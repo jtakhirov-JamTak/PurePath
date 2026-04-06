@@ -6,6 +6,7 @@ import { registerJournalRoutes } from "./journals";
 import { registerEisenhowerRoutes } from "./eisenhower";
 import { registerHabitRoutes } from "./habits";
 import { registerIdentityRoutes } from "./identity";
+import { registerPatternRoutes } from "./patterns";
 import { registerToolRoutes } from "./tools";
 import { registerOnboardingRoutes } from "./onboarding";
 import { registerAccessRoutes } from "./access";
@@ -23,6 +24,7 @@ export async function registerRoutes(
   registerEisenhowerRoutes(app);
   registerHabitRoutes(app);
   registerIdentityRoutes(app);
+  registerPatternRoutes(app);
   registerToolRoutes(app);
   registerOnboardingRoutes(app);
   registerAccessRoutes(app);

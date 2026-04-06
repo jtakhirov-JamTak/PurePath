@@ -144,14 +144,6 @@ export const empathyExercises = pgTable("empathy_exercises", {
   index("empathy_user_id_idx").on(table.userId),
 ]);
 
-export const insertEmpathyExerciseSchema = createInsertSchema(empathyExercises).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type EmpathyExercise = typeof empathyExercises.$inferSelect;
-export type InsertEmpathyExercise = z.infer<typeof insertEmpathyExerciseSchema>;
-
 // Habit categories
 export const HABIT_CATEGORIES = {
   health: { label: "Health", color: "emerald" },
@@ -253,11 +245,14 @@ export const monthlyGoals = pgTable("monthly_goals", {
   obstacleBehavior: text("obstacle_behavior").default(""),
   ifThenPlan1: text("if_then_plan_1").default(""),
   ifThenPlan2: text("if_then_plan_2").default(""),
+  personStatement: text("person_statement").default(""),
+  confidenceCheck: integer("confidence_check"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("monthly_goals_user_month_idx").on(table.userId, table.monthKey),
   index("monthly_goals_user_id_idx").on(table.userId),
+  check("confidence_check_range", sql`${table.confidenceCheck} IS NULL OR ${table.confidenceCheck} BETWEEN 0 AND 10`),
 ]);
 
 export const insertMonthlyGoalSchema = createInsertSchema(monthlyGoals).omit({
@@ -285,10 +280,15 @@ export const identityDocuments = pgTable("identity_documents", {
   todayIntention: text("today_intention").default(""),
   todayReflection: text("today_reflection").default(""),
   othersWillSee: text("others_will_see").default(""),
+  // DEPRECATED: moved to patternProfiles — columns kept for data preservation
   beYourself: text("be_yourself").default(""),
+  // DEPRECATED: moved to patternProfiles
   strengths: text("strengths").default(""),
+  // DEPRECATED: moved to patternProfiles
   helpingPatterns: text("helping_patterns").default(""),
+  // DEPRECATED: moved to patternProfiles
   hurtingPatterns: text("hurting_patterns").default(""),
+  // DEPRECATED: moved to patternProfiles
   stressResponses: text("stress_responses").default(""),
   visionDomain: varchar("vision_domain", { length: 50 }).default(""),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -301,6 +301,65 @@ export const insertIdentityDocumentSchema = createInsertSchema(identityDocuments
 
 export type IdentityDocument = typeof identityDocuments.$inferSelect;
 export type InsertIdentityDocument = z.infer<typeof insertIdentityDocumentSchema>;
+
+// Pattern Profiles - structured behavioral patterns, one row per user
+export const patternProfiles = pgTable("pattern_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  // Helping patterns (3 × 4)
+  helpingPattern1Condition: text("helping_pattern_1_condition").default(""),
+  helpingPattern1Behavior: text("helping_pattern_1_behavior").default(""),
+  helpingPattern1Impact: text("helping_pattern_1_impact").default(""),
+  helpingPattern1Outcome: text("helping_pattern_1_outcome").default(""),
+  helpingPattern2Condition: text("helping_pattern_2_condition").default(""),
+  helpingPattern2Behavior: text("helping_pattern_2_behavior").default(""),
+  helpingPattern2Impact: text("helping_pattern_2_impact").default(""),
+  helpingPattern2Outcome: text("helping_pattern_2_outcome").default(""),
+  helpingPattern3Condition: text("helping_pattern_3_condition").default(""),
+  helpingPattern3Behavior: text("helping_pattern_3_behavior").default(""),
+  helpingPattern3Impact: text("helping_pattern_3_impact").default(""),
+  helpingPattern3Outcome: text("helping_pattern_3_outcome").default(""),
+  // Hurting patterns (3 × 4)
+  hurtingPattern1Condition: text("hurting_pattern_1_condition").default(""),
+  hurtingPattern1Behavior: text("hurting_pattern_1_behavior").default(""),
+  hurtingPattern1Impact: text("hurting_pattern_1_impact").default(""),
+  hurtingPattern1Outcome: text("hurting_pattern_1_outcome").default(""),
+  hurtingPattern2Condition: text("hurting_pattern_2_condition").default(""),
+  hurtingPattern2Behavior: text("hurting_pattern_2_behavior").default(""),
+  hurtingPattern2Impact: text("hurting_pattern_2_impact").default(""),
+  hurtingPattern2Outcome: text("hurting_pattern_2_outcome").default(""),
+  hurtingPattern3Condition: text("hurting_pattern_3_condition").default(""),
+  hurtingPattern3Behavior: text("hurting_pattern_3_behavior").default(""),
+  hurtingPattern3Impact: text("hurting_pattern_3_impact").default(""),
+  hurtingPattern3Outcome: text("hurting_pattern_3_outcome").default(""),
+  // Primary Repeating Loop
+  repeatingLoopStory: text("repeating_loop_story").default(""),
+  repeatingLoopAvoidance: text("repeating_loop_avoidance").default(""),
+  repeatingLoopCost: text("repeating_loop_cost").default(""),
+  // Trigger Pattern (reference template)
+  triggerPatternTrigger: text("trigger_pattern_trigger").default(""),
+  triggerPatternInterpretation: text("trigger_pattern_interpretation").default(""),
+  triggerPatternEmotion: text("trigger_pattern_emotion").default(""),
+  triggerPatternUrge: text("trigger_pattern_urge").default(""),
+  triggerPatternBehavior: text("trigger_pattern_behavior").default(""),
+  triggerPatternOutcome: text("trigger_pattern_outcome").default(""),
+  // Blind Spots (3 × 2)
+  blindSpot1Pattern: text("blind_spot_1_pattern").default(""),
+  blindSpot1Outcome: text("blind_spot_1_outcome").default(""),
+  blindSpot2Pattern: text("blind_spot_2_pattern").default(""),
+  blindSpot2Outcome: text("blind_spot_2_outcome").default(""),
+  blindSpot3Pattern: text("blind_spot_3_pattern").default(""),
+  blindSpot3Outcome: text("blind_spot_3_outcome").default(""),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPatternProfileSchema = createInsertSchema(patternProfiles).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type PatternProfile = typeof patternProfiles.$inferSelect;
+export type InsertPatternProfile = z.infer<typeof insertPatternProfileSchema>;
 
 export const toolUsageLogs = pgTable("tool_usage_logs", {
   id: serial("id").primaryKey(),
@@ -346,6 +405,7 @@ export const triggerLogs = pgTable("trigger_logs", {
   bodyState: text("body_state"),
   recoveryTime: varchar("recovery_time", { length: 50 }),
   reflection: text("reflection"),
+  fromTemplate: boolean("from_template").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("trigger_logs_user_id_idx").on(table.userId),
@@ -411,13 +471,7 @@ export const decisions = pgTable("decisions", {
   index("decisions_user_id_idx").on(table.userId),
 ]);
 
-export const insertDecisionSchema = createInsertSchema(decisions).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type Decision = typeof decisions.$inferSelect;
-export type InsertDecision = z.infer<typeof insertDecisionSchema>;
+// Insert schema and types removed — table is deprecated
 
 export const containmentLogs = pgTable("containment_logs", {
   id: serial("id").primaryKey(),

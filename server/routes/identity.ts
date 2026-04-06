@@ -12,7 +12,7 @@ export function registerIdentityRoutes(app: Express) {
       const doc = await storage.getIdentityDocument(userId);
       res.json(doc || { userId, identity: "", vision: "", values: "", yearVision: "", yearVisualization: "", purpose: "", todayValue: "", todayIntention: "", todayReflection: "", visionDomain: "" });
     } catch (error) {
-      console.error("Error fetching identity document:", error);
+      console.error("Error fetching identity document:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch identity document" });
     }
   });
@@ -40,16 +40,12 @@ export function registerIdentityRoutes(app: Express) {
         visionBoardLeft: d.visionBoardLeft ?? "",
         visionBoardRight: d.visionBoardRight ?? "",
         othersWillSee: d.othersWillSee ?? "",
-        beYourself: d.beYourself ?? "",
-        strengths: d.strengths ?? "",
-        helpingPatterns: d.helpingPatterns ?? "",
-        hurtingPatterns: d.hurtingPatterns ?? "",
-        stressResponses: d.stressResponses ?? "",
+        // DEPRECATED fields (beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses) no longer written
         visionDomain: d.visionDomain ?? "",
       });
       res.json(doc);
     } catch (error) {
-      console.error("Error saving identity document:", error);
+      console.error("Error saving identity document:", (error as Error).message);
       res.status(500).json({ error: "Failed to save identity document" });
     }
   });
@@ -78,7 +74,7 @@ export function registerIdentityRoutes(app: Express) {
         visionBoardLeft: existing?.visionBoardLeft ?? "",
         visionBoardRight: existing?.visionBoardRight ?? "",
         othersWillSee: existing?.othersWillSee ?? "",
-        beYourself: existing?.beYourself ?? "",
+        // DEPRECATED fields (beYourself, strengths, etc.) no longer written
       };
       if (slot === "main") updates.visionBoardMain = imageData || "";
       if (slot === "left") updates.visionBoardLeft = imageData || "";
@@ -86,7 +82,7 @@ export function registerIdentityRoutes(app: Express) {
       const doc = await storage.upsertIdentityDocument(updates);
       res.json({ success: true, slot });
     } catch (error) {
-      console.error("Error saving vision board:", error);
+      console.error("Error saving vision board:", (error as Error).message);
       res.status(500).json({ error: "Failed to save vision board image" });
     }
   });
@@ -96,9 +92,9 @@ export function registerIdentityRoutes(app: Express) {
       const userId = req.user.claims.sub;
       const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
       const goal = await storage.getMonthlyGoal(userId, monthKey);
-      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "", deadline: "", successProof: "", proofMetric: "", weeklyBehavior: "", bestResult: "", innerObstacle: "", obstacleTrigger: "", obstacleThought: "", obstacleEmotion: "", obstacleBehavior: "", ifThenPlan1: "", ifThenPlan2: "" });
+      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "", deadline: "", successProof: "", proofMetric: "", weeklyBehavior: "", bestResult: "", innerObstacle: "", obstacleTrigger: "", obstacleThought: "", obstacleEmotion: "", obstacleBehavior: "", ifThenPlan1: "", ifThenPlan2: "", personStatement: "", confidenceCheck: null });
     } catch (error) {
-      console.error("Error fetching monthly goal:", error);
+      console.error("Error fetching monthly goal:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch monthly goal" });
     }
   });
@@ -141,10 +137,12 @@ export function registerIdentityRoutes(app: Express) {
         obstacleBehavior: g.obstacleBehavior ?? "",
         ifThenPlan1: g.ifThenPlan1 ?? "",
         ifThenPlan2: g.ifThenPlan2 ?? "",
+        personStatement: g.personStatement ?? "",
+        confidenceCheck: g.confidenceCheck ?? null,
       });
       res.json(goal);
     } catch (error) {
-      console.error("Error saving monthly goal:", error);
+      console.error("Error saving monthly goal:", (error as Error).message);
       res.status(500).json({ error: "Failed to save monthly goal" });
     }
   });

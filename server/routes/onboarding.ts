@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { updateOnboardingSchema } from "../validation";
-import { requireAccess } from "./helpers";
+import { requireAccess, writeRateLimit } from "./helpers";
 
 export function registerOnboardingRoutes(app: Express) {
   app.get("/api/onboarding", isAuthenticated, requireAccess, async (req: any, res) => {
@@ -21,7 +21,7 @@ export function registerOnboardingRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/onboarding", isAuthenticated, requireAccess, async (req: any, res) => {
+  app.patch("/api/onboarding", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = updateOnboardingSchema.safeParse(req.body);

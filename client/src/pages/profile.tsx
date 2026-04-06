@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { ChevronRight } from "lucide-react";
-import type { IdentityDocument } from "@shared/schema";
+import type { IdentityDocument, PatternProfile } from "@shared/schema";
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -15,11 +15,16 @@ export default function ProfilePage() {
     enabled: !!user,
   });
 
+  const { data: patternProfile } = useQuery<PatternProfile>({
+    queryKey: ["/api/pattern-profile"],
+    enabled: !!user,
+  });
+
   const identityFilled = !!(identityDoc?.identity?.trim() || identityDoc?.vision?.trim());
-  const discoveryFilled = !!(identityDoc?.strengths?.trim() || identityDoc?.helpingPatterns?.trim());
+  const patternsFilled = !!(patternProfile?.helpingPattern1Condition?.trim() || patternProfile?.hurtingPattern1Condition?.trim());
   const scoreboardFilled = !!(identityDoc?.yearVision?.trim());
 
-  const filledCount = [identityFilled, discoveryFilled, scoreboardFilled].filter(Boolean).length;
+  const filledCount = [identityFilled, patternsFilled, scoreboardFilled].filter(Boolean).length;
 
   const cards = [
     {
@@ -30,15 +35,15 @@ export default function ProfilePage() {
       testId: "card-nav-identity",
     },
     {
-      title: "Values Profile",
-      subtitle: "Values, strengths, patterns",
-      filled: discoveryFilled,
-      path: "/discovery-profile",
-      testId: "card-nav-discovery",
+      title: "Pattern Profile",
+      subtitle: "Patterns, triggers, blind spots",
+      filled: patternsFilled,
+      path: "/pattern-profile",
+      testId: "card-nav-patterns",
     },
     {
-      title: "1-Year Vision",
-      subtitle: "Domain, scene, obstacles, IF-THEN",
+      title: "1-Year Commitment",
+      subtitle: "Domain, proof, obstacles, IF-THEN",
       filled: scoreboardFilled,
       path: "/scoreboard",
       testId: "card-nav-scoreboard",

@@ -24,7 +24,7 @@ export function registerToolRoutes(app: Express) {
       }
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching tool usage logs:", error);
+      console.error("Error fetching tool usage logs:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch tool usage logs" });
     }
   });
@@ -39,7 +39,7 @@ export function registerToolRoutes(app: Express) {
       const log = await storage.createToolUsageLog({ ...parsed.data, userId });
       res.json(log);
     } catch (error) {
-      console.error("Error creating tool usage log:", error);
+      console.error("Error creating tool usage log:", (error as Error).message);
       res.status(500).json({ error: "Failed to create tool usage log" });
     }
   });
@@ -61,7 +61,7 @@ export function registerToolRoutes(app: Express) {
       const updated = await storage.updateToolUsageLog(userId, id, parsedBody.data);
       res.json(updated);
     } catch (error) {
-      console.error("Error updating tool usage log:", error);
+      console.error("Error updating tool usage log:", (error as Error).message);
       res.status(500).json({ error: "Failed to update tool usage log" });
     }
   });
@@ -92,7 +92,7 @@ export function registerToolRoutes(app: Express) {
       res.setHeader("Content-Disposition", "attachment; filename=tool-usage.csv");
       res.send(csvHeader + csvRows);
     } catch (error) {
-      console.error("Error exporting tool usage logs:", error);
+      console.error("Error exporting tool usage logs:", (error as Error).message);
       res.status(500).json({ error: "Failed to export tool usage logs" });
     }
   });
@@ -103,12 +103,12 @@ export function registerToolRoutes(app: Express) {
       const logs = await storage.getAvoidanceLogsByUser(userId);
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching avoidance logs:", error);
+      console.error("Error fetching avoidance logs:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch avoidance logs" });
     }
   });
 
-  app.post("/api/avoidance-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.post("/api/avoidance-logs", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const parsed = createAvoidanceLogSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -118,7 +118,7 @@ export function registerToolRoutes(app: Express) {
       const log = await storage.createAvoidanceLog({ userId, ...parsed.data });
       res.json(log);
     } catch (error) {
-      console.error("Error creating avoidance log:", error);
+      console.error("Error creating avoidance log:", (error as Error).message);
       res.status(500).json({ error: "Failed to create avoidance log" });
     }
   });
@@ -130,7 +130,7 @@ export function registerToolRoutes(app: Express) {
       const logs = await storage.getContainmentLogsByUser(userId);
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching containment logs:", error);
+      console.error("Error fetching containment logs:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch containment logs" });
     }
   });
@@ -145,7 +145,7 @@ export function registerToolRoutes(app: Express) {
       const log = await storage.createContainmentLog({ userId, ...parsed.data });
       res.json(log);
     } catch (error) {
-      console.error("Error creating containment log:", error);
+      console.error("Error creating containment log:", (error as Error).message);
       res.status(500).json({ error: "Failed to create containment log" });
     }
   });
@@ -157,7 +157,7 @@ export function registerToolRoutes(app: Express) {
       const logs = await storage.getTriggerLogsByUser(userId);
       res.json(logs);
     } catch (error) {
-      console.error("Error fetching trigger logs:", error);
+      console.error("Error fetching trigger logs:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch trigger logs" });
     }
   });
@@ -172,7 +172,7 @@ export function registerToolRoutes(app: Express) {
       const log = await storage.createTriggerLog({ userId, ...parsed.data });
       res.json(log);
     } catch (error) {
-      console.error("Error creating trigger log:", error);
+      console.error("Error creating trigger log:", (error as Error).message);
       res.status(500).json({ error: "Failed to create trigger log" });
     }
   });

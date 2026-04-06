@@ -15,7 +15,7 @@ export function registerHabitRoutes(app: Express) {
       const habits = await storage.getHabitsByUser(userId);
       res.json(habits);
     } catch (error) {
-      console.error("Error fetching habits:", error);
+      console.error("Error fetching habits:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch habits" });
     }
   });
@@ -56,7 +56,7 @@ export function registerHabitRoutes(app: Express) {
       });
       res.json(habit);
     } catch (error) {
-      console.error("Error creating habit:", error);
+      console.error("Error creating habit:", (error as Error).message);
       res.status(500).json({ error: "Failed to create habit" });
     }
   });
@@ -93,7 +93,7 @@ export function registerHabitRoutes(app: Express) {
       }
       res.json(habit);
     } catch (error) {
-      console.error("Error updating habit:", error);
+      console.error("Error updating habit:", (error as Error).message);
       res.status(500).json({ error: "Failed to update habit" });
     }
   });
@@ -111,12 +111,12 @@ export function registerHabitRoutes(app: Express) {
       const newHabit = await storage.versionHabit(userId, id, {});
       res.json(newHabit);
     } catch (error) {
-      console.error("Error creating new habit version:", error);
+      console.error("Error creating new habit version:", (error as Error).message);
       res.status(500).json({ error: "Failed to create new version" });
     }
   });
 
-  app.delete("/api/habits/:id", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.delete("/api/habits/:id", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const id = parseId(req.params.id);
@@ -129,12 +129,12 @@ export function registerHabitRoutes(app: Express) {
       await storage.deleteHabit(userId, id);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting habit:", error);
+      console.error("Error deleting habit:", (error as Error).message);
       res.status(500).json({ error: "Failed to delete habit" });
     }
   });
 
-  app.post("/api/habits/reorder", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.post("/api/habits/reorder", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = reorderSchema.safeParse(req.body);
@@ -155,7 +155,7 @@ export function registerHabitRoutes(app: Express) {
       }
       res.json({ success: true });
     } catch (error) {
-      console.error("Error reordering habits:", error);
+      console.error("Error reordering habits:", (error as Error).message);
       res.status(500).json({ error: "Failed to reorder habits" });
     }
   });
@@ -167,7 +167,7 @@ export function registerHabitRoutes(app: Express) {
       const completions = await storage.getHabitCompletionsForRange(userId, startDate, endDate);
       res.json(completions);
     } catch (error) {
-      console.error("Error fetching habit completions range:", error);
+      console.error("Error fetching habit completions range:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch habit completions" });
     }
   });
@@ -179,7 +179,7 @@ export function registerHabitRoutes(app: Express) {
       const completions = await storage.getHabitCompletionsForDate(userId, date);
       res.json(completions);
     } catch (error) {
-      console.error("Error fetching habit completions:", error);
+      console.error("Error fetching habit completions:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch habit completions" });
     }
   });
@@ -203,7 +203,7 @@ export function registerHabitRoutes(app: Express) {
       if (error?.code === "23505") {
         return res.status(409).json({ error: "Already completed" });
       }
-      console.error("Error creating habit completion:", error);
+      console.error("Error creating habit completion:", (error as Error).message);
       res.status(500).json({ error: "Failed to create habit completion" });
     }
   });
@@ -236,12 +236,12 @@ export function registerHabitRoutes(app: Express) {
       await storage.updateHabitCompletionFull(userId, habitId, date, updates as any);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error updating habit completion:", error);
+      console.error("Error updating habit completion:", (error as Error).message);
       res.status(500).json({ error: "Failed to update habit completion" });
     }
   });
 
-  app.delete("/api/habit-completions/:habitId/:date", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+  app.delete("/api/habit-completions/:habitId/:date", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const habitId = parseId(req.params.habitId);
@@ -257,7 +257,7 @@ export function registerHabitRoutes(app: Express) {
       await storage.deleteHabitCompletion(userId, habitId, date);
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting habit completion:", error);
+      console.error("Error deleting habit completion:", (error as Error).message);
       res.status(500).json({ error: "Failed to delete habit completion" });
     }
   });

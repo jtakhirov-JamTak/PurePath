@@ -15,9 +15,13 @@ interface VisionCardProps {
   proofPoint: string;
   metric: string;
   ifThenPlan: string;
+  personStatement?: string;
+  weeklyBehavior?: string;
+  confidence?: number | null;
+  ifThenPlan2?: string;
 }
 
-export function VisionCard({ domain, scene, proofPoint, metric, ifThenPlan }: VisionCardProps) {
+export function VisionCard({ domain, scene, proofPoint, metric, ifThenPlan, personStatement, weeklyBehavior, confidence, ifThenPlan2 }: VisionCardProps) {
   const colorClass = DOMAIN_COLORS[domain.toLowerCase()] || "bg-muted text-muted-foreground";
 
   return (
@@ -27,6 +31,10 @@ export function VisionCard({ domain, scene, proofPoint, metric, ifThenPlan }: Vi
           <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-medium ${colorClass}`}>
             {domain.charAt(0).toUpperCase() + domain.slice(1)}
           </span>
+        )}
+
+        {personStatement && (
+          <p className="text-sm italic text-foreground/80">{personStatement}</p>
         )}
 
         {scene && (
@@ -40,10 +48,24 @@ export function VisionCard({ domain, scene, proofPoint, metric, ifThenPlan }: Vi
           </div>
         )}
 
+        {weeklyBehavior && (
+          <div className="flex items-start gap-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground/70">Weekly:</span> {weeklyBehavior}
+            {confidence != null && <span className="shrink-0 font-mono text-foreground/70">({confidence}/10)</span>}
+          </div>
+        )}
+
         {ifThenPlan && (
           <div className="rounded-md bg-muted/50 px-3 py-2 flex items-start gap-2">
             <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs italic text-foreground/80">{ifThenPlan}</p>
+          </div>
+        )}
+
+        {ifThenPlan2 && (
+          <div className="rounded-md bg-muted/50 px-3 py-2 flex items-start gap-2">
+            <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs italic text-foreground/80">{ifThenPlan2}</p>
           </div>
         )}
       </CardContent>

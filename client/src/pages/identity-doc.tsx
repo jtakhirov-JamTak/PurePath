@@ -82,7 +82,7 @@ export default function IdentityDocPage() {
         <div className="mb-10">
           <h1 className="text-base font-medium" data-testid="text-identity-title">Identity Document</h1>
           <p className="text-sm text-muted-foreground mt-1" data-testid="text-identity-subtitle">
-            Who you're choosing to become — from Lesson 2: Decide
+            Who you're choosing to become — from the workshop
           </p>
         </div>
 
@@ -95,7 +95,7 @@ export default function IdentityDocPage() {
                 </div>
                 <div>
                   <CardTitle className="text-sm">Vision</CardTitle>
-                  <CardDescription>Your 10+ year vision. Where are you headed?</CardDescription>
+                  <CardDescription>Your 5-year vision. Where are you headed?</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -103,7 +103,7 @@ export default function IdentityDocPage() {
               <VoiceTextarea
                 value={vision}
                 onChange={setVision}
-                placeholder="In 10 years I see myself living with purpose, running a meaningful business, deeply connected to the people I love..."
+                placeholder="5 years from now, on an ordinary day..."
                 className="min-h-[120px] resize-none"
                 data-testid="input-vision"
               />
@@ -126,7 +126,7 @@ export default function IdentityDocPage() {
               <VoiceTextarea
                 value={identity}
                 onChange={setIdentity}
-                placeholder="I am someone who shows up with courage every day. I am disciplined, present, and kind..."
+                placeholder="I am committed to becoming someone who..."
                 className="min-h-[120px] resize-none"
                 data-testid="input-identity"
               />
