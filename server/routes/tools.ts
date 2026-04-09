@@ -4,6 +4,7 @@ import { isAuthenticated } from "../replit_integrations/auth";
 import {
   createToolUsageSchema, updateToolUsageSchema,
   createAvoidanceLogSchema, createContainmentLogSchema, createTriggerLogSchema,
+  createFearLogSchema,
 } from "../validation";
 import { parseId, parseDateParam, csvEscape, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 
@@ -174,6 +175,33 @@ export function registerToolRoutes(app: Express) {
     } catch (error) {
       console.error("Error creating trigger log:", (error as Error).message);
       res.status(500).json({ error: "Failed to create trigger log" });
+    }
+  });
+
+  // Fear Logs (standalone Face the Fear tool)
+  app.get("/api/fear-logs", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const logs = await storage.getFearLogsByUser(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching fear logs:", (error as Error).message);
+      res.status(500).json({ error: "Failed to fetch fear logs" });
+    }
+  });
+
+  app.post("/api/fear-logs", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const parsed = createFearLogSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const log = await storage.createFearLog({ userId, ...parsed.data });
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating fear log:", (error as Error).message);
+      res.status(500).json({ error: "Failed to create fear log" });
     }
   });
 }

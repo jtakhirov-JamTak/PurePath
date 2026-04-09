@@ -71,10 +71,19 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   groupId: varchar("group_id", { length: 50 }),
   sortImportance: varchar("sort_importance", { length: 20 }),
   sortConsequence: varchar("sort_consequence", { length: 30 }),
+  /** @deprecated Replaced by sortBlocker in Proof Engine (Apr 2026). Column kept for historical data. */
   sortResistance: varchar("sort_resistance", { length: 20 }),
+  sortBlocker: varchar("sort_blocker", { length: 30 }),
   sortResult: varchar("sort_result", { length: 20 }),
   sortPriority: integer("sort_priority"),
   firstMove: text("first_move"),
+  // Proof Engine fields
+  outcome: text("outcome"),                                    // Step 4: refined outcome text
+  hardTruthRelated: boolean("hard_truth_related").default(false), // Step 4: tagged as hard-truth related
+  sequenceOrder: integer("sequence_order"),                    // Step 7: user-chosen sequence
+  sequenceReason: varchar("sequence_reason", { length: 50 }), // Step 7: why this order
+  ifThenStatement: text("if_then_statement"),                  // Step 8: Protect items
+  revisitDate: date("revisit_date"),                           // Step 8: Not This Week items
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("eisenhower_user_id_idx").on(table.userId),
@@ -89,11 +98,18 @@ export const insertEisenhowerEntrySchema = createInsertSchema(eisenhowerEntries)
 export type EisenhowerEntry = typeof eisenhowerEntries.$inferSelect;
 export type InsertEisenhowerEntry = z.infer<typeof insertEisenhowerEntrySchema>;
 
-// Weekly summaries - fear reflection + week-level data
+// Weekly summaries - opening reflection + week-level data
 export const weeklySummaries = pgTable("weekly_summaries", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
   weekStart: date("week_start").notNull(),
+  // Step 1: Close Last Week
+  patternPullBack: text("pattern_pull_back"),
+  // Step 2: Open This Week
+  openStory: text("open_story"),
+  openHardTruth: text("open_hard_truth"),
+  openHardAction: text("open_hard_action"),
+  // DEPRECATED: fear reflection moved to standalone fearLogs tool
   fearTarget: text("fear_target"),
   fearIfFaced: text("fear_if_faced"),
   fearIfAvoided: text("fear_if_avoided"),
@@ -116,7 +132,7 @@ export const insertWeeklySummarySchema = createInsertSchema(weeklySummaries).omi
 export type WeeklySummary = typeof weeklySummaries.$inferSelect;
 export type InsertWeeklySummary = z.infer<typeof insertWeeklySummarySchema>;
 
-// DEPRECATED: feature removed, table retained for historical data
+/** @deprecated Feature removed. Table retained for historical data only — no insert schema or types exported. */
 export const empathyExercises = pgTable("empathy_exercises", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -421,6 +437,29 @@ export const insertTriggerLogSchema = createInsertSchema(triggerLogs).omit({
 export type TriggerLog = typeof triggerLogs.$inferSelect;
 export type InsertTriggerLog = z.infer<typeof insertTriggerLogSchema>;
 
+// Fear Logs - standalone Face the Fear tool
+export const fearLogs = pgTable("fear_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  date: date("date").notNull(),
+  fearTarget: text("fear_target").notNull(),
+  fearIfFaced: text("fear_if_faced"),
+  fearIfAvoided: text("fear_if_avoided"),
+  fearBlocker: varchar("fear_blocker", { length: 50 }),
+  fearFirstMove: text("fear_first_move"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("fear_logs_user_id_idx").on(table.userId),
+]);
+
+export const insertFearLogSchema = createInsertSchema(fearLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type FearLog = typeof fearLogs.$inferSelect;
+export type InsertFearLog = z.infer<typeof insertFearLogSchema>;
+
 export const avoidanceLogs = pgTable("avoidance_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
@@ -447,7 +486,7 @@ export const insertAvoidanceLogSchema = createInsertSchema(avoidanceLogs).omit({
 export type AvoidanceLog = typeof avoidanceLogs.$inferSelect;
 export type InsertAvoidanceLog = z.infer<typeof insertAvoidanceLogSchema>;
 
-// DEPRECATED: feature removed, table retained for historical data
+/** @deprecated Feature removed. Table retained for historical data only — no insert schema or types exported. */
 export const decisions = pgTable("decisions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),

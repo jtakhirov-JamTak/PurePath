@@ -14,10 +14,15 @@ const decisionEnum = z.enum(["do_today", "schedule", "delegate", "delete"]);
 const sessionEnum = z.enum(["morning", "evening"]);
 const completionStatusEnum = z.enum(["completed", "skipped"]);
 
-// Sort classification enums (Step 5 Better Sort)
+// Sort classification enums (Step 5 Classify)
 export const sortImportanceEnum = z.enum(["clearly", "somewhat", "not_really"]);
-export const sortConsequenceEnum = z.enum(["real_consequence", "stays_important", "someone_annoyed", "basically_nothing"]);
-export const sortResistanceEnum = z.enum(["low_value", "uncomfortable", "straightforward"]);
+// Expanded: old values kept for historical data, new values for Proof Engine
+export const sortConsequenceEnum = z.enum([
+  "real_consequence", "stays_important", "someone_annoyed", "basically_nothing",  // legacy
+  "deadline_breaks", "task_blocked", "cost_worse", "important_nothing_breaks", "not_much",  // proof engine
+]);
+export const sortResistanceEnum = z.enum(["low_value", "uncomfortable", "straightforward"]); // DEPRECATED
+export const sortBlockerEnum = z.enum(["avoiding_discomfort", "unclear_next_step", "need_someone_else", "nothing"]);
 export const sortResultEnum = z.enum(["handle", "protect", "not_this_week"]);
 
 export const createEisenhowerSchema = z.object({
@@ -54,9 +59,16 @@ export const createEisenhowerSchema = z.object({
   sortImportance: sortImportanceEnum.optional().nullable(),
   sortConsequence: sortConsequenceEnum.optional().nullable(),
   sortResistance: sortResistanceEnum.optional().nullable(),
+  sortBlocker: sortBlockerEnum.optional().nullable(),
   sortResult: sortResultEnum.optional().nullable(),
   sortPriority: z.number().int().min(0).optional().nullable(),
   firstMove: optionalString(2000),
+  outcome: optionalString(2000),
+  hardTruthRelated: z.boolean().optional().nullable(),
+  sequenceOrder: z.number().int().min(0).optional().nullable(),
+  sequenceReason: optionalString(50),
+  ifThenStatement: optionalString(2000),
+  revisitDate: optionalDateString,
 });
 
 export const updateEisenhowerSchema = createEisenhowerSchema.partial();
@@ -225,23 +237,40 @@ export const fearBlockerEnum = z.enum([
 
 export const commitWeekItemSchema = z.object({
   task: z.string().trim().min(1).max(500),
-  quadrant: z.enum(["q1", "q2"]),
+  quadrant: z.enum(["q1", "q2", "q4"]),
   sortOrder: z.number().int().min(0),
   groupId: z.string().min(1).max(50),
   scheduledDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).min(1).max(5),
   scheduledStartTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   scheduledEndTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
-  firstMove: z.string().trim().min(1).max(2000),
+  firstMove: z.string().trim().max(2000).optional().nullable(),
   sortImportance: sortImportanceEnum.optional().nullable(),
   sortConsequence: sortConsequenceEnum.optional().nullable(),
   sortResistance: sortResistanceEnum.optional().nullable(),
+  sortBlocker: sortBlockerEnum.optional().nullable(),
   sortResult: sortResultEnum,
   sortPriority: z.number().int().min(0),
+  // Proof Engine fields
+  outcome: z.string().trim().max(2000).optional().nullable(),
+  hardTruthRelated: z.boolean().optional().nullable(),
+  sequenceOrder: z.number().int().min(0).optional().nullable(),
+  sequenceReason: z.string().max(50).optional().nullable(),
+  ifThenStatement: z.string().trim().max(2000).optional().nullable(),
+  revisitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+});
+
+export const openingDataSchema = z.object({
+  patternPullBack: z.string().trim().max(5000).optional().nullable(),
+  openStory: z.string().trim().max(5000).optional().nullable(),
+  openHardTruth: z.string().trim().max(5000).optional().nullable(),
+  openHardAction: z.string().trim().max(5000).optional().nullable(),
 });
 
 export const commitWeekSchema = z.object({
   weekStart: dateString,
-  items: z.array(commitWeekItemSchema).min(1).max(7),
+  items: z.array(commitWeekItemSchema).min(1).max(30),
+  openingData: openingDataSchema.optional().nullable(),
+  // DEPRECATED: fear data no longer collected in weekly flow
   fearData: z.object({
     fearTarget: z.string().trim().min(1).max(500),
     fearIfFaced: z.string().trim().min(1).max(2000),
@@ -364,4 +393,13 @@ export const loginSchema = z.object({
 
 export const updateOnboardingSchema = z.object({
   step: z.number().int("Step must be an integer").min(0).max(10),
+});
+
+export const createFearLogSchema = z.object({
+  date: dateString,
+  fearTarget: trimmedString(1, 500),
+  fearIfFaced: optionalString(2000),
+  fearIfAvoided: optionalString(2000),
+  fearBlocker: fearBlockerEnum.optional().nullable(),
+  fearFirstMove: optionalString(2000),
 });

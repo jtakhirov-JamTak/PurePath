@@ -20,6 +20,7 @@ export function registerExportRoutes(app: Express) {
         toolUsageLogs,
         containmentLogs,
         triggerLogs,
+        fearLogs,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getPatternProfile(userId),
@@ -30,6 +31,7 @@ export function registerExportRoutes(app: Express) {
         storage.getToolUsageLogsByUser(userId),
         storage.getContainmentLogsByUser(userId),
         storage.getTriggerLogsByUser(userId),
+        storage.getFearLogsByUser(userId),
       ]);
 
       // Collect monthly goals in a single query (avoids N+1)
@@ -256,7 +258,7 @@ export function registerExportRoutes(app: Express) {
       }
 
       // EISENHOWER / WEEKLY PLANNING
-      md += `---\n\n## Weekly Planning (Eisenhower Matrix)\n\n`;
+      md += `---\n\n## Weekly Proof Engine\n\n`;
       if (eisenhowerEntries.length === 0) {
         md += `No planning entries.\n\n`;
       } else {
@@ -269,19 +271,20 @@ export function registerExportRoutes(app: Express) {
         Array.from(byWeek.keys()).sort().forEach(week => {
           md += `### Week of ${week}\n\n`;
           const items = byWeek.get(week)!;
-          ["q1", "q2", "q3", "q4"].forEach(q => {
+          ["q1", "q2", "q4"].forEach(q => {
             const qItems = items.filter(i => i.quadrant === q);
             if (qItems.length === 0) return;
-            const qLabel = q === "q1" ? "Q1 (Urgent+Important)" : q === "q2" ? "Q2 (Important)" : q === "q3" ? "Q3 (Urgent)" : "Q4 (Neither)";
+            const qLabel = q === "q1" ? "Handle" : q === "q2" ? "Protect" : "Not This Week";
             md += `**${qLabel}:**\n`;
             qItems.forEach(i => {
               const done = i.status === "completed" || i.completed;
               const icon = done ? "✓" : i.status === "skipped" ? "✗" : "○";
-              md += `  ${icon} ${i.task}`;
-              if (i.role) md += ` [${i.role}]`;
-              if (i.scheduledDate) md += ` (${i.scheduledDate}`;
-              if (i.scheduledTime) md += ` ${i.scheduledTime}`;
-              if (i.scheduledDate) md += `)`;
+              md += `  ${icon} ${i.outcome || i.task}`;
+              if (i.hardTruthRelated) md += ` [hard truth]`;
+              if (i.scheduledDate) md += ` (${i.scheduledDate})`;
+              if (i.firstMove) md += ` — first move: ${i.firstMove}`;
+              if (i.ifThenStatement) md += ` — if-then: ${i.ifThenStatement}`;
+              if (i.revisitDate) md += ` — revisit: ${i.revisitDate}`;
               if (i.skipReason) md += ` — skipped: ${i.skipReason}`;
               md += `\n`;
             });
@@ -346,6 +349,22 @@ export function registerExportRoutes(app: Express) {
           if (t.urge) md += `**What I wanted to do:** ${t.urge}\n`;
           if (t.whatIDid) md += `**What I did:** ${t.whatIDid}\n`;
           if (t.fromTemplate) md += `*(from pattern profile template)*\n`;
+          md += `\n`;
+        });
+      }
+
+      // FEAR LOGS
+      md += `---\n\n## Fear Logs\n\n`;
+      if (fearLogs.length === 0) {
+        md += `No fear logs recorded.\n\n`;
+      } else {
+        fearLogs.forEach((f: any) => {
+          md += `### ${f.date}\n`;
+          md += `**Resisting:** ${f.fearTarget}\n`;
+          if (f.fearIfFaced) md += `**If I face it:** ${f.fearIfFaced}\n`;
+          if (f.fearIfAvoided) md += `**If I avoid it:** ${f.fearIfAvoided}\n`;
+          if (f.fearBlocker) md += `**Underneath:** ${f.fearBlocker}\n`;
+          if (f.fearFirstMove) md += `**Smallest proof move:** ${f.fearFirstMove}\n`;
           md += `\n`;
         });
       }

@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, patternProfiles, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, patternProfiles, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, fearLogs, userSettings, weeklySummaries,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type Habit, type InsertHabit,
@@ -12,6 +12,7 @@ import {
   type AvoidanceLog, type InsertAvoidanceLog,
   type ContainmentLog, type InsertContainmentLog,
   type TriggerLog, type InsertTriggerLog,
+  type FearLog, type InsertFearLog,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
 } from "@shared/schema";
@@ -38,7 +39,7 @@ export interface IStorage {
   // Weekly Summaries
   getWeeklySummary(userId: string, weekStart: string): Promise<WeeklySummary | undefined>;
   upsertWeeklySummary(summary: InsertWeeklySummary): Promise<WeeklySummary>;
-  commitWeek(userId: string, weekStart: string, items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[], fearSummary?: InsertWeeklySummary): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }>;
+  commitWeek(userId: string, weekStart: string, items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[], fearSummary?: InsertWeeklySummary, openingData?: { patternPullBack?: string | null; openStory?: string | null; openHardTruth?: string | null; openHardAction?: string | null }): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }>;
 
   // Habits
   getHabitsByUser(userId: string): Promise<Habit[]>;
@@ -87,6 +88,10 @@ export interface IStorage {
   // Trigger Logs
   getTriggerLogsByUser(userId: string): Promise<TriggerLog[]>;
   createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog>;
+
+  // Fear Logs
+  getFearLogsByUser(userId: string): Promise<FearLog[]>;
+  createFearLog(log: InsertFearLog): Promise<FearLog>;
 
   // Habit completion level updates
   updateHabitCompletionFull(userId: string, habitId: number, date: string, updates: { status: string; completionLevel?: number | null; skipReason?: string | null }): Promise<void>;
@@ -235,6 +240,7 @@ export class DatabaseStorage implements IStorage {
     weekStart: string,
     items: Omit<InsertEisenhowerEntry, "userId" | "weekStart">[],
     fearSummary?: InsertWeeklySummary,
+    openingData?: { patternPullBack?: string | null; openStory?: string | null; openHardTruth?: string | null; openHardAction?: string | null },
   ): Promise<{ entries: EisenhowerEntry[]; summary: WeeklySummary | null }> {
     return db.transaction(async (tx) => {
       // 1. Wipe existing entries for this week
@@ -254,29 +260,42 @@ export class DatabaseStorage implements IStorage {
         entries.push(entry);
       }
 
-      // 3. Upsert fear summary if provided
+      // 3. Upsert weekly summary (opening data and/or legacy fear data)
       let summary: WeeklySummary | null = null;
-      if (fearSummary) {
-        // Link fear to the matching committed entry
-        const linkedId = fearSummary.fearPromotedToQ2
-          ? entries.find(e => e.task === fearSummary.fearTarget && e.quadrant === "q2")?.id ?? null
-          : null;
+      if (openingData || fearSummary) {
+        // Build the set clause for upsert
+        const setData: Record<string, any> = { updatedAt: new Date() };
+
+        if (openingData) {
+          setData.patternPullBack = openingData.patternPullBack ?? null;
+          setData.openStory = openingData.openStory ?? null;
+          setData.openHardTruth = openingData.openHardTruth ?? null;
+          setData.openHardAction = openingData.openHardAction ?? null;
+        }
+
+        if (fearSummary) {
+          const linkedId = fearSummary.fearPromotedToQ2
+            ? entries.find(e => e.task === fearSummary.fearTarget && e.quadrant === "q2")?.id ?? null
+            : null;
+          setData.fearTarget = fearSummary.fearTarget;
+          setData.fearIfFaced = fearSummary.fearIfFaced;
+          setData.fearIfAvoided = fearSummary.fearIfAvoided;
+          setData.fearBlocker = fearSummary.fearBlocker;
+          setData.fearFirstMove = fearSummary.fearFirstMove;
+          setData.fearPromotedToQ2 = fearSummary.fearPromotedToQ2;
+          setData.fearLinkedEntryId = linkedId;
+        }
 
         const [result] = await tx
           .insert(weeklySummaries)
-          .values({ ...fearSummary, fearLinkedEntryId: linkedId, updatedAt: new Date() })
+          .values({
+            userId,
+            weekStart,
+            ...setData,
+          })
           .onConflictDoUpdate({
             target: [weeklySummaries.userId, weeklySummaries.weekStart],
-            set: {
-              fearTarget: fearSummary.fearTarget,
-              fearIfFaced: fearSummary.fearIfFaced,
-              fearIfAvoided: fearSummary.fearIfAvoided,
-              fearBlocker: fearSummary.fearBlocker,
-              fearFirstMove: fearSummary.fearFirstMove,
-              fearPromotedToQ2: fearSummary.fearPromotedToQ2,
-              fearLinkedEntryId: linkedId,
-              updatedAt: new Date(),
-            },
+            set: setData,
           })
           .returning();
         summary = result;
@@ -571,6 +590,15 @@ export class DatabaseStorage implements IStorage {
 
   async createTriggerLog(log: InsertTriggerLog): Promise<TriggerLog> {
     const [created] = await db.insert(triggerLogs).values(log).returning();
+    return created;
+  }
+
+  async getFearLogsByUser(userId: string): Promise<FearLog[]> {
+    return db.select().from(fearLogs).where(eq(fearLogs.userId, userId)).orderBy(desc(fearLogs.createdAt));
+  }
+
+  async createFearLog(log: InsertFearLog): Promise<FearLog> {
+    const [created] = await db.insert(fearLogs).values(log).returning();
     return created;
   }
 

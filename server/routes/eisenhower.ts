@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema } from "../validation";
 import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 
+// Must match MAX_Q1/MAX_Q2 in client/src/lib/proof-engine-logic.ts
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
 
@@ -162,6 +163,69 @@ export function registerEisenhowerRoutes(app: Express) {
     }
   });
 
+  // Close last week: aggregate completion stats for previous week
+  app.get("/api/eisenhower/close-week/:weekStart", isAuthenticated, requireAccess, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const weekStart = parseMondayParam(req.params.weekStart);
+      if (!weekStart) return res.status(400).json({ error: "Invalid date or not a Monday" });
+
+      // weekStart IS the week to close (client sends the completed week's Monday)
+      const prevEntries = await storage.getEisenhowerEntriesForWeek(userId, weekStart);
+
+      // Deduplicate by groupId for counting unique items
+      const groupMap = new Map<string, { completed: boolean; total: boolean; skipReason: string | null }>();
+      for (const entry of prevEntries) {
+        if (entry.quadrant === "q4") continue; // Skip Not This Week items
+        const key = entry.groupId || String(entry.id);
+        const existing = groupMap.get(key);
+        if (!existing) {
+          groupMap.set(key, { completed: entry.completed ?? false, total: true, skipReason: entry.skipReason });
+        } else if (entry.completed) {
+          existing.completed = true;
+        }
+      }
+
+      const completedCount = Array.from(groupMap.values()).filter(g => g.completed).length;
+      const totalCount = groupMap.size;
+      const skipReasons = Array.from(groupMap.values())
+        .map(g => g.skipReason)
+        .filter((r): r is string => !!r);
+
+      // Get habit completions for the closing week
+      const weekDate = new Date(weekStart + "T12:00:00Z");
+      const sundayDate = new Date(weekDate);
+      sundayDate.setUTCDate(sundayDate.getUTCDate() + 6);
+      const sundayStr = sundayDate.toISOString().slice(0, 10);
+      const habitCompletions = await storage.getHabitCompletionsForRange(userId, weekStart, sundayStr);
+
+      const habitStats = {
+        completed: habitCompletions.filter(c => c.status === "completed").length,
+        skipped: habitCompletions.filter(c => c.status === "skipped").length,
+        minimum: habitCompletions.filter(c => c.status === "minimum").length,
+        total: habitCompletions.length,
+        skipReasons: habitCompletions
+          .filter(c => c.status === "skipped" && c.skipReason)
+          .map(c => c.skipReason as string),
+      };
+
+      // Get summary for context
+      const prevSummary = await storage.getWeeklySummary(userId, weekStart);
+
+      res.json({
+        weekStart,
+        completedCount,
+        totalCount,
+        skipReasons,
+        habitStats,
+        previousHardAction: prevSummary?.openHardAction || null,
+      });
+    } catch (error) {
+      console.error("Error fetching close-week data:", (error as Error).message);
+      res.status(500).json({ error: "Failed to fetch close-week data" });
+    }
+  });
+
   // Wipe all entries for a week (Rebuild Week)
   app.delete("/api/eisenhower/week/:weekStart", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
@@ -184,7 +248,7 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: parsed.error.issues[0].message });
       }
       const userId = req.user.claims.sub;
-      const { weekStart, items, fearData } = parsed.data;
+      const { weekStart, items, fearData, openingData } = parsed.data;
 
       // Validate weekStart is a Monday
       const d = new Date(weekStart + "T12:00:00Z");
@@ -202,10 +266,16 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: `Max ${MAX_Q2} Protect items per week` });
       }
 
-      // Check for duplicate task names within the submitted items
-      const taskNames = items.map(i => i.task.toLowerCase());
-      if (new Set(taskNames).size !== taskNames.length) {
+      // Check for duplicate task names within the submitted items (only q1/q2 — q4 items may repeat)
+      const committedTaskNames = items.filter(i => i.quadrant !== "q4").map(i => i.task.toLowerCase());
+      if (new Set(committedTaskNames).size !== committedTaskNames.length) {
         return res.status(400).json({ error: "Duplicate task names are not allowed" });
+      }
+
+      // Enforce firstMove on Handle/Protect items
+      const missingFirstMove = items.find(i => (i.quadrant === "q1" || i.quadrant === "q2") && (!i.firstMove || !i.firstMove.trim()));
+      if (missingFirstMove) {
+        return res.status(400).json({ error: `Handle and Protect items require a first proof move: "${missingFirstMove.task}"` });
       }
 
       // Expand items: one row per scheduled day per item
@@ -220,16 +290,23 @@ export function registerEisenhowerRoutes(app: Express) {
           scheduledDate: date,
           scheduledStartTime: item.scheduledStartTime || null,
           scheduledEndTime: item.scheduledEndTime || null,
-          firstMove: item.firstMove,
+          firstMove: item.firstMove || null,
           sortImportance: item.sortImportance || null,
           sortConsequence: item.sortConsequence || null,
           sortResistance: item.sortResistance || null,
+          sortBlocker: item.sortBlocker || null,
           sortResult: item.sortResult,
           sortPriority: item.sortPriority,
+          outcome: item.outcome || null,
+          hardTruthRelated: item.hardTruthRelated || false,
+          sequenceOrder: item.sequenceOrder ?? null,
+          sequenceReason: item.sequenceReason || null,
+          ifThenStatement: item.ifThenStatement || null,
+          revisitDate: item.revisitDate || null,
         }))
       );
 
-      // Build fear summary payload
+      // Build fear summary payload (legacy support)
       const fearSummary = fearData ? {
         userId,
         weekStart,
@@ -242,7 +319,7 @@ export function registerEisenhowerRoutes(app: Express) {
       } : undefined;
 
       // Atomic: delete + insert + upsert in one transaction
-      const result = await storage.commitWeek(userId, weekStart, entryItems, fearSummary);
+      const result = await storage.commitWeek(userId, weekStart, entryItems, fearSummary, openingData ?? undefined);
       res.json(result);
     } catch (error) {
       console.error("Error committing week:", (error as Error).message);
@@ -351,6 +428,60 @@ export function registerEisenhowerRoutes(app: Express) {
     } catch (error) {
       console.error("Error exporting eisenhower:", (error as Error).message);
       res.status(500).json({ error: "Failed to export" });
+    }
+  });
+
+  // Pattern-map check: AI-powered nudge for Step 6
+  app.post("/api/eisenhower/pattern-check", isAuthenticated, requireAccess, aiRateLimit, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { items, hardAction } = req.body;
+
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.json({ nudgeNeeded: false });
+      }
+
+      // Fetch user's pattern profile
+      const profile = await storage.getPatternProfile(userId);
+      if (!profile) {
+        return res.json({ nudgeNeeded: false });
+      }
+
+      // Collect avoidance/hurting pattern data
+      const patternTexts = [
+        profile.repeatingLoopAvoidance,
+        profile.repeatingLoopStory,
+        profile.repeatingLoopCost,
+        profile.hurtingPattern1Behavior, profile.hurtingPattern1Outcome,
+        profile.hurtingPattern2Behavior, profile.hurtingPattern2Outcome,
+        profile.hurtingPattern3Behavior, profile.hurtingPattern3Outcome,
+        profile.blindSpot1Pattern, profile.blindSpot2Pattern, profile.blindSpot3Pattern,
+      ].filter(t => t && t.trim());
+
+      if (patternTexts.length === 0) {
+        return res.json({ nudgeNeeded: false });
+      }
+
+      const prompt = `You are a behavioral coach. A user has chosen these weekly tasks:\n${items.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}\n\nTheir hard action for the week: "${hardAction || "not set"}"\n\nTheir known avoidance patterns and hurting behaviors:\n${patternTexts.join("\n")}\n\nQuestion: Do ANY of the chosen tasks directly address or connect to the user's avoidance patterns or hard action?\n\nRespond with JSON: {"connected": true/false, "nudgeMessage": "..."}\nIf connected is false, write a brief, compassionate nudge (1-2 sentences) pointing out what pattern they might be avoiding. Reference the specific pattern. Do not be preachy.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        max_tokens: 200,
+      });
+
+      const text = completion.choices[0]?.message?.content || "{}";
+      const parsed = JSON.parse(text);
+
+      res.json({
+        nudgeNeeded: parsed.connected === false,
+        nudgeMessage: parsed.connected === false ? parsed.nudgeMessage : null,
+      });
+    } catch (error) {
+      console.error("Error in pattern check:", (error as Error).message);
+      // Non-critical — return no nudge on failure
+      res.json({ nudgeNeeded: false });
     }
   });
 

@@ -13,6 +13,8 @@ let _avoidanceLogs: any[] = [];
 let _monthlyGoals: any[] = [];
 let _journals: any[] = [];
 let _userSettings: any[] = [];
+let _weeklySummaries: any[] = [];
+let _fearLogs: any[] = [];
 let _nextId = 1;
 
 function nextId() { return _nextId++; }
@@ -28,6 +30,8 @@ export function resetStorage() {
   _monthlyGoals = [];
   _journals = [];
   _userSettings = [];
+  _weeklySummaries = [];
+  _fearLogs = [];
   _nextId = 1;
 }
 
@@ -182,6 +186,59 @@ export const storage = {
   hasAccess: async (userId: string) => {
     const s = _userSettings.find(s => s.userId === userId);
     return s?.hasAccess === true;
+  },
+
+  // Weekly Summaries
+  getWeeklySummary: async (userId: string, weekStart: string) =>
+    _weeklySummaries.find(s => s.userId === userId && s.weekStart === weekStart) || null,
+  upsertWeeklySummary: async (data: any) => {
+    const idx = _weeklySummaries.findIndex(s => s.userId === data.userId && s.weekStart === data.weekStart);
+    if (idx >= 0) { Object.assign(_weeklySummaries[idx], data); return _weeklySummaries[idx]; }
+    const s = { id: nextId(), ...data };
+    _weeklySummaries.push(s);
+    return s;
+  },
+  deleteEisenhowerEntriesByGroupId: async (userId: string, groupId: string) => {
+    const before = _eisenhower.length;
+    _eisenhower = _eisenhower.filter(e => !(e.userId === userId && e.groupId === groupId));
+    return before - _eisenhower.length;
+  },
+  deleteBlocksGoalEntries: async (userId: string) => {
+    const before = _eisenhower.length;
+    _eisenhower = _eisenhower.filter(e => !(e.userId === userId && e.blocksGoal));
+    return before - _eisenhower.length;
+  },
+  deleteEisenhowerEntriesForWeek: async (userId: string, weekStart: string) => {
+    const before = _eisenhower.length;
+    _eisenhower = _eisenhower.filter(e => !(e.userId === userId && e.weekStart === weekStart));
+    return before - _eisenhower.length;
+  },
+  commitWeek: async (userId: string, weekStart: string, items: any[], fearSummary?: any, openingData?: any) => {
+    // Wipe existing
+    _eisenhower = _eisenhower.filter(e => !(e.userId === userId && e.weekStart === weekStart));
+    // Insert
+    const entries = items.map(item => {
+      const entry = { id: nextId(), userId, weekStart, ...item, completed: false, status: null };
+      _eisenhower.push(entry);
+      return entry;
+    });
+    // Upsert summary
+    let summary = null;
+    if (openingData || fearSummary) {
+      const idx = _weeklySummaries.findIndex(s => s.userId === userId && s.weekStart === weekStart);
+      const data = { userId, weekStart, ...openingData, ...fearSummary, updatedAt: new Date() };
+      if (idx >= 0) { Object.assign(_weeklySummaries[idx], data); summary = _weeklySummaries[idx]; }
+      else { summary = { id: nextId(), ...data }; _weeklySummaries.push(summary); }
+    }
+    return { entries, summary };
+  },
+
+  // Fear Logs
+  getFearLogsByUser: async (userId: string) => _fearLogs.filter(f => f.userId === userId),
+  createFearLog: async (data: any) => {
+    const f = { id: nextId(), ...data, createdAt: new Date() };
+    _fearLogs.push(f);
+    return f;
   },
 
   getAllUsersWithStats: async () => [],

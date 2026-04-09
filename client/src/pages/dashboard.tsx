@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import { Zap, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -18,6 +18,7 @@ import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
 import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import { TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
 import { ContainmentModal } from "@/components/tools/containment-modal";
+import { FaceTheFear } from "@/components/tools/face-the-fear";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
 
@@ -304,6 +305,7 @@ export default function DashboardPage() {
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
   const [containmentOpen, setContainmentOpen] = useState(false);
+  const [fearOpen, setFearOpen] = useState(false);
 
   useEffect(() => {
     if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
@@ -578,17 +580,27 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
 
-        {/* ─── Stuck? ─────────────────────────────────────── */}
-        <button
-          className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors w-full cursor-pointer"
-          onClick={() => setContainmentOpen(true)}
-        >
-          <Zap className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Stuck?</span>
-        </button>
+        {/* ─── Quick tools ─────────────────────────────────────── */}
+        <div className="flex gap-2">
+          <button
+            className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors flex-1 cursor-pointer"
+            onClick={() => setContainmentOpen(true)}
+          >
+            <Zap className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Stuck?</span>
+          </button>
+          <button
+            className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors flex-1 cursor-pointer"
+            onClick={() => setFearOpen(true)}
+          >
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Face a fear</span>
+          </button>
+        </div>
       </div>
 
       <ContainmentModal open={containmentOpen} onClose={() => setContainmentOpen(false)} />
+      <FaceTheFear open={fearOpen} onClose={() => setFearOpen(false)} />
     </AppLayout>
   );
 }
