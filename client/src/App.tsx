@@ -22,6 +22,7 @@ import MonthlyGoalPage from "@/pages/monthly-goal";
 import SetupWizardPage from "@/pages/setup-wizard";
 import ProfilePage from "@/pages/profile";
 import AdminPage from "@/pages/admin";
+import ProofPage from "@/pages/proof";
 import { Loader2 } from "lucide-react";
 import { UnsavedGuardProvider } from "@/hooks/use-unsaved-guard";
 
@@ -176,6 +177,9 @@ function Router() {
       </Route>
       <Route path="/sprint">
         {() => <AccessGatedRoute component={MonthlyGoalPage} />}
+      </Route>
+      <Route path="/proof">
+        {() => <AccessGatedRoute component={ProofPage} />}
       </Route>
       <Route path="/me">
         {() => <AccessGatedRoute component={ProfilePage} />}

@@ -17,6 +17,7 @@ import {
   Compass,
   Map,
   Target,
+  CalendarDays,
   User,
   Download,
   Shield,
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { label: "Today", path: "/today", icon: Compass },
   { label: "Week", path: "/week", icon: Map },
   { label: "Sprint", path: "/sprint", icon: Target },
+  { label: "Proof", path: "/proof", icon: CalendarDays },
   { label: "Me", path: "/me", icon: User },
 ];
 
@@ -213,7 +215,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
       )}
 
-      <main className="flex-1 pb-16 md:pb-0" data-testid="main-content">
+      <main className="flex-1 pb-[72px] md:pb-0" data-testid="main-content">
         {children}
       </main>
 
@@ -221,7 +223,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden"
         data-testid="mobile-bottom-nav"
       >
-        <div className="flex items-center justify-around h-[52px]">
+        <div className="flex items-center justify-around h-[56px]">
           {navItems.map((item) => {
             const active = isActive(item.path);
             const Icon = item.icon;
