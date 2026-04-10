@@ -1,24 +1,23 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, ChevronLeft, ChevronRight, Shield } from "lucide-react";
+import { Zap, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, addDays } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument } from "@shared/schema";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument, AnnualCommitment } from "@shared/schema";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
 import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
 import { TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
-import { ContainmentModal } from "@/components/tools/containment-modal";
-import { FaceTheFear } from "@/components/tools/face-the-fear";
+import { StuckRouter } from "@/components/stuck-router";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
 
@@ -44,6 +43,7 @@ export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
@@ -98,6 +98,10 @@ export default function DashboardPage() {
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
+  const { data: annualCommitment } = useQuery<AnnualCommitment>({
+    queryKey: ["/api/annual-commitment"],
+    enabled: !!user,
+  });
 
   // ─── Selected date state ─────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -142,13 +146,23 @@ export default function DashboardPage() {
   }, [journals, weekStartStr, weekEndStr]);
 
   const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate, todayStr);
+  // ─── Habit tiers by source ────────────────────────────────────────
+  const annualHabits = useMemo(() => selectedHabits.filter(h => h.source === "annual"), [selectedHabits]);
+  const sprintHabits = useMemo(() => selectedHabits.filter(h => h.source === "sprint"), [selectedHabits]);
+  const pinnedSupportHabits = useMemo(() =>
+    selectedHabits.filter(h => (!h.source || h.source === "support") && h.isPinned).slice(0, 3),
+    [selectedHabits]
+  );
+  const otherSupportHabits = useMemo(() =>
+    selectedHabits.filter(h => (!h.source || h.source === "support") && !h.isPinned),
+    [selectedHabits]
+  );
+
   // ─── Unified daily items (sorted by time, incomplete on top) ──────
   type DailyItem =
     | { kind: "journal"; session: "morning" | "evening"; done: boolean; sortKey: number }
     | { kind: "habit"; habit: Habit; done: boolean; sortKey: number }
     | { kind: "focus"; item: EisenhowerEntry; done: boolean; sortKey: number };
-
-  const HABIT_SORT: Record<string, number> = { morning: 1, afternoon: 3, evening: 4 };
 
   const sortedDailyItems = useMemo((): DailyItem[] => {
     const items: DailyItem[] = [];
@@ -157,24 +171,16 @@ export default function DashboardPage() {
     items.push({ kind: "journal", session: "morning", done: hasMorning, sortKey: 0 });
     items.push({ kind: "journal", session: "evening", done: hasEvening, sortKey: 5 });
 
-    // Habits — morning=1, afternoon=3, evening=4
-    selectedHabits.forEach(h => {
-      items.push({
-        kind: "habit", habit: h,
-        done: habitStatusMap.get(h.id) === "completed",
-        sortKey: HABIT_SORT[h.timing || "afternoon"] ?? 3,
-      });
-    });
+    // Habits by tier: annual=0.5, sprint=0.8, pinned support=3
+    annualHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 0.5 }));
+    sprintHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 0.8 }));
+    pinnedSupportHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 3 }));
 
     // Focus items — slotted at 2.xx by scheduled time, unscheduled at 2.99
     focusItems.forEach(item => {
       const t = item.scheduledStartTime;
       const timeSortKey = t ? 2 + parseInt(t.slice(0, 2)) / 100 + parseInt(t.slice(3, 5)) / 10000 : 2.99;
-      items.push({
-        kind: "focus", item,
-        done: item.status === "completed",
-        sortKey: timeSortKey,
-      });
+      items.push({ kind: "focus", item, done: item.status === "completed", sortKey: timeSortKey });
     });
 
     // Partition incomplete/complete, sort each by sortKey
@@ -183,7 +189,7 @@ export default function DashboardPage() {
     incomplete.sort((a, b) => a.sortKey - b.sortKey);
     complete.sort((a, b) => a.sortKey - b.sortKey);
     return [...incomplete, ...complete];
-  }, [selectedHabits, habitStatusMap, focusItems, hasMorning, hasEvening]);
+  }, [annualHabits, sprintHabits, pinnedSupportHabits, habitStatusMap, focusItems, hasMorning, hasEvening]);
 
   // ─── Streak data ─────────────────────────────────────────────────
   const weekDays = useMemo(() => {
@@ -304,8 +310,8 @@ export default function DashboardPage() {
     }
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
-  const [containmentOpen, setContainmentOpen] = useState(false);
-  const [fearOpen, setFearOpen] = useState(false);
+  const [stuckOpen, setStuckOpen] = useState(false);
+  const [otherRoutinesOpen, setOtherRoutinesOpen] = useState(false);
 
   useEffect(() => {
     if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
@@ -329,17 +335,16 @@ export default function DashboardPage() {
 
   if (onboarding && !onboarding.onboardingComplete) return null;
 
-  // ─── Anchor card data ────────────────────────────────────────────
+  // ─── Top section data ────────────────────────────────────────────
   const anchorIdentity = identityDoc?.identity?.trim() || "";
-  const anchorValues = (() => {
-    try {
-      const parsed = JSON.parse(identityDoc?.values || "");
-      if (Array.isArray(parsed)) return parsed.map((v: { value: string }) => v.value).filter(Boolean).join(", ");
-    } catch { /* legacy plain text */ }
-    return identityDoc?.values?.trim() || "";
-  })();
-  const anchorGoal = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
-  const showAnchor = anchorIdentity || anchorValues || anchorGoal;
+  const weeklyProofBehavior = useMemo(() => {
+    if (!annualCommitment?.weeklyProofBehaviorHabitId) return null;
+    return habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null;
+  }, [annualCommitment, habits]);
+  const todayMorningJournal = useMemo(() => {
+    return journals.find(j => j.date === todayStr && j.session === "morning") || null;
+  }, [journals, todayStr]);
+  const todayProofMove = todayMorningJournal?.proofMove?.trim() || "";
 
   const readOnly = selectedDate > todayStr;
   const isPastDate = selectedDate < todayStr;
@@ -433,28 +438,68 @@ export default function DashboardPage() {
           </button>
         )}
 
-        {/* ─── 2. Anchor Card ──────────────────────────────────── */}
-        {showAnchor && (
-          <div className="rounded-[10px] p-5 bg-gradient-to-br from-card via-card to-secondary/20 dark:to-secondary/10 shadow-sm border border-border/40 overflow-hidden">
-            <div className="space-y-2">
-              {anchorIdentity && (
-                <p className="font-serif text-base italic text-foreground/90 leading-relaxed line-clamp-2">
-                  &ldquo;{anchorIdentity}&rdquo;
-                </p>
-              )}
-              {anchorValues && (
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  <span className="font-medium text-foreground/70">Values:</span> {anchorValues}
-                </p>
-              )}
-              {anchorGoal && (
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="font-medium text-foreground/70">Goal:</span> {anchorGoal}
-                </p>
+        {/* ─── 2. Proof-first top section ─────────────────────── */}
+        <div className="rounded-[10px] p-5 bg-gradient-to-br from-card via-card to-secondary/20 dark:to-secondary/10 shadow-sm border border-border/40 overflow-hidden space-y-3">
+          {/* Identity anchor */}
+          {anchorIdentity && (
+            <p className="font-serif text-base italic text-foreground/90 leading-relaxed line-clamp-2" data-testid="identity-anchor">
+              I am {anchorIdentity}
+            </p>
+          )}
+
+          {/* Weekly Proof Behavior */}
+          {weeklyProofBehavior && (
+            <p className="text-[11px] text-muted-foreground" data-testid="weekly-proof-behavior">
+              <span className="font-medium text-foreground/70">Weekly proof behavior:</span> {weeklyProofBehavior.name}
+            </p>
+          )}
+
+          {/* Today's proof move */}
+          {isToday && (
+            <div data-testid="today-proof-move">
+              {todayProofMove ? (
+                <div className="flex items-center gap-3">
+                  <CompletionCircle
+                    done={todayMorningJournal?.proofMoveCompleted === true}
+                    onToggle={() => {
+                      if (!todayMorningJournal) return;
+                      const newVal = !todayMorningJournal.proofMoveCompleted;
+                      apiRequest("POST", "/api/journals", {
+                        date: todayStr,
+                        session: "morning",
+                        content: todayMorningJournal.content || "",
+                        gratitude: todayMorningJournal.gratitude || "",
+                        intentions: todayMorningJournal.intentions || "",
+                        reflections: todayMorningJournal.reflections || "",
+                        highlights: todayMorningJournal.highlights || "",
+                        challenges: todayMorningJournal.challenges || "",
+                        proofMove: todayMorningJournal.proofMove || "",
+                        proofMoveCompleted: newVal,
+                        selectedValueKey: todayMorningJournal.selectedValueKey,
+                        selectedValueLabel: todayMorningJournal.selectedValueLabel,
+                        selectedValueWhySnapshot: todayMorningJournal.selectedValueWhySnapshot,
+                      }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
+                      });
+                    }}
+                    testId="proof-move-toggle"
+                  />
+                  <p className={`text-sm flex-1 ${todayMorningJournal?.proofMoveCompleted ? "line-through text-muted-foreground" : "font-medium"}`}>
+                    {todayProofMove}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                  onClick={() => { setLocation(`/today/journal/${todayStr}/morning?returnTo=/today`); window.scrollTo(0, 0); }}
+                  data-testid="set-proof-move-cta"
+                >
+                  Set your proof move &rarr;
+                </button>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ─── 3. Daily Contract ───────────────────────────────── */}
         <div
@@ -580,27 +625,52 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
 
-        {/* ─── Quick tools ─────────────────────────────────────── */}
-        <div className="flex gap-2">
-          <button
-            className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors flex-1 cursor-pointer"
-            onClick={() => setContainmentOpen(true)}
-          >
-            <Zap className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Stuck?</span>
-          </button>
-          <button
-            className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors flex-1 cursor-pointer"
-            onClick={() => setFearOpen(true)}
-          >
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Face a fear</span>
-          </button>
-        </div>
+        {/* ─── Other routines (collapsed) ─────────────────────── */}
+        {otherSupportHabits.length > 0 && (
+          <div className="rounded-[10px] border border-border/40 bg-card overflow-hidden">
+            <button
+              className="flex items-center justify-between w-full px-5 py-3 text-sm text-muted-foreground hover:bg-muted/30 transition-colors cursor-pointer"
+              onClick={() => setOtherRoutinesOpen(!otherRoutinesOpen)}
+              data-testid="other-routines-toggle"
+            >
+              <span>Other routines ({otherSupportHabits.length})</span>
+              {otherRoutinesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {otherRoutinesOpen && (
+              <div className="px-5 pb-3 space-y-1">
+                {otherSupportHabits.map(h => (
+                  <div key={h.id} className="flex items-center gap-3 py-1.5">
+                    <CompletionCircle
+                      done={habitStatusMap.get(h.id) === "completed"}
+                      onToggle={() => {
+                        if (readOnly) return;
+                        setHabitLevelMutation.mutate({ habitId: h.id, level: habitStatusMap.get(h.id) === "completed" ? null : 2 });
+                      }}
+                      disabled={readOnly}
+                    />
+                    <span className={`text-sm flex-1 ${habitStatusMap.get(h.id) === "completed" ? "line-through text-muted-foreground" : ""}`}>
+                      {h.name}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">{TIMING_LABELS[h.timing || "afternoon"] || "PM"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── I'm stuck ──────────────────────────────────────── */}
+        <button
+          className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors w-full cursor-pointer"
+          onClick={() => setStuckOpen(true)}
+          data-testid="button-stuck"
+        >
+          <Zap className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">I'm stuck</span>
+        </button>
       </div>
 
-      <ContainmentModal open={containmentOpen} onClose={() => setContainmentOpen(false)} />
-      <FaceTheFear open={fearOpen} onClose={() => setFearOpen(false)} />
+      <StuckRouter open={stuckOpen} onClose={() => setStuckOpen(false)} />
     </AppLayout>
   );
 }

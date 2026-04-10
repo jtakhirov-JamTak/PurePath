@@ -16,7 +16,7 @@ import { useReturnTo } from "@/hooks/use-return-to";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
+import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry, PatternProfile } from "@shared/schema";
 import { VisionCard } from "@/components/vision-card";
 import { startOfWeek } from "date-fns";
 import { getTodaysHabits } from "@/lib/habit-filters";
@@ -29,6 +29,10 @@ interface MorningContent {
   // Identity
   todayValue: string;
   proofAction: string;
+  proofMove: string;
+  selectedValueKey: string;
+  selectedValueLabel: string;
+  selectedValueWhySnapshot: string;
   ifThenObstacle: string;
   ifThenResponse: string;
   // Courage / Avoidance
@@ -87,6 +91,11 @@ export interface EveningContent {
   positiveDownstream: string;
   positiveDownstreamOther: string;
   positiveShowDetail: boolean;
+  // Proof Arc v1 structured fields
+  proofMoveCompleted?: boolean;
+  helpingPatternKey?: string;
+  hurtingPatternKey?: string;
+  triggerOccurred?: boolean;
   // Quick mode
   quickRating: number | null;
   quickRemember: string;
@@ -120,6 +129,10 @@ const emptyMorning: MorningContent = {
   stressLevel: "",
   todayValue: "",
   proofAction: "",
+  proofMove: "",
+  selectedValueKey: "",
+  selectedValueLabel: "",
+  selectedValueWhySnapshot: "",
   ifThenObstacle: "",
   ifThenResponse: "",
   avoidance: "",
@@ -230,13 +243,29 @@ export default function JournalEntryPage() {
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
-  const valuesItems = (() => {
+  const { data: patternProfile } = useQuery<PatternProfile>({
+    queryKey: ["/api/pattern-profile"],
+    enabled: !!user,
+  });
+  // Get today's morning journal for evening proof move display
+  const { data: morningJournal } = useQuery<Journal | null>({
+    queryKey: ["/api/journals", date, "morning"],
+    enabled: !!user && !isMorning,
+  });
+  const valuesWithWhy = (() => {
     try {
       const parsed = JSON.parse(identityDoc?.values || "");
-      if (Array.isArray(parsed)) return parsed.map((v: { value: string }) => v.value).filter(Boolean);
+      if (Array.isArray(parsed)) return parsed.filter((v: { value: string; why?: string }) => v.value);
     } catch { /* legacy plain text */ }
-    return identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || [];
-  })();
+    return (identityDoc?.values?.split(",").map(s => s.trim()).filter(Boolean) || []).map(v => ({ value: v, why: "" }));
+  })() as Array<{ value: string; why: string }>;
+  const valuesItems = valuesWithWhy.map(v => v.value);
+
+  // Rotating value for today — one value per day
+  const rotatingValueIndex = date && valuesWithWhy.length > 0
+    ? Math.floor(new Date(date + "T12:00:00").getTime() / 86400000) % valuesWithWhy.length
+    : 0;
+  const rotatingValue = valuesWithWhy[rotatingValueIndex];
   const identityStatement = identityDoc?.identity?.trim() || "";
 
   // Tuesday/Friday vision reminder in morning journal
@@ -351,6 +380,15 @@ export default function JournalEntryPage() {
         reflections: isMorning ? "" : eveningData.insight,
         highlights: isMorning ? "" : eveningData.review,
         challenges: isMorning ? (existingJournal?.challenges || "") : eveningData.triggerText,
+        // Proof Arc v1 structured fields
+        selectedValueKey: isMorning && rotatingValue ? rotatingValue.value : undefined,
+        selectedValueLabel: isMorning && rotatingValue ? rotatingValue.value : undefined,
+        selectedValueWhySnapshot: isMorning && rotatingValue ? rotatingValue.why : undefined,
+        proofMove: isMorning ? morningData.proofMove : undefined,
+        proofMoveCompleted: !isMorning ? eveningData.proofMoveCompleted : undefined,
+        helpingPatternKey: !isMorning ? eveningData.helpingPatternKey : undefined,
+        hurtingPatternKey: !isMorning ? eveningData.hurtingPatternKey : undefined,
+        triggerOccurred: !isMorning ? eveningData.triggerOccurred : undefined,
       });
 
       // Write skip reasons back to habit completions and eisenhower entries
@@ -644,28 +682,15 @@ export default function JournalEntryPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Today's rotating value */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Which value matters most today?</Label>
-                  {valuesItems.length > 0 ? (
-                    <div className="flex flex-wrap gap-2" data-testid="value-chips">
-                      {valuesItems.map((value, i) => {
-                        const selected = morningData.todayValue === value;
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => updateMorning("todayValue", selected ? "" : value)}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors cursor-pointer ${
-                              selected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-primary/40 text-primary hover:bg-primary/[0.08]"
-                            }`}
-                            data-testid={`chip-value-${i}`}
-                          >
-                            {value}
-                          </button>
-                        );
-                      })}
+                  <Label className="text-sm font-medium">Today's value</Label>
+                  {rotatingValue ? (
+                    <div className="rounded-lg border-l-4 border-l-primary/60 bg-primary/[0.04] px-4 py-3 space-y-1" data-testid="rotating-value">
+                      <p className="text-sm font-semibold text-foreground">{rotatingValue.value}</p>
+                      {rotatingValue.why && (
+                        <p className="text-xs text-muted-foreground italic">{rotatingValue.why}</p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -674,13 +699,14 @@ export default function JournalEntryPage() {
                   )}
                 </div>
 
+                {/* Proof move */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">One observable action that would prove it today is...</Label>
+                  <Label className="text-sm font-medium">What is the one proof move today?</Label>
                   <Input
-                    value={morningData.proofAction}
-                    onChange={(e) => updateMorning("proofAction", e.target.value)}
+                    value={morningData.proofMove}
+                    onChange={(e) => updateMorning("proofMove", e.target.value)}
                     placeholder="e.g. Send the message I've been avoiding"
-                    data-testid="input-proof-action"
+                    data-testid="input-proof-move"
                   />
                 </div>
 
@@ -769,6 +795,8 @@ export default function JournalEntryPage() {
             journalMode={journalMode}
             skippedItems={skippedItems}
             identityStatement={identityStatement}
+            morningProofMove={morningJournal?.proofMove || undefined}
+            patternProfile={patternProfile || undefined}
           />
         )}
 

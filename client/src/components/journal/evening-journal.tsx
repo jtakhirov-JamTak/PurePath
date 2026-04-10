@@ -11,6 +11,7 @@ import {
 import { FreeTextOrChips } from "@/components/free-text-or-chips";
 import { cn } from "@/lib/utils";
 import type { EveningContent } from "@/pages/journal-entry";
+import type { PatternProfile } from "@shared/schema";
 
 const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have the energy", "Avoided it"];
 const POSITIVE_INPUTS = ["Sleep", "Exercise", "Progress", "People", "Environment", "Mindset", "Other"];
@@ -37,6 +38,8 @@ interface EveningJournalProps {
   journalMode: "quick" | "full";
   skippedItems: Array<{ id: string; name: string; type: "habit" | "eisenhower" }>;
   identityStatement?: string;
+  morningProofMove?: string;
+  patternProfile?: PatternProfile;
 }
 
 export function EveningJournal({
@@ -46,7 +49,18 @@ export function EveningJournal({
   setEveningData,
   journalMode,
   skippedItems,
+  morningProofMove,
+  patternProfile,
 }: EveningJournalProps) {
+  // Build pattern options from profile
+  const successPatterns = [1, 2, 3].map(n => {
+    const condition = (patternProfile as any)?.[`helpingPattern${n}Condition`] || "";
+    return condition ? `Pattern ${n}: ${condition}` : "";
+  }).filter(Boolean);
+  const shadowPatterns = [1, 2, 3].map(n => {
+    const condition = (patternProfile as any)?.[`hurtingPattern${n}Condition`] || "";
+    return condition ? `Pattern ${n}: ${condition}` : "";
+  }).filter(Boolean);
   return (
     <div className="space-y-6">
       {journalMode === "quick" ? (
@@ -161,7 +175,79 @@ export function EveningJournal({
             </Card>
           )}
 
-          {/* Section 1 — What got in the way? */}
+          {/* Proof Move Completion */}
+          {morningProofMove && (
+            <Card data-testid="card-proof-move-check">
+              <CardContent className="pt-6 space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Did you complete your proof move?</Label>
+                  <p className="text-xs text-muted-foreground mt-1 italic">"{morningProofMove}"</p>
+                </div>
+                <div className="flex gap-2">
+                  {[true, false].map(val => (
+                    <button
+                      key={String(val)}
+                      type="button"
+                      onClick={() => updateEveningField("proofMoveCompleted", eveningData.proofMoveCompleted === val ? undefined : val)}
+                      className={cn(
+                        "rounded-full px-5 py-1.5 text-sm font-medium border transition-colors cursor-pointer",
+                        eveningData.proofMoveCompleted === val
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted/50"
+                      )}
+                      data-testid={`proof-move-${val ? "yes" : "no"}`}
+                    >
+                      {val ? "Yes" : "No"}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Reflection prompts */}
+          <Card data-testid="card-reflection-prompts">
+            <CardContent className="pt-6 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Where did I act like the person I am?</Label>
+                <VoiceTextarea
+                  value={eveningData.positiveEvent}
+                  onChange={(val) => updateEvening("positiveEvent", val)}
+                  placeholder="A moment where you showed up as yourself..."
+                  rows={2}
+                  data-testid="input-acted-like"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Trigger toggle */}
+          <Card data-testid="card-trigger-toggle">
+            <CardContent className="pt-6 space-y-3">
+              <Label className="text-sm font-medium">Did a trigger happen today?</Label>
+              <div className="flex gap-2">
+                {[true, false].map(val => (
+                  <button
+                    key={String(val)}
+                    type="button"
+                    onClick={() => updateEveningField("triggerOccurred", eveningData.triggerOccurred === val ? undefined : val)}
+                    className={cn(
+                      "rounded-full px-5 py-1.5 text-sm font-medium border transition-colors cursor-pointer",
+                      eveningData.triggerOccurred === val
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:bg-muted/50"
+                    )}
+                    data-testid={`trigger-occurred-${val ? "yes" : "no"}`}
+                  >
+                    {val ? "Yes" : "No"}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 1 — Where did the old pattern show up? (trigger details) */}
+          {eveningData.triggerOccurred && (
           <Card data-testid="card-trigger-check">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -169,8 +255,8 @@ export function EveningJournal({
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm">What got in the way?</CardTitle>
-                  <CardDescription>Optional — log triggers from today</CardDescription>
+                  <CardTitle className="text-sm">Where did the old pattern show up?</CardTitle>
+                  <CardDescription>Log the trigger details</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -278,6 +364,61 @@ export function EveningJournal({
               )}
             </CardContent>
           </Card>
+          )}
+
+          {/* Pattern selectors (optional) */}
+          {(successPatterns.length > 0 || shadowPatterns.length > 0) && (
+            <Card data-testid="card-pattern-selectors">
+              <CardContent className="pt-6 space-y-4">
+                {successPatterns.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Which success pattern showed up? <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                    <div className="flex flex-wrap gap-2">
+                      {successPatterns.map((p, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => updateEveningField("helpingPatternKey", eveningData.helpingPatternKey === p ? undefined : p)}
+                          className={cn(
+                            "rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer",
+                            eveningData.helpingPatternKey === p
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                          data-testid={`success-pattern-${i}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {shadowPatterns.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Which shadow pattern showed up? <span className="text-xs text-muted-foreground">(optional)</span></Label>
+                    <div className="flex flex-wrap gap-2">
+                      {shadowPatterns.map((p, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => updateEveningField("hurtingPatternKey", eveningData.hurtingPatternKey === p ? undefined : p)}
+                          className={cn(
+                            "rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer",
+                            eveningData.hurtingPatternKey === p
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border text-muted-foreground hover:bg-muted/50"
+                          )}
+                          data-testid={`shadow-pattern-${i}`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Section 2 — What went well today? */}
           <Card data-testid="card-positive-pattern">
