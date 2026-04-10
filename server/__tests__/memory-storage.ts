@@ -15,6 +15,8 @@ let _journals: any[] = [];
 let _userSettings: any[] = [];
 let _weeklySummaries: any[] = [];
 let _fearLogs: any[] = [];
+let _workshopSeeds: any[] = [];
+let _annualCommitments: any[] = [];
 let _nextId = 1;
 
 function nextId() { return _nextId++; }
@@ -32,6 +34,8 @@ export function resetStorage() {
   _userSettings = [];
   _weeklySummaries = [];
   _fearLogs = [];
+  _workshopSeeds = [];
+  _annualCommitments = [];
   _nextId = 1;
 }
 
@@ -239,6 +243,39 @@ export const storage = {
     const f = { id: nextId(), ...data, createdAt: new Date() };
     _fearLogs.push(f);
     return f;
+  },
+
+  // Workshop Seed
+  getWorkshopSeed: async (userId: string) =>
+    _workshopSeeds.find(s => s.userId === userId) || null,
+  createWorkshopSeed: async (data: any) => {
+    const s = { id: nextId(), ...data, createdAt: new Date() };
+    _workshopSeeds.push(s);
+    return s;
+  },
+
+  // Annual Commitments
+  getActiveAnnualCommitment: async (userId: string) =>
+    _annualCommitments.find(c => c.userId === userId && c.isActive) || null,
+  createAnnualCommitment: async (data: any) => {
+    const c = { id: nextId(), ...data, isActive: data.isActive ?? true, createdAt: new Date(), updatedAt: new Date() };
+    _annualCommitments.push(c);
+    return c;
+  },
+  updateAnnualCommitment: async (userId: string, id: number, data: any) => {
+    const c = _annualCommitments.find(c => c.id === id && c.userId === userId);
+    if (c) Object.assign(c, data, { updatedAt: new Date() });
+    return c;
+  },
+  deactivateAnnualCommitments: async (userId: string) => {
+    _annualCommitments.filter(c => c.userId === userId).forEach(c => { c.isActive = false; });
+  },
+
+  // Flag monthly goal for review
+  flagMonthlyGoalForReview: async (userId: string, monthKey: string, reason: string) => {
+    const g = _monthlyGoals.find(g => g.userId === userId && g.monthKey === monthKey);
+    if (g) { g.needsSprintReview = true; g.needsSprintReviewReason = reason; }
+    return g;
   },
 
   getAllUsersWithStats: async () => [],

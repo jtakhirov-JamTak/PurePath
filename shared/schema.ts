@@ -18,6 +18,17 @@ export const journals = pgTable("journals", {
   highlights: text("highlights"),
   challenges: text("challenges"),
   content: text("content"),
+  // Proof Arc v1: structured journal fields
+  selectedValueKey: varchar("selected_value_key", { length: 50 }),
+  selectedValueLabel: text("selected_value_label"),
+  selectedValueWhySnapshot: text("selected_value_why_snapshot"),
+  proofMove: text("proof_move"),
+  proofMoveCompleted: boolean("proof_move_completed"),
+  helpingPatternKey: varchar("helping_pattern_key", { length: 100 }),
+  hurtingPatternKey: varchar("hurting_pattern_key", { length: 100 }),
+  triggerOccurred: boolean("trigger_occurred").default(false),
+  stuckToolUsed: varchar("stuck_tool_used", { length: 30 }),
+  shadowEmotionFlags: varchar("shadow_emotion_flags"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -84,6 +95,8 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   sequenceReason: varchar("sequence_reason", { length: 50 }), // Step 7: why this order
   ifThenStatement: text("if_then_statement"),                  // Step 8: Protect items
   revisitDate: date("revisit_date"),                           // Step 8: Not This Week items
+  // Proof Arc v1: proof bucket classification
+  proofBucket: varchar("proof_bucket", { length: 20 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("eisenhower_user_id_idx").on(table.userId),
@@ -117,6 +130,9 @@ export const weeklySummaries = pgTable("weekly_summaries", {
   fearFirstMove: text("fear_first_move"),
   fearPromotedToQ2: boolean("fear_promoted_to_q2").default(false),
   fearLinkedEntryId: integer("fear_linked_entry_id"),
+  // Proof Arc v1: sprint review flags
+  flaggedForSprintReview: boolean("flagged_for_sprint_review").default(false).notNull(),
+  flaggedForSprintReviewReason: text("flagged_for_sprint_review_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -187,6 +203,18 @@ export const habits = pgTable("habits", {
   active: boolean("active").default(true),
   lineageId: varchar("lineage_id", { length: 36 }),
   versionNumber: integer("version_number").default(1),
+  // Proof Arc v1: habit source, pinning, sprint link, precision wizard fields
+  source: varchar("source", { length: 20 }).default("support"),
+  isPinned: boolean("is_pinned").default(false),
+  sprintId: integer("sprint_id"),
+  proofPatternWhen: text("proof_pattern_when"),
+  proofPatternBehavior: text("proof_pattern_behavior"),
+  proofPatternOutcome: text("proof_pattern_outcome"),
+  proofPatternImpact: text("proof_pattern_impact"),
+  shadowEmotions: varchar("shadow_emotions"),
+  shadowEnvironment: text("shadow_environment"),
+  shadowBehavior: text("shadow_behavior"),
+  shadowOutcome: text("shadow_outcome"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("habits_user_id_idx").on(table.userId),
@@ -263,6 +291,15 @@ export const monthlyGoals = pgTable("monthly_goals", {
   ifThenPlan2: text("if_then_plan_2").default(""),
   personStatement: text("person_statement").default(""),
   confidenceCheck: integer("confidence_check"),
+  // Proof Arc v1: sprint fields (monthly_goals will become goal_sprints later)
+  sprintName: varchar("sprint_name", { length: 200 }),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  needsSprintReview: boolean("needs_sprint_review").default(false),
+  needsSprintReviewReason: text("needs_sprint_review_reason"),
+  sprintStatus: varchar("sprint_status", { length: 20 }).default("active"),
+  closedAs: varchar("closed_as", { length: 20 }),
+  carryForwardCount: integer("carry_forward_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -286,15 +323,21 @@ export const identityDocuments = pgTable("identity_documents", {
   identity: text("identity").notNull().default(""),
   vision: text("vision").notNull().default(""),
   values: text("values").notNull().default(""),
+  /** @deprecated Proof Arc v1: use annual_commitments.visualization instead. Column kept for data preservation. */
   yearVision: text("year_vision").default(""),
+  /** @deprecated Proof Arc v1: use annual_commitments.visualization instead. Column kept for data preservation. */
   yearVisualization: text("year_visualization").default(""),
   visionBoardMain: text("vision_board_main").default(""),
   visionBoardLeft: text("vision_board_left").default(""),
   visionBoardRight: text("vision_board_right").default(""),
   purpose: text("purpose").default(""),
+  /** @deprecated Proof Arc v1: use journals.selectedValueKey instead. Column kept for data preservation. */
   todayValue: varchar("today_value", { length: 200 }).default(""),
+  /** @deprecated Proof Arc v1: use journals.proofMove instead. Column kept for data preservation. */
   todayIntention: text("today_intention").default(""),
+  /** @deprecated Proof Arc v1: use evening journal structured fields instead. Column kept for data preservation. */
   todayReflection: text("today_reflection").default(""),
+  /** @deprecated Proof Arc v1: removed from workflow. Column kept for data preservation. */
   othersWillSee: text("others_will_see").default(""),
   // DEPRECATED: moved to patternProfiles — columns kept for data preservation
   beYourself: text("be_yourself").default(""),
@@ -306,7 +349,10 @@ export const identityDocuments = pgTable("identity_documents", {
   hurtingPatterns: text("hurting_patterns").default(""),
   // DEPRECATED: moved to patternProfiles
   stressResponses: text("stress_responses").default(""),
+  /** @deprecated Proof Arc v1: use annual_commitments.domain instead. Column kept for data preservation. */
   visionDomain: varchar("vision_domain", { length: 50 }).default(""),
+  // Proof Arc v1
+  acceptanceTruth: text("acceptance_truth").default(""),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -366,6 +412,16 @@ export const patternProfiles = pgTable("pattern_profiles", {
   blindSpot2Outcome: text("blind_spot_2_outcome").default(""),
   blindSpot3Pattern: text("blind_spot_3_pattern").default(""),
   blindSpot3Outcome: text("blind_spot_3_outcome").default(""),
+  // Proof Arc v1: shadow pattern emotions/environments + best-state calibration
+  hurtingPattern1Emotions: varchar("hurting_pattern_1_emotions"),
+  hurtingPattern1Environment: text("hurting_pattern_1_environment"),
+  hurtingPattern2Emotions: varchar("hurting_pattern_2_emotions"),
+  hurtingPattern2Environment: text("hurting_pattern_2_environment"),
+  hurtingPattern3Emotions: varchar("hurting_pattern_3_emotions"),
+  hurtingPattern3Environment: text("hurting_pattern_3_environment"),
+  bestStateEmotions: varchar("best_state_emotions"),
+  bestStateEnvironments: text("best_state_environments"),
+  bestStateExamplesJson: text("best_state_examples_json"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -556,4 +612,61 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
 
 export type UserSettings = typeof userSettings.$inferSelect;
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+
+// Proof Arc v1: Workshop Seed — one-time snapshot of all workshop-generated data
+export const workshopSeeds = pgTable("workshop_seeds", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().unique(),
+  source: varchar("source", { length: 100 }),
+  identityStatement: text("identity_statement"),
+  valuesJson: text("values_json"),
+  vision: text("vision"),
+  purpose: text("purpose"),
+  successPatternsJson: text("success_patterns_json"),
+  shadowPatternsJson: text("shadow_patterns_json"),
+  triggerPatternJson: text("trigger_pattern_json"),
+  avoidanceLoopJson: text("avoidance_loop_json"),
+  blindSpotsJson: text("blind_spots_json"),
+  acceptanceTruth: text("acceptance_truth"),
+  bestStateCalibrationJson: text("best_state_calibration_json"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWorkshopSeedSchema = createInsertSchema(workshopSeeds).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WorkshopSeed = typeof workshopSeeds.$inferSelect;
+export type InsertWorkshopSeed = z.infer<typeof insertWorkshopSeedSchema>;
+
+// Proof Arc v1: Annual Commitments — annual commitment with linked proof behavior
+export const annualCommitments = pgTable("annual_commitments", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  domain: varchar("domain", { length: 100 }),
+  personStatement: text("person_statement"),
+  proofPoint: text("proof_point"),
+  proofMetric: text("proof_metric"),
+  visualization: text("visualization"),
+  weeklyProofBehaviorHabitId: integer("weekly_proof_behavior_habit_id"),
+  ifThenPlan1: text("if_then_plan_1"),
+  ifThenPlan2: text("if_then_plan_2"),
+  confidenceCheck: integer("confidence_check"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("annual_commitments_user_id_idx").on(table.userId),
+  check("annual_commitment_confidence_range", sql`${table.confidenceCheck} IS NULL OR ${table.confidenceCheck} BETWEEN 0 AND 10`),
+]);
+
+export const insertAnnualCommitmentSchema = createInsertSchema(annualCommitments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AnnualCommitment = typeof annualCommitments.$inferSelect;
+export type InsertAnnualCommitment = z.infer<typeof insertAnnualCommitmentSchema>;
 

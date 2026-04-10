@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, patternProfiles, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, fearLogs, userSettings, weeklySummaries,
+  users, journals, eisenhowerEntries, habits, habitCompletions, identityDocuments, patternProfiles, monthlyGoals, toolUsageLogs, avoidanceLogs, containmentLogs, triggerLogs, fearLogs, userSettings, weeklySummaries, workshopSeeds, annualCommitments,
   type Journal, type InsertJournal,
   type EisenhowerEntry, type InsertEisenhowerEntry,
   type Habit, type InsertHabit,
@@ -15,6 +15,8 @@ import {
   type FearLog, type InsertFearLog,
   type UserSettings,
   type WeeklySummary, type InsertWeeklySummary,
+  type WorkshopSeed, type InsertWorkshopSeed,
+  type AnnualCommitment, type InsertAnnualCommitment,
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import crypto from "crypto";
@@ -99,6 +101,19 @@ export interface IStorage {
   // User Settings
   getUserSettings(userId: string): Promise<UserSettings | undefined>;
   upsertUserSettings(userId: string, updates: { onboardingStep?: number; onboardingComplete?: boolean; hasAccess?: boolean; personalEmail?: string; cohort?: string | null }): Promise<UserSettings>;
+
+  // Workshop Seed
+  getWorkshopSeed(userId: string): Promise<WorkshopSeed | undefined>;
+  createWorkshopSeed(seed: InsertWorkshopSeed): Promise<WorkshopSeed>;
+
+  // Annual Commitments
+  getActiveAnnualCommitment(userId: string): Promise<AnnualCommitment | undefined>;
+  createAnnualCommitment(commitment: InsertAnnualCommitment): Promise<AnnualCommitment>;
+  updateAnnualCommitment(userId: string, id: number, updates: Partial<InsertAnnualCommitment>): Promise<AnnualCommitment | undefined>;
+  deactivateAnnualCommitments(userId: string): Promise<void>;
+
+  // Monthly Goal flag
+  flagMonthlyGoalForReview(userId: string, monthKey: string, reason: string): Promise<MonthlyGoal | undefined>;
 
   // Admin
   getAllUsersWithStats(): Promise<Array<{
@@ -228,6 +243,12 @@ export class DatabaseStorage implements IStorage {
           fearFirstMove: summary.fearFirstMove,
           fearPromotedToQ2: summary.fearPromotedToQ2,
           fearLinkedEntryId: summary.fearLinkedEntryId,
+          patternPullBack: summary.patternPullBack,
+          openStory: summary.openStory,
+          openHardTruth: summary.openHardTruth,
+          openHardAction: summary.openHardAction,
+          flaggedForSprintReview: summary.flaggedForSprintReview,
+          flaggedForSprintReviewReason: summary.flaggedForSprintReviewReason,
           updatedAt: new Date(),
         },
       })
@@ -428,6 +449,7 @@ export class DatabaseStorage implements IStorage {
           othersWillSee: doc.othersWillSee,
           // DEPRECATED fields (beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses) no longer written
           visionDomain: doc.visionDomain,
+          acceptanceTruth: doc.acceptanceTruth,
           updatedAt: new Date(),
         },
       })
@@ -486,6 +508,15 @@ export class DatabaseStorage implements IStorage {
           blindSpot2Outcome: profile.blindSpot2Outcome,
           blindSpot3Pattern: profile.blindSpot3Pattern,
           blindSpot3Outcome: profile.blindSpot3Outcome,
+          hurtingPattern1Emotions: profile.hurtingPattern1Emotions,
+          hurtingPattern1Environment: profile.hurtingPattern1Environment,
+          hurtingPattern2Emotions: profile.hurtingPattern2Emotions,
+          hurtingPattern2Environment: profile.hurtingPattern2Environment,
+          hurtingPattern3Emotions: profile.hurtingPattern3Emotions,
+          hurtingPattern3Environment: profile.hurtingPattern3Environment,
+          bestStateEmotions: profile.bestStateEmotions,
+          bestStateEnvironments: profile.bestStateEnvironments,
+          bestStateExamplesJson: profile.bestStateExamplesJson,
           updatedAt: new Date(),
         },
       })
@@ -540,6 +571,14 @@ export class DatabaseStorage implements IStorage {
           ifThenPlan2: goal.ifThenPlan2,
           personStatement: goal.personStatement,
           confidenceCheck: goal.confidenceCheck,
+          sprintName: goal.sprintName,
+          startDate: goal.startDate,
+          endDate: goal.endDate,
+          needsSprintReview: goal.needsSprintReview,
+          needsSprintReviewReason: goal.needsSprintReviewReason,
+          sprintStatus: goal.sprintStatus,
+          closedAs: goal.closedAs,
+          carryForwardCount: goal.carryForwardCount,
           updatedAt: new Date(),
         },
       })
@@ -684,6 +723,60 @@ export class DatabaseStorage implements IStorage {
       ) sub ORDER BY active_date
     `);
     return (result.rows as any[]).map(r => r.active_date);
+  }
+
+  // Workshop Seed
+  async getWorkshopSeed(userId: string): Promise<WorkshopSeed | undefined> {
+    const [seed] = await db.select().from(workshopSeeds).where(eq(workshopSeeds.userId, userId));
+    return seed;
+  }
+
+  async createWorkshopSeed(seed: InsertWorkshopSeed): Promise<WorkshopSeed> {
+    const [created] = await db.insert(workshopSeeds).values(seed).returning();
+    return created;
+  }
+
+  // Annual Commitments
+  async getActiveAnnualCommitment(userId: string): Promise<AnnualCommitment | undefined> {
+    const [commitment] = await db.select().from(annualCommitments)
+      .where(and(eq(annualCommitments.userId, userId), eq(annualCommitments.isActive, true)))
+      .orderBy(desc(annualCommitments.createdAt))
+      .limit(1);
+    return commitment;
+  }
+
+  async createAnnualCommitment(commitment: InsertAnnualCommitment): Promise<AnnualCommitment> {
+    // Atomic: deactivate all existing + create new in one transaction
+    const [created] = await db.transaction(async (tx) => {
+      await tx.update(annualCommitments)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(annualCommitments.userId, commitment.userId));
+      return tx.insert(annualCommitments).values({ ...commitment, updatedAt: new Date() }).returning();
+    });
+    return created;
+  }
+
+  async updateAnnualCommitment(userId: string, id: number, updates: Partial<InsertAnnualCommitment>): Promise<AnnualCommitment | undefined> {
+    const [updated] = await db.update(annualCommitments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(annualCommitments.id, id), eq(annualCommitments.userId, userId)))
+      .returning();
+    return updated;
+  }
+
+  async deactivateAnnualCommitments(userId: string): Promise<void> {
+    await db.update(annualCommitments)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(annualCommitments.userId, userId));
+  }
+
+  // Monthly Goal flag
+  async flagMonthlyGoalForReview(userId: string, monthKey: string, reason: string): Promise<MonthlyGoal | undefined> {
+    const [updated] = await db.update(monthlyGoals)
+      .set({ needsSprintReview: true, needsSprintReviewReason: reason, updatedAt: new Date() })
+      .where(and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey)))
+      .returning();
+    return updated;
   }
 
   async batchUpdateAccess(userIds: string[], hasAccess: boolean): Promise<void> {

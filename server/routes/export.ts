@@ -21,6 +21,8 @@ export function registerExportRoutes(app: Express) {
         containmentLogs,
         triggerLogs,
         fearLogs,
+        workshopSeed,
+        annualCommitment,
       ] = await Promise.all([
         storage.getIdentityDocument(userId),
         storage.getPatternProfile(userId),
@@ -32,6 +34,8 @@ export function registerExportRoutes(app: Express) {
         storage.getContainmentLogsByUser(userId),
         storage.getTriggerLogsByUser(userId),
         storage.getFearLogsByUser(userId),
+        storage.getWorkshopSeed(userId),
+        storage.getActiveAnnualCommitment(userId),
       ]);
 
       // Collect monthly goals in a single query (avoids N+1)
@@ -63,7 +67,8 @@ export function registerExportRoutes(app: Express) {
           }
         }
         if (identityDoc.purpose) md += `**Purpose:** ${identityDoc.purpose}\n\n`;
-        if (identityDoc.yearVision) md += `**1-Year Commitment:** ${identityDoc.yearVision}\n\n`;
+        if (identityDoc.acceptanceTruth) md += `**Acceptance Truth:** ${identityDoc.acceptanceTruth}\n\n`;
+        if (identityDoc.yearVision) md += `**1-Year Commitment (legacy):** ${identityDoc.yearVision}\n\n`;
         if (identityDoc.othersWillSee) md += `**Others Will See:** ${identityDoc.othersWillSee.replace(/\|\|\|/g, ", ")}\n\n`;
         // Legacy fields (deprecated, may contain historical data)
         if (identityDoc.strengths) md += `**Strengths (legacy):** ${identityDoc.strengths}\n\n`;
@@ -72,6 +77,35 @@ export function registerExportRoutes(app: Express) {
         if (identityDoc.stressResponses) md += `**Stress Responses (legacy):** ${identityDoc.stressResponses}\n\n`;
       } else {
         md += `No identity document set up.\n\n`;
+      }
+
+      // ANNUAL COMMITMENT
+      md += `## Annual Commitment\n\n`;
+      if (annualCommitment) {
+        if (annualCommitment.domain) md += `**Domain:** ${annualCommitment.domain}\n`;
+        if (annualCommitment.personStatement) md += `**Person Statement:** ${annualCommitment.personStatement}\n`;
+        if (annualCommitment.proofPoint) md += `**Proof Point:** ${annualCommitment.proofPoint}\n`;
+        if (annualCommitment.proofMetric) md += `**Proof Metric:** ${annualCommitment.proofMetric}\n`;
+        if (annualCommitment.visualization) md += `**Visualization:** ${annualCommitment.visualization}\n`;
+        if (annualCommitment.ifThenPlan1) md += `**IF-THEN Plan 1:** ${annualCommitment.ifThenPlan1}\n`;
+        if (annualCommitment.ifThenPlan2) md += `**IF-THEN Plan 2:** ${annualCommitment.ifThenPlan2}\n`;
+        if (annualCommitment.confidenceCheck != null) md += `**Confidence:** ${annualCommitment.confidenceCheck}/10\n`;
+        md += `\n`;
+      } else {
+        md += `No annual commitment set up.\n\n`;
+      }
+
+      // WORKSHOP SEED
+      md += `## Workshop Seed\n\n`;
+      if (workshopSeed) {
+        if (workshopSeed.identityStatement) md += `**Identity Statement:** ${workshopSeed.identityStatement}\n`;
+        if (workshopSeed.vision) md += `**Vision:** ${workshopSeed.vision}\n`;
+        if (workshopSeed.purpose) md += `**Purpose:** ${workshopSeed.purpose}\n`;
+        if (workshopSeed.acceptanceTruth) md += `**Acceptance Truth:** ${workshopSeed.acceptanceTruth}\n`;
+        if (workshopSeed.source) md += `**Source:** ${workshopSeed.source}\n`;
+        md += `\n`;
+      } else {
+        md += `No workshop seed recorded.\n\n`;
       }
 
       // PATTERN PROFILE
@@ -95,7 +129,25 @@ export function registerExportRoutes(app: Express) {
           return (c || b || i || o) ? `- **Pattern ${n}:** When ${c || "..."} → I ${b || "..."} → People feel ${i || "..."} → It leads to ${o || "..."}\n` : "";
         };
         const upSection = up(1) + up(2) + up(3);
-        if (upSection) md += `**Hurting Patterns:**\n${upSection}\n`;
+        if (upSection) md += `**Shadow Patterns:**\n${upSection}\n`;
+
+        // Shadow pattern emotions + environments
+        for (let n = 1; n <= 3; n++) {
+          const emotions = (patternProfile as any)[`hurtingPattern${n}Emotions`];
+          const environment = (patternProfile as any)[`hurtingPattern${n}Environment`];
+          if (emotions || environment) {
+            md += `  - Shadow ${n} emotions: ${emotions || "—"}, environment: ${environment || "—"}\n`;
+          }
+        }
+
+        // Best-state calibration
+        if (patternProfile.bestStateEmotions || patternProfile.bestStateEnvironments) {
+          md += `\n**Best-State Calibration:**\n`;
+          if (patternProfile.bestStateEmotions) md += `- Emotions: ${patternProfile.bestStateEmotions}\n`;
+          if (patternProfile.bestStateEnvironments) md += `- Environments: ${patternProfile.bestStateEnvironments}\n`;
+          if (patternProfile.bestStateExamplesJson) md += `- Examples: ${patternProfile.bestStateExamplesJson}\n`;
+          md += `\n`;
+        }
 
         if (patternProfile.repeatingLoopStory || patternProfile.repeatingLoopAvoidance || patternProfile.repeatingLoopCost) {
           md += `**Repeating Loop:**\n`;
@@ -152,6 +204,13 @@ export function registerExportRoutes(app: Express) {
           if (g.value) md += `**Value:** ${g.value}\n`;
           if (g.why) md += `**Why:** ${g.why}\n`;
           if (g.prize) md += `**Prize:** ${g.prize}\n`;
+          if (g.sprintName) md += `**Sprint Name:** ${g.sprintName}\n`;
+          if (g.startDate) md += `**Start Date:** ${g.startDate}\n`;
+          if (g.endDate) md += `**End Date:** ${g.endDate}\n`;
+          if (g.sprintStatus && g.sprintStatus !== "active") md += `**Sprint Status:** ${g.sprintStatus}\n`;
+          if (g.closedAs) md += `**Closed As:** ${g.closedAs}\n`;
+          if (g.carryForwardCount) md += `**Carry Forward Count:** ${g.carryForwardCount}\n`;
+          if (g.needsSprintReview) md += `**Flagged for Sprint Review:** ${g.needsSprintReviewReason || "Yes"}\n`;
           md += `\n`;
         });
       }
@@ -163,6 +222,13 @@ export function registerExportRoutes(app: Express) {
       } else {
         journals.forEach(j => {
           md += `### ${j.date} — ${j.session.charAt(0).toUpperCase() + j.session.slice(1)}\n\n`;
+          // Proof Arc v1 structured fields
+          if (j.selectedValueLabel) md += `**Value:** ${j.selectedValueLabel}${j.selectedValueWhySnapshot ? ` — ${j.selectedValueWhySnapshot}` : ""}\n`;
+          if (j.proofMove) md += `**Proof Move:** ${j.proofMove}${j.proofMoveCompleted ? " ✓" : j.proofMoveCompleted === false ? " ✗" : ""}\n`;
+          if (j.helpingPatternKey) md += `**Success Pattern:** ${j.helpingPatternKey}\n`;
+          if (j.hurtingPatternKey) md += `**Shadow Pattern:** ${j.hurtingPatternKey}\n`;
+          if (j.triggerOccurred) md += `**Trigger Occurred:** Yes\n`;
+          if (j.stuckToolUsed) md += `**Stuck Tool Used:** ${j.stuckToolUsed}\n`;
           if (j.content) {
             try {
               const parsed = JSON.parse(j.content);
@@ -215,7 +281,11 @@ export function registerExportRoutes(app: Express) {
             md += `- **${h.name}** (${h.category || "uncategorized"}, ${h.timing || "afternoon"}, ${h.cadence})`;
             if (h.duration) md += ` — ${h.duration} min`;
             if (h.isBinary) md += ` [binary]`;
+            if (h.source && h.source !== "support") md += ` [${h.source}]`;
+            if (h.isPinned) md += ` [pinned]`;
             md += `\n`;
+            if (h.proofPatternWhen) md += `  Success: When ${h.proofPatternWhen} → I ${h.proofPatternBehavior || "..."} → ${h.proofPatternOutcome || "..."}\n`;
+            if (h.shadowEmotions) md += `  Shadow: ${h.shadowEmotions} → ${h.shadowEnvironment || "..."} → ${h.shadowBehavior || "..."} → ${h.shadowOutcome || "..."}\n`;
           });
           md += `\n`;
         }

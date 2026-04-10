@@ -12,6 +12,8 @@ import { registerOnboardingRoutes } from "./onboarding";
 import { registerAccessRoutes } from "./access";
 import { registerExportRoutes } from "./export";
 import { registerAdminRoutes } from "./admin";
+import { registerWorkshopSeedRoutes } from "./workshop-seed";
+import { registerAnnualCommitmentRoutes } from "./annual-commitment";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -30,6 +32,8 @@ export async function registerRoutes(
   registerAccessRoutes(app);
   registerExportRoutes(app);
   registerAdminRoutes(app);
+  registerWorkshopSeedRoutes(app);
+  registerAnnualCommitmentRoutes(app);
 
   return httpServer;
 }

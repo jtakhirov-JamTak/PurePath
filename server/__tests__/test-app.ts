@@ -51,6 +51,8 @@ import { registerIdentityRoutes } from "../routes/identity";
 import { registerPatternRoutes } from "../routes/patterns";
 import { registerToolRoutes } from "../routes/tools";
 import { registerExportRoutes } from "../routes/export";
+import { registerWorkshopSeedRoutes } from "../routes/workshop-seed";
+import { registerAnnualCommitmentRoutes } from "../routes/annual-commitment";
 
 export function createTestApp() {
   const app = express();
@@ -64,6 +66,8 @@ export function createTestApp() {
   registerPatternRoutes(app);
   registerToolRoutes(app);
   registerExportRoutes(app);
+  registerWorkshopSeedRoutes(app);
+  registerAnnualCommitmentRoutes(app);
 
   return app;
 }

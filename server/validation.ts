@@ -69,6 +69,7 @@ export const createEisenhowerSchema = z.object({
   sequenceReason: optionalString(50),
   ifThenStatement: optionalString(2000),
   revisitDate: optionalDateString,
+  proofBucket: z.string().max(20).optional().nullable(),
 });
 
 export const updateEisenhowerSchema = createEisenhowerSchema.partial();
@@ -110,6 +111,18 @@ export const createHabitSchema = z.object({
   active: z.boolean().optional().nullable(),
   lineageId: z.string().optional().nullable(),
   versionNumber: z.number().int().optional().nullable(),
+  // Proof Arc v1: source, pinning, sprint link, precision wizard fields
+  source: optionalString(20),
+  isPinned: z.boolean().optional().nullable(),
+  sprintId: z.number().int().positive().optional().nullable(),
+  proofPatternWhen: optionalString(5000),
+  proofPatternBehavior: optionalString(5000),
+  proofPatternOutcome: optionalString(5000),
+  proofPatternImpact: optionalString(5000),
+  shadowEmotions: optionalString(500),
+  shadowEnvironment: optionalString(5000),
+  shadowBehavior: optionalString(5000),
+  shadowOutcome: optionalString(5000),
 });
 
 export const updateHabitSchema = createHabitSchema.partial();
@@ -134,6 +147,17 @@ export const createJournalSchema = z.object({
   highlights: optionalString(5000),
   challenges: optionalString(5000),
   content: z.string().max(100000, "Content must be at most 100KB").optional().nullable(),
+  // Proof Arc v1: structured journal fields
+  selectedValueKey: optionalString(50),
+  selectedValueLabel: optionalString(500),
+  selectedValueWhySnapshot: optionalString(5000),
+  proofMove: optionalString(5000),
+  proofMoveCompleted: z.boolean().optional().nullable(),
+  helpingPatternKey: optionalString(100),
+  hurtingPatternKey: optionalString(100),
+  triggerOccurred: z.boolean().optional().nullable(),
+  stuckToolUsed: optionalString(30),
+  shadowEmotionFlags: optionalString(500),
 });
 
 export const createToolUsageSchema = z.object({
@@ -164,6 +188,7 @@ export const identityDocumentSchema = z.object({
   othersWillSee: optionalTrimmedString(5000),
   // DEPRECATED: beYourself, strengths, helpingPatterns, hurtingPatterns, stressResponses moved to patternProfiles
   visionDomain: optionalTrimmedString(500),
+  acceptanceTruth: optionalTrimmedString(5000),
 });
 
 export const monthlyGoalSchema = z.object({
@@ -197,6 +222,15 @@ export const monthlyGoalSchema = z.object({
   ifThenPlan2: optionalTrimmedString(2000),
   personStatement: optionalTrimmedString(2000),
   confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
+  // Proof Arc v1: sprint fields
+  sprintName: optionalTrimmedString(200),
+  startDate: optionalDateString,
+  endDate: optionalDateString,
+  needsSprintReview: z.boolean().optional().nullable(),
+  needsSprintReviewReason: optionalString(5000),
+  sprintStatus: optionalString(20),
+  closedAs: optionalString(20),
+  carryForwardCount: z.number().int().min(0).optional().nullable(),
 });
 
 export const updateHabitCompletionSchema = z.object({
@@ -257,6 +291,7 @@ export const commitWeekItemSchema = z.object({
   sequenceReason: z.string().max(50).optional().nullable(),
   ifThenStatement: z.string().trim().max(2000).optional().nullable(),
   revisitDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  proofBucket: z.string().max(20).optional().nullable(),
 });
 
 export const openingDataSchema = z.object({
@@ -351,6 +386,16 @@ export const patternProfileSchema = z.object({
   blindSpot2Outcome: optionalTrimmedString(5000),
   blindSpot3Pattern: optionalTrimmedString(5000),
   blindSpot3Outcome: optionalTrimmedString(5000),
+  // Proof Arc v1: shadow pattern emotions/environments + best-state calibration
+  hurtingPattern1Emotions: optionalString(500),
+  hurtingPattern1Environment: optionalString(5000),
+  hurtingPattern2Emotions: optionalString(500),
+  hurtingPattern2Environment: optionalString(5000),
+  hurtingPattern3Emotions: optionalString(500),
+  hurtingPattern3Environment: optionalString(5000),
+  bestStateEmotions: optionalString(500),
+  bestStateEnvironments: optionalString(5000),
+  bestStateExamplesJson: optionalString(50000),
 });
 
 export const reorderItemSchema = z.object({
@@ -402,4 +447,42 @@ export const createFearLogSchema = z.object({
   fearIfAvoided: optionalString(2000),
   fearBlocker: fearBlockerEnum.optional().nullable(),
   fearFirstMove: optionalString(2000),
+});
+
+// Proof Arc v1: Workshop Seed
+export const createWorkshopSeedSchema = z.object({
+  source: optionalString(100),
+  identityStatement: optionalString(10000),
+  valuesJson: optionalString(50000),
+  vision: optionalString(10000),
+  purpose: optionalString(10000),
+  successPatternsJson: optionalString(50000),
+  shadowPatternsJson: optionalString(50000),
+  triggerPatternJson: optionalString(50000),
+  avoidanceLoopJson: optionalString(50000),
+  blindSpotsJson: optionalString(50000),
+  acceptanceTruth: optionalString(10000),
+  bestStateCalibrationJson: optionalString(50000),
+});
+
+// Proof Arc v1: Annual Commitment
+export const createAnnualCommitmentSchema = z.object({
+  domain: optionalString(100),
+  personStatement: optionalString(5000),
+  proofPoint: optionalString(5000),
+  proofMetric: optionalString(5000),
+  visualization: optionalString(5000),
+  weeklyProofBehaviorHabitId: z.number().int().positive().optional().nullable(),
+  ifThenPlan1: optionalString(5000),
+  ifThenPlan2: optionalString(5000),
+  confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateAnnualCommitmentSchema = createAnnualCommitmentSchema.partial();
+
+// Proof Arc v1: Flag monthly goal for sprint review
+export const flagReviewSchema = z.object({
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/, "Must be YYYY-MM format"),
+  reason: trimmedString(1, 5000),
 });
