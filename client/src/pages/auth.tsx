@@ -74,7 +74,7 @@ export default function AuthPage() {
         <div className="flex flex-col items-center gap-3">
           <BrandLogo size={48} className="text-primary" />
           <h1 className="text-base font-medium text-foreground">
-            {mode === "login" ? "Welcome Back" : "Join Proof Arc"}
+            {mode === "login" ? "Welcome Back" : "Join The Leaf"}
           </h1>
           <p className="text-sm text-muted-foreground text-center">
             {mode === "login"
@@ -149,7 +149,7 @@ export default function AuthPage() {
             ) : mode === "login" ? (
               "Sign In"
             ) : (
-              "Join Proof Arc"
+              "Join The Leaf"
             )}
           </Button>
         </form>

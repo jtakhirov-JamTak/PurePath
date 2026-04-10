@@ -3,7 +3,6 @@ import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useAuth } from "@/hooks/use-auth";
 import NotFound from "@/pages/not-found";
@@ -224,12 +223,12 @@ function Router() {
 function RedirectToHome() {
   const [location, setLocation] = useLocation();
   useEffect(() => {
-    const alreadyRedirected = sessionStorage.getItem("ij-session-started");
+    const alreadyRedirected = sessionStorage.getItem("tl-session-started");
     if (!alreadyRedirected && location !== "/" && location !== "/auth") {
-      sessionStorage.setItem("ij-session-started", "1");
+      sessionStorage.setItem("tl-session-started", "1");
       setLocation("/");
     } else {
-      sessionStorage.setItem("ij-session-started", "1");
+      sessionStorage.setItem("tl-session-started", "1");
     }
   }, []);
   return null;
@@ -265,18 +264,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
   }
 }
 
+// One-time migration of theme preference from old storage key
+if (!localStorage.getItem("the-leaf-theme") && localStorage.getItem("inner-journey-theme")) {
+  localStorage.setItem("the-leaf-theme", localStorage.getItem("inner-journey-theme")!);
+  localStorage.removeItem("inner-journey-theme");
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="light" storageKey="inner-journey-theme">
-          <TooltipProvider>
-            <UnsavedGuardProvider>
-              <Toaster />
-              <RedirectToHome />
-              <Router />
-            </UnsavedGuardProvider>
-          </TooltipProvider>
+        <ThemeProvider defaultTheme="light" storageKey="the-leaf-theme">
+          <UnsavedGuardProvider>
+            <Toaster />
+            <RedirectToHome />
+            <Router />
+          </UnsavedGuardProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

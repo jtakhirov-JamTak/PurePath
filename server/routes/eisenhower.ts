@@ -2,19 +2,14 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
-import OpenAI from "openai";
 import { z } from "zod";
 import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema, flagReviewSchema } from "../validation";
 import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
+import { openai } from "../lib/openai";
 
 // Must match MAX_Q1/MAX_Q2 in client/src/lib/proof-engine-logic.ts
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
-
-const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "missing",
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
 
 const reorderItemSchema = z.object({
   id: z.number().int().positive(),

@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 
 const valueStack = [
   {
-    name: "Proof Arc Live Workshop",
+    name: "The Leaf Live Workshop",
     desc: "3.5 hours of facilitated self-examination with 6 exercises. Not a lecture — confrontation with support.",
     value: 899,
   },
@@ -35,7 +35,7 @@ const valueStack = [
     value: 500,
   },
   {
-    name: "Proof Arc App — 3 Months Free",
+    name: "The Leaf App — 3 Months Free",
     desc: "Daily execution tracking, weekly review, real-time support system, and proof over time.",
     value: 450,
   },
@@ -63,7 +63,7 @@ const faqs = [
   {
     q: "I can do this on my own.",
     reframe: "That assumes the problem is effort. The problem is you've never had a room that won't let you edit the truth.",
-    a: "You've been trying on your own. That's the point. Proof Arc gives you a room, a structure, and people who won't let you edit the truth.",
+    a: "You've been trying on your own. That's the point. The Leaf gives you a room, a structure, and people who won't let you edit the truth.",
   },
   {
     q: "I don't have time.",
@@ -71,7 +71,7 @@ const faqs = [
   },
   {
     q: "Is this therapy?",
-    a: "No. Therapy helps you understand why. Proof Arc helps you face what is true and build from it.",
+    a: "No. Therapy helps you understand why. The Leaf helps you face what is true and build from it.",
   },
   {
     q: "Can I try the app first?",
@@ -134,7 +134,7 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto px-6 pt-6 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white/70">
             <BrandLogo size={20} />
-            <span className="text-sm font-medium">Proof Arc</span>
+            <span className="text-sm font-medium">The Leaf</span>
           </div>
           <a href="/auth" className="text-xs text-white/50 hover:text-white/80 transition-colors">
             Sign In
@@ -142,7 +142,7 @@ export default function LandingPage() {
         </div>
         <div className="max-w-2xl mx-auto px-6 py-16 sm:py-24">
           <p className="text-[11px] uppercase tracking-[0.2em] text-white/50 mb-6">
-            Proof Arc Live
+            The Leaf Live
           </p>
           <h1 className="font-serif text-[28px] sm:text-[36px] leading-[1.2] font-medium mb-6">
             You already know what needs to change.
@@ -187,7 +187,7 @@ export default function LandingPage() {
           <p>
             So he built a system: foundational self-examination, daily practices, trigger awareness, weekly review, and evidence over time. It worked — not because it was inspiring, but because it was true.
           </p>
-          <p>Proof Arc is that system, turned into something other people can use.</p>
+          <p>The Leaf is that system, turned into something other people can use.</p>
         </div>
       </section>
 
@@ -234,7 +234,7 @@ export default function LandingPage() {
           The Framework
         </p>
         <p className="text-muted-foreground text-sm mb-8 leading-relaxed">
-          Most systems help you set goals. Proof Arc makes you face the gap between who you are and who your goals require — before you commit.
+          Most systems help you set goals. The Leaf makes you face the gap between who you are and who your goals require — before you commit.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
           {framework.map((group) => (
@@ -340,9 +340,9 @@ export default function LandingPage() {
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary">
             <BrandLogo size={20} />
-            <span className="text-sm font-medium">Proof Arc</span>
+            <span className="text-sm font-medium">The Leaf</span>
           </div>
-          <p className="text-xs text-muted-foreground">&copy; 2026 Proof Arc</p>
+          <p className="text-xs text-muted-foreground">&copy; 2026 The Leaf</p>
         </div>
       </footer>
     </div>

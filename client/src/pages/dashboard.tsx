@@ -20,6 +20,8 @@ import { TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
 import { StuckRouter } from "@/components/stuck-router";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
+import { SeasonBackground } from "@/components/season-background";
+import { getSprintBackgroundForDate } from "@/lib/sprint-background";
 
 
 // ─── Week strip constants ───────────────────────────────────────────
@@ -341,6 +343,11 @@ export default function DashboardPage() {
 
   if (onboarding && !onboarding.onboardingComplete) return null;
 
+  // ─── Sprint background ──────────────────────────────────────────
+  const sprintBg = monthlyGoal?.startDate && monthlyGoal?.endDate
+    ? getSprintBackgroundForDate(monthlyGoal.startDate, monthlyGoal.endDate, todayStr)
+    : null;
+
   // ─── Top section data ────────────────────────────────────────────
   const anchorIdentity = identityDoc?.identity?.trim() || "";
   const weeklyProofBehavior = useMemo(() => {
@@ -359,6 +366,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
+      <SeasonBackground src={sprintBg}>
       <div className={`container mx-auto px-5 py-6 max-w-2xl space-y-6 transition-colors duration-700 ${
         isCloseMoment ? "bg-gradient-to-b from-amber-50/30 dark:from-amber-950/15" : ""
       }`}>
@@ -670,6 +678,7 @@ export default function DashboardPage() {
       </div>
 
       <StuckRouter open={stuckOpen} onClose={() => setStuckOpen(false)} />
+      </SeasonBackground>
     </AppLayout>
   );
 }

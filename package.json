@@ -52,9 +52,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "wouter": "^3.3.5",
-    "ws": "^8.18.0",
-    "zod": "^3.25.76",
-    "zod-validation-error": "^3.5.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -73,7 +71,6 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/supertest": "^7.2.0",
-    "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "cross-env": "^10.1.0",
@@ -91,8 +88,5 @@
     "drizzle-kit": {
       "@esbuild-kit/esm-loader": "npm:tsx@^4.20.4"
     }
-  },
-  "optionalDependencies": {
-    "bufferutil": "^4.0.8"
   }
 }

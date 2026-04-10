@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { HABIT_CATEGORIES, type HabitCategory } from "@shared/schema";
 import type { Habit } from "@shared/schema";
+import { format } from "date-fns";
 
 const TIMINGS = [
   { value: "morning", label: "Morning" },
@@ -27,13 +28,6 @@ const DAY_BUTTONS = [
   { code: "sat", label: "S" },
   { code: "sun", label: "S" },
 ] as const;
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, "0");
-  const day = d.getDate().toString().padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 interface HabitDialogProps {
   open: boolean;
@@ -80,7 +74,7 @@ export function HabitDialog({ open, onOpenChange, editingHabit, onSuccess }: Hab
         timing,
         cadence,
         duration: null,
-        startDate: formatDate(new Date()),
+        startDate: format(new Date(), "yyyy-MM-dd"),
         isBinary: false,
       });
       if (!res.ok) {

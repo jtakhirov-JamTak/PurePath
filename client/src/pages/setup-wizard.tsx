@@ -12,6 +12,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { buildIdentityDocPayload } from "@/lib/identity-helpers";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ArrowRight, Check, Sparkles, User, Target, Repeat, BookOpen } from "lucide-react";
+import { SeasonBackground } from "@/components/season-background";
+import { getWizardBackground } from "@/lib/sprint-background";
 
 const STEP_TITLES = [
   "Discovery Profile",
@@ -91,6 +93,7 @@ export default function SetupWizardPage() {
 
   return (
     <AppLayout>
+      <SeasonBackground src={getWizardBackground(step)}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         {step > 0 && step <= 5 && (
           <div className="mb-8">
@@ -112,6 +115,7 @@ export default function SetupWizardPage() {
           navigate("/today");
         }} onBack={() => goToStep(4)} />}
       </div>
+      </SeasonBackground>
     </AppLayout>
   );
 }
@@ -120,7 +124,7 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
   return (
     <div className="text-center space-y-8 py-12">
       <div className="space-y-3">
-        <h1 className="text-lg font-medium" data-testid="text-welcome-heading">Welcome to Proof Arc</h1>
+        <h1 className="text-lg font-medium" data-testid="text-welcome-heading">Welcome to The Leaf</h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto" data-testid="text-welcome-subtext">
           Let's set up your daily system using what you created in the workshop. This takes about 10 minutes.
         </p>
@@ -282,12 +286,12 @@ function IdentityStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
   const save = async () => {
     setSaving(true);
     try {
-      await apiRequest("PUT", "/api/identity-document", {
+      await apiRequest("PUT", "/api/identity-document", buildIdentityDocPayload(existing, {
         vision,
         identity: identityStatement,
         othersWillSee: relational,
         purpose,
-      });
+      }));
       queryClient.invalidateQueries({ queryKey: ["/api/identity-document"] });
       return true;
     } catch (error: any) {

@@ -1,8 +1,8 @@
-# Proof Arc - Self-Discovery Course Platform
+# The Leaf - Self-Discovery Course Platform
 
 ## Overview
 
-Proof Arc is a self-discovery and personal growth platform that integrates AI-powered features. It offers a live workshop + daily practice app focused on self-reflection, personal structure, and transformation. The platform uses a warm teal palette (primary color: HSL 163 40% 30%) with nature-inspired iconography (Sprout, TreePine from lucide-react). The BrandLogo component (`client/src/components/brand-logo.tsx`) renders an SVG arc mark. Brand text uses `text-primary`.
+The Leaf is a self-discovery and personal growth platform that integrates AI-powered features. It offers a live workshop + daily practice app focused on self-reflection, personal structure, and transformation. The platform uses a warm teal palette (primary color: HSL 163 40% 30%) with nature-inspired iconography. The BrandLogo component (`client/src/components/brand-logo.tsx`) renders an SVG leaf mark. Brand text uses `text-primary`.
 
 ## User Preferences
 

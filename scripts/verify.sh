@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Proof Arc: verify ==="
+echo "=== The Leaf: verify ==="
 echo ""
 
 echo "1) Type check (project code)..."

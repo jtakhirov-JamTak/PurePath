@@ -111,7 +111,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             data-testid="link-home-logo"
           >
             <BrandLogo size={20} className="text-primary" />
-            <span className="text-sm font-medium hidden sm:inline text-primary">Proof Arc</span>
+            <span className="text-sm font-medium hidden sm:inline text-primary">The Leaf</span>
           </button>
 
           <nav className="hidden md:flex items-center gap-1" data-testid="desktop-nav">
@@ -175,7 +175,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                       const url = window.URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `proof-arc-export-${new Date().toISOString().split("T")[0]}.md`;
+                      a.download = `the-leaf-export-${new Date().toISOString().split("T")[0]}.md`;
                       a.click();
                       window.URL.revokeObjectURL(url);
                     } catch {
@@ -203,7 +203,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {showInstallBanner && (
         <div className="bg-muted/50 border-b border-border/40 px-4 py-2 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Add Proof Arc to your home screen for the best experience</span>
+          <span className="text-muted-foreground">Add The Leaf to your home screen for the best experience</span>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setShowInstallBanner(false)} className="text-[10px] h-6 px-2">
               Dismiss
