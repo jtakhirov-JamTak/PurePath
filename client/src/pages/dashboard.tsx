@@ -300,7 +300,7 @@ export default function DashboardPage() {
     ) {
       redirectedRef.current = true;
       toast({ title: "Monthly goal needed", description: "Let's set your goal for this month." });
-      setLocation(buildProcessUrl("/monthly-goal", "/dashboard"));
+      setLocation(buildProcessUrl("/sprint", "/today"));
     }
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
@@ -510,7 +510,7 @@ export default function DashboardPage() {
                     ) : (
                       <button
                         className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${isCloseCTA ? "scale-[1.01]" : ""}`}
-                        onClick={() => { setLocation(`/journal/${selectedDate}/${dailyItem.session}?returnTo=/dashboard`); window.scrollTo(0, 0); }}
+                        onClick={() => { setLocation(`/today/journal/${selectedDate}/${dailyItem.session}?returnTo=/today`); window.scrollTo(0, 0); }}
                         data-testid={`journal-row-${dailyItem.session}`}
                       >
                         <CompletionCircle done={dailyItem.done} onToggle={() => {}} />

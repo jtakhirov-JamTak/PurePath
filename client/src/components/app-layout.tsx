@@ -16,7 +16,7 @@ import {
   ChevronDown,
   Compass,
   Map,
-  Award,
+  Target,
   User,
   Download,
   Shield,
@@ -34,10 +34,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Today", path: "/dashboard", icon: Compass },
-  { label: "Plan", path: "/plan", icon: Map },
-  { label: "Profile", path: "/profile", icon: User },
-  { label: "Proof", path: "/journal", icon: Award },
+  { label: "Today", path: "/today", icon: Compass },
+  { label: "Week", path: "/week", icon: Map },
+  { label: "Sprint", path: "/sprint", icon: Target },
+  { label: "Me", path: "/me", icon: User },
 ];
 
 interface AppLayoutProps {
@@ -93,8 +93,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location === "/" || location === "/dashboard";
+    if (path === "/today") {
+      return location === "/" || location.startsWith("/today");
     }
     return location.startsWith(path);
   };
@@ -152,7 +152,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => safeNavigate("/dashboard")} data-testid="menu-dashboard">
+                  <DropdownMenuItem onClick={() => safeNavigate("/today")} data-testid="menu-dashboard">
                     <Compass className="h-4 w-4 mr-2" />
                     Today
                   </DropdownMenuItem>

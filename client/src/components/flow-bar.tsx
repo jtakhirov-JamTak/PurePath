@@ -8,7 +8,7 @@ interface FlowBarProps {
   onDone?: () => void;
 }
 
-export function FlowBar({ fallback = "/plan", doneLabel, onDone }: FlowBarProps) {
+export function FlowBar({ fallback = "/week", doneLabel, onDone }: FlowBarProps) {
   const { returnTo, finish } = useReturnTo(fallback);
 
   const handleDone = () => {

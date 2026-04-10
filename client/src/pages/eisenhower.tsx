@@ -334,7 +334,7 @@ export default function EisenhowerPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStartStr] });
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/weekly-summary", weekStartStr] });
-      setLocation("/plan");
+      setLocation("/week");
     },
     onError: (error: Error) => {
       toast({ title: "Could not save", description: error.message, variant: "destructive" });
@@ -399,7 +399,7 @@ export default function EisenhowerPage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/plan" />
+      <FlowBar fallback="/week" />
 
       {/* Progress bar */}
       <div className="container mx-auto px-4 pt-4">

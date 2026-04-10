@@ -201,7 +201,7 @@ const emptyEvening: EveningContent = {
 export default function JournalEntryPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { returnTo, finish } = useReturnTo("/journal");
+  const { returnTo, finish } = useReturnTo("/today");
   const params = useParams<{ date: string; session: string }>();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -669,7 +669,7 @@ export default function JournalEntryPage() {
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Set up your values in your <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button> first.
+                      Set up your values in your <button type="button" onClick={() => setLocation("/me/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button> first.
                     </p>
                   )}
                 </div>
@@ -712,7 +712,7 @@ export default function JournalEntryPage() {
                   <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
                     <p className="text-sm text-muted-foreground">
                       Set up your identity statement in your{" "}
-                      <button type="button" onClick={() => setLocation("/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button>{" "}
+                      <button type="button" onClick={() => setLocation("/me/identity")} className="underline hover:text-foreground transition-colors">Identity Document</button>{" "}
                       first.
                     </p>
                   </div>

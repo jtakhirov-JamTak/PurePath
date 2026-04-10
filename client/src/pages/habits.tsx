@@ -73,7 +73,7 @@ export default function HabitsPage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/plan" doneLabel="Done" />
+      <FlowBar fallback="/week" doneLabel="Done" />
 
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="flex items-center gap-4 mb-10">
@@ -203,7 +203,7 @@ export default function HabitsPage() {
                   ))}
                   {pastHabits.length > 10 && (
                     <button
-                      onClick={() => setLocation("/journal")}
+                      onClick={() => setLocation("/today")}
                       className="text-[11px] text-primary hover:underline mt-2 block cursor-pointer"
                     >
                       Full history on Proof page

@@ -294,7 +294,7 @@ export default function JournalHubPage() {
                       {/* Morning journal */}
                       <button
                         className="flex items-center gap-2 w-full py-1 text-left hover:bg-muted/30 rounded px-1 -mx-1"
-                        onClick={() => setLocation(`/journal/${selectedDate}/morning`)}
+                        onClick={() => setLocation(`/today/journal/${selectedDate}/morning`)}
                         data-testid="detail-morning-row"
                       >
                         <Sun className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -357,7 +357,7 @@ export default function JournalHubPage() {
                       {/* Evening journal */}
                       <button
                         className="flex items-center gap-2 w-full py-1 text-left hover:bg-muted/30 rounded px-1 -mx-1"
-                        onClick={() => setLocation(`/journal/${selectedDate}/evening`)}
+                        onClick={() => setLocation(`/today/journal/${selectedDate}/evening`)}
                         data-testid="detail-evening-row"
                       >
                         <Moon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />

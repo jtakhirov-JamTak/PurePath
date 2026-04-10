@@ -60,7 +60,7 @@ export default function SetupWizardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
-      navigate("/dashboard");
+      navigate("/today");
     },
     onError: () => {
       toast({ title: "Could not skip setup", description: "Please try again.", variant: "destructive" });
@@ -109,7 +109,7 @@ export default function SetupWizardPage() {
         {step === 4 && <HabitsStep onNext={() => advanceStep(5)} onBack={() => goToStep(3)} />}
         {step === 5 && <JournalStep onComplete={async () => {
           await updateOnboarding.mutateAsync(5);
-          navigate("/dashboard");
+          navigate("/today");
         }} onBack={() => goToStep(4)} />}
       </div>
     </AppLayout>

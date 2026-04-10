@@ -187,7 +187,7 @@ export default function ScoreboardPage() {
   if (saved) {
     return (
       <AppLayout>
-        <FlowBar fallback="/profile" doneLabel="Done" />
+        <FlowBar fallback="/me" doneLabel="Done" />
         <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
           <div className="text-center space-y-2">
             <div className="h-12 w-12 mx-auto rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
@@ -214,7 +214,7 @@ export default function ScoreboardPage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/profile" doneLabel="Done" />
+      <FlowBar fallback="/me" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-6">
         {/* Header */}
         <div>

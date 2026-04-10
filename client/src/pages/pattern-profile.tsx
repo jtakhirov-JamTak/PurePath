@@ -127,7 +127,7 @@ export default function PatternProfilePage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/profile" doneLabel="Done" />
+      <FlowBar fallback="/me" doneLabel="Done" />
       <div className="container mx-auto px-4 py-12 max-w-2xl space-y-8">
         <div>
           <h1 className="text-base font-medium" data-testid="text-page-title">Pattern Profile</h1>

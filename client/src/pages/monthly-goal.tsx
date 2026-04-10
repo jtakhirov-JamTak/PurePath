@@ -165,7 +165,7 @@ export default function MonthlyGoalPage() {
     errorToast: "Could not save goal",
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-      setLocation("/dashboard");
+      setLocation("/today");
     },
   });
 
@@ -182,7 +182,7 @@ export default function MonthlyGoalPage() {
 
   return (
     <AppLayout>
-      <FlowBar fallback="/plan" doneLabel="Done" />
+      <FlowBar fallback="/week" doneLabel="Done" />
       <div className="container mx-auto px-4 py-6 max-w-lg">
         {/* Step indicator */}
         <div className="flex items-center gap-1.5 mb-6 justify-center" data-testid="step-indicator">

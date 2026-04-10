@@ -205,7 +205,7 @@ export default function PlanPage() {
             </div>
             <div
               className="flex items-start gap-2 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 py-1"
-              onClick={() => setLocation(buildProcessUrl(`/monthly-goal${!isCurrentMonth ? `?month=${currentMonthKey}` : ""}`, "/plan"))}
+              onClick={() => setLocation(buildProcessUrl(`/sprint${!isCurrentMonth ? `?month=${currentMonthKey}` : ""}`, "/week"))}
               data-testid="card-monthly-goal"
             >
               <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${goalDisplay ? "bg-primary" : "bg-muted-foreground/30"}`} />
@@ -347,7 +347,7 @@ export default function PlanPage() {
               className="text-[11px] text-primary hover:underline cursor-pointer mt-2 block"
               onClick={() => {
                 if (focusItems.length > 0 && !confirm("This will start a fresh planning ritual. Your current week will be replaced when you commit the new plan.")) return;
-                setLocation(buildProcessUrl(`/eisenhower${!isCurrentWeek ? `?week=${weekStartStr}` : ""}`, "/plan"));
+                setLocation(buildProcessUrl(`/week/plan${!isCurrentWeek ? `?week=${weekStartStr}` : ""}`, "/week"));
               }}
               data-testid="card-plan-week"
             >
@@ -369,7 +369,7 @@ export default function PlanPage() {
                 <div
                   key={h.id}
                   className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1"
-                  onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+                  onClick={() => setLocation(buildProcessUrl("/week/habits", "/week"))}
                 >
                   <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_COLORS[h.category || "health"] || "bg-primary"}`} />
                   <span className="text-xs flex-1">{h.name}</span>
@@ -378,7 +378,7 @@ export default function PlanPage() {
               ))}
               <button
                 className="text-[11px] text-primary hover:underline cursor-pointer mt-1"
-                onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+                onClick={() => setLocation(buildProcessUrl("/week/habits", "/week"))}
               >
                 Manage habits →
               </button>
@@ -386,7 +386,7 @@ export default function PlanPage() {
           ) : (
             <button
               className="text-xs text-primary hover:underline cursor-pointer"
-              onClick={() => setLocation(buildProcessUrl("/habits", "/plan"))}
+              onClick={() => setLocation(buildProcessUrl("/week/habits", "/week"))}
             >
               Set up habits →
             </button>

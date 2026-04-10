@@ -1,5 +1,5 @@
 import { Component, useEffect, type ReactNode } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,8 +15,6 @@ import EisenhowerPage from "@/pages/eisenhower";
 import HabitsPage from "@/pages/habits";
 
 import PlanPage from "@/pages/plan";
-import JournalHubPage from "@/pages/journal-hub";
-
 import IdentityDocPage from "@/pages/identity-doc";
 import PatternProfilePage from "@/pages/pattern-profile";
 import ScoreboardPage from "@/pages/scoreboard";
@@ -135,7 +133,7 @@ function HomePage() {
   }
 
   if (isAuthenticated && accessStatus?.hasAccess) {
-    return <DashboardPage />;
+    return <Redirect to="/today" />;
   }
 
   if (!isAuthenticated) {
@@ -150,43 +148,46 @@ function HomePage() {
   );
 }
 
+function JournalRedirect({ params }: { params: { date: string; session: string } }) {
+  return <Redirect to={`/today/journal/${params.date}/${params.session}`} />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
-      <Route path="/dashboard">
+
+      {/* Primary routes */}
+      <Route path="/today">
         {() => <AccessGatedRoute component={DashboardPage} />}
       </Route>
-      <Route path="/journal/:date/:session">
+      <Route path="/today/journal/:date/:session">
         {() => <AccessGatedRoute component={JournalEntryPage} />}
       </Route>
-      <Route path="/eisenhower">
-        {() => <AccessGatedRoute component={EisenhowerPage} />}
-      </Route>
-      <Route path="/habits">
-        {() => <AccessGatedRoute component={HabitsPage} />}
-      </Route>
-      <Route path="/plan">
+      <Route path="/week">
         {() => <AccessGatedRoute component={PlanPage} />}
       </Route>
-      <Route path="/profile">
+      <Route path="/week/plan">
+        {() => <AccessGatedRoute component={EisenhowerPage} />}
+      </Route>
+      <Route path="/week/habits">
+        {() => <AccessGatedRoute component={HabitsPage} />}
+      </Route>
+      <Route path="/sprint">
+        {() => <AccessGatedRoute component={MonthlyGoalPage} />}
+      </Route>
+      <Route path="/me">
         {() => <AccessGatedRoute component={ProfilePage} />}
       </Route>
-      <Route path="/journal">
-        {() => <AccessGatedRoute component={JournalHubPage} />}
-      </Route>
-      <Route path="/identity">
+      <Route path="/me/identity">
         {() => <AccessGatedRoute component={IdentityDocPage} />}
       </Route>
-      <Route path="/pattern-profile">
+      <Route path="/me/patterns">
         {() => <AccessGatedRoute component={PatternProfilePage} />}
       </Route>
-      <Route path="/scoreboard">
+      <Route path="/me/scoreboard">
         {() => <AccessGatedRoute component={ScoreboardPage} />}
-      </Route>
-      <Route path="/monthly-goal">
-        {() => <AccessGatedRoute component={MonthlyGoalPage} />}
       </Route>
       <Route path="/setup">
         {() => <AccessGatedRoute component={SetupWizardPage} />}
@@ -194,6 +195,23 @@ function Router() {
       <Route path="/admin">
         {() => <AdminRoute component={AdminPage} />}
       </Route>
+
+      {/* Backward-compatibility redirects */}
+      <Route path="/dashboard">{() => <Redirect to="/today" />}</Route>
+      <Route path="/journal/:date/:session">
+        {(params) => <JournalRedirect params={params} />}
+      </Route>
+      <Route path="/journal">{() => <Redirect to="/today" />}</Route>
+      <Route path="/plan">{() => <Redirect to="/week" />}</Route>
+      <Route path="/eisenhower">{() => <Redirect to="/week/plan" />}</Route>
+      <Route path="/habits">{() => <Redirect to="/week/habits" />}</Route>
+      <Route path="/profile">{() => <Redirect to="/me" />}</Route>
+      <Route path="/identity">{() => <Redirect to="/me/identity" />}</Route>
+      <Route path="/pattern-profile">{() => <Redirect to="/me/patterns" />}</Route>
+      <Route path="/scoreboard">{() => <Redirect to="/me/scoreboard" />}</Route>
+      <Route path="/monthly-goal">{() => <Redirect to="/sprint" />}</Route>
+      <Route path="/month">{() => <Redirect to="/sprint" />}</Route>
+
       <Route component={NotFound} />
     </Switch>
   );

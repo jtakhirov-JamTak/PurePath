@@ -9,7 +9,7 @@ function isValidReturnTo(path: string | null): path is string {
   return true;
 }
 
-export function useReturnTo(fallback = "/dashboard") {
+export function useReturnTo(fallback = "/today") {
   const [, setLocation] = useLocation();
   const search = useSearch();
 

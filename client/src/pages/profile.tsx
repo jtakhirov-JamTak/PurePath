@@ -31,21 +31,21 @@ export default function ProfilePage() {
       title: "Identity Document",
       subtitle: "Vision, identity, purpose",
       filled: identityFilled,
-      path: "/identity",
+      path: "/me/identity",
       testId: "card-nav-identity",
     },
     {
       title: "Pattern Profile",
       subtitle: "Patterns, triggers, blind spots",
       filled: patternsFilled,
-      path: "/pattern-profile",
+      path: "/me/patterns",
       testId: "card-nav-patterns",
     },
     {
       title: "1-Year Commitment",
       subtitle: "Domain, proof, obstacles, IF-THEN",
       filled: scoreboardFilled,
-      path: "/scoreboard",
+      path: "/me/scoreboard",
       testId: "card-nav-scoreboard",
     },
   ];
@@ -62,7 +62,7 @@ export default function ProfilePage() {
             <button
               key={card.path}
               className="w-full flex items-center gap-3 py-4 text-left hover:bg-muted/50 transition-colors"
-              onClick={() => setLocation(buildProcessUrl(card.path, "/profile"))}
+              onClick={() => setLocation(buildProcessUrl(card.path, "/me"))}
               data-testid={card.testId}
             >
               <span

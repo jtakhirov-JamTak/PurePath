@@ -50,7 +50,7 @@ export default function AuthPage() {
       // Invalidate auth cache so useAuth picks up the new session
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/access-status"] });
-      setLocation("/dashboard");
+      setLocation("/today");
     } catch {
       setError("Network error. Please try again.");
     } finally {

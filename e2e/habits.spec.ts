@@ -123,7 +123,7 @@ test.describe("Habits Management Page", () => {
   });
 
   test("habits page lists existing habits", async ({ page }) => {
-    await page.goto("/habits");
+    await page.goto("/week/habits");
 
     await expect(page.getByTestId("text-page-title")).toBeVisible();
     await expect(page.getByTestId("card-habit-1")).toBeVisible();
@@ -133,19 +133,19 @@ test.describe("Habits Management Page", () => {
   });
 
   test("shows habit count", async ({ page }) => {
-    await page.goto("/habits");
+    await page.goto("/week/habits");
 
     await expect(page.getByTestId("text-habit-count")).toBeVisible();
   });
 
   test("add habit button is visible", async ({ page }) => {
-    await page.goto("/habits");
+    await page.goto("/week/habits");
 
     await expect(page.getByTestId("button-add-habit")).toBeVisible();
   });
 
   test("edit and delete buttons exist on each habit card", async ({ page }) => {
-    await page.goto("/habits");
+    await page.goto("/week/habits");
 
     await expect(page.getByTestId("button-edit-habit-1")).toBeVisible();
     await expect(page.getByTestId("button-delete-habit-1")).toBeVisible();

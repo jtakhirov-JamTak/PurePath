@@ -28,7 +28,7 @@ test.describe("Journal Creation", () => {
   });
 
   test("morning journal page loads with correct fields", async ({ page }) => {
-    await page.goto(`/journal/${todayStr}/morning`);
+    await page.goto(`/today/journal/${todayStr}/morning`);
 
     await expect(page.getByTestId("card-check-in")).toBeVisible();
     await expect(page.getByTestId("input-sleep-hours")).toBeVisible();
@@ -39,7 +39,7 @@ test.describe("Journal Creation", () => {
   });
 
   test("energy and stress level buttons are clickable", async ({ page }) => {
-    await page.goto(`/journal/${todayStr}/morning`);
+    await page.goto(`/today/journal/${todayStr}/morning`);
 
     // Set energy level
     await page.getByTestId("button-energy-3").click();
@@ -51,7 +51,7 @@ test.describe("Journal Creation", () => {
   });
 
   test("can fill and save a morning journal", async ({ page }) => {
-    await page.goto(`/journal/${todayStr}/morning`);
+    await page.goto(`/today/journal/${todayStr}/morning`);
 
     await page.getByTestId("input-sleep-hours").fill("7");
     await page.getByTestId("button-energy-3").click();
@@ -73,14 +73,14 @@ test.describe("Journal Creation", () => {
   });
 
   test("let go card field is present", async ({ page }) => {
-    await page.goto(`/journal/${todayStr}/morning`);
+    await page.goto(`/today/journal/${todayStr}/morning`);
 
     await expect(page.getByTestId("card-let-go")).toBeVisible();
     await expect(page.getByTestId("input-letting-go")).toBeVisible();
   });
 
   test("mode toggle switches between quick and deep", async ({ page }) => {
-    await page.goto(`/journal/${todayStr}/morning`);
+    await page.goto(`/today/journal/${todayStr}/morning`);
 
     await expect(page.getByTestId("mode-toggle")).toBeVisible();
     await page.getByTestId("button-mode-deep").click();
@@ -95,7 +95,7 @@ test.describe("Journal Creation", () => {
       route.fulfill({ json: null }),
     );
 
-    await page.goto(`/journal/${todayStr}/evening`);
+    await page.goto(`/today/journal/${todayStr}/evening`);
 
     await expect(page.getByTestId("card-win-of-the-day")).toBeVisible();
     await expect(page.getByTestId("input-win-of-the-day")).toBeVisible();
@@ -109,7 +109,7 @@ test.describe("Journal Creation", () => {
       route.fulfill({ json: null }),
     );
 
-    await page.goto(`/journal/${todayStr}/evening`);
+    await page.goto(`/today/journal/${todayStr}/evening`);
 
     await page.getByTestId("input-win-of-the-day").fill("Completed a hard task");
     await page.getByTestId("input-shutdown-enough").fill("I did my best today");
