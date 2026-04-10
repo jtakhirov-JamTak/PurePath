@@ -10,9 +10,10 @@ import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { apiRequest } from "@/lib/queryClient";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
+import { useToast } from "@/hooks/use-toast";
 import { format, addDays, getDay } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { EisenhowerEntry, Habit, MonthlyGoal } from "@shared/schema";
+import type { EisenhowerEntry, Habit, MonthlyGoal, AnnualCommitment } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_LABELS } from "@/lib/constants";
 import { getWeekFocusItems, groupByGroupId } from "@/lib/eisenhower-filters";
 
@@ -102,10 +103,12 @@ export default function PlanPage() {
 
   const dayOfWeek = getDay(today);
   const weekLocked = dayOfWeek === 0 || dayOfWeek === 6;
+  const { toast } = useToast();
 
   // ─── Queries ─────────────────────────────────────────────────────
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({ queryKey: ["/api/eisenhower"], enabled: !!user });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"], enabled: !!user });
+  const { data: annualCommitment } = useQuery<AnnualCommitment>({ queryKey: ["/api/annual-commitment"], enabled: !!user });
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
     queryFn: async () => { const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed to fetch"); return res.json(); },
@@ -115,10 +118,15 @@ export default function PlanPage() {
   // ─── Computed ────────────────────────────────────────────────────
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
   const activeHabits = habits.filter(h => h.active !== false);
+  const weeklyProofBehavior = annualCommitment?.weeklyProofBehaviorHabitId
+    ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null
+    : null;
   const focusItems = getWeekFocusItems(eisenhowerEntries, weekStartStr);
   const groupedFocus = groupByGroupId(focusItems);
-  const q1Items = groupedFocus.filter(e => e.quadrant === "q1");
-  const q2Items = groupedFocus.filter(e => e.quadrant === "q2");
+  // Read proofBucket with quadrant fallback for legacy data
+  const getBucket = (e: typeof groupedFocus[0]) => e.proofBucket || (e.quadrant === "q1" ? "handle" : e.quadrant === "q2" ? "protect" : "not_this_week");
+  const q1Items = groupedFocus.filter(e => getBucket(e) === "handle");
+  const q2Items = groupedFocus.filter(e => getBucket(e) === "protect");
 
 
   // ─── Accordion state ─────────────────────────────────────────────
@@ -184,6 +192,14 @@ export default function PlanPage() {
     <AppLayout>
       <div className="container mx-auto px-4 py-4 max-w-2xl space-y-3">
 
+        {/* Weekly Proof Behavior */}
+        {weeklyProofBehavior && (
+          <div className="rounded-lg border-l-4 border-l-primary/60 bg-primary/[0.04] px-4 py-3" data-testid="weekly-proof-behavior">
+            <p className="text-xs font-medium text-muted-foreground">Weekly proof behavior</p>
+            <p className="text-sm font-medium">{weeklyProofBehavior.name}</p>
+          </div>
+        )}
+
         {/* ─── 1. COMMIT — Monthly ───────────────────────────────── */}
         <Section
           id="commit" verb="Commit" timeLabel="Monthly" accentClass="text-[#B8706A]"
@@ -215,6 +231,24 @@ export default function PlanPage() {
               </div>
             </div>
           </div>
+
+          {/* Flag for sprint review */}
+          {goalDisplay && (
+            <button
+              className="text-[11px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer mt-2 block"
+              onClick={() => {
+                const reason = prompt("Why does this need a sprint review?");
+                if (reason?.trim()) {
+                  apiRequest("PATCH", "/api/monthly-goal/flag-review", { monthKey: currentMonthKey, reason: reason.trim() })
+                    .then(() => toast({ title: "Flagged for sprint review" }))
+                    .catch(() => toast({ title: "Could not flag for review", variant: "destructive" }));
+                }
+              }}
+              data-testid="button-flag-review"
+            >
+              Flag for sprint review
+            </button>
+          )}
         </Section>
 
         {/* ─── 2. DECIDE — Weekly ────────────────────────────────── */}

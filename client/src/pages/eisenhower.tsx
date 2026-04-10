@@ -9,9 +9,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useLocation } from "wouter";
-import type { EisenhowerEntry, IdentityDocument, MonthlyGoal } from "@shared/schema";
+import type { EisenhowerEntry, IdentityDocument, MonthlyGoal, AnnualCommitment, PatternProfile } from "@shared/schema";
 import {
-  MAX_Q1, MAX_Q2, MAX_BRAIN_DUMP, MAX_DAYS_PER_ITEM, SOFT_CAP, TOTAL_STEPS,
+  MAX_Q1, MAX_Q2, MAX_BRAIN_DUMP, MAX_DAYS_PER_ITEM, SOFT_CAP, TOTAL_STEPS, VISIBLE_SCREENS, stepToScreen, SCREEN_LABELS,
   classifyItem, computeSortPriority, generateGroupId, createEmptyItem, suggestSequence,
   type ProofItem, type OpeningData, type CloseWeekData,
   type SortResult, type SortImportance, type SortConsequence, type SortBlocker,
@@ -89,6 +89,13 @@ export default function EisenhowerPage() {
   // Context data
   const currentMonthKey = format(today, "yyyy-MM");
   const { data: identityDoc } = useQuery<IdentityDocument>({ queryKey: ["/api/identity-document"] });
+  const { data: annualCommitment } = useQuery<AnnualCommitment>({ queryKey: ["/api/annual-commitment"] });
+  const { data: patternProfile } = useQuery<PatternProfile>({ queryKey: ["/api/pattern-profile"] });
+  const { data: habits = [] } = useQuery<{ id: number; name: string; source?: string | null }[]>({ queryKey: ["/api/habits"] });
+  const weeklyProofBehaviorName = annualCommitment?.weeklyProofBehaviorHabitId
+    ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId)?.name || null
+    : null;
+  const avoidanceLoopStory = patternProfile?.repeatingLoopStory?.trim() || null;
   const { data: monthlyGoal } = useQuery<MonthlyGoal>({
     queryKey: ["/api/monthly-goal", currentMonthKey],
     queryFn: async () => {
@@ -97,6 +104,27 @@ export default function EisenhowerPage() {
       return res.json();
     },
   });
+
+  // Pre-fill IF-THEN on protect items from annual commitment (only empty fields, tracked via item marker)
+  useEffect(() => {
+    if (step === 8 && annualCommitment) {
+      const plans = [annualCommitment.ifThenPlan1, annualCommitment.ifThenPlan2].filter(Boolean);
+      if (plans.length > 0) {
+        setItems(prev => {
+          const needsPrefill = prev.some(item =>
+            item.sortResult === "protect" && !item.ifThenStatement && !(item as any)._ifThenPrefilled
+          );
+          if (!needsPrefill) return prev;
+          return prev.map(item => {
+            if (item.sortResult !== "protect" || item.ifThenStatement || (item as any)._ifThenPrefilled) return item;
+            const planIdx = prev.filter(i => i.sortResult === "protect" && i.id < item.id).length;
+            if (planIdx >= plans.length) return { ...item, _ifThenPrefilled: true } as any;
+            return { ...item, ifThenStatement: plans[planIdx]!, _ifThenPrefilled: true } as any;
+          });
+        });
+      }
+    }
+  }, [step, annualCommitment]);
 
   // Unsaved guard
   useEffect(() => {
@@ -309,6 +337,7 @@ export default function EisenhowerPage() {
           sequenceReason: null,
           ifThenStatement: originalItem.ifThenStatement || null,
           revisitDate: originalItem.revisitDate || null,
+          proofBucket: item.sortResult || null,
         };
       });
 
@@ -395,33 +424,50 @@ export default function EisenhowerPage() {
     setStep(s => Math.max(s - 1, 1));
   };
 
-  const progressPercent = Math.round((step / TOTAL_STEPS) * 100);
+  const currentScreen = stepToScreen(step);
+  const progressPercent = Math.round((currentScreen / VISIBLE_SCREENS) * 100);
 
   return (
     <AppLayout>
       <FlowBar fallback="/week" />
 
-      {/* Progress bar */}
+      {/* Progress bar — shows 4 visible screens */}
       <div className="container mx-auto px-4 pt-4">
         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
           <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${progressPercent}%` }} />
         </div>
-        <p className="text-xs text-muted-foreground mt-1 text-right">Step {step} of {TOTAL_STEPS}</p>
+        <p className="text-xs text-muted-foreground mt-1 text-right">
+          {SCREEN_LABELS[currentScreen - 1]} &middot; Step {currentScreen} of {VISIBLE_SCREENS}
+        </p>
       </div>
 
       <main className="container mx-auto px-4 py-6 max-w-lg">
-        {/* Step 1 — Close Last Week */}
+        {/* Screen 1 — Review */}
         {step === 1 && (
-          <StepCloseLastWeek
-            closeWeekData={closeWeekData ?? null}
-            isLoading={closeWeekLoading}
-            openingData={openingData}
-            onOpeningChange={onOpeningChange}
-            weekLabel={weekLabel}
-            planNextWeek={planNextWeek}
-            onToggleWeek={setPlanNextWeek}
-            hasExistingPlan={hasExistingPlan}
-          />
+          <div className="space-y-6">
+            {weeklyProofBehaviorName && (
+              <div className="rounded-lg border-l-4 border-l-primary/60 bg-primary/[0.04] px-4 py-3" data-testid="weekly-proof-behavior-review">
+                <p className="text-xs font-medium text-muted-foreground">Weekly proof behavior</p>
+                <p className="text-sm font-medium">{weeklyProofBehaviorName}</p>
+              </div>
+            )}
+            <StepCloseLastWeek
+              closeWeekData={closeWeekData ?? null}
+              isLoading={closeWeekLoading}
+              openingData={openingData}
+              onOpeningChange={onOpeningChange}
+              weekLabel={weekLabel}
+              planNextWeek={planNextWeek}
+              onToggleWeek={setPlanNextWeek}
+              hasExistingPlan={hasExistingPlan}
+            />
+            {avoidanceLoopStory && (
+              <div className="rounded-lg bg-muted/30 px-4 py-3 opacity-60" data-testid="avoidance-loop-reference">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Your avoidance loop</p>
+                <p className="text-xs italic text-muted-foreground">{avoidanceLoopStory}</p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Step 2 — Open This Week */}

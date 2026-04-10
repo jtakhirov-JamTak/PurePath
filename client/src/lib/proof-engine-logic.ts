@@ -1,4 +1,4 @@
-/** Types, constants, and pure logic for the Weekly Proof Engine (8-step wizard). */
+/** Types, constants, and pure logic for the Weekly Proof Engine (4-screen wizard). */
 
 export const MAX_Q1 = 5;
 export const MAX_Q2 = 2;
@@ -6,6 +6,18 @@ export const MAX_BRAIN_DUMP = 30;
 export const MAX_DAYS_PER_ITEM = 5;
 export const SOFT_CAP = 10;
 export const TOTAL_STEPS = 8;
+export const VISIBLE_SCREENS = 4;
+
+/** Map internal step (1-8) to visible screen (1-4) */
+export function stepToScreen(step: number): number {
+  if (step <= 1) return 1; // Review
+  if (step <= 2) return 2; // Choose Truth
+  if (step <= 6) return 3; // Build Week
+  return 4;                // Protect Week
+}
+
+/** Screen labels for progress display */
+export const SCREEN_LABELS = ["Review", "Choose Truth", "Build Week", "Protect Week"];
 
 export const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
   const totalMinutes = 8 * 60 + i * 30; // 8:00am to 9:00pm
@@ -19,14 +31,13 @@ export const TIME_SLOTS = Array.from({ length: 27 }, (_, i) => {
 });
 
 // Step 5 — Classification enums
-export type SortImportance = "clearly" | "somewhat" | "no";
+export type SortImportance = "clearly" | "no";
 export type SortConsequence = "deadline_breaks" | "task_blocked" | "cost_worse" | "important_nothing_breaks" | "not_much";
 export type SortBlocker = "avoiding_discomfort" | "unclear_next_step" | "need_someone_else" | "nothing";
 export type SortResult = "handle" | "protect" | "not_this_week";
 
 export const IMPORTANCE_CHIPS: { value: SortImportance; label: string }[] = [
   { value: "clearly", label: "Yes, this clearly deserves space this week" },
-  { value: "somewhat", label: "It supports something important, but is not central" },
   { value: "no", label: "No, not this week" },
 ];
 
@@ -119,7 +130,7 @@ export function classifyItem(item: ProofItem): SortResult {
   if (ignore === "not_much") return "not_this_week";
 
   // Protect: important but no urgency
-  if (goal === "clearly" || goal === "somewhat") return "protect";
+  if (goal === "clearly") return "protect";
 
   return "not_this_week";
 }
@@ -137,8 +148,7 @@ export function computeSortPriority(item: ProofItem): number {
 
   if (result === "protect") {
     if (goal === "clearly") return 1;
-    if (goal === "somewhat") return 2;
-    return 3;
+    return 2;
   }
 
   return 99;

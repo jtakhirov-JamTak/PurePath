@@ -13,8 +13,6 @@ import type { Habit } from "@shared/schema";
 
 import { TIMING_ORDER, TIMING_LABELS } from "@/lib/constants";
 import { MAX_ACTIVE_HABITS } from "@/lib/habit-filters";
-const TIMING_SHORT = TIMING_LABELS;
-const MAX_HABITS = MAX_ACTIVE_HABITS;
 
 export default function HabitsPage() {
   const [, setLocation] = useLocation();
@@ -38,7 +36,7 @@ export default function HabitsPage() {
     .filter(h => !h.active)
     .sort((a, b) => new Date(b.endDate || b.createdAt).getTime() - new Date(a.endDate || a.createdAt).getTime());
 
-  const atLimit = activeHabits.length >= MAX_HABITS;
+  const atLimit = activeHabits.length >= MAX_ACTIVE_HABITS;
   const [showPastHabits, setShowPastHabits] = useState(false);
 
   const openEdit = (habit: Habit) => {
@@ -89,7 +87,7 @@ export default function HabitsPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <p className="text-[11px] text-muted-foreground" data-testid="text-habit-count">
-              {activeHabits.length}/{MAX_HABITS} habits
+              {activeHabits.length}/{MAX_ACTIVE_HABITS} habits
             </p>
             {atLimit ? (
               <p className="text-[11px] text-muted-foreground italic">
@@ -138,7 +136,7 @@ export default function HabitsPage() {
                               {habit.name}
                             </p>
                             <span className="text-[10px] text-muted-foreground shrink-0">
-                              {TIMING_SHORT[habit.timing || "afternoon"] || "PM"}
+                              {TIMING_LABELS[habit.timing || "afternoon"] || "PM"}
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">

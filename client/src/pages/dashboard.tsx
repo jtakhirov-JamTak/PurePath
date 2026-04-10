@@ -149,14 +149,20 @@ export default function DashboardPage() {
   // ─── Habit tiers by source ────────────────────────────────────────
   const annualHabits = useMemo(() => selectedHabits.filter(h => h.source === "annual"), [selectedHabits]);
   const sprintHabits = useMemo(() => selectedHabits.filter(h => h.source === "sprint"), [selectedHabits]);
-  const pinnedSupportHabits = useMemo(() =>
-    selectedHabits.filter(h => (!h.source || h.source === "support") && h.isPinned).slice(0, 3),
+  const supportHabits = useMemo(() =>
+    selectedHabits.filter(h => !h.source || h.source === "support"),
     [selectedHabits]
   );
-  const otherSupportHabits = useMemo(() =>
-    selectedHabits.filter(h => (!h.source || h.source === "support") && !h.isPinned),
-    [selectedHabits]
-  );
+  // Legacy users (no isPinned set): if ≤3 support habits, show all in main lane
+  const hasAnyPinned = supportHabits.some(h => h.isPinned);
+  const pinnedSupportHabits = useMemo(() => {
+    if (!hasAnyPinned && supportHabits.length <= 3) return supportHabits;
+    return supportHabits.filter(h => h.isPinned).slice(0, 3);
+  }, [supportHabits, hasAnyPinned]);
+  const otherSupportHabits = useMemo(() => {
+    if (!hasAnyPinned && supportHabits.length <= 3) return [];
+    return supportHabits.filter(h => !h.isPinned);
+  }, [supportHabits, hasAnyPinned]);
 
   // ─── Unified daily items (sorted by time, incomplete on top) ──────
   type DailyItem =
@@ -464,22 +470,15 @@ export default function DashboardPage() {
                     onToggle={() => {
                       if (!todayMorningJournal) return;
                       const newVal = !todayMorningJournal.proofMoveCompleted;
+                      // Spread all existing fields to avoid wiping any — only override proofMoveCompleted
+                      const { id, createdAt, updatedAt, userId, ...journalFields } = todayMorningJournal;
                       apiRequest("POST", "/api/journals", {
-                        date: todayStr,
-                        session: "morning",
-                        content: todayMorningJournal.content || "",
-                        gratitude: todayMorningJournal.gratitude || "",
-                        intentions: todayMorningJournal.intentions || "",
-                        reflections: todayMorningJournal.reflections || "",
-                        highlights: todayMorningJournal.highlights || "",
-                        challenges: todayMorningJournal.challenges || "",
-                        proofMove: todayMorningJournal.proofMove || "",
+                        ...journalFields,
                         proofMoveCompleted: newVal,
-                        selectedValueKey: todayMorningJournal.selectedValueKey,
-                        selectedValueLabel: todayMorningJournal.selectedValueLabel,
-                        selectedValueWhySnapshot: todayMorningJournal.selectedValueWhySnapshot,
                       }).then(() => {
                         queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
+                      }).catch(() => {
+                        toast({ title: "Could not update proof move", variant: "destructive" });
                       });
                     }}
                     testId="proof-move-toggle"
