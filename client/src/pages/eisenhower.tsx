@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
@@ -99,14 +100,7 @@ export default function EisenhowerPage() {
     ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId)?.name || null
     : null;
   const avoidanceLoopStory = patternProfile?.repeatingLoopStory?.trim() || null;
-  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", currentMonthKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-  });
+  const { data: monthlyGoal } = useMonthlyGoal(currentMonthKey);
 
   // Pre-fill IF-THEN on protect items from annual commitment (only empty fields, tracked via item marker)
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PATTERN_LABELS } from "@/lib/display-names";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +120,7 @@ export function PrecisionWizard({ mode, onComplete, onCancel, existingData, beha
           </div>
           <div className="flex-1">
             <CardTitle className="text-sm">
-              {step === "success" ? "Success Pattern" : "Shadow Pattern"}
+              {step === "success" ? PATTERN_LABELS.success : PATTERN_LABELS.shadow}
             </CardTitle>
             <CardDescription>
               {step === "success"

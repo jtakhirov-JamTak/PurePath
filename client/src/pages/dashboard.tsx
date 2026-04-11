@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -86,15 +87,7 @@ export default function DashboardPage() {
   });
 
   const currentMonthKey = format(today, "yyyy-MM");
-  const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", currentMonthKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user,
-  });
+  const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useMonthlyGoal(currentMonthKey, !!user);
 
   const { data: identityDoc } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],

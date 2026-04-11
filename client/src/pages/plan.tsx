@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { X, Plus, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
+import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -109,11 +110,7 @@ export default function PlanPage() {
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({ queryKey: ["/api/eisenhower"], enabled: !!user });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"], enabled: !!user });
   const { data: annualCommitment } = useQuery<AnnualCommitment>({ queryKey: ["/api/annual-commitment"], enabled: !!user });
-  const { data: monthlyGoal } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", currentMonthKey],
-    queryFn: async () => { const res = await fetch(`/api/monthly-goal?month=${currentMonthKey}`, { credentials: "include" }); if (!res.ok) throw new Error("Failed to fetch"); return res.json(); },
-    enabled: !!user,
-  });
+  const { data: monthlyGoal } = useMonthlyGoal(currentMonthKey, !!user);
 
   // ─── Computed ────────────────────────────────────────────────────
   const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";

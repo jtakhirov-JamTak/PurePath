@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PATTERN_LABELS } from "@/lib/display-names";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { format, addDays } from "date-fns";
@@ -1021,7 +1022,7 @@ function BestStateCalibrationStep({ onNext, onBack }: { onNext: () => void; onBa
       <div className="space-y-4">
         <SubStepDots current={subIdx} total={BEST_STATE_SUB_STEPS.length} />
         <div className="text-center space-y-1 mb-4">
-          <h2 className="text-base font-medium">Shadow Pattern 2</h2>
+          <h2 className="text-base font-medium">{PATTERN_LABELS.shadow} 2</h2>
           <p className="text-sm text-muted-foreground">Map the behavior that pulls you out of your best state.</p>
         </div>
         {shadowPattern2 ? (
@@ -1131,7 +1132,7 @@ function BestStateCalibrationStep({ onNext, onBack }: { onNext: () => void; onBa
       )}
 
       {sub === "shadow2ask" && (
-        <SubStepShell icon={Shield} heading="Shadow Pattern" subtext="Is there a clear opposite — a behavior that pulls you out of your best state?">
+        <SubStepShell icon={Shield} heading={PATTERN_LABELS.shadow} subtext="Is there a clear opposite — a behavior that pulls you out of your best state?">
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"

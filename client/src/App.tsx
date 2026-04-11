@@ -155,39 +155,39 @@ function Router() {
       <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
 
-      {/* Primary routes */}
+      {/* Primary routes — each wrapped in TabErrorBoundary for graceful per-tab recovery */}
       <Route path="/today">
-        {() => <AccessGatedRoute component={DashboardPage} />}
+        {() => <TabErrorBoundary tabName="Today"><AccessGatedRoute component={DashboardPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/today/journal/:date/:session">
-        {() => <AccessGatedRoute component={JournalEntryPage} />}
+        {() => <TabErrorBoundary tabName="Journal"><AccessGatedRoute component={JournalEntryPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/week">
-        {() => <AccessGatedRoute component={PlanPage} />}
+        {() => <TabErrorBoundary tabName="Week"><AccessGatedRoute component={PlanPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/week/plan">
-        {() => <AccessGatedRoute component={EisenhowerPage} />}
+        {() => <TabErrorBoundary tabName="Week"><AccessGatedRoute component={EisenhowerPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/week/habits">
-        {() => <AccessGatedRoute component={HabitsPage} />}
+        {() => <TabErrorBoundary tabName="Week"><AccessGatedRoute component={HabitsPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/sprint">
-        {() => <AccessGatedRoute component={SprintPage} />}
+        {() => <TabErrorBoundary tabName="Sprint"><AccessGatedRoute component={SprintPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/proof">
-        {() => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-border" /></div>}><AccessGatedRoute component={ProofPage} /></Suspense>}
+        {() => <TabErrorBoundary tabName="Proof"><Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-border" /></div>}><AccessGatedRoute component={ProofPage} /></Suspense></TabErrorBoundary>}
       </Route>
       <Route path="/me">
-        {() => <AccessGatedRoute component={MePage} />}
+        {() => <TabErrorBoundary tabName="Me"><AccessGatedRoute component={MePage} /></TabErrorBoundary>}
       </Route>
       <Route path="/me/identity">{() => <Redirect to="/me" />}</Route>
       <Route path="/me/patterns">{() => <Redirect to="/me" />}</Route>
       <Route path="/me/scoreboard">{() => <Redirect to="/me" />}</Route>
       <Route path="/setup">
-        {() => <AccessGatedRoute component={SetupWizardPage} />}
+        {() => <TabErrorBoundary tabName="Setup"><AccessGatedRoute component={SetupWizardPage} /></TabErrorBoundary>}
       </Route>
       <Route path="/admin">
-        {() => <AdminRoute component={AdminPage} />}
+        {() => <TabErrorBoundary tabName="Admin"><AdminRoute component={AdminPage} /></TabErrorBoundary>}
       </Route>
 
       {/* Backward-compatibility redirects */}
@@ -244,9 +244,46 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
           <p className="text-sm text-muted-foreground mb-4">Please refresh the page to continue.</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+            className="px-4 py-2 min-h-[44px] bg-primary text-primary-foreground rounded-md text-sm"
           >
             Refresh
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+class TabErrorBoundary extends Component<
+  { children: ReactNode; tabName: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; tabName: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`Tab error in ${this.props.tabName}:`, (error as Error).message, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center min-h-[60vh]">
+          <h2 className="text-lg font-semibold mb-2">
+            Something went wrong in {this.props.tabName}
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Your other tabs still work. Tap below to retry.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="px-4 py-2 min-h-[44px] bg-primary text-primary-foreground rounded-md text-sm"
+          >
+            Retry
           </button>
         </div>
       );

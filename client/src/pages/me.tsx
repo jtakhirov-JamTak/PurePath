@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { PATTERN_LABELS } from "@/lib/display-names";
 import { AppLayout } from "@/components/app-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,7 +245,7 @@ export default function MePage() {
         </MeSection>
 
         {/* ═══ 4. Success Patterns ═══ */}
-        <MeSection title="Success Patterns" filled={!!pf("helpingPattern1Condition").trim()} testId="me-success-patterns">
+        <MeSection title={PATTERN_LABELS.successPlural} filled={!!pf("helpingPattern1Condition").trim()} testId="me-success-patterns">
           {[1, 2, 3].map(n => {
             const c = `helpingPattern${n}Condition` as PFieldKey;
             if (n > 1 && !pf(c).trim() && !pf(`helpingPattern${n}Behavior` as PFieldKey).trim()) return null;
@@ -262,7 +263,7 @@ export default function MePage() {
         </MeSection>
 
         {/* ═══ 5. Shadow Patterns ═══ */}
-        <MeSection title="Shadow Patterns" filled={!!pf("hurtingPattern1Condition").trim()} testId="me-shadow-patterns">
+        <MeSection title={PATTERN_LABELS.shadowPlural} filled={!!pf("hurtingPattern1Condition").trim()} testId="me-shadow-patterns">
           {[1, 2, 3].map(n => {
             const c = `hurtingPattern${n}Condition` as PFieldKey;
             if (n > 1 && !pf(c).trim() && !pf(`hurtingPattern${n}Behavior` as PFieldKey).trim()) return null;
@@ -280,7 +281,7 @@ export default function MePage() {
         </MeSection>
 
         {/* ═══ 6. Repeating Trigger Pattern ═══ */}
-        <MeSection title="Repeating Trigger Pattern" filled={!!pf("triggerPatternTrigger").trim()} testId="me-trigger">
+        <MeSection title={PATTERN_LABELS.triggerPattern} filled={!!pf("triggerPatternTrigger").trim()} testId="me-trigger">
           <Field label="When this happens" value={pf("triggerPatternTrigger")} onChange={v => setPf("triggerPatternTrigger", v)} placeholder="The trigger" />
           <Field label="I tell myself" value={pf("triggerPatternInterpretation")} onChange={v => setPf("triggerPatternInterpretation", v)} placeholder="The story" />
           <Field label="I feel" value={pf("triggerPatternEmotion")} onChange={v => setPf("triggerPatternEmotion", v)} placeholder="Emotion" />
@@ -291,7 +292,7 @@ export default function MePage() {
         </MeSection>
 
         {/* ═══ 7. Avoidance Loop ═══ */}
-        <MeSection title="Avoidance Loop" filled={!!pf("repeatingLoopStory").trim()} testId="me-avoidance">
+        <MeSection title={PATTERN_LABELS.avoidanceLoop} filled={!!pf("repeatingLoopStory").trim()} testId="me-avoidance">
           <Field label="The story I keep telling myself" value={pf("repeatingLoopStory")} onChange={v => setPf("repeatingLoopStory", v)} placeholder="The story" multiline />
           <Field label="What this story helps me avoid" value={pf("repeatingLoopAvoidance")} onChange={v => setPf("repeatingLoopAvoidance", v)} placeholder="What I avoid" multiline />
           <Field label="The cost of keeping it" value={pf("repeatingLoopCost")} onChange={v => setPf("repeatingLoopCost", v)} placeholder="The cost" multiline />

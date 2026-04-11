@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,11 +43,28 @@ const navItems: NavItem[] = [
   { label: "Me", path: "/me", icon: User },
 ];
 
+/** Prefetch data for adjacent tabs so tab switches feel instant.
+ *  Only prefetches static-key queries shared across 3+ tabs.
+ *  Dynamic queries (date-dependent) load on navigation. */
+function usePrefetchSharedData() {
+  useEffect(() => {
+    // These 3 queries are used by Today, Week, Sprint, and Me tabs
+    queryClient.prefetchQuery({ queryKey: ["/api/habits"] });
+    queryClient.prefetchQuery({ queryKey: ["/api/annual-commitment"] });
+    queryClient.prefetchQuery({ queryKey: ["/api/identity-document"] });
+    // Used by Sprint + Week
+    queryClient.prefetchQuery({ queryKey: ["/api/goal-sprint"] });
+    // Used by Today + Week
+    queryClient.prefetchQuery({ queryKey: ["/api/eisenhower"] });
+  }, []);
+}
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  usePrefetchSharedData();
   const { user, logout, isAuthenticated } = useAuth();
   const [location] = useLocation();
   const { safeNavigate } = useUnsavedGuard();

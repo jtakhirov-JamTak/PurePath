@@ -5,7 +5,7 @@
  * Since we can't easily use canvas in Node without native deps, we generate
  * SVG files that browsers accept as valid PWA icons.
  *
- * TODO: Replace with proper designed app icons
+ * Note: These are placeholder SVG icons. Replace with designed artwork before app store submission.
  */
 
 import { writeFileSync, mkdirSync } from "fs";

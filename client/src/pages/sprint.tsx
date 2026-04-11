@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { PATTERN_LABELS } from "@/lib/display-names";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -177,13 +178,13 @@ export default function SprintPage() {
               <p className="text-sm">{sprintBehavior.name}</p>
               {sprintBehavior.proofPatternWhen && (
                 <div className="rounded bg-muted/40 px-3 py-2 space-y-1">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Success Pattern</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{PATTERN_LABELS.success}</p>
                   <p className="text-xs">When {sprintBehavior.proofPatternWhen}, I {sprintBehavior.proofPatternBehavior}. Outcome: {sprintBehavior.proofPatternOutcome}</p>
                 </div>
               )}
               {sprintBehavior.shadowEmotions && (
                 <div className="rounded bg-muted/40 px-3 py-2 space-y-1">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Shadow Pattern</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{PATTERN_LABELS.shadow}</p>
                   <p className="text-xs">Emotions: {sprintBehavior.shadowEmotions}</p>
                   {sprintBehavior.shadowEnvironment && <p className="text-xs">Environment: {sprintBehavior.shadowEnvironment}</p>}
                 </div>

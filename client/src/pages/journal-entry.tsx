@@ -16,7 +16,8 @@ import { useReturnTo } from "@/hooks/use-return-to";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry, PatternProfile } from "@shared/schema";
+import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
+import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry, PatternProfile, AnnualCommitment } from "@shared/schema";
 import { VisionCard } from "@/components/vision-card";
 import { startOfWeek } from "date-fns";
 import { getTodaysHabits } from "@/lib/habit-filters";
@@ -243,6 +244,10 @@ export default function JournalEntryPage() {
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
+  const { data: annualCommitment } = useQuery<AnnualCommitment | null>({
+    queryKey: ["/api/annual-commitment"],
+    enabled: !!user,
+  });
   const { data: patternProfile } = useQuery<PatternProfile>({
     queryKey: ["/api/pattern-profile"],
     enabled: !!user,
@@ -272,15 +277,7 @@ export default function JournalEntryPage() {
   const dayOfWeek = date ? new Date(date + "T12:00:00").getDay() : -1;
   const showVisionReminder = isMorning && (dayOfWeek === 2 || dayOfWeek === 5);
   const visionMonth = date ? format(new Date(date + "T12:00:00"), "yyyy-MM") : "";
-  const { data: visionGoal } = useQuery<MonthlyGoal>({
-    queryKey: ["/api/monthly-goal", visionMonth],
-    queryFn: async () => {
-      const res = await fetch(`/api/monthly-goal?month=${visionMonth}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    },
-    enabled: !!user && showVisionReminder && !!identityDoc?.yearVision,
-  });
+  const { data: visionGoal } = useMonthlyGoal(visionMonth, !!user && showVisionReminder && !!annualCommitment?.visualization);
 
   // Queries for skipped items (evening journal)
   const { data: habits = [] } = useQuery<Habit[]>({
@@ -747,10 +744,10 @@ export default function JournalEntryPage() {
             </Card>
 
             {/* Vision Reminder — Tuesday/Friday */}
-            {showVisionReminder && identityDoc?.yearVision && (
+            {showVisionReminder && annualCommitment?.visualization && (
               <VisionCard
-                domain={identityDoc.visionDomain || ""}
-                scene={identityDoc.yearVision || ""}
+                domain={annualCommitment.domain || ""}
+                scene={annualCommitment.visualization || ""}
                 proofPoint={visionGoal?.successProof || ""}
                 metric={visionGoal?.proofMetric || ""}
                 ifThenPlan={visionGoal?.ifThenPlan1 || ""}
