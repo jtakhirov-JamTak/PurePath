@@ -92,7 +92,7 @@ export function registerIdentityRoutes(app: Express) {
       const userId = req.user.claims.sub;
       const monthKey = (req.query.month as string) || format(new Date(), "yyyy-MM");
       const goal = await storage.getMonthlyGoal(userId, monthKey);
-      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "", deadline: "", successProof: "", proofMetric: "", weeklyBehavior: "", bestResult: "", innerObstacle: "", obstacleTrigger: "", obstacleThought: "", obstacleEmotion: "", obstacleBehavior: "", ifThenPlan1: "", ifThenPlan2: "", personStatement: "", confidenceCheck: null });
+      res.json(goal || { userId, monthKey, goalStatement: "", successMarker: "", value: "", why: "", nextConcreteStep: "", prize: "", strengths: "", advantage: "", goalWhat: "", goalWhen: "", goalWhere: "", goalHow: "", blockingHabit: "", habitAddress: "", fun: "", deadline: "", successProof: "", proofMetric: "", weeklyBehavior: "", bestResult: "", innerObstacle: "", obstacleTrigger: "", obstacleThought: "", obstacleEmotion: "", obstacleBehavior: "", ifThenPlan1: "", ifThenPlan2: "", personStatement: "", confidenceCheck: null, milestone1Text: null, milestone1TargetWeek: null, milestone1Note: null, milestone2Text: null, milestone2TargetWeek: null, milestone2Note: null });
     } catch (error) {
       console.error("Error fetching monthly goal:", (error as Error).message);
       res.status(500).json({ error: "Failed to fetch monthly goal" });
@@ -139,6 +139,12 @@ export function registerIdentityRoutes(app: Express) {
         ifThenPlan2: g.ifThenPlan2 ?? "",
         personStatement: g.personStatement ?? "",
         confidenceCheck: g.confidenceCheck ?? null,
+        milestone1Text: g.milestone1Text ?? null,
+        milestone1TargetWeek: g.milestone1TargetWeek ?? null,
+        milestone1Note: g.milestone1Note ?? null,
+        milestone2Text: g.milestone2Text ?? null,
+        milestone2TargetWeek: g.milestone2TargetWeek ?? null,
+        milestone2Note: g.milestone2Note ?? null,
       });
       res.json(goal);
     } catch (error) {

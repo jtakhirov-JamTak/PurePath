@@ -1,6 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Target } from "lucide-react";
 import { MAX_Q1, MAX_Q2, type ProofItem, type SortResult } from "@/lib/proof-engine-logic";
+
+interface MilestoneSuggestion {
+  key: string;
+  text: string;
+  note: string | null;
+}
 
 interface Props {
   handleItems: ProofItem[];
@@ -11,12 +17,16 @@ interface Props {
   nudgeMessage: string | null;
   nudgeLoading: boolean;
   onNudgeDismiss: () => void;
+  milestoneSuggestions?: MilestoneSuggestion[];
+  onAcceptMilestone?: (suggestion: MilestoneSuggestion) => void;
+  onDismissMilestone?: (key: string) => void;
 }
 
 export function StepBucketAndCap({
   handleItems, protectItems, discardedItems,
   onMoveItem, onResetClassification,
   nudgeMessage, nudgeLoading, onNudgeDismiss,
+  milestoneSuggestions = [], onAcceptMilestone, onDismissMilestone,
 }: Props) {
   return (
     <div className="space-y-6">
@@ -33,6 +43,9 @@ export function StepBucketAndCap({
             <div key={item.id} className="flex items-center justify-between rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <span className="text-sm">{item.outcome || item.text}</span>
+                {item.sprintMilestone && (
+                  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Sprint milestone</span>
+                )}
                 {item.hardTruthRelated && (
                   <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">hard truth</span>
                 )}
@@ -60,6 +73,9 @@ export function StepBucketAndCap({
             <div key={item.id} className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <span className="text-sm">{item.outcome || item.text}</span>
+                {item.sprintMilestone && (
+                  <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">Sprint milestone</span>
+                )}
                 {item.hardTruthRelated && (
                   <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">hard truth</span>
                 )}
@@ -73,6 +89,38 @@ export function StepBucketAndCap({
                   className="text-xs text-muted-foreground hover:underline min-h-[44px] flex items-center">
                   Not now
                 </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sprint milestone suggestions */}
+      {milestoneSuggestions.length > 0 && (
+        <div className="space-y-2">
+          {milestoneSuggestions.map((s) => (
+            <div key={s.key} className="rounded-lg border border-primary/30 bg-primary/[0.04] px-4 py-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <Target className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-primary">Sprint milestone this week</p>
+                  <p className="text-sm mt-0.5">{s.text}</p>
+                  {s.note && <p className="text-xs text-muted-foreground mt-1">{s.note}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {protectItems.length < MAX_Q2 ? (
+                  <Button variant="outline" size="sm" className="min-h-[44px]"
+                    onClick={() => onAcceptMilestone?.(s)}>
+                    Add as Protect
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground py-2">Protect is full ({MAX_Q2}/{MAX_Q2}). Move an item out first.</p>
+                )}
+                <Button variant="ghost" size="sm" className="min-h-[44px] text-muted-foreground"
+                  onClick={() => onDismissMilestone?.(s.key)}>
+                  Not this week
+                </Button>
               </div>
             </div>
           ))}

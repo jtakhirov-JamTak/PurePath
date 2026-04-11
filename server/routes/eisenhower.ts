@@ -4,7 +4,7 @@ import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
 import { z } from "zod";
 import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema, flagReviewSchema } from "../validation";
-import { parseId, parseDateParam, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
+import { parseId, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 import { openai } from "../lib/openai";
 
 // Must match MAX_Q1/MAX_Q2 in client/src/lib/proof-engine-logic.ts
@@ -273,14 +273,21 @@ export function registerEisenhowerRoutes(app: Express) {
         return res.status(400).json({ error: `Handle and Protect items require a first proof move: "${missingFirstMove.task}"` });
       }
 
+      // Dual-write mapping: proofBucket ↔ quadrant
+      const bucketToQuadrant: Record<string, string> = { handle: "q1", protect: "q2", not_this_week: "q4" };
+      const quadrantToBucket: Record<string, string> = { q1: "handle", q2: "protect", q3: "not_this_week", q4: "not_this_week" };
+
       // Expand items: one row per scheduled day per item
-      const entryItems = items.flatMap(item =>
-        item.scheduledDates.map((date, dayIdx) => ({
+      const entryItems = items.flatMap(item => {
+        const quadrant = item.quadrant || bucketToQuadrant[item.proofBucket || ""] || "q4";
+        const proofBucket = item.proofBucket || quadrantToBucket[item.quadrant] || null;
+
+        return item.scheduledDates.map((date, dayIdx) => ({
           task: item.task,
-          quadrant: item.quadrant,
+          quadrant,
           role: "",
           sortOrder: item.sortOrder,
-          blocksGoal: item.quadrant === "q2" ? true : false,
+          blocksGoal: quadrant === "q2" ? true : false,
           groupId: item.groupId,
           scheduledDate: date,
           scheduledStartTime: item.scheduledStartTime || null,
@@ -298,9 +305,9 @@ export function registerEisenhowerRoutes(app: Express) {
           sequenceReason: item.sequenceReason || null,
           ifThenStatement: item.ifThenStatement || null,
           revisitDate: item.revisitDate || null,
-          proofBucket: item.proofBucket || null,
-        }))
-      );
+          proofBucket,
+        }));
+      });
 
       // Build fear summary payload (legacy support)
       const fearSummary = fearData ? {
@@ -316,6 +323,10 @@ export function registerEisenhowerRoutes(app: Express) {
 
       // Atomic: delete + insert + upsert in one transaction
       const result = await storage.commitWeek(userId, weekStart, entryItems, fearSummary, openingData ?? undefined);
+      // Rules 4+5: Auto-trigger sprint review checks (fire-and-forget)
+      storage.checkAndFlagSprintReviewTriggers(userId).catch(err => {
+        console.error("Sprint review trigger check failed:", (err as Error).message);
+      });
       res.json(result);
     } catch (error) {
       console.error("Error committing week:", (error as Error).message);

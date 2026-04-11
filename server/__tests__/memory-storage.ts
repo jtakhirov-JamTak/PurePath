@@ -134,6 +134,16 @@ export const storage = {
     _monthlyGoals.push(g);
     return g;
   },
+  getActiveSprint: async (userId: string) =>
+    _monthlyGoals.find(g => g.userId === userId && g.sprintStatus === "active") || undefined,
+  closeSprint: async (userId: string, monthKey: string, closedAs: string) => {
+    const g = _monthlyGoals.find(g => g.userId === userId && g.monthKey === monthKey && g.sprintStatus === "active");
+    if (g) { g.sprintStatus = "completed"; g.closedAs = closedAs; }
+    return g || undefined;
+  },
+  getCompactSprintSummary: async () => ({
+    sprintBehaviorRate: 0, weeklyProofBehaviorRate: 0, proofMovesIntended: 0, proofMovesCompleted: 0,
+  }),
 
   // Journals
   getJournalsByUser: async (userId: string) => _journals.filter(j => j.userId === userId),
@@ -270,6 +280,8 @@ export const storage = {
   deactivateAnnualCommitments: async (userId: string) => {
     _annualCommitments.filter(c => c.userId === userId).forEach(c => { c.isActive = false; });
   },
+
+  checkAndFlagSprintReviewTriggers: async () => {},
 
   // Flag monthly goal for review
   flagMonthlyGoalForReview: async (userId: string, monthKey: string, reason: string) => {

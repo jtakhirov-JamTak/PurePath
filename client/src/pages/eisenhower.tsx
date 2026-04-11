@@ -54,6 +54,9 @@ export default function EisenhowerPage() {
   const [nudgeLoading, setNudgeLoading] = useState(false);
   const [nudgeChecked, setNudgeChecked] = useState(false);
 
+  // Milestone suggestion state
+  const [dismissedMilestones, setDismissedMilestones] = useState<Set<string>>(new Set());
+
   // Week calculation
   const today = new Date();
   const weekParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("week") : null;
@@ -152,6 +155,50 @@ export default function EisenhowerPage() {
   const allClassified = items.length > 0 && items.every(i =>
     i.classifyGoalMove !== null && i.classifyIgnore7Days !== null && i.classifyBlocker !== null
   );
+
+  // Sprint milestone suggestions for BucketAndCap (Screen 3)
+  const weekEndStr = format(addDays(weekStart, 6), "yyyy-MM-dd");
+  const milestoneSuggestions = (() => {
+    if (!monthlyGoal) return [];
+    const suggestions: Array<{ key: string; text: string; note: string | null }> = [];
+    if (monthlyGoal.milestone1Text && monthlyGoal.milestone1TargetWeek) {
+      if (monthlyGoal.milestone1TargetWeek >= weekStartStr && monthlyGoal.milestone1TargetWeek <= weekEndStr) {
+        suggestions.push({ key: "m1", text: monthlyGoal.milestone1Text, note: monthlyGoal.milestone1Note ?? null });
+      }
+    }
+    if (monthlyGoal.milestone2Text && monthlyGoal.milestone2TargetWeek) {
+      if (monthlyGoal.milestone2TargetWeek >= weekStartStr && monthlyGoal.milestone2TargetWeek <= weekEndStr) {
+        suggestions.push({ key: "m2", text: monthlyGoal.milestone2Text, note: monthlyGoal.milestone2Note ?? null });
+      }
+    }
+    // Filter out already-added items (case-insensitive) and dismissed suggestions
+    return suggestions.filter(s => {
+      const lower = s.text.toLowerCase().trim();
+      return !dismissedMilestones.has(s.key) &&
+        !items.some(i => i.text.toLowerCase().trim() === lower || i.outcome.toLowerCase().trim() === lower);
+    });
+  })();
+
+  const acceptMilestone = (suggestion: { key: string; text: string }) => {
+    // Classification fields must evaluate to "protect" via classifyItem():
+    // goal="clearly" + ignore="important_nothing_breaks" + blocker!="nothing" → Protect
+    const newItem: ProofItem = {
+      ...createEmptyItem(nextId.current++, suggestion.text),
+      sortResult: "protect",
+      sortPriority: 1,
+      classifyGoalMove: "clearly",
+      classifyIgnore7Days: "important_nothing_breaks",
+      classifyBlocker: "unclear_next_step",
+      sprintMilestone: true,
+    };
+    setItems(prev => [...prev, newItem]);
+    // Array.from needed: TS target doesn't support Set spread without --downlevelIteration
+    setDismissedMilestones(prev => { const next = new Set(Array.from(prev)); next.add(suggestion.key); return next; });
+  };
+
+  const dismissMilestone = (key: string) => {
+    setDismissedMilestones(prev => { const next = new Set(Array.from(prev)); next.add(key); return next; });
+  };
 
   // Step 5 — find next unclassified item
   const sortItemIdx = (() => {
@@ -520,6 +567,9 @@ export default function EisenhowerPage() {
             nudgeMessage={nudgeMessage}
             nudgeLoading={nudgeLoading}
             onNudgeDismiss={() => setNudgeMessage(null)}
+            milestoneSuggestions={milestoneSuggestions}
+            onAcceptMilestone={acceptMilestone}
+            onDismissMilestone={dismissMilestone}
           />
         )}
 

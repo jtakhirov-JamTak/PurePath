@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Zap, ArrowRight } from "lucide-react";
-import { ContainmentModal } from "@/components/tools/containment-modal";
+import { ContainmentModal, TriggerExerciseModal, AvoidingExerciseModal } from "@/components/tools/containment-modal";
 import { FaceTheFear } from "@/components/tools/face-the-fear";
 
-type Screen = "choose" | "stalled" | "containment" | "fear";
+type Screen = "choose" | "stalled" | "containment" | "fear" | "trigger" | "avoidance";
 
 export function StuckRouter({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [screen, setScreen] = useState<Screen>("choose");
@@ -21,6 +21,12 @@ export function StuckRouter({ open, onClose }: { open: boolean; onClose: () => v
   }
   if (screen === "fear") {
     return <FaceTheFear open={true} onClose={reset} />;
+  }
+  if (screen === "trigger") {
+    return <TriggerExerciseModal open={true} onClose={reset} />;
+  }
+  if (screen === "avoidance") {
+    return <AvoidingExerciseModal open={true} onClose={reset} />;
   }
 
   return (
@@ -67,7 +73,7 @@ export function StuckRouter({ open, onClose }: { open: boolean; onClose: () => v
             <Button
               variant="outline"
               className="w-full justify-between h-auto py-4 px-4"
-              onClick={() => setScreen("containment")}
+              onClick={() => setScreen("trigger")}
               data-testid="stuck-triggered"
             >
               <div className="text-left">
@@ -91,7 +97,7 @@ export function StuckRouter({ open, onClose }: { open: boolean; onClose: () => v
             <Button
               variant="outline"
               className="w-full justify-between h-auto py-4 px-4"
-              onClick={() => setScreen("containment")}
+              onClick={() => setScreen("avoidance")}
               data-testid="stuck-avoiding"
             >
               <div className="text-left">

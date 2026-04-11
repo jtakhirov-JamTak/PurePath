@@ -1,11 +1,11 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { updateOnboardingSchema } from "../validation";
 import { requireAccess, writeRateLimit } from "./helpers";
 
 export function registerOnboardingRoutes(app: Express) {
-  app.get("/api/onboarding", isAuthenticated, requireAccess, async (req: any, res) => {
+  app.get("/api/onboarding", isAuthenticated, requireAccess, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const settings = await storage.getUserSettings(userId);
@@ -21,7 +21,7 @@ export function registerOnboardingRoutes(app: Express) {
     }
   });
 
-  app.patch("/api/onboarding", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res) => {
+  app.patch("/api/onboarding", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
     try {
       const userId = req.user.claims.sub;
       const parsed = updateOnboardingSchema.safeParse(req.body);
@@ -32,7 +32,7 @@ export function registerOnboardingRoutes(app: Express) {
       const updates: { onboardingStep: number; onboardingComplete?: boolean } = {
         onboardingStep: step,
       };
-      if (step >= 5) {
+      if (step >= 6) {
         updates.onboardingComplete = true;
       }
       const settings = await storage.upsertUserSettings(userId, updates);

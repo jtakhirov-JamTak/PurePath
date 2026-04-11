@@ -18,7 +18,7 @@ import {
   type WorkshopSeed, type InsertWorkshopSeed,
   type AnnualCommitment, type InsertAnnualCommitment,
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, or } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -114,6 +114,12 @@ export interface IStorage {
 
   // Monthly Goal flag
   flagMonthlyGoalForReview(userId: string, monthKey: string, reason: string): Promise<MonthlyGoal | undefined>;
+  checkAndFlagSprintReviewTriggers(userId: string): Promise<void>;
+
+  // Sprint-specific queries (use monthlyGoals table with sprint fields)
+  getActiveSprint(userId: string): Promise<MonthlyGoal | undefined>;
+  closeSprint(userId: string, monthKey: string, closedAs: string): Promise<MonthlyGoal | undefined>;
+  getCompactSprintSummary(userId: string, from: string, to: string, sprintHabitId: number | null, annualHabitId: number | null): Promise<{ sprintBehaviorRate: number; weeklyProofBehaviorRate: number; proofMovesIntended: number; proofMovesCompleted: number }>;
 
   // Admin
   getAllUsersWithStats(): Promise<Array<{
@@ -496,6 +502,8 @@ export class DatabaseStorage implements IStorage {
           repeatingLoopStory: profile.repeatingLoopStory,
           repeatingLoopAvoidance: profile.repeatingLoopAvoidance,
           repeatingLoopCost: profile.repeatingLoopCost,
+          repeatingLoopCommitment: profile.repeatingLoopCommitment,
+          repeatingLoopBehavior: profile.repeatingLoopBehavior,
           triggerPatternTrigger: profile.triggerPatternTrigger,
           triggerPatternInterpretation: profile.triggerPatternInterpretation,
           triggerPatternEmotion: profile.triggerPatternEmotion,
@@ -579,12 +587,122 @@ export class DatabaseStorage implements IStorage {
           sprintStatus: goal.sprintStatus,
           closedAs: goal.closedAs,
           carryForwardCount: goal.carryForwardCount,
+          milestone1Text: goal.milestone1Text,
+          milestone1TargetWeek: goal.milestone1TargetWeek,
+          milestone1Note: goal.milestone1Note,
+          milestone2Text: goal.milestone2Text,
+          milestone2TargetWeek: goal.milestone2TargetWeek,
+          milestone2Note: goal.milestone2Note,
           updatedAt: new Date(),
         },
       })
       .returning();
     return result;
   }
+
+  async getActiveSprint(userId: string): Promise<MonthlyGoal | undefined> {
+    const [sprint] = await db.select().from(monthlyGoals).where(
+      and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.sprintStatus, "active"))
+    ).orderBy(desc(monthlyGoals.createdAt)).limit(1);
+    return sprint;
+  }
+
+  async closeSprint(userId: string, monthKey: string, closedAs: string): Promise<MonthlyGoal | undefined> {
+    return db.transaction(async (tx) => {
+      // Only close sprints that are currently active
+      const [updated] = await tx.update(monthlyGoals)
+        .set({ sprintStatus: "completed", closedAs, updatedAt: new Date() })
+        .where(and(
+          eq(monthlyGoals.userId, userId),
+          eq(monthlyGoals.monthKey, monthKey),
+          eq(monthlyGoals.sprintStatus, "active"),
+        ))
+        .returning();
+      if (!updated) return undefined;
+
+      // Handle sprint behavior based on close state
+      const sprintHabits = await tx.select().from(habits).where(
+        and(eq(habits.userId, userId), eq(habits.source, "sprint"), eq(habits.active, true))
+      ).limit(1);
+
+      if (sprintHabits.length > 0) {
+        const habit = sprintHabits[0];
+        if (closedAs === "end") {
+          await tx.update(habits).set({ active: false }).where(and(eq(habits.id, habit.id), eq(habits.userId, userId)));
+        } else if (closedAs === "carry_forward") {
+          // Keep habit active, create a new sprint with incremented carry count
+          const duration = updated.startDate && updated.endDate
+            ? Math.round((new Date(updated.endDate).getTime() - new Date(updated.startDate).getTime()) / 86400000)
+            : 30;
+          const newStart = new Date();
+          const newEnd = new Date(newStart.getTime() + duration * 86400000);
+          const newMonthKey = newStart.toISOString().slice(0, 10);
+          await tx.insert(monthlyGoals).values({
+            userId,
+            monthKey: newMonthKey,
+            goalStatement: updated.goalStatement,
+            nextConcreteStep: updated.nextConcreteStep || "",
+            sprintName: updated.sprintName,
+            startDate: newMonthKey,
+            endDate: newEnd.toISOString().slice(0, 10),
+            sprintStatus: "active",
+            carryForwardCount: (updated.carryForwardCount ?? 0) + 1,
+            updatedAt: new Date(),
+          });
+        } else if (closedAs === "promote_to_habit") {
+          // Check support habit count before promoting
+          const supportHabits = await tx.select().from(habits).where(
+            and(eq(habits.userId, userId), eq(habits.source, "support"), eq(habits.active, true))
+          );
+          if (supportHabits.length >= 3) {
+            throw new Error("Cannot promote: maximum 3 support habits already active");
+          }
+          await tx.update(habits).set({ source: "support", isPinned: false, sprintId: null }).where(and(eq(habits.id, habit.id), eq(habits.userId, userId)));
+        }
+      }
+
+      return updated;
+    });
+  }
+
+  async getCompactSprintSummary(userId: string, from: string, to: string, sprintHabitId: number | null, annualHabitId: number | null) {
+    let sprintBehaviorRate = 0;
+    if (sprintHabitId) {
+      const [data] = await db.select({
+        total: sql<number>`count(*)`,
+        completed: sql<number>`count(*) filter (where ${habitCompletions.status} = 'completed')`,
+      }).from(habitCompletions).where(
+        and(eq(habitCompletions.userId, userId), eq(habitCompletions.habitId, sprintHabitId), gte(habitCompletions.date, from), lte(habitCompletions.date, to))
+      );
+      if (data && data.total > 0) sprintBehaviorRate = Math.round((data.completed / data.total) * 100);
+    }
+
+    let weeklyProofBehaviorRate = 0;
+    if (annualHabitId) {
+      const [data] = await db.select({
+        total: sql<number>`count(*)`,
+        completed: sql<number>`count(*) filter (where ${habitCompletions.status} = 'completed')`,
+      }).from(habitCompletions).where(
+        and(eq(habitCompletions.userId, userId), eq(habitCompletions.habitId, annualHabitId), gte(habitCompletions.date, from), lte(habitCompletions.date, to))
+      );
+      if (data && data.total > 0) weeklyProofBehaviorRate = Math.round((data.completed / data.total) * 100);
+    }
+
+    const [proofData] = await db.select({
+      intended: sql<number>`count(*) filter (where ${journals.proofMove} is not null and ${journals.proofMove} != '')`,
+      completed: sql<number>`count(*) filter (where ${journals.proofMoveCompleted} = true)`,
+    }).from(journals).where(
+      and(eq(journals.userId, userId), gte(journals.date, from), lte(journals.date, to))
+    );
+
+    return {
+      sprintBehaviorRate,
+      weeklyProofBehaviorRate,
+      proofMovesIntended: proofData?.intended ?? 0,
+      proofMovesCompleted: proofData?.completed ?? 0,
+    };
+  }
+
   async getToolUsageLogsByUser(userId: string): Promise<ToolUsageLog[]> {
     return db.select().from(toolUsageLogs).where(eq(toolUsageLogs.userId, userId)).orderBy(desc(toolUsageLogs.createdAt));
   }
@@ -777,6 +895,98 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(monthlyGoals.userId, userId), eq(monthlyGoals.monthKey, monthKey)))
       .returning();
     return updated;
+  }
+
+  // First-match-wins: only one rule fires per check. The sprint is flagged once,
+  // and subsequent checks are skipped until the next commit-week call.
+  async checkAndFlagSprintReviewTriggers(userId: string): Promise<void> {
+    const sprint = await this.getActiveSprint(userId);
+    if (!sprint) return;
+
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    const cutoff = twoWeeksAgo.toISOString().slice(0, 10);
+
+    // Rule 4: Handle completion rate < 50% for 2 consecutive weeks
+    const handleEntries = await db.select().from(eisenhowerEntries).where(
+      and(
+        eq(eisenhowerEntries.userId, userId),
+        gte(eisenhowerEntries.scheduledDate, cutoff),
+        or(eq(eisenhowerEntries.quadrant, "q1"), eq(eisenhowerEntries.proofBucket, "handle"))
+      )
+    );
+
+    const weekGroups = new Map<string, { total: number; completed: number }>();
+    for (const e of handleEntries) {
+      const ws = e.weekStart;
+      if (!weekGroups.has(ws)) weekGroups.set(ws, { total: 0, completed: 0 });
+      const g = weekGroups.get(ws)!;
+      g.total++;
+      if (e.completed) g.completed++;
+    }
+
+    const sortedWeeks = Array.from(weekGroups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+    if (sortedWeeks.length >= 2) {
+      const rate1 = sortedWeeks[0][1].total > 0 ? sortedWeeks[0][1].completed / sortedWeeks[0][1].total : 1;
+      const rate2 = sortedWeeks[1][1].total > 0 ? sortedWeeks[1][1].completed / sortedWeeks[1][1].total : 1;
+      if (rate1 < 0.5 && rate2 < 0.5) {
+        await this.flagMonthlyGoalForReview(userId, sprint.monthKey,
+          "Handle completion below 50% for 2 consecutive weeks");
+        return;
+      }
+    }
+
+    // Rule 5: Same skip reason 3+ times in 14 days (sprint/annual habits only)
+    const sprintAnnualHabits = await db.select({ id: habits.id }).from(habits).where(
+      and(eq(habits.userId, userId), or(eq(habits.source, "sprint"), eq(habits.source, "annual")))
+    );
+    const relevantHabitIds = sprintAnnualHabits.map(h => h.id);
+
+    if (relevantHabitIds.length > 0) {
+      const skippedCompletions = await db.select().from(habitCompletions).where(
+        and(
+          eq(habitCompletions.userId, userId),
+          gte(habitCompletions.date, cutoff),
+          eq(habitCompletions.status, "skipped"),
+          inArray(habitCompletions.habitId, relevantHabitIds)
+        )
+      );
+
+      const skipCounts = new Map<string, number>();
+      for (const hc of skippedCompletions) {
+        if (hc.skipReason?.trim()) {
+          const r = hc.skipReason.toLowerCase().trim();
+          skipCounts.set(r, (skipCounts.get(r) || 0) + 1);
+        }
+      }
+
+      const repeatedSkip = Array.from(skipCounts.entries()).find(([, count]) => count >= 3);
+      if (repeatedSkip) {
+        await this.flagMonthlyGoalForReview(userId, sprint.monthKey,
+          "Same skip reason repeated 3+ times in 14 days");
+        return;
+      }
+    }
+
+    // Rule 5b: Same shadow pattern 3+ times in 14 days
+    const recentJournals = await db.select({ hurtingPatternKey: journals.hurtingPatternKey })
+      .from(journals).where(
+        and(eq(journals.userId, userId), gte(journals.date, cutoff))
+      );
+
+    const patternCounts = new Map<string, number>();
+    for (const j of recentJournals) {
+      if (j.hurtingPatternKey?.trim()) {
+        const k = j.hurtingPatternKey.toLowerCase().trim();
+        patternCounts.set(k, (patternCounts.get(k) || 0) + 1);
+      }
+    }
+
+    const repeatedPattern = Array.from(patternCounts.entries()).find(([, count]) => count >= 3);
+    if (repeatedPattern) {
+      await this.flagMonthlyGoalForReview(userId, sprint.monthKey,
+        "Same shadow pattern repeated 3+ times in 14 days");
+    }
   }
 
   async batchUpdateAccess(userIds: string[], hasAccess: boolean): Promise<void> {

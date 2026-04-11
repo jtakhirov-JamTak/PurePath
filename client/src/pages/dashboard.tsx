@@ -250,6 +250,22 @@ export default function DashboardPage() {
       const done = completedH + completedF + (hasMorn ? 1 : 0) + (hasEve ? 1 : 0);
       const isFuture = dayStr > todayStr;
       const progress = isFuture ? 0 : total > 0 ? done / total : 0;
+
+      // Handle + Protect load for week-at-a-glance
+      // Get ALL week items for this day (not just focus-filtered)
+      const dayWeekItems = eisenhowerEntries.filter(e =>
+        e.weekStart === weekStartStr && e.scheduledDate === dayStr
+      );
+      const handleItems = dayWeekItems.filter(e =>
+        e.proofBucket ? e.proofBucket === "handle" : e.quadrant === "q1"
+      );
+      const protectItems = dayWeekItems.filter(e =>
+        e.proofBucket ? e.proofBucket === "protect" : (e.quadrant === "q2" && e.blocksGoal)
+      );
+      const handleDone = handleItems.filter(e => e.status === "completed").length;
+      const protectDone = protectItems.filter(e => e.status === "completed").length;
+      const totalPlanned = handleItems.length + protectItems.length;
+
       return {
         dateStr: dayStr,
         label: DAY_LABELS[i],
@@ -258,6 +274,11 @@ export default function DashboardPage() {
         isSelected: dayStr === selectedDate,
         isFuture,
         progress,
+        handleCount: handleItems.length,
+        protectCount: protectItems.length,
+        handleDone,
+        protectDone,
+        totalPlanned,
       };
     });
   }, [weekDays, habits, eisenhowerEntries, weekStartStr, todayStr, weekStreakCompletions, journalDayMap, selectedDate]);
@@ -328,6 +349,15 @@ export default function DashboardPage() {
     }
   }, [onboarding, onboardingLoading]);
 
+  // ⚠️ ALL hooks MUST be above this line — early returns below break React rules of hooks
+  const weeklyProofBehavior = useMemo(() => {
+    if (!annualCommitment?.weeklyProofBehaviorHabitId) return null;
+    return habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null;
+  }, [annualCommitment, habits]);
+  const todayMorningJournal = useMemo(() => {
+    return journals.find(j => j.date === todayStr && j.session === "morning") || null;
+  }, [journals, todayStr]);
+
   // ─── Loading / guard ─────────────────────────────────────────────
   if (authLoading || onboardingLoading) {
     return (
@@ -350,13 +380,6 @@ export default function DashboardPage() {
 
   // ─── Top section data ────────────────────────────────────────────
   const anchorIdentity = identityDoc?.identity?.trim() || "";
-  const weeklyProofBehavior = useMemo(() => {
-    if (!annualCommitment?.weeklyProofBehaviorHabitId) return null;
-    return habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null;
-  }, [annualCommitment, habits]);
-  const todayMorningJournal = useMemo(() => {
-    return journals.find(j => j.date === todayStr && j.session === "morning") || null;
-  }, [journals, todayStr]);
   const todayProofMove = todayMorningJournal?.proofMove?.trim() || "";
 
   const readOnly = selectedDate > todayStr;
@@ -376,7 +399,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => { setWeekOffset(o => Math.max(o - 1, -52)); }}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="p-2 -ml-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0"
             aria-label="Previous week"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -427,6 +450,23 @@ export default function DashboardPage() {
                   }`}>
                     {day.label}
                   </span>
+                  {/* Mini-dots: Handle (primary) + Protect (amber) items */}
+                  <div className="flex items-center gap-[1px] mt-0.5 h-[4px]">
+                    {day.totalPlanned > 0 && (
+                      <>
+                        {Array.from({ length: Math.min(day.handleCount, 5) }, (_, idx) => (
+                          <span key={`h${idx}`} className={`block w-[3px] h-[3px] rounded-full ${
+                            idx < day.handleDone ? "bg-primary" : "bg-primary/20"
+                          }`} />
+                        ))}
+                        {Array.from({ length: Math.min(day.protectCount, 2) }, (_, idx) => (
+                          <span key={`p${idx}`} className={`block w-[3px] h-[3px] rounded-full ${
+                            idx < day.protectDone ? "bg-amber-500" : "bg-amber-500/20"
+                          }`} />
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -436,7 +476,7 @@ export default function DashboardPage() {
             type="button"
             onClick={() => { setWeekOffset(o => Math.min(o + 1, 0)); }}
             disabled={weekOffset === 0}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-20"
+            className="p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors shrink-0 disabled:opacity-20"
             aria-label="Next week"
           >
             <ChevronRight className="h-4 w-4" />
@@ -446,7 +486,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => { setWeekOffset(0); setSelectedDate(todayStr); }}
-            className="text-[10px] text-primary hover:underline w-full text-center -mt-1 mb-1"
+            className="text-[10px] text-primary hover:underline w-full text-center -mt-1 mb-1 min-h-[44px] flex items-center justify-center"
           >
             Back to this week
           </button>

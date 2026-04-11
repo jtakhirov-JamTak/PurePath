@@ -14,6 +14,7 @@ import { registerExportRoutes } from "./export";
 import { registerAdminRoutes } from "./admin";
 import { registerWorkshopSeedRoutes } from "./workshop-seed";
 import { registerAnnualCommitmentRoutes } from "./annual-commitment";
+import { registerSprintRoutes } from "./sprint";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -34,6 +35,7 @@ export async function registerRoutes(
   registerAdminRoutes(app);
   registerWorkshopSeedRoutes(app);
   registerAnnualCommitmentRoutes(app);
+  registerSprintRoutes(app);
 
   return httpServer;
 }

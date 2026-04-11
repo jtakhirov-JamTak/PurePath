@@ -10,9 +10,9 @@
 
 ## 1. Product Principle
 
-Proof Arc is one behavioral system across four time scales.
+Proof Arc is one behavioral system across five time scales.
 
-Me preserves the truth. Sprint commits it. Week translates it. Today proves it. Evidence refines it. Then the cycle repeats.
+Me preserves the truth. Sprint commits it. Week translates it. Today proves it. Proof shows the evidence. Then the cycle repeats.
 
 The closed loop:
 
@@ -24,7 +24,7 @@ The product thesis: what most people lack is not motivation — it is clarity. P
 
 ## 2. Non-Negotiables
 
-1. Navigation is exactly 4 tabs: Today / Week / Sprint / Me
+1. Navigation is exactly 5 tabs: Today / Week / Sprint / Proof / Me
 2. Solo-first — no pods, no social features, no accountability network
 3. Today is proof-first — the user always knows the one proof move for today
 4. Week feels like 4 screens — richer logic exists under the hood
@@ -71,6 +71,7 @@ The product thesis: what most people lack is not motivation — it is clarity. P
 | Today | `/today` | What does the person I am do today? |
 | Week | `/week` | Turn self-knowledge into this week's proof |
 | Sprint | `/sprint` | Is my commitment still real? |
+| Proof | `/proof` | See the evidence — completion heatmap + pattern analytics |
 | Me | `/me` | Preserve the workshop truth |
 
 ### Supporting routes
@@ -834,15 +835,17 @@ Three parts.
 
 **Part 1 — Close Sprint**
 
+Compact summary (inline):
+
 | Metric | Source |
 |---|---|
 | Sprint behavior completion rate | habit_completions for sprint behavior |
 | Weekly Proof Behavior completion rate | habit_completions for annual behavior |
 | Proof moves intended vs completed | journals.proofMove vs proofMoveCompleted |
-| Shadow pattern frequency | journals.hurtingPatternKey across sprint |
-| Success pattern frequency | journals.helpingPatternKey across sprint |
 
-Important: these analytics depend on structured journal fields. Do not pretend to have clean analytics without structured capture.
+"See full evidence →" button links to `/proof?from=[sprintStart]&to=[sprintEnd]`
+
+Detailed analytics (shadow pattern frequency, success pattern frequency, emotion analysis) live in the Proof tab, not duplicated here. Important: these analytics depend on structured journal fields. Do not pretend to have clean analytics without structured capture.
 
 **Part 2 — Values Check**
 
@@ -872,7 +875,41 @@ New sprint:
 
 ---
 
-### 8.4 ME
+### 8.4 PROOF
+
+**Purpose:** See the evidence.
+
+The evidence layer. Read-only. No actions — just signal.
+
+#### Calendar heatmap (existing)
+
+- Monthly calendar grid with color-coded completion intensity per day
+- Tap a day to see detail panel: journals, habits, focus items for that date
+- Month navigation with "X of Y days active" summary
+
+#### Summary cards (new, below heatmap)
+
+| Card | Source | Display |
+|---|---|---|
+| Proof move rate | `journals.proofMove` vs `journals.proofMoveCompleted` | "X of Y proof moves completed" with % |
+| Top success pattern | `journals.helpingPatternKey` frequency | Most-selected success pattern + count |
+| Top shadow pattern | `journals.hurtingPatternKey` frequency | Most-selected shadow pattern + count |
+| Trigger frequency | `journals.triggerOccurred` | "Triggers reported: X in last 30 days" |
+| Weekly Proof Behavior streak | `habit_completions` for annual habit | Current streak + longest streak |
+
+Cards default to last 30 days. When accessed from Sprint review, filter to sprint date range.
+
+**Query parameter:** `/proof?from=YYYY-MM-DD&to=YYYY-MM-DD` — when Sprint review links here, it passes the sprint date range to scope the summary cards.
+
+#### Design rules
+
+- Read-only surface — no edits, no actions
+- Sprint review Part 1 shows 3-4 key numbers inline + "See full evidence" button linking to `/proof?from=X&to=Y`
+- Summary cards are simple counts/percentages — no charts in v1
+
+---
+
+### 8.5 ME
 
 **Purpose:** Preserve the workshop truth.
 
@@ -934,18 +971,18 @@ Each section is a collapsible card. Tap to expand and edit.
 
 | Source | Table | Surfaced As |
 |---|---|---|
-| Trigger logs | trigger_logs | Week cross-reference, Sprint pattern frequency |
-| Fear logs | fear_logs | Sprint shadow count |
+| Trigger logs | trigger_logs | Week cross-reference, Proof tab frequency |
+| Fear logs | fear_logs | Proof tab shadow count |
 | Avoidance logs | avoidance_logs | AI nudge context |
 | Containment logs | containment_logs | AI nudge context |
 | Weekly skip reasons | eisenhower_entries.skipReason | Week close, Sprint completion data |
 | Pattern nudge dismissals | eisenhower_entries | "Deferred [pattern] X of last Y weeks" |
-| Evening success pattern picks | journals.helpingPatternKey | Sprint success frequency |
-| Evening shadow pattern picks | journals.hurtingPatternKey | Sprint shadow frequency |
-| Shadow emotions | journals.shadowEmotionFlags | Emotion-to-environment analysis |
+| Evening success pattern picks | journals.helpingPatternKey | Proof tab success frequency, Sprint compact summary |
+| Evening shadow pattern picks | journals.hurtingPatternKey | Proof tab shadow frequency, Sprint compact summary |
+| Shadow emotions | journals.shadowEmotionFlags | Proof tab emotion analysis |
 | Value selection frequency | journals.selectedValueKey | Sprint values check pre-suggestion |
-| Proof move completion | journals.proofMoveCompleted | Sprint proof moves intended vs completed |
-| Sprint behavior history | habit_completions + archived habits | Sprint close analytics |
+| Proof move completion | journals.proofMoveCompleted | Proof tab rate card, Sprint compact summary |
+| Sprint behavior history | habit_completions + archived habits | Proof tab streak, Sprint compact summary |
 | Confidence trend | annual_commitments + goal_sprints | Quarterly insight |
 
 ---

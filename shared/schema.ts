@@ -261,7 +261,7 @@ export type InsertHabitCompletion = z.infer<typeof insertHabitCompletionSchema>;
 export const monthlyGoals = pgTable("monthly_goals", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(),
-  monthKey: varchar("month_key", { length: 7 }).notNull(), // YYYY-MM
+  monthKey: varchar("month_key", { length: 10 }).notNull(), // YYYY-MM for legacy goals, YYYY-MM-DD for sprints
   value: text("value").default(""),
   strengths: text("strengths").default(""),
   advantage: text("advantage").default(""),
@@ -300,6 +300,12 @@ export const monthlyGoals = pgTable("monthly_goals", {
   sprintStatus: varchar("sprint_status", { length: 20 }).default("active"),
   closedAs: varchar("closed_as", { length: 20 }),
   carryForwardCount: integer("carry_forward_count").default(0),
+  milestone1Text: text("milestone_1_text"),
+  milestone1TargetWeek: date("milestone_1_target_week"),
+  milestone1Note: text("milestone_1_note"),
+  milestone2Text: text("milestone_2_text"),
+  milestone2TargetWeek: date("milestone_2_target_week"),
+  milestone2Note: text("milestone_2_note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -398,6 +404,8 @@ export const patternProfiles = pgTable("pattern_profiles", {
   repeatingLoopStory: text("repeating_loop_story").default(""),
   repeatingLoopAvoidance: text("repeating_loop_avoidance").default(""),
   repeatingLoopCost: text("repeating_loop_cost").default(""),
+  repeatingLoopCommitment: text("repeating_loop_commitment").default(""),
+  repeatingLoopBehavior: text("repeating_loop_behavior").default(""),
   // Trigger Pattern (reference template)
   triggerPatternTrigger: text("trigger_pattern_trigger").default(""),
   triggerPatternInterpretation: text("trigger_pattern_interpretation").default(""),
@@ -653,6 +661,7 @@ export const annualCommitments = pgTable("annual_commitments", {
   ifThenPlan1: text("if_then_plan_1"),
   ifThenPlan2: text("if_then_plan_2"),
   confidenceCheck: integer("confidence_check"),
+  obstacle: text("obstacle"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

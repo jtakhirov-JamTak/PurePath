@@ -27,6 +27,14 @@ export function registerAnnualCommitmentRoutes(app: Express) {
       const userId = req.user.claims.sub;
       // createAnnualCommitment is transactional: deactivates previous + creates new atomically
       const commitment = await storage.createAnnualCommitment({ userId, ...parsed.data, isActive: true });
+      // Rule 2: Auto-flag sprint review if confidence < 7
+      if (commitment.confidenceCheck != null && commitment.confidenceCheck < 7) {
+        const sprint = await storage.getActiveSprint(userId);
+        if (sprint) {
+          await storage.flagMonthlyGoalForReview(userId, sprint.monthKey,
+            `Confidence check is ${commitment.confidenceCheck}/10`);
+        }
+      }
       res.json(commitment);
     } catch (error) {
       console.error("Error creating annual commitment:", (error as Error).message);
@@ -49,6 +57,14 @@ export function registerAnnualCommitmentRoutes(app: Express) {
       const commitment = await storage.updateAnnualCommitment(userId, id, parsed.data);
       if (!commitment) {
         return res.status(404).json({ error: "Annual commitment not found" });
+      }
+      // Rule 2: Auto-flag sprint review if confidence < 7
+      if (commitment.confidenceCheck != null && commitment.confidenceCheck < 7) {
+        const sprint = await storage.getActiveSprint(userId);
+        if (sprint) {
+          await storage.flagMonthlyGoalForReview(userId, sprint.monthKey,
+            `Confidence check dropped to ${commitment.confidenceCheck}/10`);
+        }
       }
       res.json(commitment);
     } catch (error) {

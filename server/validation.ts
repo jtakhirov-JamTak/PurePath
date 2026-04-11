@@ -102,7 +102,7 @@ export const createHabitSchema = z.object({
   name: trimmedString(1, 200),
   category: categoryEnum.optional().nullable(),
   timing: timingEnum.optional().nullable(),
-  cadence: z.string().max(50, "Cadence must be at most 50 characters"),
+  cadence: z.string().min(3, "At least one day is required").max(50, "Cadence must be at most 50 characters"),
   duration: z.number().int().positive("Must be a positive integer").optional().nullable(),
   startDate: optionalString(10),
   endDate: optionalString(10),
@@ -112,7 +112,7 @@ export const createHabitSchema = z.object({
   lineageId: z.string().optional().nullable(),
   versionNumber: z.number().int().optional().nullable(),
   // Proof Arc v1: source, pinning, sprint link, precision wizard fields
-  source: optionalString(20),
+  source: z.enum(["support", "annual", "sprint"]).optional(),
   isPinned: z.boolean().optional().nullable(),
   sprintId: z.number().int().positive().optional().nullable(),
   proofPatternWhen: optionalString(5000),
@@ -231,6 +231,13 @@ export const monthlyGoalSchema = z.object({
   sprintStatus: optionalString(20),
   closedAs: optionalString(20),
   carryForwardCount: z.number().int().min(0).optional().nullable(),
+  // Sprint milestones (up to 2, short labels + notes)
+  milestone1Text: optionalString(500),
+  milestone1TargetWeek: optionalDateString,
+  milestone1Note: optionalString(500),
+  milestone2Text: optionalString(500),
+  milestone2TargetWeek: optionalDateString,
+  milestone2Note: optionalString(500),
 });
 
 export const updateHabitCompletionSchema = z.object({
@@ -374,6 +381,8 @@ export const patternProfileSchema = z.object({
   repeatingLoopStory: optionalTrimmedString(5000),
   repeatingLoopAvoidance: optionalTrimmedString(5000),
   repeatingLoopCost: optionalTrimmedString(5000),
+  repeatingLoopCommitment: optionalTrimmedString(5000),
+  repeatingLoopBehavior: optionalTrimmedString(5000),
   triggerPatternTrigger: optionalTrimmedString(5000),
   triggerPatternInterpretation: optionalTrimmedString(5000),
   triggerPatternEmotion: optionalTrimmedString(5000),
@@ -476,6 +485,7 @@ export const createAnnualCommitmentSchema = z.object({
   ifThenPlan1: optionalString(5000),
   ifThenPlan2: optionalString(5000),
   confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
+  obstacle: optionalString(5000),
   isActive: z.boolean().optional(),
 });
 
@@ -483,6 +493,30 @@ export const updateAnnualCommitmentSchema = createAnnualCommitmentSchema.partial
 
 // Proof Arc v1: Flag monthly goal for sprint review
 export const flagReviewSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/, "Must be YYYY-MM format"),
+  monthKey: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Must be YYYY-MM or YYYY-MM-DD format"),
   reason: trimmedString(1, 5000),
+});
+
+// Validates monthKey path params (accepts YYYY-MM or YYYY-MM-DD)
+export const monthKeyParamSchema = z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Must be YYYY-MM or YYYY-MM-DD format");
+
+// Proof Arc v1: Sprint CRUD
+export const createSprintSchema = z.object({
+  sprintName: trimmedString(1, 200),
+  goalStatement: trimmedString(1, 2000),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
+  confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
+  ifThenPlan1: optionalString(2000),
+  ifThenPlan2: optionalString(2000),
+  milestone1Text: optionalString(500),
+  milestone1TargetWeek: optionalDateString,
+  milestone1Note: optionalString(500),
+  milestone2Text: optionalString(500),
+  milestone2TargetWeek: optionalDateString,
+  milestone2Note: optionalString(500),
+});
+
+export const closeSprintSchema = z.object({
+  closedAs: z.enum(["end", "carry_forward", "promote_to_habit"]),
 });

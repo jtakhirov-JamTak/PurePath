@@ -26,7 +26,7 @@ export async function mockAuthenticatedUser(page: Page, opts: {
 } = {}) {
   const {
     onboardingComplete = true,
-    onboardingStep = 5,
+    onboardingStep = 6,
     hasPurchases = true,
   } = opts;
 

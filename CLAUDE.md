@@ -33,6 +33,7 @@ When Claude makes a mistake, add the lesson to the "Lessons Learned" section bel
 | DB schema push | `npm run db:push` |
 | Unit tests | `npm run test` |
 | E2E tests | `npm run test:e2e` |
+| Lint (hooks) | `npm run lint` |
 
 Environment: Requires `DATABASE_URL`. Dev server binds to `0.0.0.0:5000`.
 
@@ -44,6 +45,7 @@ Environment: Requires `DATABASE_URL`. Dev server binds to `0.0.0.0:5000`.
 - **Access:** Access code validated at registration (workshop attendees)
 - **AI:** OpenAI API (chat, voice, image, task suggestions)
 - **Tests:** Vitest (unit), Playwright (e2e)
+- **Lint:** ESLint with react-hooks/rules-of-hooks (catches hooks-after-early-return crashes)
 
 ## Directory Structure
 ```
@@ -128,6 +130,7 @@ Claude Code → push to GitHub (main) → pull in Replit shell → auto-deploy
 - Pages with many input fields (30+) need progressive disclosure (collapsible sections, tabs, or wizard) — a single scroll of 39 inputs overwhelms mobile users.
 - `console.error("msg:", error)` in routes can log sensitive user content (triggers, blind spots) to server logs. Use `(error as Error).message` instead.
 - When a prompt restructures one page deeply but only lists surface edits for a related page, ask whether the related page also needs structural changes. Don't assume label tweaks are the full picture — cross-reference against the overall data architecture.
+- `dashboard.tsx` has useMemo hooks (`weeklyProofBehavior`, `todayMorningJournal`) that MUST stay BEFORE the loading guard (`if (authLoading || onboardingLoading) return`). Moving them after any early return violates React's rules of hooks and crashes the app with error #310. There is a warning comment in the file — never move hooks below it.
 - (Add new lessons here as they arise)
 
 ## Docs

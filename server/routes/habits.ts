@@ -30,8 +30,11 @@ export function registerHabitRoutes(app: Express) {
       
       const existing = await storage.getHabitsByUser(userId);
       const activeHabits = existing.filter(h => h.active);
+      // Annual and sprint behaviors don't count toward the 3-support-habit limit
+      const activeSupportHabits = activeHabits.filter(h => h.source !== "annual" && h.source !== "sprint");
+      const incomingSource = parsed.data.source || "support";
 
-      if (activeHabits.length >= 3) {
+      if (incomingSource === "support" && activeSupportHabits.length >= 3) {
         return res.status(400).json({ error: "Maximum 3 active habits allowed" });
       }
 
@@ -90,6 +93,14 @@ export function registerHabitRoutes(app: Express) {
         habit = await storage.versionHabit(userId, id, data);
       } else {
         habit = await storage.updateHabit(userId, id, data);
+      }
+      // Rule 3: Flag sprint review if annual proof behavior was edited
+      if (record.source === "annual" && hasVersionedChange) {
+        const sprint = await storage.getActiveSprint(userId);
+        if (sprint) {
+          storage.flagMonthlyGoalForReview(userId, sprint.monthKey,
+            "Weekly Proof Behavior was edited").catch(() => {});
+        }
       }
       res.json(habit);
     } catch (error) {

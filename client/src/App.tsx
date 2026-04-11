@@ -14,12 +14,9 @@ import EisenhowerPage from "@/pages/eisenhower";
 import HabitsPage from "@/pages/habits";
 
 import PlanPage from "@/pages/plan";
-import IdentityDocPage from "@/pages/identity-doc";
-import PatternProfilePage from "@/pages/pattern-profile";
-import ScoreboardPage from "@/pages/scoreboard";
-import MonthlyGoalPage from "@/pages/monthly-goal";
+import SprintPage from "@/pages/sprint";
+import MePage from "@/pages/me";
 import SetupWizardPage from "@/pages/setup-wizard";
-import ProfilePage from "@/pages/profile";
 import AdminPage from "@/pages/admin";
 const ProofPage = lazy(() => import("@/pages/proof"));
 import { Loader2 } from "lucide-react";
@@ -175,23 +172,17 @@ function Router() {
         {() => <AccessGatedRoute component={HabitsPage} />}
       </Route>
       <Route path="/sprint">
-        {() => <AccessGatedRoute component={MonthlyGoalPage} />}
+        {() => <AccessGatedRoute component={SprintPage} />}
       </Route>
       <Route path="/proof">
         {() => <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin text-border" /></div>}><AccessGatedRoute component={ProofPage} /></Suspense>}
       </Route>
       <Route path="/me">
-        {() => <AccessGatedRoute component={ProfilePage} />}
+        {() => <AccessGatedRoute component={MePage} />}
       </Route>
-      <Route path="/me/identity">
-        {() => <AccessGatedRoute component={IdentityDocPage} />}
-      </Route>
-      <Route path="/me/patterns">
-        {() => <AccessGatedRoute component={PatternProfilePage} />}
-      </Route>
-      <Route path="/me/scoreboard">
-        {() => <AccessGatedRoute component={ScoreboardPage} />}
-      </Route>
+      <Route path="/me/identity">{() => <Redirect to="/me" />}</Route>
+      <Route path="/me/patterns">{() => <Redirect to="/me" />}</Route>
+      <Route path="/me/scoreboard">{() => <Redirect to="/me" />}</Route>
       <Route path="/setup">
         {() => <AccessGatedRoute component={SetupWizardPage} />}
       </Route>
@@ -207,7 +198,7 @@ function Router() {
       <Route path="/journal">{() => <Redirect to="/today" />}</Route>
       <Route path="/plan">{() => <Redirect to="/week" />}</Route>
       <Route path="/eisenhower">{() => <Redirect to="/week/plan" />}</Route>
-      <Route path="/habits">{() => <Redirect to="/week/habits" />}</Route>
+      <Route path="/habits">{() => <Redirect to="/me" />}</Route>
       <Route path="/profile">{() => <Redirect to="/me" />}</Route>
       <Route path="/identity">{() => <Redirect to="/me/identity" />}</Route>
       <Route path="/pattern-profile">{() => <Redirect to="/me/patterns" />}</Route>

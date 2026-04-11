@@ -88,6 +88,8 @@ export interface ProofItem {
   firstMove: string;
   ifThenStatement: string;
   revisitDate: string;
+  // Sprint milestone flag — ephemeral, wizard-session only. Not persisted to eisenhower_entries.
+  sprintMilestone: boolean;
 }
 
 export interface OpeningData {
@@ -198,5 +200,6 @@ export function createEmptyItem(id: number, text: string): ProofItem {
     sequenceOrder: null, sequenceReason: null,
     scheduledDates: [], scheduledStartTime: "", scheduledEndTime: "",
     firstMove: "", ifThenStatement: "", revisitDate: "",
+    sprintMilestone: false,
   };
 }

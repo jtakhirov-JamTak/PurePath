@@ -53,6 +53,7 @@ import { registerToolRoutes } from "../routes/tools";
 import { registerExportRoutes } from "../routes/export";
 import { registerWorkshopSeedRoutes } from "../routes/workshop-seed";
 import { registerAnnualCommitmentRoutes } from "../routes/annual-commitment";
+import { registerSprintRoutes } from "../routes/sprint";
 
 export function createTestApp() {
   const app = express();
@@ -68,6 +69,7 @@ export function createTestApp() {
   registerExportRoutes(app);
   registerWorkshopSeedRoutes(app);
   registerAnnualCommitmentRoutes(app);
+  registerSprintRoutes(app);
 
   return app;
 }

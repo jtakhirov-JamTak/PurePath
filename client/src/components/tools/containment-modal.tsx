@@ -311,7 +311,7 @@ function OverwhelmedExercise({ open, onClose }: { open: boolean; onClose: () => 
 
 // ─── Avoiding path ───
 
-function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mood = useMoodTracking("Avoidance");
 
   const handleClose = () => {
@@ -342,7 +342,7 @@ function AvoidingExerciseModal({ open, onClose }: { open: boolean; onClose: () =
 
 // ─── Trigger path ───
 
-function TriggerExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function TriggerExerciseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const mood = useMoodTracking("Trigger");
 
   const handleClose = () => {
