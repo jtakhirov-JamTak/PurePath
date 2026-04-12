@@ -1,23 +1,24 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { AppLayout } from "@/components/app-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, ChevronLeft, ChevronRight, BookOpen, Repeat, ListChecks, Check } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, addDays } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { Habit, HabitCompletion, Journal, EisenhowerEntry, MonthlyGoal, IdentityDocument, AnnualCommitment } from "@shared/schema";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument } from "@shared/schema";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
-import { getTodaysHabits, getDateHabits } from "@/lib/habit-filters";
-import { TIMING_LABELS, TIMING_ORDER } from "@/lib/constants";
+import { getTodaysHabits } from "@/lib/habit-filters";
+import { TIMING_LABELS } from "@/lib/constants";
 import { StuckRouter } from "@/components/stuck-router";
 import { CompletionCircle } from "@/components/dashboard/completion-circle";
 import { FocusItem } from "@/components/dashboard/focus-item";
@@ -42,16 +43,100 @@ const getHeatmapClass = (progress: number, isFuture: boolean, isToday: boolean) 
   return "fill-primary/55";
 };
 
+// ─── Needs Now types + helpers ──────────────────────────────────────
+type NeedsNowKind = "journal" | "habit" | "focus";
+type NeedsNowStatus = "upcoming" | "due" | "overdue" | "done";
+type BadgeType = "none" | "pending" | "due" | "overdue" | "complete";
+
+interface NeedsNowItem {
+  id: string;
+  label: string;
+  dueTime: Date;
+  isDone: boolean;
+  kind: NeedsNowKind;
+  status: NeedsNowStatus;
+}
+
+function getOverdueThresholdHours(kind: NeedsNowKind): number {
+  if (kind === "focus") return 0.5;
+  if (kind === "habit") return Infinity; // habits never go red
+  return 2; // journals
+}
+
+function computeStatus(dueTime: Date, isDone: boolean, now: Date, kind: NeedsNowKind): NeedsNowStatus {
+  if (isDone) return "done";
+  if (now < dueTime) return "upcoming";
+  const hoursLate = (now.getTime() - dueTime.getTime()) / 3600000;
+  return hoursLate > getOverdueThresholdHours(kind) ? "overdue" : "due";
+}
+
+// Local-time Date constructors — explicit numeric args avoid ISO-string parsing ambiguity.
+function habitDueTime(todayStr: string, timing: string | null | undefined): Date {
+  const hour = timing === "morning" ? 6 : timing === "evening" ? 17 : 12;
+  const [y, m, d] = todayStr.split("-").map(Number);
+  return new Date(y, m - 1, d, hour, 0, 0);
+}
+
+function parseTimeOnDate(todayStr: string, hhmm: string): Date {
+  const [y, mo, d] = todayStr.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  return new Date(y, mo - 1, d, h, mi, 0);
+}
+
+function endOfDay(todayStr: string): Date {
+  const [y, m, d] = todayStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 23, 59, 0);
+}
+
+function statusDotClass(status: NeedsNowStatus): string {
+  if (status === "overdue") return "bg-red-500";
+  if (status === "due") return "bg-amber-500";
+  return "bg-muted-foreground/40";
+}
+
+function computeBadge(bucketItems: NeedsNowItem[]): { type: BadgeType; count: number } {
+  if (bucketItems.length === 0) return { type: "none", count: 0 };
+  const pend = bucketItems.filter(i => !i.isDone);
+  if (pend.length === 0) return { type: "complete", count: 0 };
+  const active = pend.filter(i => i.status === "due" || i.status === "overdue");
+  if (active.length === 0) return { type: "pending", count: pend.length };
+  const hasOverdue = active.some(i => i.status === "overdue");
+  return { type: hasOverdue ? "overdue" : "due", count: active.length };
+}
+
+// ─── Bucket config ──────────────────────────────────────────────────
+type BucketKey = "journal" | "habits" | "items";
+const BUCKETS: { key: BucketKey; icon: LucideIcon; bgClass: string; iconClass: string; baseLabel: string }[] = [
+  { key: "journal", icon: BookOpen, bgClass: "bg-blue-50 dark:bg-blue-950/30", iconClass: "text-blue-700 dark:text-blue-300", baseLabel: "Journal" },
+  { key: "habits", icon: Repeat, bgClass: "bg-green-50 dark:bg-green-950/30", iconClass: "text-green-700 dark:text-green-300", baseLabel: "Habits" },
+  { key: "items", icon: ListChecks, bgClass: "bg-amber-50 dark:bg-amber-950/30", iconClass: "text-amber-700 dark:text-amber-300", baseLabel: "Items" },
+];
+
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const today = new Date();
-  const todayStr = format(today, "yyyy-MM-dd");
+  // ─── Time ticker — also drives todayStr rollover past midnight ──
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const interval = setInterval(tick, 60000);
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", tick);
+    };
+  }, []);
+
+  const todayStr = format(now, "yyyy-MM-dd");
   const [weekOffset, setWeekOffset] = useState(0);
-  const { weekStart: weekStartDate, weekStartStr, weekEndStr } = getWeekBounds(today, weekOffset);
+  const { weekStartStr, weekEndStr } = useMemo(() => getWeekBounds(now, weekOffset), [todayStr, weekOffset]);
+  // weekStartDate derived from stable weekStartStr to avoid 60s-tick identity churn downstream
+  const weekStartDate = useMemo(() => new Date(weekStartStr + "T00:00:00"), [weekStartStr]);
 
   // ─── Queries ─────────────────────────────────────────────────────
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
@@ -86,47 +171,21 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const currentMonthKey = format(today, "yyyy-MM");
+  const currentMonthKey = format(now, "yyyy-MM");
   const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useMonthlyGoal(currentMonthKey, !!user);
 
   const { data: identityDoc } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
-  const { data: annualCommitment } = useQuery<AnnualCommitment>({
-    queryKey: ["/api/annual-commitment"],
-    enabled: !!user,
-  });
 
-  // ─── Selected date state ─────────────────────────────────────────
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const isToday = selectedDate === todayStr;
+  // ─── Today's data (always today, never selectedDate) ────────────
+  const todayHabits = useMemo(() => getTodaysHabits(habits, todayStr), [habits, todayStr]);
+  const habitStatusMap = useMemo(() => buildHabitStatusMap(habitCompletions), [habitCompletions]);
 
-  // When navigating weeks, select today (if current week) or last day of that week
-  useEffect(() => {
-    if (weekOffset === 0) {
-      setSelectedDate(todayStr);
-    } else {
-      setSelectedDate(weekEndStr);
-    }
-  }, [weekOffset, todayStr, weekEndStr]);
-
-  const { data: selectedDateCompletions = [] } = useQuery<HabitCompletion[]>({
-    queryKey: ["/api/habit-completions/" + selectedDate],
-    enabled: !!user && !isToday,
-  });
-
-  // ─── Computed data ───────────────────────────────────────────────
-  const selectedHabits = useMemo(() => {
-    return isToday ? getTodaysHabits(habits, todayStr) : getDateHabits(habits, selectedDate);
-  }, [habits, selectedDate, todayStr, isToday]);
-
-  const activeCompletions = isToday ? habitCompletions : selectedDateCompletions;
-  const habitStatusMap = buildHabitStatusMap(activeCompletions);
-
-  const selectedJournals = journals.filter((j) => j.date === selectedDate);
-  const hasMorning = selectedJournals.some((j) => j.session === "morning");
-  const hasEvening = selectedJournals.some((j) => j.session === "evening");
+  const todayJournals = journals.filter((j) => j.date === todayStr);
+  const hasMorning = todayJournals.some((j) => j.session === "morning");
+  const hasEvening = todayJournals.some((j) => j.session === "evening");
 
   const journalDayMap = useMemo(() => {
     const morning = new Set<string>();
@@ -140,91 +199,29 @@ export default function DashboardPage() {
     return { morning, evening };
   }, [journals, weekStartStr, weekEndStr]);
 
-  const focusItems = getTodaysFocusItems(eisenhowerEntries, weekStartStr, selectedDate, todayStr);
-  // ─── Habit tiers by source ────────────────────────────────────────
-  const annualHabits = useMemo(() => selectedHabits.filter(h => h.source === "annual"), [selectedHabits]);
-  const sprintHabits = useMemo(() => selectedHabits.filter(h => h.source === "sprint"), [selectedHabits]);
-  const supportHabits = useMemo(() =>
-    selectedHabits.filter(h => !h.source || h.source === "support"),
-    [selectedHabits]
+  const focusItems = useMemo(
+    () => getTodaysFocusItems(eisenhowerEntries, weekStartStr, todayStr, todayStr),
+    [eisenhowerEntries, weekStartStr, todayStr]
   );
-  // Legacy users (no isPinned set): if ≤3 support habits, show all in main lane
+
+  // ─── Habit tiers by source ────────────────────────────────────────
+  const annualHabits = useMemo(() => todayHabits.filter(h => h.source === "annual"), [todayHabits]);
+  const sprintHabits = useMemo(() => todayHabits.filter(h => h.source === "sprint"), [todayHabits]);
+  const supportHabits = useMemo(
+    () => todayHabits.filter(h => !h.source || h.source === "support"),
+    [todayHabits]
+  );
   const hasAnyPinned = supportHabits.some(h => h.isPinned);
   const pinnedSupportHabits = useMemo(() => {
     if (!hasAnyPinned && supportHabits.length <= 3) return supportHabits;
     return supportHabits.filter(h => h.isPinned).slice(0, 3);
   }, [supportHabits, hasAnyPinned]);
-  const otherSupportHabits = useMemo(() => {
-    if (!hasAnyPinned && supportHabits.length <= 3) return [];
-    return supportHabits.filter(h => !h.isPinned);
-  }, [supportHabits, hasAnyPinned]);
 
-  // ─── Unified daily items (sorted by time, incomplete on top) ──────
-  type DailyItem =
-    | { kind: "journal"; session: "morning" | "evening"; done: boolean; sortKey: number }
-    | { kind: "habit"; habit: Habit; done: boolean; sortKey: number }
-    | { kind: "focus"; item: EisenhowerEntry; done: boolean; sortKey: number };
-
-  const sortedDailyItems = useMemo((): DailyItem[] => {
-    const items: DailyItem[] = [];
-
-    // Journals
-    items.push({ kind: "journal", session: "morning", done: hasMorning, sortKey: 0 });
-    items.push({ kind: "journal", session: "evening", done: hasEvening, sortKey: 5 });
-
-    // Habits by tier: annual=0.5, sprint=0.8, pinned support=3
-    annualHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 0.5 }));
-    sprintHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 0.8 }));
-    pinnedSupportHabits.forEach(h => items.push({ kind: "habit", habit: h, done: habitStatusMap.get(h.id) === "completed", sortKey: 3 }));
-
-    // Focus items — slotted at 2.xx by scheduled time, unscheduled at 2.99
-    focusItems.forEach(item => {
-      const t = item.scheduledStartTime;
-      const timeSortKey = t ? 2 + parseInt(t.slice(0, 2)) / 100 + parseInt(t.slice(3, 5)) / 10000 : 2.99;
-      items.push({ kind: "focus", item, done: item.status === "completed", sortKey: timeSortKey });
-    });
-
-    // Partition incomplete/complete, sort each by sortKey
-    const incomplete = items.filter(i => !i.done);
-    const complete = items.filter(i => i.done);
-    incomplete.sort((a, b) => a.sortKey - b.sortKey);
-    complete.sort((a, b) => a.sortKey - b.sortKey);
-    return [...incomplete, ...complete];
-  }, [annualHabits, sprintHabits, pinnedSupportHabits, habitStatusMap, focusItems, hasMorning, hasEvening]);
-
-  // ─── Streak data ─────────────────────────────────────────────────
+  // ─── Week days ──────────────────────────────────────────────────
   const weekDays = useMemo(() => {
     const monday = new Date(weekStartStr + "T12:00:00");
     return Array.from({ length: 7 }, (_, i) => format(addDays(monday, i), "yyyy-MM-dd"));
   }, [weekStartStr]);
-
-  const streakMap = useMemo(() => {
-    const map = new Map<number, Map<string, number | null>>();
-    weekStreakCompletions.forEach(hc => {
-      if (!map.has(hc.habitId)) map.set(hc.habitId, new Map());
-      map.get(hc.habitId)!.set(hc.date, hc.completionLevel);
-    });
-    return map;
-  }, [weekStreakCompletions]);
-
-  // ─── Counts ──────────────────────────────────────────────────────
-  const completedHabits = selectedHabits.filter(h => habitStatusMap.get(h.id) === "completed").length;
-  const completedFocusCount = focusItems.filter(e => e.status === "completed").length;
-  const morningDone = hasMorning ? 1 : 0;
-  const eveningDone = hasEvening ? 1 : 0;
-  const totalItems = selectedHabits.length + focusItems.length + 2;
-  const completedItems = completedHabits + completedFocusCount + morningDone + eveningDone;
-  const allDone = totalItems > 0 && completedItems === totalItems;
-
-  // Section-level done states
-  const allFocusDone = focusItems.length > 0 && focusItems.every(e => e.status === "completed");
-  const allHabitsDone = selectedHabits.length > 0 && selectedHabits.every(h => habitStatusMap.get(h.id) === "completed");
-  const allAboveDone = (focusItems.length === 0 || allFocusDone) && (selectedHabits.length === 0 || allHabitsDone) && hasMorning;
-
-  // Close moment: everything done except evening, today only
-  const isCloseMoment = isToday && allAboveDone && !hasEvening;
-
-  // (celebration beats removed — no per-section visual consumer)
 
   // ─── Stories ring per-day progress ───────────────────────────────
   const ringData = useMemo(() => {
@@ -244,8 +241,6 @@ export default function DashboardPage() {
       const isFuture = dayStr > todayStr;
       const progress = isFuture ? 0 : total > 0 ? done / total : 0;
 
-      // Handle + Protect load for week-at-a-glance
-      // Get ALL week items for this day (not just focus-filtered)
       const dayWeekItems = eisenhowerEntries.filter(e =>
         e.weekStart === weekStartStr && e.scheduledDate === dayStr
       );
@@ -264,7 +259,6 @@ export default function DashboardPage() {
         label: DAY_LABELS[i],
         dayNum: format(new Date(dayStr + "T12:00:00"), "d"),
         isToday: dayStr === todayStr,
-        isSelected: dayStr === selectedDate,
         isFuture,
         progress,
         handleCount: handleItems.length,
@@ -274,21 +268,120 @@ export default function DashboardPage() {
         totalPlanned,
       };
     });
-  }, [weekDays, habits, eisenhowerEntries, weekStartStr, todayStr, weekStreakCompletions, journalDayMap, selectedDate]);
+  }, [weekDays, habits, eisenhowerEntries, weekStartStr, todayStr, weekStreakCompletions, journalDayMap]);
+
+  // ─── Panel lists (no `now` dep — static for display) ─────────────
+  const panelLists = useMemo(() => {
+    const journalItems = [
+      { id: "journal-morning" as const, session: "morning" as const, label: "Morning journal", isDone: hasMorning, dueTime: parseTimeOnDate(todayStr, "07:00") },
+      { id: "journal-evening" as const, session: "evening" as const, label: "Evening reflection", isDone: hasEvening, dueTime: parseTimeOnDate(todayStr, "19:00") },
+    ];
+    const habitsList = [...annualHabits, ...sprintHabits, ...pinnedSupportHabits];
+    // Sort focus items: timed by time asc, untimed last
+    const focusList = [...focusItems].sort((a, b) => {
+      const ta = a.scheduledStartTime;
+      const tb = b.scheduledStartTime;
+      if (ta && tb) return ta.localeCompare(tb);
+      if (ta && !tb) return -1;
+      if (!ta && tb) return 1;
+      return 0;
+    });
+    return { journalItems, habitsList, focusList };
+  }, [todayStr, hasMorning, hasEvening, annualHabits, sprintHabits, pinnedSupportHabits, focusItems]);
+
+  // ─── Needs Now + bucket badges (consumes `now`) ──────────────────
+  const { needsNowLabel, needsNowItems, bucketBadges } = useMemo(() => {
+    const items: NeedsNowItem[] = [];
+
+    panelLists.journalItems.forEach(j => {
+      items.push({
+        id: j.id, label: j.label, dueTime: j.dueTime, isDone: j.isDone, kind: "journal",
+        status: computeStatus(j.dueTime, j.isDone, now, "journal"),
+      });
+    });
+
+    panelLists.habitsList.forEach(h => {
+      const due = habitDueTime(todayStr, h.timing);
+      const done = habitStatusMap.get(h.id) === "completed";
+      items.push({
+        id: `habit-${h.id}`, label: h.name, dueTime: due, isDone: done, kind: "habit",
+        status: computeStatus(due, done, now, "habit"),
+      });
+    });
+
+    const timedFocus: NeedsNowItem[] = [];
+    const untimedFocus: NeedsNowItem[] = [];
+    panelLists.focusList.forEach(f => {
+      const done = f.status === "completed";
+      if (f.scheduledStartTime) {
+        const due = parseTimeOnDate(todayStr, f.scheduledStartTime);
+        const entry: NeedsNowItem = {
+          id: `focus-${f.id}`, label: f.task, dueTime: due, isDone: done, kind: "focus",
+          status: computeStatus(due, done, now, "focus"),
+        };
+        items.push(entry);
+        timedFocus.push(entry);
+      } else {
+        untimedFocus.push({
+          id: `focus-${f.id}`, label: f.task, dueTime: endOfDay(todayStr), isDone: done, kind: "focus",
+          status: done ? "done" : "upcoming",
+        });
+      }
+    });
+
+    // Needs Now list (exclude done)
+    const pending = items.filter(i => i.status !== "done");
+    const overdue = pending.filter(i => i.status === "overdue").sort((a, b) => a.dueTime.getTime() - b.dueTime.getTime());
+    const due = pending.filter(i => i.status === "due").sort((a, b) => a.dueTime.getTime() - b.dueTime.getTime());
+    const upcoming = pending.filter(i => i.status === "upcoming").sort((a, b) => a.dueTime.getTime() - b.dueTime.getTime());
+
+    const urgent = [...overdue, ...due];
+    let nnItems: NeedsNowItem[];
+    let nnLabel: "needs" | "upcoming" | "clear";
+    if (urgent.length > 0) {
+      nnItems = urgent.slice(0, 3);
+      nnLabel = "needs";
+    } else if (upcoming.length > 0) {
+      nnItems = upcoming.slice(0, 3);
+      nnLabel = "upcoming";
+    } else {
+      nnItems = [];
+      nnLabel = "clear";
+    }
+
+    const journalBucket = items.filter(i => i.kind === "journal");
+    const habitsBucket = items.filter(i => i.kind === "habit");
+    const itemsBucket = [...timedFocus, ...untimedFocus];
+
+    return {
+      needsNowLabel: nnLabel,
+      needsNowItems: nnItems,
+      bucketBadges: {
+        journal: computeBadge(journalBucket),
+        habits: computeBadge(habitsBucket),
+        items: computeBadge(itemsBucket),
+      },
+    };
+  }, [now, todayStr, panelLists, habitStatusMap]);
+
+  // ─── Morning journal memo (consumed by proof move) ──────────────
+  const todayMorningJournal = useMemo(() => {
+    return journals.find(j => j.date === todayStr && j.session === "morning") || null;
+  }, [journals, todayStr]);
 
   // ─── Mutations ───────────────────────────────────────────────────
   const setHabitLevelMutation = useToastMutation<{ habitId: number; level: number | null }>({
     mutationFn: async ({ habitId, level }) => {
       let res;
       if (level === null) {
-        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${selectedDate}`);
+        res = await apiRequest("DELETE", `/api/habit-completions/${habitId}/${todayStr}`);
       } else {
-        const existing = activeCompletions.some(hc => hc.habitId === habitId);
+        const existing = habitCompletions.some(hc => hc.habitId === habitId);
         const payload = { status: "completed", completionLevel: 2 };
         if (existing) {
-          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${selectedDate}`, payload);
+          res = await apiRequest("PATCH", `/api/habit-completions/${habitId}/${todayStr}`, payload);
         } else {
-          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: selectedDate, ...payload });
+          res = await apiRequest("POST", "/api/habit-completions", { habitId, date: todayStr, ...payload });
         }
       }
       if (!res.ok) {
@@ -316,6 +409,24 @@ export default function DashboardPage() {
     errorToast: "Could not update status",
   });
 
+  const toggleProofMoveMutation = useToastMutation<void>({
+    mutationFn: async () => {
+      if (!todayMorningJournal) return;
+      const newVal = !todayMorningJournal.proofMoveCompleted;
+      const { id, createdAt, updatedAt, userId, ...journalFields } = todayMorningJournal;
+      const res = await apiRequest("POST", "/api/journals", {
+        ...journalFields,
+        proofMoveCompleted: newVal,
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to update proof move");
+      }
+    },
+    invalidateKeys: [["/api/journals"]],
+    errorToast: "Could not update proof move",
+  });
+
   // ─── Redirects ───────────────────────────────────────────────────
   const redirectedRef = useRef(false);
   useEffect(() => {
@@ -333,7 +444,6 @@ export default function DashboardPage() {
   }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
 
   const [stuckOpen, setStuckOpen] = useState(false);
-  const [otherRoutinesOpen, setOtherRoutinesOpen] = useState(false);
 
   useEffect(() => {
     if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
@@ -342,14 +452,37 @@ export default function DashboardPage() {
     }
   }, [onboarding, onboardingLoading]);
 
+  // ─── Bucket open state + auto-open largest on first load ────────
+  // Only mark the ref done once we've actually opened a bucket — so a
+  // slow network that returns empty arrays first won't lock us into "nothing open".
+  const [openBucket, setOpenBucket] = useState<BucketKey | null>(null);
+  const hasAutoOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasAutoOpenedRef.current) return;
+    if (authLoading || onboardingLoading) return;
+
+    const counts: Record<BucketKey, number> = {
+      journal: panelLists.journalItems.filter(i => !i.isDone).length,
+      items: panelLists.focusList.filter(f => f.status !== "completed").length,
+      habits: panelLists.habitsList.filter(h => habitStatusMap.get(h.id) !== "completed").length,
+    };
+    const order: BucketKey[] = ["journal", "items", "habits"];
+    let best: BucketKey | null = null;
+    let bestCount = 0;
+    for (const b of order) {
+      if (counts[b] > bestCount) {
+        best = b;
+        bestCount = counts[b];
+      }
+    }
+    if (best) {
+      setOpenBucket(best);
+      hasAutoOpenedRef.current = true;
+    }
+  }, [authLoading, onboardingLoading, panelLists, habitStatusMap]);
+
   // ⚠️ ALL hooks MUST be above this line — early returns below break React rules of hooks
-  const weeklyProofBehavior = useMemo(() => {
-    if (!annualCommitment?.weeklyProofBehaviorHabitId) return null;
-    return habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null;
-  }, [annualCommitment, habits]);
-  const todayMorningJournal = useMemo(() => {
-    return journals.find(j => j.date === todayStr && j.session === "morning") || null;
-  }, [journals, todayStr]);
 
   // ─── Loading / guard ─────────────────────────────────────────────
   if (authLoading || onboardingLoading) {
@@ -371,23 +504,217 @@ export default function DashboardPage() {
     ? getSprintBackgroundForDate(monthlyGoal.startDate, monthlyGoal.endDate, todayStr)
     : null;
 
-  // ─── Top section data ────────────────────────────────────────────
   const anchorIdentity = identityDoc?.identity?.trim() || "";
   const todayProofMove = todayMorningJournal?.proofMove?.trim() || "";
+  const proofMoveDone = todayMorningJournal?.proofMoveCompleted === true;
 
-  const readOnly = selectedDate > todayStr;
-  const isPastDate = selectedDate < todayStr;
-  const yesterday = format(addDays(today, -1), "yyyy-MM-dd");
-  const canEditJournal = selectedDate >= yesterday;
+  // Journal bucket label — symmetric: show 1/2 when exactly one session done
+  const journalCount = (hasMorning ? 1 : 0) + (hasEvening ? 1 : 0);
+  const journalLabel = journalCount === 1 ? "Journal 1/2" : "Journal";
+
+  // Badge rendering
+  const renderBadge = (bucket: BucketKey) => {
+    const badge = bucketBadges[bucket];
+    if (badge.type === "none") return null;
+    const badgeClass =
+      badge.type === "overdue" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+      : badge.type === "due" ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+      : badge.type === "pending" ? "bg-muted text-muted-foreground"
+      : "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300";
+    const content =
+      badge.type === "complete" ? <Check className="h-3 w-3" strokeWidth={3} />
+      : badge.count === 1 ? "!"
+      : String(badge.count);
+    return (
+      <span
+        className={`absolute -top-1 -right-1 min-w-[20px] h-[20px] rounded-[10px] text-[11px] font-semibold flex items-center justify-center px-1 ${badgeClass}`}
+      >
+        {content}
+      </span>
+    );
+  };
+
+  const toggleBucket = (b: BucketKey) => setOpenBucket(prev => (prev === b ? null : b));
 
   return (
     <AppLayout>
       <SeasonBackground src={sprintBg}>
-      <div className={`container mx-auto px-5 py-6 max-w-2xl space-y-6 transition-colors duration-700 ${
-        isCloseMoment ? "bg-gradient-to-b from-amber-50/30 dark:from-amber-950/15" : ""
-      }`}>
+      <div className="container mx-auto px-5 py-6 max-w-2xl space-y-5">
 
-        {/* ─── 1. Stories Ring Nav ──────────────────────────────── */}
+        {/* ─── 1. Identity anchor ─────────────────────────────── */}
+        {anchorIdentity && (
+          <p className="font-serif text-base italic text-foreground/90 leading-relaxed line-clamp-3" data-testid="identity-anchor">
+            I am {anchorIdentity}
+          </p>
+        )}
+
+        {/* ─── 2. Today's Proof Move (hero) ───────────────────── */}
+        <div className="rounded-[10px] p-4 border border-border/40 bg-card" data-testid="today-proof-move">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Today's proof move</p>
+          {todayProofMove ? (
+            <div className="flex items-center gap-3 min-h-[44px]">
+              <CompletionCircle
+                done={proofMoveDone}
+                onToggle={() => {
+                  // Guard against double-POST on rapid taps (creates duplicate journal rows)
+                  if (toggleProofMoveMutation.isPending) return;
+                  toggleProofMoveMutation.mutate();
+                }}
+                testId="proof-move-toggle"
+              />
+              <p className={`text-sm flex-1 min-w-0 ${proofMoveDone ? "line-through text-muted-foreground" : "font-medium"}`}>
+                {todayProofMove}
+              </p>
+            </div>
+          ) : (
+            <button
+              className="text-sm text-primary font-medium min-h-[44px] text-left flex items-center"
+              onClick={() => { setLocation(`/today/journal/${todayStr}/morning?returnTo=/today`); window.scrollTo(0, 0); }}
+              data-testid="set-proof-move-cta"
+            >
+              Set your proof move &rarr;
+            </button>
+          )}
+        </div>
+
+        {/* ─── 3. Needs You Now / Coming Up / All Clear ───────── */}
+        <div className="space-y-1.5" data-testid="needs-now">
+          {needsNowLabel === "clear" ? (
+            <p className="text-sm text-muted-foreground text-center py-3">All clear</p>
+          ) : (
+            <>
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {needsNowLabel === "needs" ? "Needs you now" : "Coming up"}
+              </p>
+              {needsNowItems.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 min-h-[44px]"
+                  data-testid={`needs-now-${item.id}`}
+                >
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDotClass(item.status)}`} />
+                  <span className="text-sm flex-1 min-w-0 truncate">{item.label}</span>
+                  <span className={`text-[11px] shrink-0 ${item.status === "overdue" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+                    {format(item.dueTime, "h:mma").toLowerCase()}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* ─── 4. Bucket row ──────────────────────────────────── */}
+        <div className="flex items-start justify-around pt-1" data-testid="bucket-row">
+          {BUCKETS.map(b => {
+            const Icon = b.icon;
+            const label = b.key === "journal" ? journalLabel : b.baseLabel;
+            const isOpen = openBucket === b.key;
+            return (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => toggleBucket(b.key)}
+                className="flex flex-col items-center gap-1.5 min-h-[44px] min-w-[44px] px-2"
+                data-testid={`bucket-${b.key}`}
+              >
+                <div className="relative">
+                  <div
+                    className={`h-[46px] w-[46px] rounded-full border border-black/5 dark:border-white/10 flex items-center justify-center ${b.bgClass} ${isOpen ? "ring-2 ring-primary/60" : ""}`}
+                  >
+                    <Icon className={`h-[18px] w-[18px] ${b.iconClass}`} />
+                  </div>
+                  {renderBadge(b.key)}
+                </div>
+                <span className="text-xs text-muted-foreground">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ─── 5. Expandable bucket panel ─────────────────────── */}
+        <AnimatePresence initial={false}>
+          {openBucket && (
+            <motion.div
+              key={openBucket}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="overflow-hidden rounded-[10px] border border-border/40 bg-card"
+              data-testid={`bucket-panel-${openBucket}`}
+            >
+              <div className="p-3 space-y-1.5">
+
+                {/* Journal panel */}
+                {openBucket === "journal" && panelLists.journalItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="flex items-center gap-3 w-full px-2 py-2 rounded-lg hover:bg-muted/30 min-h-[44px] text-left"
+                    onClick={() => { setLocation(`/today/journal/${todayStr}/${item.session}?returnTo=/today`); window.scrollTo(0, 0); }}
+                    data-testid={`panel-journal-${item.session}`}
+                  >
+                    <CompletionCircle done={item.isDone} onToggle={() => {}} disabled />
+                    <span className={`text-sm flex-1 min-w-0 truncate ${item.isDone ? "line-through text-muted-foreground" : ""}`}>
+                      {item.label}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {format(item.dueTime, "h:mma").toLowerCase()}
+                    </span>
+                  </button>
+                ))}
+
+                {/* Habits panel */}
+                {openBucket === "habits" && (
+                  panelLists.habitsList.length > 0 ? panelLists.habitsList.map(h => {
+                    const done = habitStatusMap.get(h.id) === "completed";
+                    return (
+                      <div
+                        key={h.id}
+                        className="flex items-center gap-3 px-2 py-2 min-h-[44px]"
+                        data-testid={`panel-habit-${h.id}`}
+                      >
+                        <CompletionCircle
+                          done={done}
+                          onToggle={() => setHabitLevelMutation.mutate({ habitId: h.id, level: done ? null : 2 })}
+                          testId={`habit-level-${h.id}`}
+                        />
+                        <span className={`text-sm flex-1 min-w-0 truncate ${done ? "line-through text-muted-foreground" : ""}`}>
+                          {h.name}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {TIMING_LABELS[h.timing || "afternoon"] || "PM"}
+                        </span>
+                      </div>
+                    );
+                  }) : (
+                    <p className="text-sm text-muted-foreground text-center py-3">No habits for today</p>
+                  )
+                )}
+
+                {/* Items panel */}
+                {openBucket === "items" && (
+                  panelLists.focusList.length > 0 ? panelLists.focusList.map(f => (
+                    <FocusItem
+                      key={f.id}
+                      item={f}
+                      weekStartDate={weekStartDate}
+                      isToday={true}
+                      onToggleDone={(id, currentlyDone) =>
+                        setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
+                      }
+                    />
+                  )) : (
+                    <p className="text-sm text-muted-foreground text-center py-3">No items scheduled</p>
+                  )
+                )}
+
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── 6. Weekly circles (visual only) ────────────────── */}
         <div className="flex items-end justify-between py-2">
           <button
             type="button"
@@ -408,28 +735,19 @@ export default function DashboardPage() {
               const r = isLarge ? RING_R_TODAY : RING_R;
 
               return (
-                <button
+                <div
                   key={day.dateStr}
-                  onClick={() => setSelectedDate(day.dateStr)}
-                  className={`flex flex-col items-center gap-0.5 ${day.isFuture ? "opacity-40" : ""} cursor-pointer`}
+                  className={`flex flex-col items-center gap-0.5 ${day.isFuture ? "opacity-40" : ""}`}
                 >
                   <svg width={svgSize} height={svgSize} viewBox={vb}>
-                    {/* Heatmap fill */}
                     <circle cx={cx} cy={cy} r={r}
                       className={getHeatmapClass(day.progress, day.isFuture, day.isToday)}
                       stroke={day.isToday ? "hsl(var(--primary))" : "none"}
                       strokeWidth={day.isToday ? "1.5" : "0"}
                     />
-                    {/* Selected outer ring */}
-                    {day.isSelected && (
-                      <circle cx={cx} cy={cy} r={r + 4} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5"
-                        opacity="0.4" />
-                    )}
-                    {/* Red dot on today until all done */}
                     {day.isToday && day.progress < 1 && (
                       <circle cx={cx + r - 2} cy={cy - r + 2} r="3" fill="#ef4444" />
                     )}
-                    {/* Day number */}
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
                       className={`fill-current ${isLarge ? "text-[11px]" : "text-[10px]"} font-semibold ${
                         day.isToday ? "text-primary" : "text-foreground/70"
@@ -438,12 +756,11 @@ export default function DashboardPage() {
                       {day.dayNum}
                     </text>
                   </svg>
-                  <span className={`text-[9px] font-medium ${
+                  <span className={`text-[10px] font-medium ${
                     day.isToday ? "text-primary" : day.isFuture ? "text-muted-foreground/40" : "text-muted-foreground"
                   }`}>
                     {day.label}
                   </span>
-                  {/* Mini-dots: Handle (primary) + Protect (amber) items */}
                   <div className="flex items-center gap-[1px] mt-0.5 h-[4px]">
                     {day.totalPlanned > 0 && (
                       <>
@@ -460,7 +777,7 @@ export default function DashboardPage() {
                       </>
                     )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -478,228 +795,14 @@ export default function DashboardPage() {
         {weekOffset !== 0 && (
           <button
             type="button"
-            onClick={() => { setWeekOffset(0); setSelectedDate(todayStr); }}
-            className="text-[10px] text-primary hover:underline w-full text-center -mt-1 mb-1 min-h-[44px] flex items-center justify-center"
+            onClick={() => { setWeekOffset(0); }}
+            className="text-[11px] text-primary hover:underline w-full text-center -mt-1 mb-1 min-h-[44px] flex items-center justify-center"
           >
             Back to this week
           </button>
         )}
 
-        {/* ─── 2. Proof-first top section ─────────────────────── */}
-        <div className="rounded-[10px] p-5 bg-gradient-to-br from-card via-card to-secondary/20 dark:to-secondary/10 shadow-sm border border-border/40 overflow-hidden space-y-3">
-          {/* Identity anchor */}
-          {anchorIdentity && (
-            <p className="font-serif text-base italic text-foreground/90 leading-relaxed line-clamp-2" data-testid="identity-anchor">
-              I am {anchorIdentity}
-            </p>
-          )}
-
-          {/* Weekly Proof Behavior */}
-          {weeklyProofBehavior && (
-            <p className="text-[11px] text-muted-foreground" data-testid="weekly-proof-behavior">
-              <span className="font-medium text-foreground/70">Weekly proof behavior:</span> {weeklyProofBehavior.name}
-            </p>
-          )}
-
-          {/* Today's proof move */}
-          {isToday && (
-            <div data-testid="today-proof-move">
-              {todayProofMove ? (
-                <div className="flex items-center gap-3">
-                  <CompletionCircle
-                    done={todayMorningJournal?.proofMoveCompleted === true}
-                    onToggle={() => {
-                      if (!todayMorningJournal) return;
-                      const newVal = !todayMorningJournal.proofMoveCompleted;
-                      // Spread all existing fields to avoid wiping any — only override proofMoveCompleted
-                      const { id, createdAt, updatedAt, userId, ...journalFields } = todayMorningJournal;
-                      apiRequest("POST", "/api/journals", {
-                        ...journalFields,
-                        proofMoveCompleted: newVal,
-                      }).then(() => {
-                        queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
-                      }).catch(() => {
-                        toast({ title: "Could not update proof move", variant: "destructive" });
-                      });
-                    }}
-                    testId="proof-move-toggle"
-                  />
-                  <p className={`text-sm flex-1 ${todayMorningJournal?.proofMoveCompleted ? "line-through text-muted-foreground" : "font-medium"}`}>
-                    {todayProofMove}
-                  </p>
-                </div>
-              ) : (
-                <button
-                  className="text-xs text-primary hover:underline cursor-pointer"
-                  onClick={() => { setLocation(`/today/journal/${todayStr}/morning?returnTo=/today`); window.scrollTo(0, 0); }}
-                  data-testid="set-proof-move-cta"
-                >
-                  Set your proof move &rarr;
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ─── 3. Daily Contract ───────────────────────────────── */}
-        <div
-          className={`py-4 transition-colors ${isToday && allDone ? "bg-primary/5 rounded-[10px] px-4" : ""}`}
-          data-testid="daily-contract"
-        >
-          <p className="font-serif text-[22px] font-normal tracking-tight leading-tight" data-testid="contract-counts">
-            {format(new Date(selectedDate + "T12:00:00"), "EEEE, MMM d")}
-          </p>
-          <p className={`text-[13px] mt-1.5 ${allDone ? "text-primary font-medium" : "text-muted-foreground"}`} data-testid="text-habits-progress">
-            {allDone ? "Proved." : `${completedItems} of ${totalItems} proved`}
-          </p>
-        </div>
-
-        {/* ─── Daily Actions Card ──────────────────────────────── */}
-        <div className="rounded-[10px] shadow-sm border border-border/40 bg-card overflow-hidden" data-testid="card-daily-habits">
-          <AnimatePresence mode="popLayout">
-            {sortedDailyItems.map((dailyItem, idx) => {
-              const itemKey = dailyItem.kind === "journal" ? `journal-${dailyItem.session}`
-                : dailyItem.kind === "habit" ? `habit-${dailyItem.habit.id}`
-                : `focus-${dailyItem.item.id}`;
-              const pastIncomplete = isPastDate && !dailyItem.done;
-
-              return (
-                <motion.div
-                  key={itemKey}
-                  layout
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  className={dailyItem.done ? "opacity-40" : pastIncomplete ? "opacity-50" : ""}
-                >
-                  {idx > 0 && <div className="h-px bg-border/40 mx-5" />}
-
-                  {/* ── Journal row ── */}
-                  {dailyItem.kind === "journal" && (() => {
-                    const isEvening = dailyItem.session === "evening";
-                    const label = isEvening
-                      ? (isCloseMoment ? "Close the day" : "Evening reflection")
-                      : "Check in";
-                    const isCloseCTA = isEvening && isCloseMoment;
-                    const locked = !canEditJournal;
-
-                    return locked ? (
-                      <div
-                        className="flex items-center gap-3.5 w-full text-left px-5 py-[18px]"
-                        data-testid={`journal-row-${dailyItem.session}`}
-                      >
-                        <CompletionCircle done={dailyItem.done} onToggle={() => {}} disabled />
-                        <span className={`text-sm flex-1 ${dailyItem.done ? "line-through text-muted-foreground" : "text-muted-foreground"}`}>
-                          {dailyItem.done ? label : "Not logged"}
-                        </span>
-                        {dailyItem.done && <span className="text-[11px] text-primary font-medium">Done</span>}
-                      </div>
-                    ) : (
-                      <button
-                        className={`flex items-center gap-3.5 w-full text-left px-5 py-[18px] transition-transform duration-300 ${isCloseCTA ? "scale-[1.01]" : ""}`}
-                        onClick={() => { setLocation(`/today/journal/${selectedDate}/${dailyItem.session}?returnTo=/today`); window.scrollTo(0, 0); }}
-                        data-testid={`journal-row-${dailyItem.session}`}
-                      >
-                        <CompletionCircle done={dailyItem.done} onToggle={() => {}} />
-                        <span className={`text-sm flex-1 ${isCloseCTA ? "font-semibold" : ""} ${dailyItem.done ? "line-through text-muted-foreground" : ""}`}>
-                          {label}
-                        </span>
-                        {dailyItem.done && <span className="text-[11px] text-primary font-medium">Done</span>}
-                      </button>
-                    );
-                  })()}
-
-                  {/* ── Habit row ── */}
-                  {dailyItem.kind === "habit" && (() => {
-                    const habit = dailyItem.habit;
-                    const timingLabel = TIMING_LABELS[habit.timing || "afternoon"] || "PM";
-                    return (
-                      <div className="flex items-center gap-3 px-5 py-[14px]" data-testid={`habit-item-${habit.id}`}>
-                        <CompletionCircle
-                          done={dailyItem.done}
-                          onToggle={() => {
-                            if (readOnly) return;
-                            setHabitLevelMutation.mutate({ habitId: habit.id, level: dailyItem.done ? null : 2 });
-                          }}
-                          disabled={readOnly}
-                          testId={`habit-level-${habit.id}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <span className={`text-sm ${dailyItem.done ? "line-through text-muted-foreground" : pastIncomplete ? "line-through decoration-muted-foreground/30 text-muted-foreground" : ""}`}>
-                            {habit.name}
-                          </span>
-                          <div className="flex gap-[3px] mt-1.5">
-                            {weekDays.map(dayStr => {
-                              const lvl = streakMap.get(habit.id)?.get(dayStr) ?? null;
-                              const isDayToday = dayStr === todayStr;
-                              return (
-                                <span
-                                  key={dayStr}
-                                  className={`h-[5px] w-[5px] rounded-full ${
-                                    lvl !== null && lvl >= 1 ? "bg-primary"
-                                    : isDayToday ? "ring-1 ring-border bg-transparent"
-                                    : "bg-muted"
-                                  } ${isDayToday && lvl !== null && lvl >= 1 ? "animate-dot-spring" : ""}`}
-                                />
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <span className="text-[11px] text-muted-foreground shrink-0">{timingLabel}</span>
-                      </div>
-                    );
-                  })()}
-
-                  {/* ── Focus item row ── */}
-                  {dailyItem.kind === "focus" && (
-                    <FocusItem
-                      item={dailyItem.item}
-                      weekStartDate={weekStartDate}
-                      isToday={isToday}
-                      onToggleDone={(id, currentlyDone) =>
-                        setEisenhowerLevelMutation.mutate({ id, done: currentlyDone })
-                      }
-                    />
-                  )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-
-        {/* ─── Other routines (collapsed) ─────────────────────── */}
-        {otherSupportHabits.length > 0 && (
-          <div className="rounded-[10px] border border-border/40 bg-card overflow-hidden">
-            <button
-              className="flex items-center justify-between w-full px-5 py-3 text-sm text-muted-foreground hover:bg-muted/30 transition-colors cursor-pointer"
-              onClick={() => setOtherRoutinesOpen(!otherRoutinesOpen)}
-              data-testid="other-routines-toggle"
-            >
-              <span>Other routines ({otherSupportHabits.length})</span>
-              {otherRoutinesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-            {otherRoutinesOpen && (
-              <div className="px-5 pb-3 space-y-1">
-                {otherSupportHabits.map(h => (
-                  <div key={h.id} className="flex items-center gap-3 py-1.5">
-                    <CompletionCircle
-                      done={habitStatusMap.get(h.id) === "completed"}
-                      onToggle={() => {
-                        if (readOnly) return;
-                        setHabitLevelMutation.mutate({ habitId: h.id, level: habitStatusMap.get(h.id) === "completed" ? null : 2 });
-                      }}
-                      disabled={readOnly}
-                    />
-                    <span className={`text-sm flex-1 ${habitStatusMap.get(h.id) === "completed" ? "line-through text-muted-foreground" : ""}`}>
-                      {h.name}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">{TIMING_LABELS[h.timing || "afternoon"] || "PM"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── I'm stuck ──────────────────────────────────────── */}
+        {/* ─── 7. I'm stuck ───────────────────────────────────── */}
         <button
           className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors w-full cursor-pointer"
           onClick={() => setStuckOpen(true)}
