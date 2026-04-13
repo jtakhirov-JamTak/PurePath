@@ -38,9 +38,9 @@ export function registerExportRoutes(app: Express) {
         storage.getActiveAnnualCommitment(userId),
       ]);
 
-      // Collect monthly goals in a single query (avoids N+1)
+      // Collect sprints in a single query (avoids N+1)
       const allMonthlyGoals = await storage.getMonthlyGoalsByUser(userId);
-      const monthlyGoals = allMonthlyGoals.filter(g => g.goalStatement?.trim() || g.goalWhat?.trim());
+      const monthlyGoals = allMonthlyGoals.filter(g => g.goalStatement?.trim());
 
       const allCompletions = await storage.getHabitCompletionsForRange(userId, "2000-01-01", "2099-12-31");
 
@@ -180,33 +180,21 @@ export function registerExportRoutes(app: Express) {
       }
       md += `\n`;
 
-      // MONTHLY GOALS
-      md += `---\n\n## Monthly Goals\n\n`;
+      // SPRINTS
+      md += `---\n\n## Sprints\n\n`;
       if (monthlyGoals.length === 0) {
-        md += `No monthly goals recorded.\n\n`;
+        md += `No sprints recorded.\n\n`;
       } else {
         monthlyGoals.forEach(g => {
-          md += `### ${g.monthKey}\n\n`;
-          if (g.goalWhat) md += `**Goal:** ${g.goalWhat}\n`;
-          if (g.goalStatement) md += `**Statement:** ${g.goalStatement}\n`;
-          if (g.successProof) md += `**Success Proof:** ${g.successProof}\n`;
-          if (g.proofMetric) md += `**Metric:** ${g.proofMetric}\n`;
-          if (g.weeklyBehavior) md += `**Weekly Behavior:** ${g.weeklyBehavior}\n`;
-          if (g.innerObstacle) md += `**Inner Obstacle:** ${g.innerObstacle}\n`;
-          if (g.obstacleTrigger) md += `**Obstacle Trigger:** ${g.obstacleTrigger}\n`;
-          if (g.obstacleThought) md += `**Obstacle Thought:** ${g.obstacleThought}\n`;
-          if (g.obstacleEmotion) md += `**Obstacle Emotion:** ${g.obstacleEmotion}\n`;
-          if (g.obstacleBehavior) md += `**Obstacle Behavior:** ${g.obstacleBehavior}\n`;
-          if (g.ifThenPlan1) md += `**IF-THEN Plan 1:** ${g.ifThenPlan1}\n`;
-          if (g.ifThenPlan2) md += `**IF-THEN Plan 2:** ${g.ifThenPlan2}\n`;
-          if (g.personStatement) md += `**Person Statement:** ${g.personStatement}\n`;
-          if (g.confidenceCheck != null) md += `**Confidence Check:** ${g.confidenceCheck}/10\n`;
-          if (g.value) md += `**Value:** ${g.value}\n`;
-          if (g.why) md += `**Why:** ${g.why}\n`;
-          if (g.prize) md += `**Prize:** ${g.prize}\n`;
-          if (g.sprintName) md += `**Sprint Name:** ${g.sprintName}\n`;
+          md += `### ${g.sprintName || g.monthKey}\n\n`;
+          if (g.goalStatement) md += `**Goal:** ${g.goalStatement}\n`;
           if (g.startDate) md += `**Start Date:** ${g.startDate}\n`;
           if (g.endDate) md += `**End Date:** ${g.endDate}\n`;
+          if (g.ifThenPlan1) md += `**IF-THEN Plan 1:** ${g.ifThenPlan1}\n`;
+          if (g.ifThenPlan2) md += `**IF-THEN Plan 2:** ${g.ifThenPlan2}\n`;
+          if (g.confidenceCheck != null) md += `**Confidence Check:** ${g.confidenceCheck}/10\n`;
+          if (g.milestone1Text) md += `**Milestone 1:** ${g.milestone1Text}${g.milestone1TargetWeek ? ` (week of ${g.milestone1TargetWeek})` : ""}\n`;
+          if (g.milestone2Text) md += `**Milestone 2:** ${g.milestone2Text}${g.milestone2TargetWeek ? ` (week of ${g.milestone2TargetWeek})` : ""}\n`;
           if (g.sprintStatus && g.sprintStatus !== "active") md += `**Sprint Status:** ${g.sprintStatus}\n`;
           if (g.closedAs) md += `**Closed As:** ${g.closedAs}\n`;
           if (g.carryForwardCount) md += `**Carry Forward Count:** ${g.carryForwardCount}\n`;
@@ -228,7 +216,6 @@ export function registerExportRoutes(app: Express) {
           if (j.helpingPatternKey) md += `**Success Pattern:** ${j.helpingPatternKey}\n`;
           if (j.hurtingPatternKey) md += `**Shadow Pattern:** ${j.hurtingPatternKey}\n`;
           if (j.triggerOccurred) md += `**Trigger Occurred:** Yes\n`;
-          if (j.stuckToolUsed) md += `**Stuck Tool Used:** ${j.stuckToolUsed}\n`;
           if (j.content) {
             try {
               const parsed = JSON.parse(j.content);

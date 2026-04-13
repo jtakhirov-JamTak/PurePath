@@ -21,7 +21,6 @@ export const sortConsequenceEnum = z.enum([
   "real_consequence", "stays_important", "someone_annoyed", "basically_nothing",  // legacy
   "deadline_breaks", "task_blocked", "cost_worse", "important_nothing_breaks", "not_much",  // proof engine
 ]);
-export const sortResistanceEnum = z.enum(["low_value", "uncomfortable", "straightforward"]); // DEPRECATED
 export const sortBlockerEnum = z.enum(["avoiding_discomfort", "unclear_next_step", "need_someone_else", "nothing"]);
 export const sortResultEnum = z.enum(["handle", "protect", "not_this_week"]);
 
@@ -58,7 +57,6 @@ export const createEisenhowerSchema = z.object({
   groupId: z.string().max(50).optional().nullable(),
   sortImportance: sortImportanceEnum.optional().nullable(),
   sortConsequence: sortConsequenceEnum.optional().nullable(),
-  sortResistance: sortResistanceEnum.optional().nullable(),
   sortBlocker: sortBlockerEnum.optional().nullable(),
   sortResult: sortResultEnum.optional().nullable(),
   sortPriority: z.number().int().min(0).optional().nullable(),
@@ -156,7 +154,6 @@ export const createJournalSchema = z.object({
   helpingPatternKey: optionalString(100),
   hurtingPatternKey: optionalString(100),
   triggerOccurred: z.boolean().optional().nullable(),
-  stuckToolUsed: optionalString(30),
   shadowEmotionFlags: optionalString(500),
 });
 
@@ -238,7 +235,6 @@ export const commitWeekItemSchema = z.object({
   firstMove: z.string().trim().max(2000).optional().nullable(),
   sortImportance: sortImportanceEnum.optional().nullable(),
   sortConsequence: sortConsequenceEnum.optional().nullable(),
-  sortResistance: sortResistanceEnum.optional().nullable(),
   sortBlocker: sortBlockerEnum.optional().nullable(),
   sortResult: sortResultEnum,
   sortPriority: z.number().int().min(0),

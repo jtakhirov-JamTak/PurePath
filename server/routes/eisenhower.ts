@@ -295,7 +295,6 @@ export function registerEisenhowerRoutes(app: Express) {
           firstMove: item.firstMove || null,
           sortImportance: item.sortImportance || null,
           sortConsequence: item.sortConsequence || null,
-          sortResistance: item.sortResistance || null,
           sortBlocker: item.sortBlocker || null,
           sortResult: item.sortResult,
           sortPriority: item.sortPriority,

@@ -27,7 +27,6 @@ export const journals = pgTable("journals", {
   helpingPatternKey: varchar("helping_pattern_key", { length: 100 }),
   hurtingPatternKey: varchar("hurting_pattern_key", { length: 100 }),
   triggerOccurred: boolean("trigger_occurred").default(false),
-  stuckToolUsed: varchar("stuck_tool_used", { length: 30 }),
   shadowEmotionFlags: varchar("shadow_emotion_flags"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -82,8 +81,6 @@ export const eisenhowerEntries = pgTable("eisenhower_entries", {
   groupId: varchar("group_id", { length: 50 }),
   sortImportance: varchar("sort_importance", { length: 20 }),
   sortConsequence: varchar("sort_consequence", { length: 30 }),
-  /** @deprecated Replaced by sortBlocker in Proof Engine (Apr 2026). Column kept for historical data. */
-  sortResistance: varchar("sort_resistance", { length: 20 }),
   sortBlocker: varchar("sort_blocker", { length: 30 }),
   sortResult: varchar("sort_result", { length: 20 }),
   sortPriority: integer("sort_priority"),
@@ -130,9 +127,6 @@ export const weeklySummaries = pgTable("weekly_summaries", {
   fearFirstMove: text("fear_first_move"),
   fearPromotedToQ2: boolean("fear_promoted_to_q2").default(false),
   fearLinkedEntryId: integer("fear_linked_entry_id"),
-  // Proof Arc v1: sprint review flags
-  flaggedForSprintReview: boolean("flagged_for_sprint_review").default(false).notNull(),
-  flaggedForSprintReviewReason: text("flagged_for_sprint_review_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
@@ -310,6 +304,8 @@ export const monthlyGoals = pgTable("monthly_goals", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("monthly_goals_user_month_idx").on(table.userId, table.monthKey),
+  // Enforce single active sprint per user at the database level.
+  uniqueIndex("monthly_goals_one_active_per_user_idx").on(table.userId).where(sql`${table.sprintStatus} = 'active'`),
   index("monthly_goals_user_id_idx").on(table.userId),
   check("confidence_check_range", sql`${table.confidenceCheck} IS NULL OR ${table.confidenceCheck} BETWEEN 0 AND 10`),
 ]);
