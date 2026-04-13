@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { X, Plus, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
-import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
+import { useActiveSprint } from "@/hooks/use-active-sprint";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
@@ -110,10 +110,10 @@ export default function PlanPage() {
   const { data: eisenhowerEntries = [] } = useQuery<EisenhowerEntry[]>({ queryKey: ["/api/eisenhower"], enabled: !!user });
   const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"], enabled: !!user });
   const { data: annualCommitment } = useQuery<AnnualCommitment>({ queryKey: ["/api/annual-commitment"], enabled: !!user });
-  const { data: monthlyGoal } = useMonthlyGoal(currentMonthKey, !!user);
+  const { data: activeSprint } = useActiveSprint(!!user);
 
   // ─── Computed ────────────────────────────────────────────────────
-  const goalDisplay = monthlyGoal?.goalWhat?.trim() || monthlyGoal?.goalStatement?.trim() || "";
+  const goalDisplay = activeSprint?.goalStatement?.trim() || "";
   const activeHabits = habits.filter(h => h.active !== false);
   const weeklyProofBehavior = annualCommitment?.weeklyProofBehaviorHabitId
     ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null
@@ -236,7 +236,7 @@ export default function PlanPage() {
               onClick={() => {
                 const reason = prompt("Why does this need a sprint review?");
                 if (reason?.trim()) {
-                  apiRequest("PATCH", "/api/monthly-goal/flag-review", { monthKey: currentMonthKey, reason: reason.trim() })
+                  apiRequest("PATCH", "/api/goal-sprint/flag-review", { reason: reason.trim() })
                     .then(() => toast({ title: "Flagged for sprint review" }))
                     .catch(() => toast({ title: "Could not flag for review", variant: "destructive" }));
                 }

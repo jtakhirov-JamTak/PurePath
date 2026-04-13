@@ -16,7 +16,7 @@ import { useReturnTo } from "@/hooks/use-return-to";
 import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
+import { useActiveSprint } from "@/hooks/use-active-sprint";
 import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry, PatternProfile, AnnualCommitment } from "@shared/schema";
 import { VisionCard } from "@/components/vision-card";
 import { startOfWeek } from "date-fns";
@@ -276,8 +276,7 @@ export default function JournalEntryPage() {
   // Tuesday/Friday vision reminder in morning journal
   const dayOfWeek = date ? new Date(date + "T12:00:00").getDay() : -1;
   const showVisionReminder = isMorning && (dayOfWeek === 2 || dayOfWeek === 5);
-  const visionMonth = date ? format(new Date(date + "T12:00:00"), "yyyy-MM") : "";
-  const { data: visionGoal } = useMonthlyGoal(visionMonth, !!user && showVisionReminder && !!annualCommitment?.visualization);
+  const { data: visionGoal } = useActiveSprint(!!user && showVisionReminder && !!annualCommitment?.visualization);
 
   // Queries for skipped items (evening journal)
   const { data: habits = [] } = useQuery<Habit[]>({

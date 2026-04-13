@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
+import { useActiveSprint } from "@/hooks/use-active-sprint";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
@@ -91,7 +91,6 @@ export default function EisenhowerPage() {
   });
 
   // Context data
-  const currentMonthKey = format(today, "yyyy-MM");
   const { data: identityDoc } = useQuery<IdentityDocument>({ queryKey: ["/api/identity-document"] });
   const { data: annualCommitment } = useQuery<AnnualCommitment>({ queryKey: ["/api/annual-commitment"] });
   const { data: patternProfile } = useQuery<PatternProfile>({ queryKey: ["/api/pattern-profile"] });
@@ -100,7 +99,7 @@ export default function EisenhowerPage() {
     ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId)?.name || null
     : null;
   const avoidanceLoopStory = patternProfile?.repeatingLoopStory?.trim() || null;
-  const { data: monthlyGoal } = useMonthlyGoal(currentMonthKey);
+  const { data: activeSprint } = useActiveSprint();
 
   // Pre-fill IF-THEN on protect items from annual commitment (only empty fields, tracked via item marker)
   useEffect(() => {
@@ -153,16 +152,16 @@ export default function EisenhowerPage() {
   // Sprint milestone suggestions for BucketAndCap (Screen 3)
   const weekEndStr = format(addDays(weekStart, 6), "yyyy-MM-dd");
   const milestoneSuggestions = (() => {
-    if (!monthlyGoal) return [];
+    if (!activeSprint) return [];
     const suggestions: Array<{ key: string; text: string; note: string | null }> = [];
-    if (monthlyGoal.milestone1Text && monthlyGoal.milestone1TargetWeek) {
-      if (monthlyGoal.milestone1TargetWeek >= weekStartStr && monthlyGoal.milestone1TargetWeek <= weekEndStr) {
-        suggestions.push({ key: "m1", text: monthlyGoal.milestone1Text, note: monthlyGoal.milestone1Note ?? null });
+    if (activeSprint.milestone1Text && activeSprint.milestone1TargetWeek) {
+      if (activeSprint.milestone1TargetWeek >= weekStartStr && activeSprint.milestone1TargetWeek <= weekEndStr) {
+        suggestions.push({ key: "m1", text: activeSprint.milestone1Text, note: activeSprint.milestone1Note ?? null });
       }
     }
-    if (monthlyGoal.milestone2Text && monthlyGoal.milestone2TargetWeek) {
-      if (monthlyGoal.milestone2TargetWeek >= weekStartStr && monthlyGoal.milestone2TargetWeek <= weekEndStr) {
-        suggestions.push({ key: "m2", text: monthlyGoal.milestone2Text, note: monthlyGoal.milestone2Note ?? null });
+    if (activeSprint.milestone2Text && activeSprint.milestone2TargetWeek) {
+      if (activeSprint.milestone2TargetWeek >= weekStartStr && activeSprint.milestone2TargetWeek <= weekEndStr) {
+        suggestions.push({ key: "m2", text: activeSprint.milestone2Text, note: activeSprint.milestone2Note ?? null });
       }
     }
     // Filter out already-added items (case-insensitive) and dismissed suggestions

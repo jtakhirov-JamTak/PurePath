@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useMonthlyGoal } from "@/hooks/use-monthly-goal";
+import { useActiveSprint } from "@/hooks/use-active-sprint";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -171,8 +171,7 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  const currentMonthKey = format(now, "yyyy-MM");
-  const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useMonthlyGoal(currentMonthKey, !!user);
+  const { data: activeSprint, isSuccess: activeSprintLoaded } = useActiveSprint(!!user);
 
   const { data: identityDoc, isSuccess: identityDocLoaded } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
@@ -431,17 +430,16 @@ export default function DashboardPage() {
   const redirectedRef = useRef(false);
   useEffect(() => {
     if (
-      monthlyGoalLoaded &&
+      activeSprintLoaded &&
       onboarding?.onboardingComplete &&
-      monthlyGoal &&
-      !monthlyGoal.goalStatement?.trim() &&
+      (!activeSprint || !activeSprint.goalStatement?.trim()) &&
       !redirectedRef.current
     ) {
       redirectedRef.current = true;
-      toast({ title: "Monthly goal needed", description: "Let's set your goal for this month." });
+      toast({ title: "Sprint needed", description: "Let's set your active sprint." });
       setLocation(buildProcessUrl("/sprint", "/today"));
     }
-  }, [monthlyGoalLoaded, monthlyGoal, onboarding, setLocation]);
+  }, [activeSprintLoaded, activeSprint, onboarding, setLocation]);
 
   const [stuckOpen, setStuckOpen] = useState(false);
 
@@ -502,8 +500,8 @@ export default function DashboardPage() {
   if (onboarding && !onboarding.onboardingComplete) return null;
 
   // ─── Sprint background ──────────────────────────────────────────
-  const sprintBg = monthlyGoal?.startDate && monthlyGoal?.endDate
-    ? getSprintBackgroundForDate(monthlyGoal.startDate, monthlyGoal.endDate, todayStr)
+  const sprintBg = activeSprint?.startDate && activeSprint?.endDate
+    ? getSprintBackgroundForDate(activeSprint.startDate, activeSprint.endDate, todayStr)
     : null;
 
   const anchorIdentity = identityDoc?.identity?.trim() || "";
