@@ -129,19 +129,6 @@ export default function SetupWizardPage() {
     },
   });
 
-  const skipSetup = useMutation({
-    mutationFn: async () => {
-      await apiRequest("PATCH", "/api/onboarding", { step: 6 });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
-      navigate("/today");
-    },
-    onError: () => {
-      toast({ title: "Could not skip setup", description: "Please try again.", variant: "destructive" });
-    },
-  });
-
   const goToStep = async (s: number) => {
     if (s > 0) await updateOnboarding.mutateAsync(s);
     setCurrentStep(s);
@@ -180,7 +167,7 @@ export default function SetupWizardPage() {
 
           <AnimatePresence mode="wait">
           <motion.div key={step} {...SUB_STEP_TRANSITION}>
-          {step === 0 && <WelcomeStep onBegin={() => goToStep(1)} onSkip={() => skipSetup.mutate()} isSkipping={skipSetup.isPending} />}
+          {step === 0 && <WelcomeStep onBegin={() => goToStep(1)} />}
           {step === 1 && <CoreIdentityStep onNext={() => advanceStep(2)} onBack={() => goToStep(0)} />}
           {step === 2 && <AnnualCommitmentStep onNext={() => advanceStep(3)} onBack={() => goToStep(1)} />}
           {step === 3 && <BestStateCalibrationStep onNext={() => advanceStep(4)} onBack={() => goToStep(2)} />}
@@ -200,7 +187,7 @@ export default function SetupWizardPage() {
 
 // --- Welcome ---
 
-function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onSkip: () => void; isSkipping: boolean }) {
+function WelcomeStep({ onBegin }: { onBegin: () => void }) {
   return (
     <div className="text-center space-y-8 py-12">
       <div className="space-y-3">
@@ -228,22 +215,10 @@ function WelcomeStep({ onBegin, onSkip, isSkipping }: { onBegin: () => void; onS
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        <Button size="lg" onClick={onBegin} data-testid="button-begin">
-          Let's Begin
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
-        <div>
-          <button
-            onClick={onSkip}
-            disabled={isSkipping}
-            className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors min-h-[44px] px-4 py-2 inline-flex items-center"
-            data-testid="link-skip-setup"
-          >
-            {isSkipping ? "Skipping..." : "Skip setup"}
-          </button>
-        </div>
-      </div>
+      <Button size="lg" onClick={onBegin} data-testid="button-begin">
+        Let's Begin
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
     </div>
   );
 }

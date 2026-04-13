@@ -45,11 +45,24 @@ function AuthenticatedRoute({ component: Component }: { component: React.Compone
 
 function AccessGatedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { data: accessStatus, isLoading: accessLoading } = useQuery<{ hasAccess: boolean }>({
     queryKey: ["/api/access-status"],
     enabled: isAuthenticated,
   });
+  const hasAccess = !!accessStatus?.hasAccess;
+  const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
+    queryKey: ["/api/onboarding"],
+    enabled: isAuthenticated && hasAccess,
+  });
+  const { data: identityDoc, isLoading: identityLoading } = useQuery<{ identity?: string; vision?: string; purpose?: string }>({
+    queryKey: ["/api/identity-document"],
+    enabled: isAuthenticated && hasAccess,
+  });
+
+  const isOnSetup = location === "/setup";
+  const hasIdentityData = !!(identityDoc?.identity || identityDoc?.vision || identityDoc?.purpose);
+  const setupComplete = !!onboarding?.onboardingComplete && hasIdentityData;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -63,7 +76,24 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
     }
   }, [accessLoading, accessStatus, setLocation]);
 
-  if (authLoading || accessLoading || !isAuthenticated || !accessStatus?.hasAccess) {
+  useEffect(() => {
+    if (isOnSetup) return;
+    if (!hasAccess || onboardingLoading || identityLoading) return;
+    if (!onboarding || !identityDoc) return;
+    if (!setupComplete) {
+      setLocation("/setup");
+    }
+  }, [isOnSetup, hasAccess, onboardingLoading, identityLoading, onboarding, identityDoc, setupComplete, setLocation]);
+
+  if (authLoading || accessLoading || !isAuthenticated || !hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isOnSetup && (onboardingLoading || identityLoading || !setupComplete)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

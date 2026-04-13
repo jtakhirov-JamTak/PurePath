@@ -38,14 +38,6 @@ export default function ProofPage() {
     enabled: !!user && !!selectedDate,
   });
 
-  // ─── Onboarding guard ────────────────────────────────────────────
-  useEffect(() => {
-    if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
-      toast({ title: "Setup required", description: "Complete your setup to unlock all features." });
-      setLocation("/setup");
-    }
-  }, [onboarding, onboardingLoading]);
-
   // ─── Selected date computed data ─────────────────────────────────
   const selectedDateHabitStatusMap = useMemo(() => buildHabitStatusMap(selectedDateCompletions), [selectedDateCompletions]);
 
@@ -197,8 +189,6 @@ export default function ProofPage() {
       </AppLayout>
     );
   }
-
-  if (onboarding && !onboarding.onboardingComplete) return null;
 
   return (
     <AppLayout>
