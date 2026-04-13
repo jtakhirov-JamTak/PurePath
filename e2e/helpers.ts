@@ -57,9 +57,12 @@ export async function mockAuthenticatedUser(page: Page, opts: {
     route.fulfill({ json: purchases }),
   );
 
-  // Monthly goal (empty — no redirect)
-  await page.route(`**/api/monthly-goal**`, (route) =>
-    route.fulfill({ json: { id: 1, userId: TEST_USER.id, monthKey: currentMonth, goalStatement: "Stay consistent", goalWhat: "Build daily habits", goalWhy: "Growth", weeklyBehavior: "", innerObstacle: "", ifThenPlan: "" } }),
+  // Active sprint (populated — no redirect)
+  await page.route(`**/api/goal-sprint`, (route) =>
+    route.fulfill({ json: { id: 1, userId: TEST_USER.id, monthKey: currentMonth, goalStatement: "Stay consistent", sprintName: "Test Sprint", startDate: currentMonth, endDate: currentMonth, sprintStatus: "active" } }),
+  );
+  await page.route(`**/api/goal-sprints`, (route) =>
+    route.fulfill({ json: [] }),
   );
 
   // Identity document

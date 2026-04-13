@@ -42,9 +42,10 @@ export function registerSprintRoutes(app: Express) {
       // Use full startDate as monthKey to avoid collisions between sprints in the same month
       const monthKey = d.startDate; // YYYY-MM-DD
 
-      // Prevent duplicate active sprints (upsert handles same monthKey, but check for different dates)
+      // Only one active sprint per user. Block creation if any active sprint exists,
+      // even if its monthKey matches today (an overwrite would silently destroy state).
       const existing = await storage.getActiveSprint(userId);
-      if (existing && existing.monthKey !== monthKey) {
+      if (existing) {
         return res.status(409).json({ error: "An active sprint already exists. Close it before creating a new one." });
       }
 

@@ -3,7 +3,7 @@ import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
 import { z } from "zod";
-import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema, flagReviewSchema } from "../validation";
+import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema } from "../validation";
 import { parseId, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 import { openai } from "../lib/openai";
 
@@ -558,22 +558,4 @@ Return a JSON object with a single key "items" containing an array of parsed tas
     }
   });
 
-  // PATCH /api/monthly-goal/flag-review — flag for sprint review
-  app.patch("/api/monthly-goal/flag-review", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
-    try {
-      const parsed = flagReviewSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.issues[0].message });
-      }
-      const userId = req.user.claims.sub;
-      const goal = await storage.flagMonthlyGoalForReview(userId, parsed.data.monthKey, parsed.data.reason);
-      if (!goal) {
-        return res.status(404).json({ error: "Monthly goal not found" });
-      }
-      res.json(goal);
-    } catch (error) {
-      console.error("Error flagging goal for review:", (error as Error).message);
-      res.status(500).json({ error: "Failed to flag goal for review" });
-    }
-  });
 }

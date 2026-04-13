@@ -191,55 +191,6 @@ export const identityDocumentSchema = z.object({
   acceptanceTruth: optionalTrimmedString(5000),
 });
 
-export const monthlyGoalSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/, "Must be YYYY-MM format").optional(),
-  goalStatement: optionalTrimmedString(2000),
-  successMarker: optionalTrimmedString(2000),
-  value: optionalTrimmedString(500),
-  why: optionalTrimmedString(2000),
-  nextConcreteStep: optionalTrimmedString(2000),
-  prize: optionalTrimmedString(500),
-  strengths: optionalTrimmedString(2000),
-  advantage: optionalTrimmedString(2000),
-  goalWhat: optionalTrimmedString(2000),
-  goalWhen: optionalTrimmedString(500),
-  goalWhere: optionalTrimmedString(500),
-  goalHow: optionalTrimmedString(2000),
-  blockingHabit: optionalTrimmedString(2000),
-  habitAddress: optionalTrimmedString(2000),
-  fun: optionalTrimmedString(2000),
-  deadline: optionalTrimmedString(500),
-  successProof: optionalTrimmedString(2000),
-  proofMetric: optionalTrimmedString(2000),
-  weeklyBehavior: optionalTrimmedString(2000),
-  bestResult: optionalTrimmedString(2000),
-  innerObstacle: optionalTrimmedString(2000),
-  obstacleTrigger: optionalTrimmedString(2000),
-  obstacleThought: optionalTrimmedString(2000),
-  obstacleEmotion: optionalTrimmedString(2000),
-  obstacleBehavior: optionalTrimmedString(2000),
-  ifThenPlan1: optionalTrimmedString(2000),
-  ifThenPlan2: optionalTrimmedString(2000),
-  personStatement: optionalTrimmedString(2000),
-  confidenceCheck: z.number().int().min(0).max(10).optional().nullable(),
-  // Proof Arc v1: sprint fields
-  sprintName: optionalTrimmedString(200),
-  startDate: optionalDateString,
-  endDate: optionalDateString,
-  needsSprintReview: z.boolean().optional().nullable(),
-  needsSprintReviewReason: optionalString(5000),
-  sprintStatus: optionalString(20),
-  closedAs: optionalString(20),
-  carryForwardCount: z.number().int().min(0).optional().nullable(),
-  // Sprint milestones (up to 2, short labels + notes)
-  milestone1Text: optionalString(500),
-  milestone1TargetWeek: optionalDateString,
-  milestone1Note: optionalString(500),
-  milestone2Text: optionalString(500),
-  milestone2TargetWeek: optionalDateString,
-  milestone2Note: optionalString(500),
-});
-
 export const updateHabitCompletionSchema = z.object({
   status: z.enum(["completed", "skipped", "minimum"]),
   completionLevel: z.number().int().min(0).max(2).optional().nullable(),
@@ -490,12 +441,6 @@ export const createAnnualCommitmentSchema = z.object({
 });
 
 export const updateAnnualCommitmentSchema = createAnnualCommitmentSchema.partial();
-
-// Proof Arc v1: Flag monthly goal for sprint review (legacy: client sends monthKey)
-export const flagReviewSchema = z.object({
-  monthKey: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Must be YYYY-MM or YYYY-MM-DD format"),
-  reason: trimmedString(1, 5000),
-});
 
 // Sprint flag-for-review: server resolves the active sprint, client only sends reason
 export const flagActiveSprintReviewSchema = z.object({
