@@ -174,7 +174,7 @@ export default function DashboardPage() {
   const currentMonthKey = format(now, "yyyy-MM");
   const { data: monthlyGoal, isSuccess: monthlyGoalLoaded } = useMonthlyGoal(currentMonthKey, !!user);
 
-  const { data: identityDoc } = useQuery<IdentityDocument>({
+  const { data: identityDoc, isSuccess: identityDocLoaded } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
     enabled: !!user,
   });
@@ -446,11 +446,13 @@ export default function DashboardPage() {
   const [stuckOpen, setStuckOpen] = useState(false);
 
   useEffect(() => {
-    if (!onboardingLoading && onboarding && !onboarding.onboardingComplete) {
+    if (onboardingLoading || !onboarding || !identityDocLoaded) return;
+    const hasIdentityData = !!(identityDoc?.identity || identityDoc?.vision || identityDoc?.purpose);
+    if (!onboarding.onboardingComplete || !hasIdentityData) {
       toast({ title: "Setup required", description: "Complete your setup to unlock all features." });
       setLocation("/setup");
     }
-  }, [onboarding, onboardingLoading]);
+  }, [onboarding, onboardingLoading, identityDoc, identityDocLoaded]);
 
   // ─── Bucket open state + auto-open largest on first load ────────
   // Only mark the ref done once we've actually opened a bucket — so a
