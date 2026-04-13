@@ -96,12 +96,6 @@ export default function PlanPage() {
   const { weekStart, weekStartStr } = getWeekBounds(today, weekOffset);
   const weekLabel = `${format(weekStart, "MMM d")} – ${format(addDays(weekStart, 6), "MMM d")}`;
   const isCurrentWeek = weekOffset === 0;
-  const [monthOffset, setMonthOffset] = useState(0);
-  const monthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-  const currentMonthKey = format(monthDate, "yyyy-MM");
-  const monthLabel = format(monthDate, "MMMM yyyy");
-  const isCurrentMonth = monthOffset === 0;
-
   const dayOfWeek = getDay(today);
   const weekLocked = dayOfWeek === 0 || dayOfWeek === 6;
   const { toast } = useToast();
@@ -114,6 +108,10 @@ export default function PlanPage() {
 
   // ─── Computed ────────────────────────────────────────────────────
   const goalDisplay = activeSprint?.goalStatement?.trim() || "";
+  const sprintLabel = activeSprint?.sprintName?.trim()
+    || (activeSprint?.startDate && activeSprint?.endDate
+      ? `${format(new Date(activeSprint.startDate + "T12:00:00"), "MMM d")} – ${format(new Date(activeSprint.endDate + "T12:00:00"), "MMM d")}`
+      : "");
   const activeHabits = habits.filter(h => h.active !== false);
   const weeklyProofBehavior = annualCommitment?.weeklyProofBehaviorHabitId
     ? habits.find(h => h.id === annualCommitment.weeklyProofBehaviorHabitId) || null
@@ -197,33 +195,25 @@ export default function PlanPage() {
           </div>
         )}
 
-        {/* ─── 1. COMMIT — Monthly ───────────────────────────────── */}
+        {/* ─── 1. COMMIT — Sprint ────────────────────────────────── */}
         <Section
-          id="commit" verb="Commit" timeLabel="Monthly" accentClass="text-[#B8706A]"
-          completionOk={!!goalDisplay} summary={goalDisplay || "No goal set"}
+          id="commit" verb="Commit" timeLabel="Sprint" accentClass="text-[#B8706A]"
+          completionOk={!!goalDisplay} summary={goalDisplay || "No sprint set"}
           expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
         >
-          <div className="rounded-lg border border-border/60 p-3" data-testid="card-this-month">
+          <div className="rounded-lg border border-border/60 p-3" data-testid="card-this-sprint">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium">This Month</p>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{monthLabel}</span>
-                <button onClick={() => setMonthOffset(o => Math.max(o - 1, -6))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-month-prev">
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => setMonthOffset(o => Math.min(o + 1, 1))} className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer" data-testid="button-month-next">
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              <p className="text-xs font-medium">This Sprint</p>
+              {sprintLabel && <span className="text-[10px] text-muted-foreground">{sprintLabel}</span>}
             </div>
             <div
               className="flex items-start gap-2 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 py-1"
-              onClick={() => setLocation(buildProcessUrl(`/sprint${!isCurrentMonth ? `?month=${currentMonthKey}` : ""}`, "/week"))}
-              data-testid="card-monthly-goal"
+              onClick={() => setLocation(buildProcessUrl("/sprint", "/week"))}
+              data-testid="card-sprint-goal"
             >
               <span className={`h-2 w-2 rounded-full shrink-0 mt-0.5 ${goalDisplay ? "bg-primary" : "bg-muted-foreground/30"}`} />
               <div>
-                <p className="text-xs font-medium">Monthly Goal</p>
+                <p className="text-xs font-medium">Sprint Goal</p>
                 <p className="text-[10px] text-muted-foreground">{goalDisplay || "Not set"}</p>
               </div>
             </div>
