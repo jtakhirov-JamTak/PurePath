@@ -10,6 +10,8 @@ let _identityDocs: any[] = [];
 let _patternProfiles: any[] = [];
 let _toolUsage: any[] = [];
 let _avoidanceLogs: any[] = [];
+let _containmentLogs: any[] = [];
+let _triggerLogs: any[] = [];
 let _monthlyGoals: any[] = [];
 let _journals: any[] = [];
 let _userSettings: any[] = [];
@@ -29,6 +31,8 @@ export function resetStorage() {
   _patternProfiles = [];
   _toolUsage = [];
   _avoidanceLogs = [];
+  _containmentLogs = [];
+  _triggerLogs = [];
   _monthlyGoals = [];
   _journals = [];
   _userSettings = [];
@@ -181,12 +185,20 @@ export const storage = {
   },
 
   // Containment Logs
-  getContainmentLogsByUser: async (userId: string) => [] as any[],
-  createContainmentLog: async (data: any) => ({ id: nextId(), ...data }),
+  getContainmentLogsByUser: async (userId: string) => _containmentLogs.filter(c => c.userId === userId),
+  createContainmentLog: async (data: any) => {
+    const c = { id: nextId(), ...data };
+    _containmentLogs.push(c);
+    return c;
+  },
 
   // Trigger Logs
-  getTriggerLogsByUser: async (userId: string) => [] as any[],
-  createTriggerLog: async (data: any) => ({ id: nextId(), ...data }),
+  getTriggerLogsByUser: async (userId: string) => _triggerLogs.filter(t => t.userId === userId),
+  createTriggerLog: async (data: any) => {
+    const t = { id: nextId(), ...data };
+    _triggerLogs.push(t);
+    return t;
+  },
 
   // User settings / access
   getUserSettings: async (userId: string) => _userSettings.find(s => s.userId === userId) || null,
