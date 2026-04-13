@@ -491,9 +491,14 @@ export const createAnnualCommitmentSchema = z.object({
 
 export const updateAnnualCommitmentSchema = createAnnualCommitmentSchema.partial();
 
-// Proof Arc v1: Flag monthly goal for sprint review
+// Proof Arc v1: Flag monthly goal for sprint review (legacy: client sends monthKey)
 export const flagReviewSchema = z.object({
   monthKey: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/, "Must be YYYY-MM or YYYY-MM-DD format"),
+  reason: trimmedString(1, 5000),
+});
+
+// Sprint flag-for-review: server resolves the active sprint, client only sends reason
+export const flagActiveSprintReviewSchema = z.object({
   reason: trimmedString(1, 5000),
 });
 

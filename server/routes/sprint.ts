@@ -1,7 +1,7 @@
 import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
-import { createSprintSchema, closeSprintSchema, monthKeyParamSchema } from "../validation";
+import { createSprintSchema, closeSprintSchema, monthKeyParamSchema, flagActiveSprintReviewSchema } from "../validation";
 import { requireAccess, writeRateLimit } from "./helpers";
 
 export function registerSprintRoutes(app: Express) {
@@ -110,6 +110,29 @@ export function registerSprintRoutes(app: Express) {
     } catch (error) {
       console.error("Error closing sprint:", (error as Error).message);
       res.status(500).json({ error: "Failed to close sprint" });
+    }
+  });
+
+  // PATCH /api/goal-sprint/flag-review — flag the active sprint for review
+  app.patch("/api/goal-sprint/flag-review", isAuthenticated, requireAccess, writeRateLimit, async (req: any, res: Response) => {
+    try {
+      const parsed = flagActiveSprintReviewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.issues[0].message });
+      }
+      const userId = req.user.claims.sub;
+      const sprint = await storage.getActiveSprint(userId);
+      if (!sprint) {
+        return res.status(404).json({ error: "No active sprint to flag" });
+      }
+      const flagged = await storage.flagMonthlyGoalForReview(userId, sprint.monthKey, parsed.data.reason);
+      if (!flagged) {
+        return res.status(404).json({ error: "Active sprint not found" });
+      }
+      res.json(flagged);
+    } catch (error) {
+      console.error("Error flagging sprint for review:", (error as Error).message);
+      res.status(500).json({ error: "Failed to flag sprint for review" });
     }
   });
 
