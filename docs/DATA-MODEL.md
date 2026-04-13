@@ -150,9 +150,32 @@ Weekly planning tasks organized by Eisenhower matrix quadrants.
 
 EQ module — prep and debrief exercises for interpersonal interactions.
 
-### monthlyGoals
+### monthlyGoals (sprints)
 
-One goal document per user per month with goal statement, obstacles, IF-THEN plans.
+One row per sprint per user. Despite the legacy table name, this stores
+**sprints**, not calendar-month goals.
+
+- **Key**: `(userId, monthKey)` where `monthKey = startDate` (YYYY-MM-DD,
+  not YYYY-MM). Each sprint row's monthKey equals the day the sprint
+  started, so two sprints starting different days never collide.
+- **Active-sprint invariant**: at most one row per user with
+  `sprintStatus = 'active'`. Enforced by a Postgres partial unique index
+  (`monthly_goals_one_active_per_user_idx`) plus an application-side
+  409 check in `POST /api/goal-sprint`.
+- **Read paths**: `GET /api/goal-sprint` returns the active sprint or
+  null; `GET /api/goal-sprints` returns all rows for a user. There is
+  no longer a `/api/monthly-goal` endpoint.
+- **Currently-written fields**: `goalStatement`, `nextConcreteStep`,
+  `sprintName`, `startDate`, `endDate`, `ifThenPlan1/2`, `confidenceCheck`,
+  `milestone1/2*`, `sprintStatus`, `closedAs`, `carryForwardCount`,
+  `needsSprintReview*`.
+- **Dead columns (still in table, no writer)**: the original
+  monthly-goal-era planning fields (`value`, `goalWhat`, `goalWhen`,
+  `goalWhere`, `goalHow`, `blockingHabit`, `prize`, `fun`, `deadline`,
+  `successProof`, `proofMetric`, `weeklyBehavior`, `bestResult`,
+  `innerObstacle`, `obstacle*`, `personStatement`, `successMarker`,
+  `why`, `strengths`, `advantage`). Kept for `SELECT *` compatibility
+  per the standard schema-deprecation pattern. Do not add new readers.
 
 ### identityDocuments
 
