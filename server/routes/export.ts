@@ -2,6 +2,7 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { exportRateLimit, requireAccess } from "./helpers";
+import { getHelpingPattern, getHurtingPattern, getBlindSpot } from "@shared/pattern-fields";
 import { format } from "date-fns";
 
 export function registerExportRoutes(app: Express) {
@@ -111,30 +112,23 @@ export function registerExportRoutes(app: Express) {
       // PATTERN PROFILE
       md += `## Pattern Profile\n\n`;
       if (patternProfile) {
-        const hp = (n: number) => {
-          const c = (patternProfile as any)[`helpingPattern${n}Condition`] || "";
-          const b = (patternProfile as any)[`helpingPattern${n}Behavior`] || "";
-          const i = (patternProfile as any)[`helpingPattern${n}Impact`] || "";
-          const o = (patternProfile as any)[`helpingPattern${n}Outcome`] || "";
+        const hp = (n: 1 | 2 | 3) => {
+          const { condition: c, behavior: b, impact: i, outcome: o } = getHelpingPattern(patternProfile, n);
           return (c || b || i || o) ? `- **Pattern ${n}:** When ${c || "..."} → I ${b || "..."} → People feel ${i || "..."} → It leads to ${o || "..."}\n` : "";
         };
         const hpSection = hp(1) + hp(2) + hp(3);
         if (hpSection) md += `**Helping Patterns:**\n${hpSection}\n`;
 
-        const up = (n: number) => {
-          const c = (patternProfile as any)[`hurtingPattern${n}Condition`] || "";
-          const b = (patternProfile as any)[`hurtingPattern${n}Behavior`] || "";
-          const i = (patternProfile as any)[`hurtingPattern${n}Impact`] || "";
-          const o = (patternProfile as any)[`hurtingPattern${n}Outcome`] || "";
+        const up = (n: 1 | 2 | 3) => {
+          const { condition: c, behavior: b, impact: i, outcome: o } = getHurtingPattern(patternProfile, n);
           return (c || b || i || o) ? `- **Pattern ${n}:** When ${c || "..."} → I ${b || "..."} → People feel ${i || "..."} → It leads to ${o || "..."}\n` : "";
         };
         const upSection = up(1) + up(2) + up(3);
         if (upSection) md += `**Shadow Patterns:**\n${upSection}\n`;
 
         // Shadow pattern emotions + environments
-        for (let n = 1; n <= 3; n++) {
-          const emotions = (patternProfile as any)[`hurtingPattern${n}Emotions`];
-          const environment = (patternProfile as any)[`hurtingPattern${n}Environment`];
+        for (const n of [1, 2, 3] as const) {
+          const { emotions, environment } = getHurtingPattern(patternProfile, n);
           if (emotions || environment) {
             md += `  - Shadow ${n} emotions: ${emotions || "—"}, environment: ${environment || "—"}\n`;
           }
@@ -168,9 +162,8 @@ export function registerExportRoutes(app: Express) {
           md += `\n`;
         }
 
-        const bs = (n: number) => {
-          const p = (patternProfile as any)[`blindSpot${n}Pattern`] || "";
-          const o = (patternProfile as any)[`blindSpot${n}Outcome`] || "";
+        const bs = (n: 1 | 2 | 3) => {
+          const { pattern: p, outcome: o } = getBlindSpot(patternProfile, n);
           return (p || o) ? `- **Blind Spot ${n}:** ${p || "..."} → ${o || "..."}\n` : "";
         };
         const bsSection = bs(1) + bs(2) + bs(3);

@@ -12,6 +12,7 @@ import { FreeTextOrChips } from "@/components/free-text-or-chips";
 import { cn } from "@/lib/utils";
 import type { EveningContent } from "@/pages/journal-entry";
 import type { PatternProfile } from "@shared/schema";
+import { getHelpingPattern, getHurtingPattern } from "@shared/pattern-fields";
 
 const SKIP_CHIPS = ["Forgot", "Planning error", "De-prioritized", "Didn't have the energy", "Avoided it"];
 const POSITIVE_INPUTS = ["Sleep", "Exercise", "Progress", "People", "Environment", "Mindset", "Other"];
@@ -53,12 +54,12 @@ export function EveningJournal({
   patternProfile,
 }: EveningJournalProps) {
   // Build pattern options from profile
-  const successPatterns = [1, 2, 3].map(n => {
-    const condition = (patternProfile as any)?.[`helpingPattern${n}Condition`] || "";
+  const successPatterns = ([1, 2, 3] as const).map(n => {
+    const { condition } = getHelpingPattern(patternProfile, n);
     return condition ? `Pattern ${n}: ${condition}` : "";
   }).filter(Boolean);
-  const shadowPatterns = [1, 2, 3].map(n => {
-    const condition = (patternProfile as any)?.[`hurtingPattern${n}Condition`] || "";
+  const shadowPatterns = ([1, 2, 3] as const).map(n => {
+    const { condition } = getHurtingPattern(patternProfile, n);
     return condition ? `Pattern ${n}: ${condition}` : "";
   }).filter(Boolean);
   return (

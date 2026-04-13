@@ -2,26 +2,13 @@ import type { Express, Response } from "express";
 import { storage } from "../storage";
 import { isAuthenticated } from "../replit_integrations/auth";
 import { format } from "date-fns";
-import { z } from "zod";
-import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema } from "../validation";
+import { createEisenhowerSchema, updateEisenhowerSchema, commitWeekSchema, saveFearSchema, reorderSchema } from "../validation";
 import { parseId, parseMondayParam, csvEscape, aiRateLimit, exportRateLimit, writeRateLimit, requireAccess } from "./helpers";
 import { openai } from "../lib/openai";
 
 // Must match MAX_Q1/MAX_Q2 in client/src/lib/proof-engine-logic.ts
 const MAX_Q1 = 5;
 const MAX_Q2 = 2;
-
-const reorderItemSchema = z.object({
-  id: z.number().int().positive(),
-  sortOrder: z.number().int().min(0),
-  timing: z.enum(["morning", "afternoon", "evening"]).optional(),
-  timeRange: z.enum(["morning", "afternoon", "evening"]).optional(),
-  scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-});
-
-const reorderSchema = z.object({
-  items: z.array(reorderItemSchema).min(1).max(100),
-});
 
 export function registerEisenhowerRoutes(app: Express) {
   app.get("/api/eisenhower", isAuthenticated, requireAccess, async (req: any, res: Response) => {

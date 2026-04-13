@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import { useActiveSprint } from "@/hooks/use-active-sprint";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/app-layout";
 import { FlowBar } from "@/components/flow-bar";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 import { format, startOfWeek, addDays, addWeeks, getDay } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { useLocation } from "wouter";
-import type { EisenhowerEntry, IdentityDocument, MonthlyGoal, AnnualCommitment, PatternProfile } from "@shared/schema";
+import type { EisenhowerEntry, IdentityDocument, AnnualCommitment, PatternProfile } from "@shared/schema";
 import {
   MAX_Q1, MAX_Q2, MAX_BRAIN_DUMP, MAX_DAYS_PER_ITEM, SOFT_CAP, TOTAL_STEPS, VISIBLE_SCREENS, stepToScreen, SCREEN_LABELS,
   classifyItem, computeSortPriority, generateGroupId, createEmptyItem, suggestSequence,
@@ -28,8 +28,6 @@ import { StepSequenceHandle } from "@/components/proof-engine/step-sequence-hand
 import { StepAttachTriggers } from "@/components/proof-engine/step-attach-triggers";
 
 export default function EisenhowerPage() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { register, unregister } = useUnsavedGuard();
   const [step, setStep] = useState(1);
@@ -84,8 +82,7 @@ export default function EisenhowerPage() {
     queryKey: ["/api/eisenhower/close-week", lastCompletedWeekStart],
     queryFn: async () => {
       // Pass the completed week directly — server will use it as-is
-      const res = await fetch(`/api/eisenhower/close-week/${lastCompletedWeekStart}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await apiRequest("GET", `/api/eisenhower/close-week/${lastCompletedWeekStart}`);
       return res.json();
     },
   });
@@ -347,7 +344,7 @@ export default function EisenhowerPage() {
   };
 
   // Commit mutation
-  const commitMutation = useMutation({
+  const commitMutation = useToastMutation({
     mutationFn: async () => {
       const allOrderedForCommit = [...handleItems, ...protectItems, ...discardedItems];
       const commitItems = allOrderedForCommit.map((item, i) => {
@@ -399,14 +396,14 @@ export default function EisenhowerPage() {
       }
       return res.json();
     },
+    invalidateKeys: [
+      ["/api/eisenhower"],
+      ["/api/eisenhower/week", weekStartStr],
+      ["/api/eisenhower/weekly-summary", weekStartStr],
+    ],
+    errorToast: "Could not save",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/week", weekStartStr] });
-      queryClient.invalidateQueries({ queryKey: ["/api/eisenhower/weekly-summary", weekStartStr] });
       setLocation("/week");
-    },
-    onError: (error: Error) => {
-      toast({ title: "Could not save", description: error.message, variant: "destructive" });
     },
   });
 

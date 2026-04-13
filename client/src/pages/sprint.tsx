@@ -279,8 +279,7 @@ function SprintRitualDialog({ open, onClose, sprint, annual, identityDoc, onComp
   const { data: compactSummary } = useQuery<CompactSummary>({
     queryKey: ["/api/sprint/compact-summary", sprint?.startDate, sprint?.endDate],
     queryFn: async () => {
-      const res = await fetch(`/api/sprint/compact-summary?from=${sprint!.startDate}&to=${sprint!.endDate}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await apiRequest("GET", `/api/sprint/compact-summary?from=${sprint!.startDate}&to=${sprint!.endDate}`);
       return res.json();
     },
     enabled: !!sprint?.startDate && !!sprint?.endDate && open && !createOnly,

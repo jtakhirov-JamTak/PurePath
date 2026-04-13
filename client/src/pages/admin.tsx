@@ -50,8 +50,7 @@ function ActivityHeatmap({ userId }: { userId: string }) {
   const { data } = useQuery<{ activeDates: string[] }>({
     queryKey: ["/api/admin/users", userId, "activity"],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/users/${userId}/activity`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed");
+      const res = await apiRequest("GET", `/api/admin/users/${userId}/activity`);
       return res.json();
     },
     staleTime: 5 * 60 * 1000,

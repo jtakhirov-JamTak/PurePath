@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { PATTERN_LABELS } from "@/lib/display-names";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { useLocation } from "wouter";
 import { format, addDays } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -117,16 +118,12 @@ export default function SetupWizardPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [step]);
 
-  const updateOnboarding = useMutation({
+  const updateOnboarding = useToastMutation<number>({
     mutationFn: async (s: number) => {
       await apiRequest("PATCH", "/api/onboarding", { step: s });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/onboarding"] });
-    },
-    onError: () => {
-      toast({ title: "Could not save progress", description: "Please try again.", variant: "destructive" });
-    },
+    invalidateKeys: [["/api/onboarding"]],
+    errorToast: "Could not save progress",
   });
 
   const goToStep = async (s: number) => {

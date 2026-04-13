@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useToast } from "@/hooks/use-toast";
+import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { ArrowLeft, Sun, Moon, Save, Loader2, Feather, BedDouble, Compass } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { useReturnTo } from "@/hooks/use-return-to";
@@ -217,8 +217,6 @@ export default function JournalEntryPage() {
   const [, setLocation] = useLocation();
   const { returnTo, finish } = useReturnTo("/today");
   const params = useParams<{ date: string; session: string }>();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const date = params.date;
   const session = params.session as "morning" | "evening";
@@ -364,7 +362,7 @@ export default function JournalEntryPage() {
     }
   }, [existingJournal, isMorning]);
 
-  const saveMutation = useMutation({
+  const saveMutation = useToastMutation({
     mutationFn: async () => {
       const contentData = isMorning ? morningData : eveningData;
       const response = await apiRequest("POST", "/api/journals", {
@@ -411,31 +409,20 @@ export default function JournalEntryPage() {
 
       return response.json();
     },
+    invalidateKeys: isMorning
+      ? [["/api/journals"], ["/api/journals", date, session]]
+      : [["/api/journals"], ["/api/journals", date, session], ["/api/habit-completions"], ["/api/eisenhower"]],
+    successToast: isMorning ? { title: "Journal Saved", description: "Your journal entry has been saved successfully." } : undefined,
+    errorToast: "Failed to save journal entry",
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/journals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/journals", date, session] });
       if (!isMorning) {
-        queryClient.invalidateQueries({ queryKey: ["/api/habit-completions"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/eisenhower"] });
         // "Day closed." moment — fade content, show text, then navigate
         setShowDayClosed(true);
         setTimeout(() => {
           finish();
           window.scrollTo(0, 0);
         }, 1800);
-        return;
       }
-      toast({
-        title: "Journal Saved",
-        description: "Your journal entry has been saved successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save journal entry.",
-        variant: "destructive",
-      });
     },
   });
 

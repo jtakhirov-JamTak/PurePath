@@ -5,7 +5,7 @@ const TOTAL_SPRINT_FRAMES = 31;
 /**
  * Returns sprint day info, or null if no active sprint.
  */
-export function getSprintDay(startDate: string, endDate: string, today: string): { day: number; totalDays: number } | null {
+function getSprintDay(startDate: string, endDate: string, today: string): { day: number; totalDays: number } | null {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
   const now = parseISO(today);
@@ -22,7 +22,7 @@ export function getSprintDay(startDate: string, endDate: string, today: string):
  * Maps a sprint day to a background image path.
  * Uses linear interpolation so any sprint length (10-31 days) cycles through all 31 frames.
  */
-export function getSprintBackground(currentDay: number, totalDays: number): string {
+function getSprintBackground(currentDay: number, totalDays: number): string {
   const frame = Math.ceil((currentDay / totalDays) * TOTAL_SPRINT_FRAMES);
   const clamped = Math.max(1, Math.min(frame, TOTAL_SPRINT_FRAMES));
   return `/backgrounds/sprint/day-${String(clamped).padStart(2, "0")}.webp`;
