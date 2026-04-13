@@ -43,6 +43,10 @@ test.describe("Sprint read-path golden path", () => {
 
     expect(page.url()).toContain("/week");
     expect(page.url()).not.toContain("/setup");
+    // Critical: the regression this branch fixes was Plan rendering "No sprint set" /
+    // "Not set" because it read sprint data via the wrong endpoint. Assert the real
+    // goal text shows up so a future re-introduction of the dual-path would fail here.
+    await expect(page.getByTestId("card-sprint-goal")).toContainText("Stay consistent");
   });
 
   test("Eisenhower planning page loads without setup redirect", async ({ page }) => {

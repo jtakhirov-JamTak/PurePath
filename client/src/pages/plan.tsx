@@ -14,7 +14,7 @@ import { useToastMutation } from "@/hooks/use-toast-mutation";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, getDay } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { EisenhowerEntry, Habit, MonthlyGoal, AnnualCommitment } from "@shared/schema";
+import type { EisenhowerEntry, Habit, AnnualCommitment } from "@shared/schema";
 import { CATEGORY_COLORS, TIMING_LABELS } from "@/lib/constants";
 import { getWeekFocusItems, groupByGroupId } from "@/lib/eisenhower-filters";
 
@@ -108,8 +108,9 @@ export default function PlanPage() {
 
   // ─── Computed ────────────────────────────────────────────────────
   const goalDisplay = activeSprint?.goalStatement?.trim() || "";
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
   const sprintLabel = activeSprint?.sprintName?.trim()
-    || (activeSprint?.startDate && activeSprint?.endDate
+    || (activeSprint?.startDate && activeSprint?.endDate && ymd.test(activeSprint.startDate) && ymd.test(activeSprint.endDate)
       ? `${format(new Date(activeSprint.startDate + "T12:00:00"), "MMM d")} – ${format(new Date(activeSprint.endDate + "T12:00:00"), "MMM d")}`
       : "");
   const activeHabits = habits.filter(h => h.active !== false);
@@ -202,9 +203,9 @@ export default function PlanPage() {
           expanded={expanded.has("commit")} onToggle={() => toggle("commit")} celebrating={false}
         >
           <div className="rounded-lg border border-border/60 p-3" data-testid="card-this-sprint">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium">This Sprint</p>
-              {sprintLabel && <span className="text-[10px] text-muted-foreground">{sprintLabel}</span>}
+            <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
+              <p className="text-xs font-medium shrink-0">This Sprint</p>
+              {sprintLabel && <span className="text-[11px] text-muted-foreground truncate max-w-[60%]">{sprintLabel}</span>}
             </div>
             <div
               className="flex items-start gap-2 cursor-pointer hover:bg-muted/30 rounded px-1 -mx-1 py-1"

@@ -54,14 +54,16 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
   const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
     queryKey: ["/api/onboarding"],
     enabled: isAuthenticated && hasAccess,
+    staleTime: 5 * 60 * 1000,
   });
   const { data: identityDoc, isLoading: identityLoading } = useQuery<{ identity?: string; vision?: string; purpose?: string }>({
     queryKey: ["/api/identity-document"],
     enabled: isAuthenticated && hasAccess,
+    staleTime: 5 * 60 * 1000,
   });
 
   const isOnSetup = location === "/setup";
-  const hasIdentityData = !!(identityDoc?.identity || identityDoc?.vision || identityDoc?.purpose);
+  const hasIdentityData = !!(identityDoc?.identity?.trim() && identityDoc?.vision?.trim() && identityDoc?.purpose?.trim());
   const setupComplete = !!onboarding?.onboardingComplete && hasIdentityData;
 
   useEffect(() => {
@@ -77,10 +79,13 @@ function AccessGatedRoute({ component: Component }: { component: React.Component
   }, [accessLoading, accessStatus, setLocation]);
 
   useEffect(() => {
-    if (isOnSetup) return;
     if (!hasAccess || onboardingLoading || identityLoading) return;
     if (!onboarding || !identityDoc) return;
-    if (!setupComplete) {
+    if (isOnSetup && setupComplete) {
+      setLocation("/today");
+      return;
+    }
+    if (!isOnSetup && !setupComplete) {
       setLocation("/setup");
     }
   }, [isOnSetup, hasAccess, onboardingLoading, identityLoading, onboarding, identityDoc, setupComplete, setLocation]);

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/app-layout";
 import { Sun, Moon, ChevronLeft, ChevronRight, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,13 +10,11 @@ import { getDateHabits } from "@/lib/habit-filters";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { CATEGORY_COLORS, CATEGORY_BADGE } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import type { Journal, Habit, HabitCompletion, EisenhowerEntry } from "@shared/schema";
 
 export default function ProofPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   const todayDate = new Date();
   const todayStr = format(todayDate, "yyyy-MM-dd");
@@ -25,7 +23,7 @@ export default function ProofPage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // ─── Queries ─────────────────────────────────────────────────────
-  const { data: onboarding, isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
+  const { isLoading: onboardingLoading } = useQuery<{ onboardingStep: number; onboardingComplete: boolean }>({
     queryKey: ["/api/onboarding"],
     enabled: !!user,
   });

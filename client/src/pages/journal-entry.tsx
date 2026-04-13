@@ -17,7 +17,7 @@ import { EveningJournal } from "@/components/journal/evening-journal";
 import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useActiveSprint } from "@/hooks/use-active-sprint";
-import type { Journal, IdentityDocument, MonthlyGoal, Habit, HabitCompletion, EisenhowerEntry, PatternProfile, AnnualCommitment } from "@shared/schema";
+import type { Journal, IdentityDocument, Habit, HabitCompletion, EisenhowerEntry, PatternProfile, AnnualCommitment } from "@shared/schema";
 import { VisionCard } from "@/components/vision-card";
 import { startOfWeek } from "date-fns";
 import { getTodaysHabits } from "@/lib/habit-filters";

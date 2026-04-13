@@ -1,5 +1,5 @@
 import { Page } from "@playwright/test";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 
 /** Mock user returned by /api/auth/user */
 export const TEST_USER = {
@@ -58,8 +58,10 @@ export async function mockAuthenticatedUser(page: Page, opts: {
   );
 
   // Active sprint (populated — no redirect)
+  const sprintStart = todayStr;
+  const sprintEnd = format(addDays(new Date(), 30), "yyyy-MM-dd");
   await page.route(`**/api/goal-sprint`, (route) =>
-    route.fulfill({ json: { id: 1, userId: TEST_USER.id, monthKey: currentMonth, goalStatement: "Stay consistent", sprintName: "Test Sprint", startDate: currentMonth, endDate: currentMonth, sprintStatus: "active" } }),
+    route.fulfill({ json: { id: 1, userId: TEST_USER.id, monthKey: sprintStart, goalStatement: "Stay consistent", sprintName: "Test Sprint", startDate: sprintStart, endDate: sprintEnd, sprintStatus: "active" } }),
   );
   await page.route(`**/api/goal-sprints`, (route) =>
     route.fulfill({ json: [] }),
