@@ -50,11 +50,17 @@ test.describe("Setup Wizard", () => {
       return route.fulfill({ json: { id: 1, active: true } });
     });
 
+    let activeSprint: any = null;
     await page.route("**/api/goal-sprint", (route) => {
       if (route.request().method() === "POST") {
-        return route.fulfill({ status: 201, json: { id: 1, ...route.request().postDataJSON() } });
+        const body = route.request().postDataJSON();
+        activeSprint = { id: 1, userId: TEST_USER.id, monthKey: body.startDate, sprintStatus: "active", ...body };
+        return route.fulfill({ status: 201, json: activeSprint });
       }
-      return route.fulfill({ json: null });
+      return route.fulfill({ json: activeSprint });
+    });
+    await page.route("**/api/goal-sprints", (route) => {
+      return route.fulfill({ json: activeSprint ? [activeSprint] : [] });
     });
 
     await page.route("**/api/journals", (route) => {
@@ -85,20 +91,16 @@ test.describe("Setup Wizard", () => {
     await expect(page.getByTestId("text-welcome-heading")).toBeVisible();
     await expect(page.getByTestId("text-welcome-subtext")).toBeVisible();
     await expect(page.getByTestId("button-begin")).toBeVisible();
-    await expect(page.getByTestId("link-skip-setup")).toBeVisible();
 
     for (let i = 0; i < 6; i++) {
       await expect(page.getByTestId(`text-step-preview-${i}`)).toBeVisible();
     }
   });
 
-  test("can skip setup entirely", async ({ page }) => {
+  test("skip-setup button no longer exists on welcome step", async ({ page }) => {
     await page.goto("/setup");
-
-    await expect(page.getByTestId("link-skip-setup")).toBeVisible();
-    await page.getByTestId("link-skip-setup").click();
-
-    await page.waitForTimeout(500);
+    await expect(page.getByTestId("button-begin")).toBeVisible();
+    await expect(page.getByTestId("link-skip-setup")).toHaveCount(0);
   });
 
   test("Step 1: Core Identity fields are visible", async ({ page }) => {

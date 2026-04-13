@@ -68,7 +68,7 @@ export async function mockAuthenticatedUser(page: Page, opts: {
   // Identity document
   await page.route("**/api/identity-document", (route) => {
     if (route.request().method() === "GET") {
-      return route.fulfill({ json: { id: 1, userId: TEST_USER.id, vision: "", identityStatement: "", relationalIntention: "", purpose: "", values: "Courage,Growth", othersWillSee: "Kindness", beYourself: "" } });
+      return route.fulfill({ json: { id: 1, userId: TEST_USER.id, identity: "Test identity", vision: "Test vision", purpose: "Test purpose", values: "Courage,Growth", othersWillSee: "Kindness", beYourself: "" } });
     }
     return route.fulfill({ json: { success: true } });
   });
