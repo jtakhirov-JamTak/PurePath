@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { buildProcessUrl } from "@/hooks/use-return-to";
 import { format, addDays } from "date-fns";
 import { getWeekBounds } from "@/lib/week-utils";
-import type { Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument } from "@shared/schema";
+import type { Habit, HabitCompletion, Journal, EisenhowerEntry, IdentityDocument, AnnualCommitment } from "@shared/schema";
 import { buildHabitStatusMap } from "@/lib/completion";
 import { getTodaysFocusItems } from "@/lib/eisenhower-filters";
 import { getTodaysHabits } from "@/lib/habit-filters";
@@ -175,6 +175,11 @@ export default function DashboardPage() {
 
   const { data: identityDoc, isSuccess: identityDocLoaded } = useQuery<IdentityDocument>({
     queryKey: ["/api/identity-document"],
+    enabled: !!user,
+  });
+
+  const { data: annualCommitment } = useQuery<AnnualCommitment | null>({
+    queryKey: ["/api/annual-commitment"],
     enabled: !!user,
   });
 
@@ -473,6 +478,42 @@ export default function DashboardPage() {
     }
   }, [authLoading, onboardingLoading, panelLists, habitStatusMap]);
 
+  // ─── Commitment context (Year / Sprint / Why) ───────────────────
+  const commitmentContext = useMemo(() => {
+    const yearValue =
+      annualCommitment?.personStatement?.trim() ||
+      identityDoc?.identity?.trim() ||
+      null;
+
+    const sprintValue =
+      activeSprint?.sprintName?.trim() ||
+      activeSprint?.goalStatement?.trim() ||
+      null;
+
+    const whyValue =
+      annualCommitment?.proofPoint?.trim() ||
+      annualCommitment?.visualization?.trim() ||
+      annualCommitment?.proofMetric?.trim() ||
+      null;
+
+    let daysLeft: number | null = null;
+    if (activeSprint?.endDate) {
+      const end = new Date(activeSprint.endDate + "T00:00:00");
+      const today = new Date(todayStr + "T00:00:00");
+      if (!isNaN(end.getTime())) {
+        daysLeft = Math.max(0, Math.round((end.getTime() - today.getTime()) / 86_400_000));
+      }
+    }
+
+    const domain = annualCommitment?.domain?.trim() || null;
+    const proofMetric = annualCommitment?.proofMetric?.trim() || null;
+
+    const hasAnnual = !!annualCommitment;
+    const hasAny = !!(yearValue || sprintValue || whyValue);
+
+    return { yearValue, sprintValue, whyValue, daysLeft, domain, proofMetric, hasAnnual, hasAny };
+  }, [annualCommitment, identityDoc, activeSprint, todayStr]);
+
   // ⚠️ ALL hooks MUST be above this line — early returns below break React rules of hooks
 
   // ─── Loading / guard ─────────────────────────────────────────────
@@ -537,7 +578,57 @@ export default function DashboardPage() {
           </p>
         )}
 
-        {/* ─── 2. Today's Proof Move (hero) ───────────────────── */}
+        {/* ─── 2. Commitment context (Year / Sprint / Why) ────── */}
+        {commitmentContext.hasAny && (
+          <div className="rounded-[10px] p-4 border border-border/40 bg-card space-y-2" data-testid="commitment-context">
+            {commitmentContext.yearValue && (
+              <div className="flex gap-3 items-start" data-testid="commitment-year">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5 w-12 shrink-0">Year</span>
+                <p className="text-sm flex-1 min-w-0">{commitmentContext.yearValue}</p>
+              </div>
+            )}
+
+            {commitmentContext.sprintValue ? (
+              <div className="flex gap-3 items-start" data-testid="commitment-sprint">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5 w-12 shrink-0">Sprint</span>
+                <p className="text-sm flex-1 min-w-0">{commitmentContext.sprintValue}</p>
+              </div>
+            ) : commitmentContext.hasAnnual ? (
+              <div className="flex gap-3 items-start" data-testid="commitment-sprint">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5 w-12 shrink-0">Sprint</span>
+                <button
+                  type="button"
+                  className="text-sm text-primary flex-1 min-w-0 text-left min-h-[24px]"
+                  onClick={() => { setLocation("/sprint"); window.scrollTo(0, 0); }}
+                  data-testid="commitment-set-sprint"
+                >
+                  No active sprint &rarr;
+                </button>
+              </div>
+            ) : null}
+
+            {commitmentContext.whyValue && (
+              <div className="flex gap-3 items-start" data-testid="commitment-why">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground mt-0.5 w-12 shrink-0">Why</span>
+                <p className="text-sm flex-1 min-w-0">{commitmentContext.whyValue}</p>
+              </div>
+            )}
+
+            {(commitmentContext.domain || commitmentContext.daysLeft !== null || commitmentContext.proofMetric) && (
+              <p className="text-[11px] text-muted-foreground pt-1" data-testid="commitment-meta">
+                {[
+                  commitmentContext.domain,
+                  commitmentContext.daysLeft !== null
+                    ? `${commitmentContext.daysLeft} ${commitmentContext.daysLeft === 1 ? "day" : "days"} left`
+                    : null,
+                  commitmentContext.proofMetric,
+                ].filter(Boolean).join(" • ")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ─── 3. Today's Proof Move (hero) ───────────────────── */}
         <div className="rounded-[10px] p-4 border border-border/40 bg-card" data-testid="today-proof-move">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">Today's proof move</p>
           {todayProofMove ? (
@@ -566,7 +657,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ─── 3. Needs You Now / Coming Up / All Clear ───────── */}
+        {/* ─── 4. Needs You Now / Coming Up / All Clear ───────── */}
         <div className="space-y-1.5" data-testid="needs-now">
           {needsNowLabel === "clear" ? (
             <p className="text-sm text-muted-foreground text-center py-3">All clear</p>
@@ -592,7 +683,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ─── 4. Bucket row ──────────────────────────────────── */}
+        {/* ─── 5. Bucket row ──────────────────────────────────── */}
         <div className="flex items-start justify-around pt-1" data-testid="bucket-row">
           {BUCKETS.map(b => {
             const Icon = b.icon;
@@ -620,7 +711,7 @@ export default function DashboardPage() {
           })}
         </div>
 
-        {/* ─── 5. Expandable bucket panel ─────────────────────── */}
+        {/* ─── 6. Expandable bucket panel ─────────────────────── */}
         <AnimatePresence initial={false}>
           {openBucket && (
             <motion.div
@@ -703,7 +794,7 @@ export default function DashboardPage() {
           )}
         </AnimatePresence>
 
-        {/* ─── 6. Weekly circles (visual only) ────────────────── */}
+        {/* ─── 7. Weekly circles (visual only) ────────────────── */}
         <div className="flex items-end justify-between py-2">
           <button
             type="button"
@@ -791,7 +882,7 @@ export default function DashboardPage() {
           </button>
         )}
 
-        {/* ─── 7. I'm stuck ───────────────────────────────────── */}
+        {/* ─── 8. I'm stuck ───────────────────────────────────── */}
         <button
           className="flex items-center justify-center gap-2 py-3 rounded-[10px] border border-border/40 bg-card hover:bg-muted/30 transition-colors w-full cursor-pointer"
           onClick={() => setStuckOpen(true)}
